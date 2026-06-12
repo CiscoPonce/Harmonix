@@ -58,8 +58,27 @@ export function useSyncEngine({
     };
   }, [audioRef, offset, latencyCompensationMs]);
 
+  const seekTo = (targetLyricTimeSeconds: number) => {
+    const audio = audioRef.current;
+    const lyric = lyricRef.current;
+    if (!audio || !lyric) return;
+
+    // targetAudioTime = targetLyricTime - offset
+    const targetAudioTime = targetLyricTimeSeconds - offset;
+    
+    // Clamp between 0 and 30 seconds (snippet duration)
+    const clampedTargetAudioTime = Math.max(0, Math.min(30, targetAudioTime));
+    
+    audio.currentTime = clampedTargetAudioTime;
+    
+    // Sync the parser state immediately
+    const adjustedTimeMs = (clampedTargetAudioTime * 1000) + (offset * 1000) + latencyCompensationMs;
+    lyric.play(adjustedTimeMs);
+  };
+
   return {
     currentLineIndex,
     lines,
+    seekTo,
   };
 }
