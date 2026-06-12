@@ -33,9 +33,14 @@ export function useSyncEngine({
       },
     });
 
-    lyric.setLrc(lrcString);
-    lyricRef.current = lyric;
-    setLines(lyric.getLines() || []);
+    try {
+      lyric.setLrc(lrcString);
+      lyricRef.current = lyric;
+      setLines(lyric.getLines() || []);
+    } catch (error) {
+      console.error('Failed to parse LRC string:', error);
+      setLines([]);
+    }
 
     return () => {
       lyricRef.current = null;
