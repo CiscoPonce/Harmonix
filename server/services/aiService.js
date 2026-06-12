@@ -1,4 +1,5 @@
 const { OpenAI } = require('openai');
+require('dotenv').config();
 
 const openai = new OpenAI({
   apiKey: process.env.NVIDIA_NIM_API_KEY,
