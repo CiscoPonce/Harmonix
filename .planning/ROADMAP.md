@@ -4,7 +4,7 @@
 
 - [x] **Phase 1: Foundation & Auth** — Secure access and minimalist UI foundation.
 - [x] **Phase 2: Core Sync Engine** — Interactive "Karaoke" playback with precise sync. (completed 2026-06-12)
-- [ ] **Phase 3: AI Vocabulary Extraction** — Dynamic personalization via NVIDIA NIM.
+- [x] **Phase 3: AI Vocabulary Extraction** — Dynamic personalization via NVIDIA NIM. (completed 2026-06-12)
 - [ ] **Phase 4: Active Learning** — Interactive fill-in-the-blank lyric quizzes.
 - [ ] **Phase 5: Retention & Gamification** — SRS flashcards and progression tracking.
 - [ ] **Phase 6: Data Reliability** — Validation loop and persistent caching.
@@ -44,13 +44,13 @@
 **Depends on**: Phase 2
 **Requirements**: AI-01
 **Success Criteria** (what must be TRUE):
-  1. System identifies 5-10 target vocabulary words per song tailored to user proficiency.
-  2. User sees target words highlighted within the interactive lyric view.
-  3. User can view context-aware definitions for target words during playback.
+  1. System identifies 5-10 target vocabulary words per song tailored to user proficiency (CEFR).
+  2. User sees target words highlighted within lyrics and can report errors in definitions.
+  3. System provides a fallback list ("Words in this song") for words not precisely mapped to lines.
 **Plans**: 3 plans
-- [ ] 03-01-PLAN.md — Backend Foundation & AI Service
-- [ ] 03-02-PLAN.md — Vocab API & Persistence
-- [ ] 03-03-PLAN.md — Frontend Interactive Lyrics
+- [x] 03-01-PLAN.md — Backend Foundation & AI Service
+- [x] 03-02-PLAN.md — Vocab API & Persistence
+- [x] 03-03-PLAN.md — Frontend Interactive Lyrics
 **UI hint**: yes
 
 ### Phase 4: Active Learning
@@ -91,7 +91,7 @@
 |-------|----------------|--------|-----------|
 | 1. Foundation & Auth | 3/3 | Completed | 2026-06-12 |
 | 2. Core Sync Engine | 3/3 | Complete   | 2026-06-12 |
-| 3. AI Vocabulary Extraction | 0/3 | Not started | - |
+| 3. AI Vocabulary Extraction | 3/3 | Complete   | 2026-06-12 |
 | 4. Active Learning | 0/0 | Not started | - |
 | 5. Retention & Gamification | 0/0 | Not started | - |
 | 6. Data Reliability | 0/0 | Not started | - |

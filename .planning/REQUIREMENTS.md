@@ -8,7 +8,7 @@
 
 ## 2. AI-Driven Learning (AI)
 
-- [ ] **AI-01**: **AI-Personalized Vocab**. Use NVIDIA NIM to analyze song lyrics and select 5-10 vocabulary words appropriate for the user's proficiency level and target language.
+- [x] **AI-01**: **AI-Personalized Vocab**. Use NVIDIA NIM to analyze song lyrics and select 5-10 vocabulary words appropriate for the user's proficiency level and target language.
 
 ## 3. Learning & Gamification (STUDY)
 
@@ -43,7 +43,7 @@
 | PLAYER-01 | Phase 2 | Complete |
 | PLAYER-02 | Phase 2 | Complete |
 | PLAYER-03 | Phase 6 | Pending |
-| AI-01 | Phase 3 | Pending |
+| AI-01 | Phase 3 | Complete |
 | STUDY-01 | Phase 5 | Pending |
 | STUDY-02 | Phase 4 | Pending |
 | STUDY-03 | Phase 5 | Pending |
