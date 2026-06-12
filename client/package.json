@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@radix-ui/react-popover": "^1.1.16",
+    "@radix-ui/react-select": "^2.3.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lrc-file-parser": "^2.4.1",

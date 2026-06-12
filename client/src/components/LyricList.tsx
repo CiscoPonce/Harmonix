@@ -1,4 +1,15 @@
 import React, { useEffect, useRef } from 'react';
+import { VocabPopover } from './VocabPopover';
+
+export interface MappedVocabItem {
+  vocab_id: string;
+  word: string;
+  lemma?: string;
+  definition: string;
+  cefr_level: string;
+  line_index: number;
+  char_start: number;
+}
 
 interface LyricLine {
   time: number;
@@ -9,9 +20,10 @@ interface LyricListProps {
   lines: LyricLine[];
   currentLineIndex: number;
   onLineClick: (timeSeconds: number) => void;
+  mappedVocab?: MappedVocabItem[];
 }
 
-const LyricList: React.FC<LyricListProps> = ({ lines, currentLineIndex, onLineClick }) => {
+const LyricList: React.FC<LyricListProps> = ({ lines, currentLineIndex, onLineClick, mappedVocab = [] }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLDivElement>(null);
 
@@ -23,6 +35,49 @@ const LyricList: React.FC<LyricListProps> = ({ lines, currentLineIndex, onLineCl
       });
     }
   }, [currentLineIndex]);
+
+  const renderLineWithVocab = (lineText: string, lineIndex: number) => {
+    const lineVocab = mappedVocab
+      .filter(v => v.line_index === lineIndex)
+      .sort((a, b) => a.char_start - b.char_start);
+
+    if (lineVocab.length === 0) return lineText;
+
+    const segments: (string | JSX.Element)[] = [];
+    let lastIndex = 0;
+
+    lineVocab.forEach((vocab, i) => {
+      // Add text before the vocab word
+      if (vocab.char_start > lastIndex) {
+        segments.push(lineText.substring(lastIndex, vocab.char_start));
+      }
+
+      // Add the vocab word with popover
+      const vocabWord = lineText.substring(vocab.char_start, vocab.char_start + vocab.word.length);
+      segments.push(
+        <VocabPopover
+          key={`${vocab.vocab_id}-${i}`}
+          word={vocab.word}
+          lemma={vocab.lemma}
+          definition={vocab.definition}
+          cefrLevel={vocab.cefr_level}
+        >
+          <span className="text-yellow-400 underline decoration-dotted underline-offset-4 cursor-help hover:text-yellow-300 transition-colors">
+            {vocabWord}
+          </span>
+        </VocabPopover>
+      );
+
+      lastIndex = vocab.char_start + vocab.word.length;
+    });
+
+    // Add remaining text
+    if (lastIndex < lineText.length) {
+      segments.push(lineText.substring(lastIndex));
+    }
+
+    return segments;
+  };
 
   return (
     <div 
@@ -49,7 +104,7 @@ const LyricList: React.FC<LyricListProps> = ({ lines, currentLineIndex, onLineCl
                 : 'text-zinc-700 opacity-40 hover:opacity-70 hover:text-zinc-400'
             }`}
           >
-            {line.text}
+            {renderLineWithVocab(line.text, index)}
           </div>
         ))
       )}
