@@ -47,7 +47,10 @@
   1. System identifies 5-10 target vocabulary words per song tailored to user proficiency.
   2. User sees target words highlighted within the interactive lyric view.
   3. User can view context-aware definitions for target words during playback.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 03-01-PLAN.md — Backend Foundation & AI Service
+- [ ] 03-02-PLAN.md — Vocab API & Persistence
+- [ ] 03-03-PLAN.md — Frontend Interactive Lyrics
 **UI hint**: yes
 
 ### Phase 4: Active Learning
@@ -88,7 +91,7 @@
 |-------|----------------|--------|-----------|
 | 1. Foundation & Auth | 3/3 | Completed | 2026-06-12 |
 | 2. Core Sync Engine | 3/3 | Complete   | 2026-06-12 |
-| 3. AI Vocabulary Extraction | 0/0 | Not started | - |
+| 3. AI Vocabulary Extraction | 0/3 | Not started | - |
 | 4. Active Learning | 0/0 | Not started | - |
 | 5. Retention & Gamification | 0/0 | Not started | - |
 | 6. Data Reliability | 0/0 | Not started | - |
