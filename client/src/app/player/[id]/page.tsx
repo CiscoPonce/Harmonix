@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Player from '@/components/Player';
 import { apiFetch } from '@/lib/api';
+import { MappedVocabItem } from '@/components/LyricList';
 
 interface TrackMetadata {
   id: number;
@@ -14,11 +15,22 @@ interface TrackMetadata {
   preview_offset: number;
 }
 
+export interface VocabItem {
+  vocab_id: string;
+  word: string;
+  lemma?: string;
+  definition: string;
+  cefr_level: string;
+}
+
 export default function PlayerPage() {
   const params = useParams();
   const id = params.id as string;
   const [track, setTrack] = useState<TrackMetadata | null>(null);
   const [lrcString, setLrcString] = useState<string | null>(null);
+  const [mappedVocab, setMappedVocab] = useState<MappedVocabItem[]>([]);
+  const [unmappedVocab, setUnmappedVocab] = useState<VocabItem[]>([]);
+  const [cefrLevel, setCefrLevel] = useState<string>('B1');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +54,24 @@ export default function PlayerPage() {
         } else {
           console.warn('Lyrics not found for this track');
         }
+
+        // Fetch vocabulary
+        const vocabRes = await apiFetch(`/vocab/${id}`);
+        if (vocabRes.ok) {
+          const vocabData = await vocabRes.json();
+          setMappedVocab(vocabData.mapped);
+          setUnmappedVocab(vocabData.unmapped);
+        }
+
+        // Fetch user profile for CEFR level
+        const userRes = await apiFetch('/auth/me');
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          if (userData.cefr_level) {
+            setCefrLevel(userData.cefr_level);
+          }
+        }
+
       } catch (err: any) {
         console.error('Fetch error:', err);
         setError(err.message);
@@ -52,6 +82,15 @@ export default function PlayerPage() {
 
     fetchData();
   }, [id]);
+
+  const handleCefrChange = async (newLevel: string) => {
+    setCefrLevel(newLevel);
+    // Future: Persistence to backend
+    // await apiFetch('/user/profile', { 
+    //   method: 'PUT', 
+    //   body: JSON.stringify({ cefr_level: newLevel }) 
+    // });
+  };
 
   if (loading) {
     return (
@@ -85,5 +124,14 @@ export default function PlayerPage() {
     );
   }
 
-  return <Player track={track} lrcString={lrcString} />;
+  return (
+    <Player 
+      track={track} 
+      lrcString={lrcString} 
+      mappedVocab={mappedVocab}
+      unmappedVocab={unmappedVocab}
+      cefrLevel={cefrLevel}
+      onCefrChange={handleCefrChange}
+    />
+  );
 }
