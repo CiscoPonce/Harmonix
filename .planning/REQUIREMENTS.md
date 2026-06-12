@@ -3,7 +3,7 @@
 ## 1. Music Playback & Sync (PLAYER)
 
 - [x] **PLAYER-01**: **Synced 30s Previews**. Play 30-second audio snippets from Deezer API synchronized with LRC-format lyrics.
-- [ ] **PLAYER-02**: **Contextual Audio Playback**. Allow users to replay the specific timestamped audio segment associated with a target vocabulary word.
+- [x] **PLAYER-02**: **Contextual Audio Playback**. Allow users to replay the specific timestamped audio segment associated with a target vocabulary word.
 - [ ] **PLAYER-03**: **Validation Loop**. Implement logic to verify that AI-selected songs have valid LRC lyrics and that audio durations match the lyric timestamps before serving to users.
 
 ## 2. AI-Driven Learning (AI)
@@ -41,7 +41,7 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PLAYER-01 | Phase 2 | Complete |
-| PLAYER-02 | Phase 2 | Pending |
+| PLAYER-02 | Phase 2 | Complete |
 | PLAYER-03 | Phase 6 | Pending |
 | AI-01 | Phase 3 | Pending |
 | STUDY-01 | Phase 5 | Pending |
