@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, RefObject } from 'react';
 import Lyric from 'lrc-file-parser';
 
+interface LyricLine {
+  time: number;
+  text: string;
+}
+
 interface SyncEngineProps {
   lrcString: string | null;
   audioRef: RefObject<HTMLAudioElement | null>;
@@ -15,15 +20,15 @@ export function useSyncEngine({
   latencyCompensationMs = -150 
 }: SyncEngineProps) {
   const [currentLineIndex, setCurrentLineIndex] = useState(-1);
-  const [lines, setLines] = useState<any[]>([]);
+  const [lines, setLines] = useState<LyricLine[]>([]);
   const lyricRef = useRef<Lyric | null>(null);
-  const requestRef = useRef<number>(null);
+  const requestRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (!lrcString) return;
 
     const lyric = new Lyric({
-      onPlay: (line: any, index: number) => {
+      onPlay: (_line: any, index: number) => {
         setCurrentLineIndex(index);
       },
     });
@@ -52,7 +57,7 @@ export function useSyncEngine({
     requestRef.current = requestAnimationFrame(animate);
 
     return () => {
-      if (requestRef.current) {
+      if (requestRef.current !== undefined) {
         cancelAnimationFrame(requestRef.current);
       }
     };
