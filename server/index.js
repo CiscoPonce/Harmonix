@@ -133,6 +133,88 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ message: 'Logged out successfully' });
 });
 
+// --- Media Proxy Endpoints ---
+
+// Deezer Search
+app.get('/api/search', async (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.status(400).json({ error: 'Query parameter "q" is required' });
+
+  try {
+    const response = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}`);
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch from Deezer' });
+  }
+});
+
+// Deezer Track Metadata + Offset Calculation
+app.get('/api/tracks/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const response = await fetch(`https://api.deezer.com/track/${id}`);
+    if (!response.ok) return res.status(response.status).json({ error: 'Track not found on Deezer' });
+    
+    const data = await response.json();
+    if (data.error) return res.status(404).json({ error: data.error.message });
+
+    const duration = data.duration;
+    let previewOffset = 0;
+
+    if (duration > 60) {
+      previewOffset = 30;
+    } else if (duration > 30) {
+      previewOffset = duration - 30;
+    } else {
+      previewOffset = 0;
+    }
+
+    res.json({
+      id: data.id,
+      title: data.title,
+      artist: data.artist.name,
+      preview: data.preview,
+      duration: duration,
+      preview_offset: previewOffset
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch track from Deezer' });
+  }
+});
+
+// LRCLib Lyric Proxy
+app.get('/api/lyrics', async (req, res) => {
+  const { artist_name, track_name, album_name, duration } = req.query;
+
+  if (!artist_name || !track_name) {
+    return res.status(400).json({ error: 'artist_name and track_name are required' });
+  }
+
+  try {
+    const url = new URL('https://lrclib.net/api/get');
+    url.searchParams.append('artist_name', artist_name);
+    url.searchParams.append('track_name', track_name);
+    if (album_name) url.searchParams.append('album_name', album_name);
+    if (duration) url.searchParams.append('duration', duration);
+
+    const response = await fetch(url.toString());
+    
+    if (response.status === 404) {
+      return res.status(404).json({ error: 'Lyrics not found' });
+    }
+
+    const data = await response.json();
+    res.json({ syncedLyrics: data.syncedLyrics });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch lyrics from LRCLib' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
