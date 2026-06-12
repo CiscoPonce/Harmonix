@@ -4,6 +4,7 @@ const cors = require('cors');
 const { nanoid } = require('nanoid');
 const db = require('./db');
 const auth = require('./auth');
+const vocabRouter = require('./routes/vocab');
 require('dotenv').config();
 
 const app = express();
@@ -214,6 +215,9 @@ app.get('/api/lyrics', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch lyrics from LRCLib' });
   }
 });
+
+// --- Vocabulary Endpoints ---
+app.use('/api/vocab', authenticateToken, vocabRouter);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
