@@ -1,7 +1,7 @@
 # Technology Stack: LyricWord
 
 **Project:** LyricWord
-**Researched:** October 26, 2023
+**Researched:** October 26, 2023 (Updated June 2026)
 **Confidence:** HIGH
 
 ## Recommended Stack
@@ -11,12 +11,13 @@
 |------------|---------|---------|-----|
 | Node.js | v20+ | Backend Runtime | Industry standard, excellent for API orchestration and handling music streams. |
 | Express.js | 4.x | API Framework | Lightweight, fast development for the Lyric Validation Loop. |
-| Next.js | 14.x | Frontend Framework | Best-in-class PWA support, SSR for SEO, and React for interactive lyric components. |
+| Next.js | 15.x | Frontend Framework | Best-in-class PWA support, SSR for SEO, and React for interactive lyric components. |
 
 ### Database
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| SQLite | 3.x | Storage & Caching | Zero-config, perfect for MVP caching of lyrics and audio snippets. High performance for local search. |
+| SQLite | 3.x | Storage & Caching | Zero-config, perfect for MVP caching of lyrics and audio snippets. |
+| better-sqlite3 | Latest | DB Driver | Synchronous, high-performance driver for Node.js. |
 
 ### Infrastructure & AI
 | Technology | Version | Purpose | Why |
@@ -28,9 +29,14 @@
 ### Supporting Libraries
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| Web Audio API | Native | Audio Sync | For precision timing between lyrics and audio playback. |
-| lrc-kit | 1.x | LRC Parsing | Parsing LRCLib response into JavaScript objects for the UI. |
+| jsonwebtoken | Latest | Auth | JWT signing and verification for user sessions. |
+| bcryptjs | Latest | Security | Password hashing. |
+| next-themes | Latest | UI | Theme management (Dark Mode) with no flashing. |
 | lucide-react | Latest | UI Icons | Lightweight icons for music controls. |
+| Web Audio API | Native | Audio Sync | For precision timing between lyrics and audio playback. |
+| lrc-file-parser | 2.x | LRC Parsing | Used with `requestAnimationFrame` for high-precision UI updates. |
+| openai | Latest | AI SDK | Official client for NVIDIA NIM's OpenAI-compatible API. |
+| @radix-ui/react-tooltip | Latest | UI Popovers | Accessible, high-contrast definition tooltips. |
 
 ## Alternatives Considered
 
@@ -38,20 +44,19 @@
 |----------|-------------|-------------|---------|
 | Database | SQLite | PostgreSQL | SQLite is zero-cost and requires no infrastructure management for MVP. |
 | AI Inference | NVIDIA NIM | OpenAI GPT-4 | NIM provides a free path for specific models; OpenAI has high per-token costs. |
-| UI | Next.js | Flutter (Web) | Next.js has better SEO and faster initial load for a PWA. Flutter deferred to Phase 4. |
+| UI | Radix UI | Framer Motion | Radix provides better accessibility primitives for complex UI components like tooltips. |
 
 ## Installation
 
 ```bash
 # Backend
-npm install express sqlite3 dotenv axios
+npm install express better-sqlite3 jsonwebtoken bcryptjs openai
 
 # Frontend
-npx create-next-app@latest lyricword-ui
-npm install lrc-kit framer-motion lucide-react
+npm install @radix-ui/react-tooltip lucide-react next-themes lrc-file-parser
 ```
 
 ## Sources
 - [LRCLib API Documentation](https://lrclib.net/docs)
-- [NVIDIA NIM Getting Started](https://www.nvidia.com/en-us/ai-data-science/generative-ai/nims/)
-- [Next.js PWA Guide](https://nextjs.org/docs/app/building-your-application/optimizing/pwas)
+- [NVIDIA NIM Guided Decoding Documentation](https://docs.nvidia.com/nim/large-language-models/latest/guided-decoding.html)
+- [Radix UI Primitives](https://www.radix-ui.com/primitives)

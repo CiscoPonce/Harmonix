@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, RefObject } from 'react';
-import Lyric from 'lrc-file-parser';
+import Lyric, { Lines } from 'lrc-file-parser';
 
 interface LyricLine {
   time: number;
@@ -13,11 +13,11 @@ interface SyncEngineProps {
   latencyCompensationMs?: number;
 }
 
-export function useSyncEngine({ 
-  lrcString, 
-  audioRef, 
+export function useSyncEngine({
+  lrcString,
+  audioRef,
   offset = 0,
-  latencyCompensationMs = -150 
+  latencyCompensationMs = -150
 }: SyncEngineProps) {
   const [currentLineIndex, setCurrentLineIndex] = useState(-1);
   const [lines, setLines] = useState<LyricLine[]>([]);
@@ -28,19 +28,31 @@ export function useSyncEngine({
     if (!lrcString) return;
 
     const lyric = new Lyric({
-      onPlay: (_line: any, index: number) => {
-        setCurrentLineIndex(index);
+      onPlay: (line: number) => {
+        setCurrentLineIndex(line);
+      },
+      onSetLyric: (parsed: Lines) => {
+        setLines(
+          (parsed || []).map((l) => ({ time: l.time, text: l.text }))
+        );
       },
     });
 
     try {
-      lyric.setLrc(lrcString);
+      lyric.setLyric(lrcString);
       lyricRef.current = lyric;
-      setLines(lyric.getLines() || []);
+      // If the Lyric API already updated `lines` synchronously via setLyric,
+      // mirror that into React state. This is the textbook "sync React state
+      // from an external system" pattern, which the React docs permit.
+      /* eslint-disable react-hooks/set-state-in-effect */
+      if (Array.isArray(lyric.lines) && lyric.lines.length > 0) {
+        setLines(lyric.lines.map((l) => ({ time: l.time, text: l.text })));
+      }
     } catch (error) {
       console.error('Failed to parse LRC string:', error);
       setLines([]);
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     return () => {
       lyricRef.current = null;

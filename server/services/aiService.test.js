@@ -44,7 +44,7 @@ describe('AI Service', () => {
 
     expect(result).to.be.an('array');
     expect(result[0].word).to.equal('test');
-    expect(capturedArgs.model).to.equal('meta/llama-3.1-70b-instruct');
+    expect(capturedArgs.model).to.equal('stepfun-ai/step-3.7-flash');
     expect(capturedArgs.messages[0].content).to.contain('English');
     expect(capturedArgs.messages[0].content).to.contain('A1');
     expect(capturedArgs.messages[1].content).to.contain(lyrics);

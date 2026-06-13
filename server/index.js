@@ -1,10 +1,15 @@
 const express = require('express');
+const path = require('path');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const { nanoid } = require('nanoid');
 const db = require('./db');
 const auth = require('./auth');
 const vocabRouter = require('./routes/vocab');
+const studyRouter = require('./routes/study');
+const progressRouter = require('./routes/progress');
+const validationRouter = require('./routes/validation');
+const dailyWordRouter = require('./routes/dailyWord');
 require('dotenv').config();
 
 const app = express();
@@ -13,7 +18,7 @@ const PORT = process.env.PORT || 3001;
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: true,
   credentials: true
 }));
 
@@ -37,6 +42,7 @@ const authenticateToken = (req, res, next) => {
 
 // Register
 app.post('/api/auth/register', async (req, res) => {
+  console.log('POST /api/auth/register - received');
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -55,25 +61,29 @@ app.post('/api/auth/register', async (req, res) => {
     db.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)')
       .run(id, email, passwordHash);
 
+    console.log('POST /api/auth/register - success');
     res.status(201).json({ message: 'User registered successfully' });
   } catch (err) {
-    console.error(err);
+    console.error('POST /api/auth/register - error:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Login
 app.post('/api/auth/login', async (req, res) => {
+  console.log('POST /api/auth/login - received');
   const { email, password } = req.body;
 
   try {
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
     if (!user) {
+      console.log('POST /api/auth/login - user not found');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const isMatch = await auth.comparePassword(password, user.password_hash);
     if (!isMatch) {
+      console.log('POST /api/auth/login - invalid password');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -87,23 +97,31 @@ app.post('/api/auth/login', async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
+    console.log('POST /api/auth/login - success');
     res.json({ accessToken, user: { id: user.id, email: user.email } });
   } catch (err) {
-    console.error(err);
+    console.error('POST /api/auth/login - error:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Refresh Token
 app.post('/api/auth/refresh', (req, res) => {
+  console.log('POST /api/auth/refresh - received');
   const refreshToken = req.cookies.refreshToken;
-  if (!refreshToken) return res.sendStatus(401);
+  if (!refreshToken) {
+    console.log('POST /api/auth/refresh - no refresh token');
+    return res.sendStatus(401);
+  }
 
   try {
     const decoded = auth.verifyRefreshToken(refreshToken);
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id);
     
-    if (!user) return res.sendStatus(401);
+    if (!user) {
+      console.log('POST /api/auth/refresh - user not found');
+      return res.sendStatus(401);
+    }
 
     const accessToken = auth.generateAccessToken(user);
     const newRefreshToken = auth.generateRefreshToken(user);
@@ -115,15 +133,18 @@ app.post('/api/auth/refresh', (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
+    console.log('POST /api/auth/refresh - success');
     res.json({ accessToken });
   } catch (err) {
+    console.log('POST /api/auth/refresh - error:', err.message);
     return res.sendStatus(403);
   }
 });
 
 // Get Current User
 app.get('/api/auth/me', authenticateToken, (req, res) => {
-  const user = db.prepare('SELECT id, email, created_at FROM users WHERE id = ?').get(req.user.id);
+  console.log('GET /api/auth/me - for user:', req.user.id);
+  const user = db.prepare('SELECT id, email, created_at, cefr_level, target_language, genre, difficulty FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.sendStatus(404);
   res.json(user);
 });
@@ -218,6 +239,18 @@ app.get('/api/lyrics', async (req, res) => {
 
 // --- Vocabulary Endpoints ---
 app.use('/api/vocab', authenticateToken, vocabRouter);
+app.use('/api/study', authenticateToken, studyRouter);
+app.use('/api/progress', authenticateToken, progressRouter);
+app.use('/api/validation', authenticateToken, validationRouter);
+app.use('/api/daily-word', authenticateToken, dailyWordRouter);
+
+// --- Frontend Proxy ---
+const { createProxyMiddleware } = require('http-proxy-middleware');
+app.use('/', createProxyMiddleware({
+  target: 'http://127.0.0.1:3009',
+  changeOrigin: true,
+  ws: true,
+}));
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

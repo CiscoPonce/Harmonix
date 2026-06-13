@@ -1,64 +1,60 @@
 # Architecture Patterns: LyricWord
 
 **Domain:** EdTech / Music Streaming
-**Researched:** October 26, 2023
+**Researched:** October 26, 2023 (Updated June 2026)
 **Confidence:** MEDIUM
 
 ## Recommended Architecture
 
-A decoupled frontend-backend architecture with a focus on caching and API orchestration.
+A decoupled frontend-backend architecture with a focus on caching and AI-driven enrichment.
 
 ### Component Boundaries
 
 | Component | Responsibility | Communicates With |
 |-----------|---------------|-------------------|
-| **PWA (Next.js)** | User Interface, Audio Playback, Local Learning Loop. | API Gateway, SQLite (Local Cache) |
-| **API Gateway (Express)** | Authentication, Request Routing, Rate Limiting. | AI Engine, Music Adapters, SQLite |
-| **AI Engine (NVIDIA NIM)** | Translation, Metaphor Explanation, Vocab Generation. | API Gateway |
-| **Music Adapters** | Normalizing data from LRCLib and Deezer. | API Gateway, External APIs |
-| **SQLite DB** | Storing user progress, cached lyrics, and validated songs. | API Gateway |
+| **PWA (Next.js)** | User Interface, Audio Playback, Sync Engine. | API Gateway, Local Storage (PWA) |
+| **API Gateway (Express)** | Auth, Orchestration, AI Enrichment, Proxying. | NVIDIA NIM, Music Adapters, SQLite |
+| **AI Engine (NVIDIA NIM)** | Vocab Extraction, Metaphor Explanation. | API Gateway |
+| **SQLite DB** | Persistent cache for validated songs and user progress. | API Gateway |
 
-### Data Flow (Lyric Validation)
+### Data Flow (AI Enrichment)
 
-1. **Request**: User searches for "Song X".
-2. **Fetch**: API fetches LRC from LRCLib and Track Metadata from Deezer.
-3. **Validate**: Logic compares durations and track titles to ensure a match.
-4. **Enrich**: AI Engine generates a list of 5 vocabulary words from the lyrics based on user level.
-5. **Serve**: Combined JSON object sent to PWA.
-6. **Cache**: Result stored in SQLite to avoid redundant external API calls.
+1. **Trigger**: User opens a song for the first time.
+2. **Analysis**: API Gateway sends the full LRC text and user's CEFR level to NVIDIA NIM.
+3. **Extraction**: NIM returns 5-10 words with definitions and lemmata in structured JSON.
+4. **Alignment**: Gateway runs the "Two-Pass" matching algorithm to find `line_index` for each word.
+5. **Persistence**: The enriched data is cached in SQLite (`songs`, `vocab_items`, `song_vocab_map`).
+6. **Delivery**: Next.js receives the song metadata + enriched vocabulary for highlighting.
 
 ## Patterns to Follow
 
 ### Pattern 1: Audio-Clock Synchronization
-**What:** Using the Web Audio API hardware clock instead of the main thread JS clock.
+**What:** Using `requestAnimationFrame` to poll `audio.currentTime` against a high-precision hardware clock.
 **When:** For any "Karaoke" style highlighting.
-**Example:**
-```typescript
-const context = new (window.AudioContext || window.webkitAudioContext)();
-const source = context.createBufferSource();
-// Use context.currentTime for logic, not setInterval
-```
 
-### Pattern 2: Multi-Step AI Grounding
-**What:** Asking the LLM to provide a literal translation BEFORE a poetic explanation.
-**Why:** Prevents "hallucinated" meanings by grounding the model in the literal text first.
+### Pattern 2: Two-Pass Keyword Alignment
+**What:** Matching LLM-extracted words to original text via Exact -> Normalized (Fuzzy) search.
+**Why:** Ensures high reliable highlighting even when LLMs normalize word forms.
+
+### Pattern 3: Guided AI Decoding
+**What:** Using JSON schemas (via `guided_json`) to force LLMs to adhere to technical formats.
+**Why:** Eliminates parsing errors in the backend enrichment pipeline.
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Direct External API Calls from Frontend
-**Why bad:** Exposes API keys (Deezer), fails if the user is offline, and makes rate-limiting impossible.
-**Instead:** Always route through the Express proxy.
+### Anti-Pattern 1: Real-time AI Generation on Every Play
+**Why bad:** High latency and redundant API costs.
+**Instead:** Always cache enriched lyrics in SQLite; only generate once per song-level pair.
 
-### Anti-Pattern 2: Storing Audio Blobs in SQLite
-**Why bad:** SQLite database size will explode, impacting performance.
-**Instead:** Store audio file paths/URLs and use the browser's Cache API for actual binary storage.
+### Anti-Pattern 2: Complex Regex for Mapping
+**Why bad:** Prone to edge cases with punctuation and casing.
+**Instead:** Use a multi-pass approach with explicit normalization steps.
 
 ## Scalability Considerations
 
 | Concern | At 100 users | At 10K users | At 1M users |
 |---------|--------------|--------------|-------------|
 | **AI Cost** | Near zero (NIM free) | Switch to managed (OpenAI/Anthropic) | Custom hosted NIM instances |
-| **API Limits** | Standard tier | Enterprise LyricFind/Deezer | Direct licensing with labels |
 | **Database** | Single SQLite file | SQLite with WAL mode | Migrate to PostgreSQL |
 
 ## Sources

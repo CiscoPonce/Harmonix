@@ -1,5 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { VocabPopover } from './VocabPopover';
+
+type Segment = string | React.ReactElement;
 
 export interface MappedVocabItem {
   vocab_id: string;
@@ -9,6 +11,7 @@ export interface MappedVocabItem {
   cefr_level: string;
   line_index: number;
   char_start: number;
+  char_end?: number;
 }
 
 interface LyricLine {
@@ -24,10 +27,10 @@ interface LyricListProps {
 }
 
 const LyricList: React.FC<LyricListProps> = ({ lines, currentLineIndex, onLineClick, mappedVocab = [] }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const activeLineRef = useRef<HTMLDivElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const activeLineRef = React.useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (activeLineRef.current && containerRef.current) {
       activeLineRef.current.scrollIntoView({
         behavior: 'smooth',
@@ -36,14 +39,14 @@ const LyricList: React.FC<LyricListProps> = ({ lines, currentLineIndex, onLineCl
     }
   }, [currentLineIndex]);
 
-  const renderLineWithVocab = (lineText: string, lineIndex: number) => {
+  const renderLineWithVocab = (lineText: string, lineIndex: number): Segment[] | string => {
     const lineVocab = mappedVocab
       .filter(v => v.line_index === lineIndex)
       .sort((a, b) => a.char_start - b.char_start);
 
     if (lineVocab.length === 0) return lineText;
 
-    const segments: (string | JSX.Element)[] = [];
+    const segments: Segment[] = [];
     let lastIndex = 0;
 
     lineVocab.forEach((vocab, i) => {
@@ -52,8 +55,13 @@ const LyricList: React.FC<LyricListProps> = ({ lines, currentLineIndex, onLineCl
         segments.push(lineText.substring(lastIndex, vocab.char_start));
       }
 
-      // Add the vocab word with popover
-      const vocabWord = lineText.substring(vocab.char_start, vocab.char_start + vocab.word.length);
+      // Add the vocab word with popover. Use `char_end` when supplied by the
+      // server (avoids recomputing length against Unicode that may fold
+      // differently), otherwise fall back to `word.length`.
+      const endOffset = typeof vocab.char_end === 'number'
+        ? vocab.char_end
+        : vocab.char_start + vocab.word.length;
+      const vocabWord = lineText.substring(vocab.char_start, endOffset);
       segments.push(
         <VocabPopover
           key={`${vocab.vocab_id}-${i}`}
@@ -68,7 +76,7 @@ const LyricList: React.FC<LyricListProps> = ({ lines, currentLineIndex, onLineCl
         </VocabPopover>
       );
 
-      lastIndex = vocab.char_start + vocab.word.length;
+      lastIndex = endOffset;
     });
 
     // Add remaining text

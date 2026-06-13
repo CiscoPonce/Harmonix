@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Player from '@/components/Player';
@@ -55,12 +57,16 @@ export default function PlayerPage() {
           console.warn('Lyrics not found for this track');
         }
 
-        // Fetch vocabulary
+        // Fetch vocabulary. Prefer the byte-stable synced_lyrics snapshot from
+        // the response so that aligned word highlights point to identical bytes.
         const vocabRes = await apiFetch(`/vocab/${id}`);
         if (vocabRes.ok) {
           const vocabData = await vocabRes.json();
           setMappedVocab(vocabData.mapped);
           setUnmappedVocab(vocabData.unmapped);
+          if (vocabData.synced_lyrics) {
+            setLrcString(vocabData.synced_lyrics);
+          }
         }
 
         // Fetch user profile for CEFR level
@@ -72,9 +78,9 @@ export default function PlayerPage() {
           }
         }
 
-      } catch (err: any) {
+      } catch (err) {
         console.error('Fetch error:', err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
         setLoading(false);
       }

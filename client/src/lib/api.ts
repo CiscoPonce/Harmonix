@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 let accessToken: string | null = null;
 
@@ -28,6 +28,7 @@ async function refreshAccessToken() {
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const url = `${API_URL}${endpoint}`;
+  console.log(`[apiFetch] Requesting: ${url}`);
   
   const headers = new Headers(options.headers);
   if (accessToken) {
@@ -40,24 +41,33 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     credentials: 'include',
   };
 
-  let response = await fetch(url, config);
+  try {
+    let response = await fetch(url, config);
+    console.log(`[apiFetch] Response from ${endpoint}: ${response.status}`);
 
-  // If unauthorized and not already trying to refresh or login
-  if (response.status === 401 && !endpoint.includes('/auth/refresh') && !endpoint.includes('/auth/login')) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      headers.set('Authorization', `Bearer ${newToken}`);
-      response = await fetch(url, {
-        ...config,
-        headers,
-      });
-    } else {
-      accessToken = null;
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+    // If unauthorized and not already trying to refresh or login
+    if (response.status === 401 && !endpoint.includes('/auth/refresh') && !endpoint.includes('/auth/login')) {
+      console.log(`[apiFetch] 401 detected on ${endpoint}, attempting refresh...`);
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        console.log(`[apiFetch] Refresh success, retrying ${endpoint}`);
+        headers.set('Authorization', `Bearer ${newToken}`);
+        response = await fetch(url, {
+          ...config,
+          headers,
+        });
+      } else {
+        console.log(`[apiFetch] Refresh failed, redirecting to login`);
+        accessToken = null;
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
       }
     }
-  }
 
-  return response;
+    return response;
+  } catch (error) {
+    console.error(`[apiFetch] Fetch error on ${endpoint}:`, error);
+    throw error;
+  }
 }

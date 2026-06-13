@@ -19,8 +19,9 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(email, password);
-    } catch (err: any) {
-      setError(err.message || 'Failed to login');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to login';
+      setError(message);
     } finally {
       setIsLoading(false);
     }

@@ -5,9 +5,10 @@
 - [x] **Phase 1: Foundation & Auth** — Secure access and minimalist UI foundation.
 - [x] **Phase 2: Core Sync Engine** — Interactive "Karaoke" playback with precise sync. (completed 2026-06-12)
 - [x] **Phase 3: AI Vocabulary Extraction** — Dynamic personalization via NVIDIA NIM. (completed 2026-06-12)
-- [ ] **Phase 4: Active Learning** — Interactive fill-in-the-blank lyric quizzes.
-- [ ] **Phase 5: Retention & Gamification** — SRS flashcards and progression tracking.
-- [ ] **Phase 6: Data Reliability** — Validation loop and persistent caching.
+- [x] **Phase 4: Active Learning** — Interactive fill-in-the-blank lyric quizzes.
+- [x] **Phase 5: Retention & Gamification** — SRS flashcards and progression tracking.
+- [x] **Phase 6: Data Reliability** — Validation loop and persistent caching.
+- [x] **Phase 7: Daily Word** — Word-first daily learning with validated song context. (completed 2026-06-14)
 
 ## Phase Details
 
@@ -85,13 +86,27 @@
   3. Only songs with validated LRC metadata are presented in the learning feed.
 **Plans**: TBD
 
+
+### Phase 7: Daily Word
+**Goal**: Users receive one personalized vocabulary word per day (or on demand), found in a real song lyric.
+**Depends on**: Phase 6
+**Requirements**: AI-02
+**Success Criteria** (what must be TRUE):
+  1. User opens the app and sees one AI-generated word tailored to their level and language.
+  2. The word is validated against a real song on Deezer with synced lyrics from LRCLib.
+  3. User sees the exact lyric line containing the word with audio preview and can request a new word.
+**Plans**: 1 plan
+- [x] 07-01-PLAN.md — Word-First Daily Learning Flow
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Auth | 3/3 | Completed | 2026-06-12 |
-| 2. Core Sync Engine | 3/3 | Complete   | 2026-06-12 |
-| 3. AI Vocabulary Extraction | 3/3 | Complete   | 2026-06-12 |
-| 4. Active Learning | 0/0 | Not started | - |
-| 5. Retention & Gamification | 0/0 | Not started | - |
-| 6. Data Reliability | 0/0 | Not started | - |
+| 2. Core Sync Engine | 3/3 | Complete | 2026-06-12 |
+| 3. AI Vocabulary Extraction | 3/3 | Completed | 2026-06-12 |
+| 4. Active Learning | 1/1 | Completed | 2026-06-13 |
+| 5. Retention & Gamification | 1/1 | Completed | 2026-06-13 |
+| 6. Data Reliability | 1/1 | Completed | 2026-06-13 |
+| 7. Daily Word | 1/1 | Completed | 2026-06-14 |

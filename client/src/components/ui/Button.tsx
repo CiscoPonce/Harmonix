@@ -1,5 +1,4 @@
 import * as React from "react";
-import { slot } from "@radix-ui/react-slot"; // Wait, I didn't install radix-ui slot. I'll just use a normal button.
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 

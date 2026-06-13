@@ -1,7 +1,7 @@
 # Feature Landscape: LyricWord
 
 **Domain:** Music-based Language Learning
-**Researched:** October 26, 2023
+**Researched:** October 26, 2023 (Updated June 2026)
 **Confidence:** HIGH
 
 ## Table Stakes
@@ -23,8 +23,8 @@ Features that set LyricWord apart from basic lyric apps.
 |---------|-------------------|------------|-------|
 | **AI Metaphor Decoder** | Explains poetic lyrics and slang that dictionaries miss. | High | Powered by NVIDIA NIM (LLM). |
 | **Validation Loop** | Ensures 100% accuracy between lyrics and audio. | Med | Logic to match audio duration to LRC file. |
-| **Personalized Vocab** | Generates words based on user difficulty/level. | High | AI analyzes lyrics to pick optimal words. |
-| **Contextual Audio** | Replay the specific 2-3 seconds of a word in a song. | Med | Deep-linking audio timestamps to flashcards. |
+| **Personalized Vocab** | Generates 5-10 words based on user CEFR level. | High | AI analyzes lyrics to pick optimal words. |
+| **Contextual Audio** | Replay the specific timestamp of a word in a song. | Med | Deep-linking audio timestamps to vocab popovers. |
 
 ## Anti-Features
 
@@ -45,17 +45,16 @@ graph TD
     B --> D[Personalized Vocab Generation]
     D --> E[SRS Learning System]
     B --> F[AI Metaphor Explainer]
+    D --> G[Contextual Highlighting]
 ```
 
 ## MVP Recommendation
 
-Prioritize for Phase 1:
-1. **Lyric Sync Engine**: The core "Karaoke" player with 30s previews.
-2. **AI-Personalized Vocab**: Selecting 5-10 words per song based on user level.
-3. **Validation Loop**: Basic check to ensure lyrics match the audio duration.
-
-Defer: **Social Features**, **Native Apps**, **Gamification Leaderboards**.
+Prioritize for Phase 3:
+1. **AI-Personalized Vocab**: Selecting words via NVIDIA NIM based on user's target CEFR level.
+2. **Contextual Highlighting**: Mapping extracted words back to LRC lines for interactive UI.
+3. **Definition Popovers**: Accessible UI for viewing context-aware definitions.
 
 ## Sources
 - [Competitor Analysis: Lirica, LyricsTraining, Sounter]
-- [Market Research: "Impact of Music on Vocabulary Acquisition"]
+- [CEFR Level Descriptions for Language Learning]

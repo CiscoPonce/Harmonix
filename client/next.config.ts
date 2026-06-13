@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  allowedDevOrigins: ['moral-sparrow-nationally.ngrok-free.app'],
+  images: {
+    unoptimized: true,
+  },
 };
 
 export default nextConfig;
