@@ -72,7 +72,22 @@ export default function RegisterPage() {
               required
             />
           </div>
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && (
+            <div className="space-y-2">
+              <p className="text-sm text-red-500">{error}</p>
+              {error.includes('already registered') && (
+                <p className="text-xs text-zinc-400">
+                  <Link href={`/login?email=${encodeURIComponent(email)}`} className="text-white underline">
+                    Log in with this email
+                  </Link>
+                  {' '}or{' '}
+                  <Link href={`/forgot-password?email=${encodeURIComponent(email)}`} className="text-white underline">
+                    reset your password
+                  </Link>
+                </p>
+              )}
+            </div>
+          )}
           <Button type="submit" variant="primary" className="w-full" disabled={isLoading}>
             {isLoading ? 'Creating account...' : 'Register'}
           </Button>

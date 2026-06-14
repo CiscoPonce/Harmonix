@@ -3,7 +3,8 @@ const aiService = require("./aiService");
 const validation = require("./validationService");
 const alignment = require("../utils/alignment");
 
-const MAX_RETRIES = 5;
+const MAX_RETRIES = 3;
+const FORCE_COOLDOWN_MS = 90_000;
 const LANGUAGE_NAMES = { es: "Spanish", en: "English", fr: "French" };
 
 function todayDate() {
@@ -148,8 +149,25 @@ function saveDailyWord(userId, date, payload) {
   `).run(userId, date, JSON.stringify(payload));
 }
 
+
+function assertForceCooldown(userId) {
+  const row = db.prepare(
+    "SELECT generated_at FROM daily_words WHERE user_id = ? ORDER BY generated_at DESC LIMIT 1"
+  ).get(userId);
+  if (!row?.generated_at) return;
+  const elapsed = Date.now() - new Date(row.generated_at + "Z").getTime();
+  if (elapsed < FORCE_COOLDOWN_MS) {
+    const waitSec = Math.ceil((FORCE_COOLDOWN_MS - elapsed) / 1000);
+    const err = new Error("cooldown_active");
+    err.code = "cooldown_active";
+    err.retryAfterSec = waitSec;
+    throw err;
+  }
+}
+
 async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}) {
   const date = todayDate();
+  if (force) assertForceCooldown(user.id);
   if (!force) {
     const cached = getCachedDailyWord(user.id, date);
     if (cached) return cached;
@@ -228,7 +246,8 @@ async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}
 
       return payload;
     } catch (err) {
-      lastError = err.message || "generation_failed";
+      if (err.code === 'ai_rate_limit' || err.code === 'cooldown_active') throw err;
+      lastError = err.code || err.message || "generation_failed";
     }
   }
 

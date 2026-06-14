@@ -1,1 +1,35 @@
+# Dependency directories
+node_modules/
+
+# Build outputs
+client/.next/
+client/out/
+server/dist/
+
+# Environment files
+.env
+.env.*
+
+# SQLite database files
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Log directories and log files
+logs/
+*.log
+server/server.log
+client/client.log
+ngrok.log
+
+# Secret / debug artifacts
+cookies.txt
+
+# Local planning docs (internal workflow)
 .planning/
+
+# OS / editor artifacts
+.DS_Store
+*.swp
+*.swo

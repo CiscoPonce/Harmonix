@@ -6,6 +6,34 @@ const openai = new OpenAI({
   baseURL: process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1',
 });
 
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRateLimitError(err) {
+  return err && (err.status === 429 || String(err.message || '').includes('429'));
+}
+
+async function createChatCompletion(params, maxAttempts = 4) {
+  let lastErr = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await openai.chat.completions.create(params);
+    } catch (err) {
+      lastErr = err;
+      if (isRateLimitError(err) && attempt < maxAttempts - 1) {
+        const waitMs = 15000 * (attempt + 1);
+        console.warn(`AI rate limited (429), retrying in ${waitMs / 1000}s...`);
+        await sleep(waitMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
+}
+
 function parseJsonContent(raw) {
   if (!raw || typeof raw !== 'string') return null;
   let text = raw.trim();
@@ -124,7 +152,7 @@ Reply with ONLY a JSON object, no markdown or explanation:
   let lastErr = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const response = await openai.chat.completions.create({
+      const response = await createChatCompletion({
         model: 'stepfun-ai/step-3.7-flash',
         messages: [
           { role: 'system', content: systemPrompt },
@@ -143,6 +171,11 @@ Reply with ONLY a JSON object, no markdown or explanation:
       }
       return parsed;
     } catch (err) {
+      if (isRateLimitError(err)) {
+        const e = new Error('ai_rate_limit');
+        e.code = 'ai_rate_limit';
+        throw e;
+      }
       lastErr = err;
     }
   }

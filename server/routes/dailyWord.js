@@ -21,9 +21,11 @@ async function handleDailyWord(req, res, force) {
     res.json(payload);
   } catch (err) {
     console.error(`${req.method} /api/daily-word${force ? "/new" : ""} - failed in ${Date.now() - started}ms:`, err.code || err.message);
-    res.status(503).json({
+    const reason = err.code || err.message;
+    res.status(reason === 'cooldown_active' ? 429 : 503).json({
       error: "daily_word_unavailable",
-      reason: err.code || err.message,
+      reason,
+      retryAfterSec: err.retryAfterSec || null,
     });
   }
 }

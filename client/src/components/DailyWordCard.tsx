@@ -76,9 +76,16 @@ export function DailyWordCard() {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        const msg = body.reason === "invalid_ai_daily_word_response"
-          ? "AI could not find a valid word. Please try again."
-          : (body.reason || "Could not load daily word");
+        let msg = body.reason || "Could not load daily word";
+        if (body.reason === "invalid_ai_daily_word_response") {
+          msg = "AI could not find a valid word. Please try again.";
+        } else if (body.reason === "ai_rate_limit" || body.reason?.includes("429")) {
+          msg = "AI is busy (rate limit). Please wait a minute and try again.";
+        } else if (body.reason === "cooldown_active") {
+          msg = body.retryAfterSec
+            ? `Please wait ${body.retryAfterSec} seconds before requesting another word.`
+            : "Please wait a moment before requesting another word.";
+        }
         throw new Error(msg);
       }
       const payload = await res.json();

@@ -149,6 +149,31 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
   res.json(user);
 });
 
+
+// Reset Password (MVP — no email verification)
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    if (!user) {
+      return res.status(404).json({ error: 'No account found with this email' });
+    }
+    const passwordHash = await auth.hashPassword(password);
+    db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .run(passwordHash, user.id);
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    console.error('POST /api/auth/reset-password - error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Logout
 app.post('/api/auth/logout', (req, res) => {
   res.clearCookie('refreshToken');

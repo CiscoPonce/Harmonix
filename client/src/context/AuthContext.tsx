@@ -14,10 +14,22 @@ export interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+
+function friendlyAuthError(error: string | undefined, context: 'login' | 'register') {
+  if (error === 'Invalid credentials') {
+    return 'Wrong email or password. If you already registered, try resetting your password.';
+  }
+  if (error === 'Email already registered') {
+    return 'This email is already registered. Log in instead, or reset your password below.';
+  }
+  return error || (context === 'login' ? 'Login failed' : 'Registration failed');
+}
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -85,8 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push('/');
     } else {
       const errorData = await res.json();
-      console.error('[Auth] Login failed:', errorData.error);
-      throw new Error(errorData.error || 'Login failed');
+      console.warn('[Auth] Login failed:', errorData.error);
+      throw new Error(friendlyAuthError(errorData.error, 'login'));
     }
   };
 
@@ -104,9 +116,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await login(email, password);
     } else {
       const errorData = await res.json();
-      console.error('[Auth] Registration failed:', errorData.error);
-      throw new Error(errorData.error || 'Registration failed');
+      console.warn('[Auth] Registration failed:', errorData.error);
+      throw new Error(friendlyAuthError(errorData.error, 'register'));
     }
+  };
+
+
+  const resetPassword = async (email: string, password: string) => {
+    const res = await apiFetch('/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Password reset failed');
+    }
+    await login(email, password);
   };
 
   const logout = async () => {
@@ -117,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
