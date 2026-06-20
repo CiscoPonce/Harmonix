@@ -11,27 +11,46 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const modelsEnv = process.env.NVIDIA_NIM_MODELS || process.env.NVIDIA_NIM_MODEL;
+const AVAILABLE_MODELS = modelsEnv 
+  ? modelsEnv.split(',').map(m => m.trim())
+  : [
+      'meta/llama-3.1-8b-instruct',
+      'meta/llama-3.3-70b-instruct',
+      'mistralai/mistral-medium-3.5-128b',
+      'minimaxai/minimax-m3',
+      'moonshotai/kimi-k2.6',
+      'stepfun-ai/step-3.7-flash'
+    ];
+
 function isRateLimitError(err) {
   return err && (err.status === 429 || String(err.message || '').includes('429'));
 }
 
-async function createChatCompletion(params, maxAttempts = 4) {
+async function createChatCompletion(params) {
+  const primaryModel = params.model || AVAILABLE_MODELS[0];
+  const modelsToTry = [primaryModel, ...AVAILABLE_MODELS.filter(m => m !== primaryModel)];
+
   let lastErr = null;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+  for (const model of modelsToTry) {
     try {
-      return await openai.chat.completions.create(params);
+      console.log(`Calling ChatCompletion with model: ${model}`);
+      return await openai.chat.completions.create({
+        ...params,
+        model: model,
+      });
     } catch (err) {
       lastErr = err;
-      if (isRateLimitError(err) && attempt < maxAttempts - 1) {
-        const waitMs = 15000 * (attempt + 1);
-        console.warn(`AI rate limited (429), retrying in ${waitMs / 1000}s...`);
-        await sleep(waitMs);
+      console.warn(`Model ${model} failed: ${err.message || err}. Status: ${err.status}`);
+      if (isRateLimitError(err) || (err.status >= 500 && err.status < 600)) {
+        console.warn(`Attempting fallback to next model...`);
         continue;
       }
-      throw err;
+      console.warn(`Attempting fallback to next model due to error...`);
+      continue;
     }
   }
-  throw lastErr;
+  throw lastErr || new Error('All chat completion models failed');
 }
 
 function parseJsonContent(raw) {
@@ -51,7 +70,7 @@ function parseJsonContent(raw) {
   }
 }
 
-function normalizeDailyWord(content) {
+function normalizeSingleDailyWord(content) {
   if (!content || typeof content !== 'object') return null;
   if (content.target_word && content.song_title && content.artist) return content;
   const nested = content.daily_word || content.word || content.result || content.data;
@@ -79,6 +98,18 @@ function normalizeDailyWord(content) {
   };
 }
 
+function normalizeDailyWord(content) {
+  if (!content || typeof content !== 'object') return null;
+  if (Array.isArray(content.candidates)) {
+    return content.candidates.map(c => normalizeSingleDailyWord(c)).filter(Boolean);
+  }
+  if (Array.isArray(content)) {
+    return content.map(c => normalizeSingleDailyWord(c)).filter(Boolean);
+  }
+  const single = normalizeSingleDailyWord(content);
+  return single ? [single] : null;
+}
+
 async function extractVocabulary(lyricsText, targetLanguage, cefrLevel = 'B1') {
   const systemPrompt = `Act as a professional ${targetLanguage} teacher. Your task is to analyze song lyrics and extract 5-10 vocabulary words or phrases.
 Target Audience Level: ${cefrLevel}.
@@ -103,7 +134,7 @@ Output Format (JSON):
   ]
 }`;
 
-  const response = await openai.chat.completions.create({
+  const response = await createChatCompletion({
     model: 'stepfun-ai/step-3.7-flash',
     messages: [
       { role: 'system', content: systemPrompt },
@@ -124,29 +155,33 @@ async function generateDailyWord({ languageName, cefrLevel, genre, difficulty, a
     ? `Avoid these recently used words: ${avoidWords.join(', ')}.`
     : '';
 
-  const systemPrompt = `You are a ${languageName} language teacher. Pick ONE vocabulary word for a learner and pair it with a REAL, well-known ${languageName} song that contains that exact word in its lyrics.
+  const systemPrompt = `You are a ${languageName} language teacher. Pick 5 DIFFERENT vocabulary words for a learner. Pair each word with a REAL, well-known ${languageName} song that contains that exact word in its lyrics.
 
 Learner level: ${cefrLevel}
 Preferred genre: ${genre}
 Difficulty: ${difficulty}
 
 Rules:
-1. The target_word MUST appear verbatim (same spelling) in the song lyrics.
+1. Each target_word MUST appear verbatim (same spelling) in its matching song lyrics.
 2. Choose popular songs likely to have synced lyrics on LRCLib and previews on Deezer.
-3. The word should match the learner level (${cefrLevel}).
+3. The words should match the learner level (${cefrLevel}).
 4. Return realistic song_title and artist names only — no made-up songs.
 5. ${avoidList}
 
-Reply with ONLY a JSON object, no markdown or explanation:
+Reply with ONLY a JSON object containing a "candidates" array, no markdown or explanation:
 {
-  "target_word": "word in lyrics",
-  "translation": "English translation",
-  "part_of_speech": "noun|verb|adjective|...",
-  "pronunciation": "optional IPA or phonetic",
-  "difficulty": "easy|medium|hard",
-  "song_title": "Song Title",
-  "artist": "Artist Name",
-  "genre": "genre label"
+  "candidates": [
+    {
+      "target_word": "word in lyrics",
+      "translation": "English translation",
+      "part_of_speech": "noun|verb|adjective|...",
+      "pronunciation": "optional IPA or phonetic",
+      "difficulty": "easy|medium|hard",
+      "song_title": "Song Title",
+      "artist": "Artist Name",
+      "genre": "genre label"
+    }
+  ]
 }`;
 
   let lastErr = null;
@@ -156,8 +191,9 @@ Reply with ONLY a JSON object, no markdown or explanation:
         model: 'stepfun-ai/step-3.7-flash',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Generate one ${languageName} word-of-the-day with a matching song.` },
+          { role: 'user', content: `Generate 5 ${languageName} word-of-the-day candidates with matching songs.` },
         ],
+        response_format: { type: 'json_object' },
         max_tokens: 16384,
         temperature: 0.4,
         top_p: 0.95,
@@ -165,7 +201,7 @@ Reply with ONLY a JSON object, no markdown or explanation:
 
       const raw = response.choices?.[0]?.message?.content;
       const parsed = normalizeDailyWord(parseJsonContent(raw));
-      if (!parsed?.target_word || !parsed.song_title || !parsed.artist) {
+      if (!parsed || parsed.length === 0) {
         lastErr = new Error('invalid_ai_daily_word_response');
         continue;
       }

@@ -4,7 +4,7 @@ const validation = require("./validationService");
 const alignment = require("../utils/alignment");
 
 const MAX_RETRIES = 3;
-const FORCE_COOLDOWN_MS = 90_000;
+const FORCE_COOLDOWN_MS = process.env.FORCE_COOLDOWN_MS ? parseInt(process.env.FORCE_COOLDOWN_MS, 10) : 90_000;
 const LANGUAGE_NAMES = { es: "Spanish", en: "English", fr: "French" };
 
 function todayDate() {
@@ -188,16 +188,23 @@ async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}
   `).all(user.id).map((r) => r.word).filter(Boolean);
 
   let lastError = null;
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      const suggestion = await aiService.generateDailyWord({
-        languageName,
-        cefrLevel,
-        genre,
-        difficulty,
-        avoidWords: recentWords,
-      });
+  let candidates = [];
+  try {
+    const aiResult = await aiService.generateDailyWord({
+      languageName,
+      cefrLevel,
+      genre,
+      difficulty,
+      avoidWords: recentWords,
+    });
+    candidates = Array.isArray(aiResult) ? aiResult : [aiResult];
+  } catch (err) {
+    if (err.code === 'ai_rate_limit' || err.code === 'cooldown_active') throw err;
+    lastError = err.code || err.message || "generation_failed";
+  }
 
+  for (const suggestion of candidates) {
+    try {
       const track = await searchDeezerTrack(suggestion.artist, suggestion.song_title, fetchImpl);
       if (!track) {
         lastError = "deezer_not_found";
@@ -249,6 +256,12 @@ async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}
       if (err.code === 'ai_rate_limit' || err.code === 'cooldown_active') throw err;
       lastError = err.code || err.message || "generation_failed";
     }
+  }
+
+  if (candidates.length <= 1) {
+    const err = new Error("daily_word_generation_failed");
+    err.code = lastError || "unknown";
+    throw err;
   }
 
   const err = new Error("daily_word_generation_failed");

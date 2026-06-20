@@ -18,7 +18,7 @@ wait_for_port() {
 
   while [ "$attempt" -le "$max_attempts" ]; do
     if curl -sf "http://127.0.0.1:${port}/" >/dev/null 2>&1 || \
-       curl -sf -o /dev/null -w "%{http_code}" -X POST "http://127.0.0.1:${port}/api/auth/login" \
+       curl -s -o /dev/null -w "%{http_code}" -X POST "http://127.0.0.1:${port}/api/auth/login" \
          -H "Content-Type: application/json" -d "{}" | grep -qE "^(401|400|200)$"; then
       echo "$label is ready on port $port"
       return 0
@@ -33,6 +33,9 @@ wait_for_port() {
 }
 
 echo "Cleaning up existing LyricWord processes..."
+# Clean up processes by port to prevent EADDRINUSE errors
+kill -9 $(lsof -t -i:${BACKEND_PORT}) 2>/dev/null || true
+kill -9 $(lsof -t -i:${FRONTEND_PORT}) 2>/dev/null || true
 pkill -f "/home/ubuntu/lyric/server.*node index.js" 2>/dev/null || true
 pkill -f "/home/ubuntu/lyric/client.*next dev" 2>/dev/null || true
 pkill -f "ngrok http ${BACKEND_PORT}" 2>/dev/null || true
