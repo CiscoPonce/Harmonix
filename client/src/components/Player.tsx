@@ -39,6 +39,7 @@ const Player: React.FC<PlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
   
   const { currentLineIndex, lines, seekTo } = useSyncEngine({
     lrcString,
@@ -62,17 +63,26 @@ const Player: React.FC<PlayerProps> = ({
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
+        setIsPlaying(false);
       } else {
-        audioRef.current.play();
+        audioRef.current.play().catch(err => {
+          console.error("Playback failed:", err);
+          setAudioError("Playback failed: Audio preview unavailable.");
+          setIsPlaying(false);
+        });
+        setIsPlaying(true);
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
   const handleLineClick = (timeSeconds: number) => {
     seekTo(timeSeconds);
-    if (audioRef.current && !isPlaying) {
-      audioRef.current.play();
+    if (audioRef.current) {
+      audioRef.current.play().catch(err => {
+        console.error("Playback failed during line click:", err);
+        setAudioError("Playback failed: Audio preview unavailable.");
+        setIsPlaying(false);
+      });
       setIsPlaying(true);
     }
   };
@@ -181,6 +191,10 @@ const Player: React.FC<PlayerProps> = ({
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
           onEnded={() => setIsPlaying(false)}
+          onError={(e) => {
+            console.error("Audio preview load failed:", e);
+            setAudioError("Audio preview unavailable in your region. You can still study the lyrics.");
+          }}
         />
         
         <div className="flex justify-center items-center gap-10">
@@ -212,6 +226,19 @@ const Player: React.FC<PlayerProps> = ({
             <SkipForward className="w-6 h-6" />
           </Button>
         </div>
+
+        {/* Audio Error Alert */}
+        {audioError && (
+          <div className="max-w-xl mx-auto mb-4 p-3 bg-zinc-950 border border-red-950 rounded-lg text-[10px] text-zinc-400 flex items-center justify-between uppercase tracking-widest font-black animate-in fade-in duration-200">
+            <span>{audioError}</span>
+            <button 
+              onClick={() => setAudioError(null)} 
+              className="text-zinc-600 hover:text-white transition-colors text-[9px] font-bold underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Progress bar */}
         <div className="mt-8 max-w-xl mx-auto flex flex-col gap-2">

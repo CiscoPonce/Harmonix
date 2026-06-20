@@ -124,7 +124,11 @@ export function DailyWordCard() {
     if (isPlaying) { audio.pause(); setIsPlaying(false); return; }
     const startSec = data.audio.preview_offset + data.lyric.timestamp_ms / 1000;
     audio.currentTime = Math.max(0, startSec - 2);
-    audio.play();
+    audio.play().catch((err) => {
+      console.error("Playback failed:", err);
+      setRefreshError("Audio preview unavailable in your region.");
+      setIsPlaying(false);
+    });
     setIsPlaying(true);
   };
 
@@ -225,7 +229,18 @@ export function DailyWordCard() {
         </div>
       </div>
 
-      {data.audio.preview_url && <audio ref={audioRef} src={data.audio.preview_url} preload="none" />}
+      {data.audio.preview_url && (
+        <audio 
+          ref={audioRef} 
+          src={data.audio.preview_url} 
+          preload="none" 
+          onError={(e) => {
+            console.error("Audio preview load failed:", e);
+            setRefreshError("Audio preview unavailable in your region.");
+            setIsPlaying(false);
+          }}
+        />
+      )}
     </div>
   );
 }
