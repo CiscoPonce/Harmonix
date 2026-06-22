@@ -1,7 +1,7 @@
-# LyricWord — Project Instructions
+# Harmonix — Project Instructions
 
 ## Context
-LyricWord is an AI-first language learning platform that teaches vocabulary through song lyrics.
+Harmonix is an AI-first language learning platform that teaches vocabulary through song lyrics.
 Core Value: Personalizing language learning through real music lyrics with 100% accuracy via automated validation.
 
 ## Tech Stack

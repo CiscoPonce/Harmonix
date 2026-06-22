@@ -1,4 +1,4 @@
-# Roadmap — LyricWord
+# Roadmap — Harmonix (formerly LyricWord)
 
 ## Phases
 
@@ -9,6 +9,7 @@
 - [x] **Phase 5: Retention & Gamification** — SRS flashcards and progression tracking.
 - [x] **Phase 6: Data Reliability** — Validation loop and persistent caching.
 - [x] **Phase 7: Daily Word** — Word-first daily learning with validated song context. (completed 2026-06-14)
+- [ ] **Phase 8: Harmonix Rebrand & Landing Page** — Full rebrand to Harmonix with public marketing landing page.
 
 ## Phase Details
 
@@ -99,14 +100,30 @@
 - [x] 07-01-PLAN.md — Word-First Daily Learning Flow
 **UI hint**: yes
 
+### Phase 8: Harmonix Rebrand & Landing Page
+**Goal**: Rebrand the entire app from "LyricWord" to "Harmonix" and build a public marketing landing page for unauthenticated visitors.
+**Depends on**: Phase 7
+**Requirements**: BRAND-01, BRAND-02
+**Success Criteria** (what must be TRUE):
+  1. Every user-facing and developer-facing reference to "LyricWord" is replaced with "Harmonix".
+  2. The Harmonix logo and favicon are deployed across the app.
+  3. Unauthenticated visitors see a professional landing page at '/' with hero, features, testimonials, and footer.
+  4. Authenticated users are redirected from '/' to '/dashboard' where the full study experience lives.
+  5. The landing page is responsive, uses a light theme, and matches the Harmonix design reference.
+**Plans**: 2 plans
+- [ ] 08-01-PLAN.md — Full Brand Rename (LyricWord → Harmonix)
+- [ ] 08-02-PLAN.md — Public Landing Page & Route Architecture
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Auth | 3/3 | Completed | 2026-06-12 |
-| 2. Core Sync Engine | 3/3 | Complete | 2026-06-12 |
+| 2. Core Sync Engine | 3/3 | Completed | 2026-06-12 |
 | 3. AI Vocabulary Extraction | 3/3 | Completed | 2026-06-12 |
 | 4. Active Learning | 1/1 | Completed | 2026-06-13 |
 | 5. Retention & Gamification | 1/1 | Completed | 2026-06-13 |
 | 6. Data Reliability | 1/1 | Completed | 2026-06-13 |
 | 7. Daily Word | 1/1 | Completed | 2026-06-14 |
+| 8. Harmonix Rebrand & Landing | 0/2 | Planned | — |

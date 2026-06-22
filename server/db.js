@@ -1,9 +1,29 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
+
+// Migration: Rename old lyricword databases to harmonix if they exist
+const oldProdDb = path.join(__dirname, 'lyricword.db');
+const newProdDb = path.join(__dirname, 'harmonix.db');
+const oldTestDb = path.join(__dirname, 'lyricword.test.db');
+const newTestDb = path.join(__dirname, 'harmonix.test.db');
+
+try {
+  if (fs.existsSync(oldProdDb) && !fs.existsSync(newProdDb)) {
+    fs.renameSync(oldProdDb, newProdDb);
+    console.log(`[DB] Migrated ${oldProdDb} to ${newProdDb}`);
+  }
+  if (fs.existsSync(oldTestDb) && !fs.existsSync(newTestDb)) {
+    fs.renameSync(oldTestDb, newTestDb);
+    console.log(`[DB] Migrated ${oldTestDb} to ${newTestDb}`);
+  }
+} catch (err) {
+  console.error('[DB] Failed to migrate database files:', err);
+}
 
 const dbPath = process.env.NODE_ENV === 'test'
-  ? path.join(__dirname, 'lyricword.test.db')
-  : path.join(__dirname, 'lyricword.db');
+  ? newTestDb
+  : newProdDb;
 
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');

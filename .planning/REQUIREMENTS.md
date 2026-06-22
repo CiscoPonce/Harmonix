@@ -1,4 +1,4 @@
-# v1 Requirements — LyricWord
+# v1 Requirements — Harmonix
 
 ## 1. Music Playback & Sync (PLAYER)
 

@@ -1,36 +1,36 @@
 |---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: completed
-last_updated: "2026-06-14T00:00:00.000Z"
+milestone: v1.1
+milestone_name: harmonix-rebrand
+status: in_progress
+last_updated: "2026-06-22T00:00:00.000Z"
 progress:
- total_phases: 7
+ total_phases: 8
  completed_phases: 7
- total_plans: 13
+ total_plans: 15
  completed_plans: 13
- percent: 100
+ percent: 87
 ---
 
-# Project State — LyricWord
+# Project State — Harmonix
 
 ## Project Reference
 
 **Core Value**: Contextual language learning through real music lyrics with 100% accurate, AI-personalized content.
-**Current Focus**: Daily Word — word-first learning loop (Phase 7, completed).
+**Current Focus**: Harmonix Rebrand & Landing Page (Phase 8, in progress).
 
 ## Current Position
 
-- **Phase**: 7
-- **Plan**: 07-01 (complete)
-- **Status**: Completed
-- **Progress**: [██████████] 100%
+- **Phase**: 8
+- **Plan**: 08-01 (pending)
+- **Status**: In Progress
+- **Progress**: [████████░░] 87%
 
 ## Performance Metrics
 
-- **Requirement Coverage**: 100% (v1)
-- **Phase Completion**: 7/7
-- **Plan Completion**: 13/13
+- **Requirement Coverage**: 100% (v1) + 2 new (v1.1)
+- **Phase Completion**: 7/8
+- **Plan Completion**: 13/15
 
 ## Accumulated Context
 
@@ -51,6 +51,8 @@ progress:
 ### Todos
 
 - [x] Phase 7 Daily Word completed
+- [ ] Phase 8 Plan 1: Full brand rename (LyricWord → Harmonix)
+- [ ] Phase 8 Plan 2: Public landing page & route architecture
 
 ### Blockers
 
@@ -64,3 +66,6 @@ progress:
 - `/api/daily-word` and `/api/daily-word/new` endpoints live.
 - DailyWordCard on home page with lyric snippet, audio preview, and on-demand refresh.
 - AI word generation validated against Deezer and LRCLib with retry loop.
+- Interactive dashboard cards (Stats, Recent, Daily) deployed with real data.
+- Test database isolation (lyricword.test.db) prevents test suite from wiping production data.
+- Repository renamed to Harmonix (https://github.com/CiscoPonce/Harmonix).

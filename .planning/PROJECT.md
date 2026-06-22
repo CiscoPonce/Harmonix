@@ -1,8 +1,8 @@
-# LyricWord
+# Harmonix
 
 ## What This Is
 
-LyricWord is an AI-first language learning platform that teaches vocabulary through song lyrics. It dynamically generates personalized content based on user preferences and proficiency, strictly validated against real-world music APIs (LRCLib, Deezer) to ensure accuracy.
+Harmonix is an AI-first language learning platform that teaches vocabulary through song lyrics. It dynamically generates personalized content based on user preferences and proficiency, strictly validated against real-world music APIs (LRCLib, Deezer) to ensure accuracy.
 
 ## Core Value
 
@@ -33,7 +33,7 @@ Contextual language learning through real music lyrics with 100% accurate, AI-pe
 
 ## Context
 
-LyricWord aims to bridge the gap between traditional vocabulary apps and real-world media consumption. It leverages NVIDIA NIM for free AI inference and existing music databases for validation, keeping infrastructure costs near zero.
+Harmonix aims to bridge the gap between traditional vocabulary apps and real-world media consumption. It leverages NVIDIA NIM for free AI inference and existing music databases for validation, keeping infrastructure costs near zero.
 
 ## Constraints
 

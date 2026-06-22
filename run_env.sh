@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# LyricWord Persistent Environment Manager
+# Harmonix Persistent Environment Manager
 PROJECT_ROOT="/home/ubuntu/lyric"
 LOG_DIR="$PROJECT_ROOT/logs"
 BACKEND_PORT=3001
@@ -32,7 +32,7 @@ wait_for_port() {
   return 1
 }
 
-echo "Cleaning up existing LyricWord processes..."
+echo "Cleaning up existing Harmonix processes..."
 # Clean up processes by port to prevent EADDRINUSE errors
 kill -9 $(lsof -t -i:${BACKEND_PORT}) 2>/dev/null || true
 kill -9 $(lsof -t -i:${FRONTEND_PORT}) 2>/dev/null || true
@@ -65,7 +65,7 @@ if ! pgrep -f "ngrok http ${BACKEND_PORT}" >/dev/null; then
 fi
 
 echo "------------------------------------------------"
-echo "LyricWord is now running."
+echo "Harmonix is now running."
 echo "Backend:  http://localhost:${BACKEND_PORT}"
 echo "Frontend: http://localhost:${FRONTEND_PORT}"
 echo "Public:   https://${NGROK_URL}"

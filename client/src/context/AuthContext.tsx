@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('[Auth] Login successful');
       setAccessToken(data.accessToken);
       setUser(data.user);
-      router.push('/');
+      router.push('/dashboard');
     } else {
       const errorData = await res.json();
       console.warn('[Auth] Login failed:', errorData.error);

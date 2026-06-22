@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lyric - Focus on Learning",
-  description: "Distraction-free learning environment",
+  title: "Harmonix — Learn Words Through Music",
+  description: "Master vocabulary with every beat. Unlock language through rhythm and melody. Turn your favorite songs into powerful learning tools.",
 };
 
 export default function RootLayout({

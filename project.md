@@ -1,10 +1,10 @@
-🎵 LyricWord - Project State Document
+🎵 Harmonix - Project State Document
 Version: 3.1 (AI-First, Open-Source SaaS)
 Last Updated: June 13, 2026
 License: MIT (Open Core Model)
 Status: MVP Development Phase (Web PWA)
 Executive Summary
-LyricWord is a language learning platform that teaches vocabulary through song lyrics. Instead of relying on a massive, pre-populated database, LyricWord utilizes an AI-First Architecture. An AI Agent generates personalized daily vocabulary on-the-fly based on user preferences, which is then strictly validated against real music APIs to ensure 100% accuracy. 
+Harmonix is a language learning platform that teaches vocabulary through song lyrics. Instead of relying on a massive, pre-populated database, Harmonix utilizes an AI-First Architecture. An AI Agent generates personalized daily vocabulary on-the-fly based on user preferences, which is then strictly validated against real music APIs to ensure 100% accuracy. 
 The project is built as an Open-Source MIT licensed initiative, deployed on an existing private VPS. The MVP will launch as a Progressive Web App (PWA) to validate the concept before expanding to native Android and Wear OS applications. Target languages for launch are English, French, and Spanish.
 🎯 Core Value Proposition
 
@@ -18,17 +18,17 @@ The architecture is designed following enterprise-grade system design principles
 1. Monolith & Database Decoupling (Stateless Clients)
 
     Concept: Separate application logic from data storage to ensure data persistence and stateless scaling.
-    LyricWord Implementation: The Frontend (Web PWA / Future Flutter App) is completely stateless regarding core data. It requests the "Daily Word" from the VPS API, displays it, and caches only that specific day's payload locally for offline viewing. If the client crashes, no core data is lost.
+    Harmonix Implementation: The Frontend (Web PWA / Future Flutter App) is completely stateless regarding core data. It requests the "Daily Word" from the VPS API, displays it, and caches only that specific day's payload locally for offline viewing. If the client crashes, no core data is lost.
 
 2. Scaling & Load Balancing
 
     Concept: Distributing traffic across multiple servers to prevent overload.
-    LyricWord Implementation: For the MVP, the existing private VPS handles traffic. As the user base scales, Nginx acts as a reverse proxy and load balancer. We can horizontally scale by spinning up identical VPS instances behind Nginx, routing traffic via Round Robin or Least Connections without changing the client code.
+    Harmonix Implementation: For the MVP, the existing private VPS handles traffic. As the user base scales, Nginx acts as a reverse proxy and load balancer. We can horizontally scale by spinning up identical VPS instances behind Nginx, routing traffic via Round Robin or Least Connections without changing the client code.
 
 3. Microservices & API Gateway
 
     Concept: Breaking a monolith into specialized services behind a single entry point.
-    LyricWord Implementation: The VPS backend (Node.js/Express or Python/FastAPI) acts as the API Gateway. It routes requests to modular internal handlers:
+    Harmonix Implementation: The VPS backend (Node.js/Express or Python/FastAPI) acts as the API Gateway. It routes requests to modular internal handlers:
         Auth Module: Handles JWT user authentication.
         AI Agent Module: Handles NVIDIA NIM API prompts.
         Validator Module: Handles LRCLib/Deezer API checks.
@@ -37,14 +37,14 @@ The architecture is designed following enterprise-grade system design principles
 4. Handling Large Files & Async Events (Object Storage)
 
     Concept: Bypassing backend servers for large file transfers using pre-signed URLs.
-    LyricWord Implementation: We never stream full audio files through our VPS. 
+    Harmonix Implementation: We never stream full audio files through our VPS. 
         Audio: The backend fetches a 30-second MP3 preview URL from Deezer/iTunes and sends the direct link to the client. The client streams directly from the CDN.
         Future UGC (User Generated Content): When users upload profile pictures or custom lyric snippets, the backend generates a secure pre-signed URL, allowing the client to upload directly to an S3 bucket, bypassing the VPS CPU/RAM entirely.
 
 5. Optimizing Performance: Caching & CDNs
 
     Concept: Reducing database load and latency using in-memory caches and edge servers.
-    LyricWord Implementation:
+    Harmonix Implementation:
         Database Caching: SQLite acts as a local cache. Validated songs and daily words are stored for 24 hours to prevent redundant AI and API calls.
         Client Caching: The PWA uses Service Workers to cache the UI shell and the daily JSON payload, allowing offline access.
         CDN: All static assets and external audio previews are served via global CDNs (Deezer's CDN, Cloudflare for our VPS).
@@ -52,7 +52,7 @@ The architecture is designed following enterprise-grade system design principles
 6. Rate Limiting
 
     Concept: Protecting infrastructure from abuse and API quota exhaustion.
-    LyricWord Implementation: The API Gateway implements strict rate limiting (e.g., via express-rate-limit). 
+    Harmonix Implementation: The API Gateway implements strict rate limiting (e.g., via express-rate-limit). 
         User Level: Limits login attempts and word generation requests to prevent spam.
         Outbound Level: Limits how often the VPS queries NVIDIA NIM and LRCLib, ensuring we never hit external API rate limits. Returns 429 Too Many Requests when thresholds are breached.
 
@@ -342,5 +342,5 @@ Total
 Can support 1,000+ active users.
 Break-even point: 1 paying subscriber at $2.99/month covers the domain name.
 ✍️ Author Notes
-This document represents the current state of the LyricWord project. By leveraging an existing VPS and NVIDIA's free AI inference endpoints, the project achieves a true zero-budget infrastructure while maintaining enterprise-grade architecture. The focus on English, French, and Spanish provides a massive global addressable market for the MVP.
+This document represents the current state of the Harmonix project. By leveraging an existing VPS and NVIDIA's free AI inference endpoints, the project achieves a true zero-budget infrastructure while maintaining enterprise-grade architecture. The focus on English, French, and Spanish provides a massive global addressable market for the MVP.
 Key Philosophy: Build the simplest thing that works. Validate with real users via the Web PWA before investing in native mobile apps. Let AI handle content curation, but always validate with real APIs to ensure quality.
