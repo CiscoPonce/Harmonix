@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import Link from "next/link";
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordForm() {
  const searchParams = useSearchParams();
  const email = searchParams.get("email") || "";
  const { resetPassword } = useAuth();
@@ -68,4 +68,12 @@ export default function ForgotPasswordPage() {
  </div>
  </div>
  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-black text-white">Loading...</div>}>
+      <ForgotPasswordForm />
+    </Suspense>
+  );
 }

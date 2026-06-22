@@ -147,11 +147,14 @@ html {
 }
 
 .landing-hero-visual {
-  @apply flex-1 flex justify-center items-center w-full max-w-md lg:max-w-none perspective-1000;
+  @apply flex-1 flex justify-center items-center w-full max-w-md lg:max-w-none;
+  perspective: 1000px;
 }
 
 .landing-phone-mockup {
-  @apply relative w-[320px] h-[650px] bg-black rounded-[3rem] p-3 shadow-2xl border-4 border-zinc-800 rotate-y-[-10deg] rotate-x-[5deg] transform-style-preserve-3d;
+  @apply relative w-[320px] h-[650px] bg-black rounded-[3rem] p-3 shadow-2xl border-4 border-zinc-800;
+  transform: rotateY(-10deg) rotateX(5deg);
+  transform-style: preserve-3d;
   box-shadow: -20px 20px 60px rgba(0,0,0,0.4), 0 0 0 10px #111;
 }
 
@@ -220,7 +223,7 @@ html {
 }
 
 .landing-popover {
-  @apply absolute bg-white text-black p-4 rounded-2xl shadow-2xl border border-zinc-100 z-30 max-w-[200px] animate-bounce-slow;
+  @apply absolute bg-white text-black p-4 rounded-2xl shadow-2xl border border-zinc-100 z-30 max-w-[200px];
   animation: float 6s ease-in-out infinite;
 }
 
@@ -344,10 +347,4 @@ html {
   @apply text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-600;
 }
 
-/* 3D Helpers */
-.perspective-1000 {
-  perspective: 1000px;
-}
-.transform-style-preserve-3d {
-  transform-style: preserve-3d;
-}
+
