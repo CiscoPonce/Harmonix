@@ -44,7 +44,7 @@ function highlightWord(snippet: string, start: number, end: number) {
   return (
     <>
       {before}
-      <mark className="bg-white text-black px-1 rounded-sm not-italic">{word}</mark>
+      <mark className="bg-zinc-900 dark:bg-white text-white dark:text-black px-1 rounded-sm not-italic">{word}</mark>
       {after}
     </>
   );
@@ -143,18 +143,18 @@ export function DailyWordCard() {
 
   if (loading && !data) {
     return (
-      <div className="w-full max-w-3xl rounded-2xl border border-zinc-800 bg-zinc-950 p-10 flex flex-col items-center justify-center gap-3 text-zinc-400">
+      <div className="w-full max-w-3xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-10 flex flex-col items-center justify-center gap-3 text-zinc-500 dark:text-zinc-400">
         <Loader2 className="w-5 h-5 animate-spin" />
-        <span className="text-xs font-bold uppercase tracking-widest">Loading your word...</span>
-        <span className="text-[10px] text-zinc-600 uppercase tracking-widest">First load may take up to a minute</span>
+        <span className="text-xs font-bold uppercase tracking-widest text-zinc-900 dark:text-white">Loading your word...</span>
+        <span className="text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-600">First load may take up to a minute</span>
       </div>
     );
   }
 
   if ((error && !data) || !data) {
     return (
-      <div className="w-full max-w-3xl rounded-2xl border border-zinc-800 bg-zinc-950 p-8 space-y-4 text-center">
-        <p className="text-sm text-zinc-400">{error || "No word available right now."}</p>
+      <div className="w-full max-w-3xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-8 space-y-4 text-center">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{error || "No word available right now."}</p>
         <Button onClick={() => loadDailyWord(true)} disabled={refreshing}>
           {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Try again"}
         </Button>
@@ -165,26 +165,26 @@ export function DailyWordCard() {
   const playerHref = "/player/" + data.song.id;
 
   return (
-    <div className="relative w-full max-w-3xl rounded-2xl border border-zinc-800 bg-zinc-950 overflow-hidden">
+    <div className="relative w-full max-w-3xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden">
       {refreshing && (
-        <div className="absolute inset-0 z-20 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-8 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-white" />
-          <p className="text-sm font-bold uppercase tracking-widest text-white">{statusMessage || "Finding a new word..."}</p>
+        <div className="absolute inset-0 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-8 text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-zinc-900 dark:text-white" />
+          <p className="text-sm font-bold uppercase tracking-widest text-zinc-900 dark:text-white">{statusMessage || "Finding a new word..."}</p>
           <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Please wait — AI is picking a word and validating the song</p>
         </div>
       )}
 
       {refreshError && (
-        <div className="px-6 py-3 bg-red-950/50 border-b border-red-900 text-red-300 text-xs font-medium text-center">
+        <div className="px-6 py-3 bg-red-50 dark:bg-red-950/50 border-b border-red-200 dark:border-red-900 text-red-600 dark:text-red-300 text-xs font-medium text-center">
           {refreshError}
         </div>
       )}
 
-      <div className="px-6 py-4 border-b border-zinc-900 flex items-center justify-between bg-zinc-900/40">
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+      <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-900 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/40">
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
           <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
           Word of the day
-          {data.cached && !refreshing && <span className="text-zinc-600">· cached</span>}
+          {data.cached && !refreshing && <span className="text-zinc-400 dark:text-zinc-600">· cached</span>}
         </div>
         <Button variant="ghost" size="sm" onClick={() => loadDailyWord(true)} disabled={refreshing} className="text-[10px] font-bold uppercase tracking-widest gap-2">
           {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
@@ -194,25 +194,25 @@ export function DailyWordCard() {
 
       <div className="p-8 md:p-10 space-y-8">
         <div className="space-y-3">
-          <p className="text-5xl md:text-6xl font-black tracking-tighter uppercase italic">{data.word.text}</p>
-          <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-400">
-            <span className="font-bold text-white">{data.word.translation}</span>
+          <p className="text-5xl md:text-6xl font-black tracking-tighter uppercase italic text-zinc-900 dark:text-white">{data.word.text}</p>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-600 dark:text-zinc-400">
+            <span className="font-bold text-zinc-900 dark:text-white">{data.word.translation}</span>
             {data.word.part_of_speech && (
-              <span className="px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-[10px] uppercase tracking-widest">{data.word.part_of_speech}</span>
+              <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-900 dark:text-white">{data.word.part_of_speech}</span>
             )}
             {data.word.pronunciation && <span className="text-zinc-500">{data.word.pronunciation}</span>}
           </div>
         </div>
 
-        <div className="rounded-xl border border-zinc-800 bg-black p-6 space-y-4">
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black p-6 space-y-4">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-500">
             <Music2 className="w-3.5 h-3.5" />
             Found in {data.song.title} · {data.song.artist}
           </div>
-          <blockquote className="text-xl md:text-2xl font-medium leading-relaxed text-zinc-200 italic">
+          <blockquote className="text-xl md:text-2xl font-medium leading-relaxed text-zinc-800 dark:text-zinc-200 italic">
             &ldquo;{highlightWord(data.lyric.snippet, data.lyric.char_start, data.lyric.char_end)}&rdquo;
           </blockquote>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">At {data.lyric.timestamp}</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-600">At {data.lyric.timestamp}</p>
         </div>
 
         <div className="flex flex-wrap gap-3">

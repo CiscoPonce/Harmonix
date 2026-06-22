@@ -26,7 +26,7 @@ html {
 
 @layer base {
   body {
-    @apply bg-black text-white antialiased;
+    @apply antialiased bg-white text-zinc-900 dark:bg-black dark:text-white;
     background-color: var(--background);
     color: var(--foreground);
   }

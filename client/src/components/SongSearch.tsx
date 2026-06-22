@@ -64,7 +64,7 @@ export function SongSearch() {
           {loading ? (
             <Loader2 className="h-5 w-5 text-zinc-500 animate-spin" />
           ) : (
-            <SearchIcon className="h-5 w-5 text-zinc-500 group-focus-within:text-white transition-colors" />
+            <SearchIcon className="h-5 w-5 text-zinc-500 group-focus-within:text-zinc-900 dark:group-focus-within:text-white transition-colors" />
           )}
         </div>
         <Input
@@ -72,25 +72,25 @@ export function SongSearch() {
           placeholder="Search for a song or artist to start learning..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="pl-12 py-6 bg-zinc-950 border-zinc-800 text-lg focus:border-white transition-all rounded-xl"
+          className="pl-12 py-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white text-lg focus:border-zinc-900 dark:focus:border-white transition-all rounded-xl"
         />
       </div>
 
       {results.length > 0 && (
-        <div className="bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-900 animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-900 animate-in fade-in slide-in-from-top-2 duration-300">
           {results.slice(0, 6).map((track) => (
             <Link 
               key={track.id} 
               href={`/player/${track.id}`}
-              className="flex items-center p-4 hover:bg-zinc-900 transition-colors group"
+              className="flex items-center p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors group"
             >
               <img 
                 src={track.album.cover_small} 
                 alt={track.album.title} 
-                className="w-12 h-12 rounded-lg object-cover border border-zinc-800"
+                className="w-12 h-12 rounded-lg object-cover border border-zinc-200 dark:border-zinc-800"
               />
               <div className="ml-4 flex-1 min-w-0">
-                <h4 className="font-bold text-white truncate group-hover:text-yellow-400 transition-colors uppercase italic tracking-tighter">
+                <h4 className="font-bold text-zinc-900 dark:text-white truncate group-hover:text-yellow-400 transition-colors uppercase italic tracking-tighter">
                   {track.title}
                 </h4>
                 <p className="text-xs text-zinc-500 truncate uppercase tracking-widest font-medium">
@@ -98,7 +98,7 @@ export function SongSearch() {
                 </p>
               </div>
               <div className="ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button size="sm" variant="ghost" className="text-white bg-zinc-800">
+                <Button size="sm" variant="ghost" className="text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800">
                   <Play className="h-4 w-4 fill-current" />
                 </Button>
               </div>
@@ -108,8 +108,8 @@ export function SongSearch() {
       )}
 
       {query.length >= 2 && results.length === 0 && !loading && (
-        <div className="p-12 text-center bg-zinc-950 border border-zinc-800 rounded-xl border-dashed">
-          <Music className="h-8 w-8 text-zinc-800 mx-auto mb-3" />
+        <div className="p-12 text-center bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl border-dashed">
+          <Music className="h-8 w-8 text-zinc-300 dark:text-zinc-800 mx-auto mb-3" />
           <p className="text-zinc-600 text-sm font-medium uppercase tracking-widest">No songs found for "{query}"</p>
         </div>
       )}
