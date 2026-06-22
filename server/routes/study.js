@@ -5,6 +5,25 @@ const db = require('../db');
 const quizGenerator = require('../services/quizGenerator');
 const srs = require('../services/srsEngine');
 
+router.get('/recent', (req, res) => {
+  const userId = req.user.id;
+  try {
+    const recent = db.prepare(`
+      SELECT qs.id as session_id, qs.song_id, qs.completed_at, qs.score, qs.total_questions,
+             vs.title as song_title, vs.artist as song_artist
+      FROM quiz_sessions qs
+      LEFT JOIN validated_songs vs ON qs.song_id = vs.song_id
+      WHERE qs.user_id = ? AND qs.completed_at IS NOT NULL
+      ORDER BY qs.completed_at DESC
+      LIMIT 5
+    `).all(userId);
+    res.json({ recent });
+  } catch (err) {
+    console.error('recent studies error:', err);
+    res.status(500).json({ error: 'failed_to_fetch_recent_studies' });
+  }
+});
+
 router.post('/:songId/start', async (req, res) => {
  const { songId } = req.params;
  const userId = req.user.id;
@@ -95,9 +114,11 @@ router.post('/:sessionId/finish', (req, res) => {
  db.prepare('INSERT INTO user_stats (user_id, streak_days, total_xp, last_study_date, daily_goal) VALUES (?, 1, ?, ?, 20)')
  .run(userId, score * 10, today);
  } else {
- const lastDate = stats.last_study_date;
- const yest = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
- let newStreak = stats.streak_days;
+      const lastDate = stats.last_study_date;
+      const yesterdayDate = new Date(today);
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      const yest = yesterdayDate.toISOString().slice(0, 10);
+      let newStreak = stats.streak_days;
  if (lastDate === today) {
  newStreak = stats.streak_days;
  } else if (lastDate === yest) {

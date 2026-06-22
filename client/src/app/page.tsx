@@ -3,20 +3,81 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { SongSearch } from '@/components/SongSearch';
 import { DailyWordCard } from '@/components/DailyWordCard';
 import { Sparkles, Trophy, BookOpen, Clock } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 export default function Home() {
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
+
+  const [stats, setStats] = useState<{
+    streak_days: number;
+    total_xp: number;
+    today_answers: number;
+    daily_goal: number;
+    today_goal_met: boolean;
+  } | null>(null);
+
+  const [recentSessions, setRecentSessions] = useState<Array<{
+    session_id: string;
+    song_id: string;
+    completed_at: string;
+    score: number;
+    total_questions: number;
+    song_title: string | null;
+    song_artist: string | null;
+  }>>([]);
+
+  const [loadingData, setLoadingData] = useState(true);
+  const dailyWordRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.push('/login');
     }
   }, [user, isLoading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    let active = true;
+    async function fetchData() {
+      try {
+        const [statsRes, recentRes] = await Promise.all([
+          apiFetch('/progress/stats'),
+          apiFetch('/study/recent')
+        ]);
+        
+        if (!active) return;
+
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData);
+        }
+        if (recentRes.ok) {
+          const recentData = await recentRes.json();
+          setRecentSessions(recentData.recent || []);
+        }
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+      } finally {
+        if (active) {
+          setLoadingData(false);
+        }
+      }
+    }
+    
+    fetchData();
+    return () => { active = false; };
+  }, [user]);
+
+  const scrollToDailyWord = () => {
+    dailyWordRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   if (isLoading) {
     return (
@@ -59,7 +120,9 @@ export default function Home() {
           </p>
         </section>
 
-        <DailyWordCard />
+        <div ref={dailyWordRef} className="w-full max-w-3xl flex justify-center">
+          <DailyWordCard />
+        </div>
 
         <section className="w-full mt-16 space-y-4">
           <div className="text-center space-y-2">
@@ -71,28 +134,102 @@ export default function Home() {
 
         {/* Features Grid */}
         <div className="grid gap-6 sm:grid-cols-3 w-full mt-24">
-          <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-8 transition-all hover:border-zinc-700 group">
-            <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-white group-hover:text-black transition-colors">
+          {/* Recent sessions card */}
+          <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-8 transition-all hover:border-zinc-700 group flex flex-col min-h-[250px]">
+            <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-white group-hover:text-black transition-colors shrink-0">
               <Clock className="w-6 h-6" />
             </div>
-            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2">Recent</h3>
-            <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed">Your last learning sessions will appear here.</p>
+            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2 shrink-0">Recent</h3>
+            {loadingData ? (
+              <div className="space-y-3 animate-pulse flex-1">
+                <div className="h-10 bg-zinc-900 rounded w-full"></div>
+                <div className="h-10 bg-zinc-900 rounded w-full"></div>
+              </div>
+            ) : recentSessions.length > 0 ? (
+              <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 scrollbar-thin scrollbar-thumb-zinc-800">
+                {recentSessions.map((session) => (
+                  <Link 
+                    key={session.session_id} 
+                    href={`/player/${session.song_id}`}
+                    className="block p-3 rounded-lg border border-zinc-900 bg-black/40 hover:border-zinc-800 hover:bg-zinc-900/20 transition-all group/item"
+                  >
+                    <div className="flex justify-between items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-white truncate uppercase tracking-wider">
+                          {session.song_title || 'Unknown Song'}
+                        </p>
+                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest truncate">
+                          {session.song_artist || 'Unknown Artist'}
+                        </p>
+                      </div>
+                      <div className="shrink-0">
+                        <span className="text-xs font-black text-white bg-zinc-900 px-2 py-1 rounded border border-zinc-800">
+                          {session.score}/{session.total_questions}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">Your last learning sessions will appear here.</p>
+            )}
           </div>
 
-          <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-8 transition-all hover:border-zinc-700 group">
-            <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-white group-hover:text-black transition-colors">
+          {/* Stats card */}
+          <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-8 transition-all hover:border-zinc-700 group flex flex-col min-h-[250px]">
+            <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-white group-hover:text-black transition-colors shrink-0">
               <Trophy className="w-6 h-6" />
             </div>
-            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2">Stats</h3>
-            <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed">Track your streak and vocabulary progress.</p>
+            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2 shrink-0">Stats</h3>
+            {loadingData ? (
+              <div className="space-y-4 animate-pulse flex-1">
+                <div className="h-4 bg-zinc-900 rounded w-2/3"></div>
+                <div className="h-4 bg-zinc-900 rounded w-1/2"></div>
+                <div className="h-6 bg-zinc-900 rounded w-full"></div>
+              </div>
+            ) : stats ? (
+              <div className="space-y-4 flex-1 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
+                    <span className="text-zinc-500">Streak</span>
+                    <span className="text-white flex items-center gap-1">
+                      {stats.streak_days} {stats.streak_days > 0 ? '🔥' : '❄️'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
+                    <span className="text-zinc-500">Total XP</span>
+                    <span className="text-white">{stats.total_xp} XP</span>
+                  </div>
+                </div>
+                <div className="space-y-1 mt-auto">
+                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                    <span>Daily Goal</span>
+                    <span>{stats.today_answers}/{stats.daily_goal} answers</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${stats.today_goal_met ? 'bg-green-500' : 'bg-zinc-500'}`}
+                      style={{ width: `${Math.min(100, (stats.today_answers / stats.daily_goal) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">Track your streak and vocabulary progress.</p>
+            )}
           </div>
 
-          <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-8 transition-all hover:border-zinc-700 group">
-            <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-white group-hover:text-black transition-colors">
+          {/* Daily word scroll card */}
+          <div 
+            onClick={scrollToDailyWord}
+            className="rounded-2xl border border-zinc-900 bg-zinc-950 p-8 transition-all hover:border-zinc-700 group cursor-pointer flex flex-col min-h-[250px]"
+          >
+            <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-white group-hover:text-black transition-colors shrink-0">
               <BookOpen className="w-6 h-6" />
             </div>
-            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2">Daily</h3>
-            <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed">One word, one song, one lyric moment — every day.</p>
+            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2 shrink-0">Daily</h3>
+            <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">One word, one song, one lyric moment — every day.</p>
           </div>
         </div>
       </main>

@@ -127,4 +127,40 @@ describe('Study API Routes', () => {
  expect(stats.streak_days).to.equal(1);
  });
  });
+
+  describe('GET /recent', () => {
+    it('returns empty array when user has no study sessions', async () => {
+      const handler = studyRouter.stack.find(s => s.route.path === '/recent').route.stack[0].handle;
+      const req = { user: { id: 'user-test' } };
+      const res = mockRes();
+      await handler(req, res);
+      expect(res.body.recent).to.be.an('array').and.to.be.empty;
+    });
+
+    it('returns completed quiz sessions with song metadata', async () => {
+      const userId = 'user-test';
+      const songId = 'recent-song-123';
+      
+      db.prepare(`
+        INSERT INTO validated_songs (song_id, artist, title, duration, lrc_valid)
+        VALUES (?, ?, ?, 120, 1)
+      `).run(songId, 'Test Artist', 'Test Song');
+
+      db.prepare(`
+        INSERT INTO quiz_sessions (id, user_id, song_id, total_questions, completed_at, score)
+        VALUES (?, ?, ?, 5, CURRENT_TIMESTAMP, 4)
+      `).run('sess-recent-1', userId, songId);
+
+      const handler = studyRouter.stack.find(s => s.route.path === '/recent').route.stack[0].handle;
+      const req = { user: { id: userId } };
+      const res = mockRes();
+      await handler(req, res);
+
+      expect(res.body.recent).to.be.an('array').with.lengthOf(1);
+      expect(res.body.recent[0].session_id).to.equal('sess-recent-1');
+      expect(res.body.recent[0].song_title).to.equal('Test Song');
+      expect(res.body.recent[0].song_artist).to.equal('Test Artist');
+      expect(res.body.recent[0].score).to.equal(4);
+    });
+  });
 });
