@@ -33,11 +33,11 @@ html {
 /* Landing Page Styles (Light Mode Theme) */
 
 .landing-container {
-  @apply min-h-screen bg-zinc-50 text-zinc-900 font-sans selection:bg-black selection:text-white;
+  @apply min-h-screen bg-zinc-50 dark:bg-black text-zinc-900 dark:text-white font-sans selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black;
 }
 
 .landing-nav {
-  @apply sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-200 py-4 px-6;
+  @apply sticky top-0 z-50 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-900 py-4 px-6;
 }
 
 .landing-nav-inner {
@@ -53,7 +53,7 @@ html {
 }
 
 .landing-logo-name {
-  @apply text-xl font-black uppercase italic tracking-tighter text-zinc-900 leading-none;
+  @apply text-2xl font-black uppercase italic tracking-tighter text-zinc-900 dark:text-white leading-none;
 }
 
 .landing-logo-sub {
@@ -65,11 +65,11 @@ html {
 }
 
 .landing-nav-link {
-  @apply text-sm font-bold text-zinc-600 hover:text-zinc-900 uppercase tracking-widest transition-colors;
+  @apply text-sm font-bold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white uppercase tracking-widest transition-colors;
 }
 
 .landing-btn-outline {
-  @apply px-5 py-2 text-xs font-bold uppercase tracking-widest text-zinc-900 border-2 border-zinc-900 rounded-full hover:bg-zinc-900 hover:text-white transition-all;
+  @apply px-5 py-2 text-xs font-bold uppercase tracking-widest text-zinc-900 dark:text-white border-2 border-zinc-900 dark:border-white rounded-full hover:bg-zinc-900 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all;
 }
 
 .landing-main {
@@ -78,7 +78,7 @@ html {
 
 /* Hero Section */
 .landing-hero {
-  @apply relative w-full pt-20 pb-32 px-6 overflow-hidden flex justify-center bg-white;
+  @apply relative w-full pt-20 pb-32 px-6 overflow-hidden flex justify-center bg-white dark:bg-black;
 }
 
 .landing-blob {
@@ -114,7 +114,7 @@ html {
 }
 
 .landing-hero-brand {
-  @apply text-4xl md:text-5xl font-black uppercase italic tracking-tighter text-zinc-900;
+  @apply text-4xl md:text-5xl font-black uppercase italic tracking-tighter text-zinc-900 dark:text-white;
 }
 
 .landing-hero-tagline {
@@ -122,7 +122,7 @@ html {
 }
 
 .landing-hero-headline {
-  @apply text-5xl md:text-7xl font-black tracking-tighter leading-[1.1] mb-6 text-zinc-900;
+  @apply text-5xl md:text-7xl font-black tracking-tighter leading-[1.1] mb-6 text-zinc-900 dark:text-white;
 }
 
 .landing-hero-headline-accent {
@@ -130,7 +130,7 @@ html {
 }
 
 .landing-hero-subtext {
-  @apply text-lg md:text-xl text-zinc-600 font-medium max-w-2xl mb-10 leading-relaxed;
+  @apply text-lg md:text-xl text-zinc-600 dark:text-zinc-400 font-medium max-w-2xl mb-10 leading-relaxed;
 }
 
 .landing-hero-actions {
@@ -143,7 +143,7 @@ html {
 }
 
 .landing-btn-ghost {
-  @apply px-8 py-4 text-zinc-600 font-bold uppercase tracking-widest hover:text-zinc-900 transition-colors text-sm;
+  @apply px-8 py-4 text-zinc-600 dark:text-zinc-400 font-bold uppercase tracking-widest hover:text-zinc-900 dark:hover:text-white transition-colors text-sm;
 }
 
 .landing-hero-visual {
@@ -219,11 +219,11 @@ html {
 }
 
 .landing-phone-play {
-  @apply text-4xl w-16 h-16 bg-white text-black flex items-center justify-center rounded-full pl-1;
+  @apply text-4xl w-16 h-16 bg-white dark:bg-white text-black dark:text-black flex items-center justify-center rounded-full pl-1;
 }
 
 .landing-popover {
-  @apply absolute bg-white text-black p-4 rounded-2xl shadow-2xl border border-zinc-100 z-30 max-w-[200px];
+  @apply absolute bg-white dark:bg-zinc-900 text-black dark:text-white p-4 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 z-30 max-w-[200px];
   animation: float 6s ease-in-out infinite;
 }
 
@@ -242,7 +242,7 @@ html {
 }
 
 .landing-popover-def {
-  @apply text-xs font-medium leading-relaxed text-zinc-700;
+  @apply text-xs font-medium leading-relaxed text-zinc-700 dark:text-zinc-300;
 }
 
 @keyframes float {
@@ -253,7 +253,7 @@ html {
 
 /* Features Section */
 .landing-features {
-  @apply py-24 px-6 bg-zinc-50 relative z-10;
+  @apply py-24 px-6 bg-zinc-50 dark:bg-black relative z-10;
 }
 
 .landing-features-inner {
@@ -261,7 +261,7 @@ html {
 }
 
 .landing-section-title {
-  @apply text-3xl md:text-5xl font-black uppercase italic tracking-tighter text-center mb-16 text-zinc-900;
+  @apply text-3xl md:text-5xl font-black uppercase italic tracking-tighter text-center mb-16 text-zinc-900 dark:text-white;
 }
 
 .landing-features-grid {
@@ -269,11 +269,11 @@ html {
 }
 
 .landing-feature-card {
-  @apply bg-white p-8 rounded-3xl shadow-xl shadow-zinc-200/50 border border-zinc-100 hover:-translate-y-2 transition-transform duration-300;
+  @apply bg-white dark:bg-zinc-950 p-8 rounded-3xl shadow-xl shadow-zinc-200/50 dark:shadow-none border border-zinc-100 dark:border-zinc-900 hover:-translate-y-2 transition-transform duration-300;
 }
 
 .landing-feature-icon-row {
-  @apply flex items-center justify-center w-16 h-16 rounded-2xl bg-zinc-50 mb-6;
+  @apply flex items-center justify-center w-16 h-16 rounded-2xl bg-zinc-50 dark:bg-black mb-6;
   background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(192,108,132,0.1));
 }
 
@@ -282,7 +282,7 @@ html {
 }
 
 .landing-feature-title {
-  @apply text-xl font-black uppercase tracking-tighter mb-4 text-zinc-900;
+  @apply text-xl font-black uppercase tracking-tighter mb-4 text-zinc-900 dark:text-white;
 }
 
 .landing-feature-subtitle {
@@ -290,12 +290,12 @@ html {
 }
 
 .landing-feature-desc {
-  @apply text-zinc-600 font-medium leading-relaxed;
+  @apply text-zinc-600 dark:text-zinc-400 font-medium leading-relaxed;
 }
 
 /* Testimonials Section */
 .landing-testimonials {
-  @apply py-24 px-6 bg-white border-t border-zinc-100;
+  @apply py-24 px-6 bg-white dark:bg-black border-t border-zinc-100 dark:border-zinc-900;
 }
 
 .landing-testimonials-inner {
@@ -307,11 +307,11 @@ html {
 }
 
 .landing-testimonial-card {
-  @apply bg-zinc-50 p-8 rounded-2xl border border-zinc-100 flex flex-col justify-between h-full hover:shadow-lg transition-shadow;
+  @apply bg-zinc-50 dark:bg-zinc-950 p-8 rounded-2xl border border-zinc-100 dark:border-zinc-900 flex flex-col justify-between h-full hover:shadow-lg transition-shadow;
 }
 
 .landing-testimonial-quote {
-  @apply text-lg font-medium italic text-zinc-800 leading-relaxed mb-6;
+  @apply text-lg font-medium italic text-zinc-800 dark:text-zinc-300 leading-relaxed mb-6;
 }
 
 .landing-testimonial-author {

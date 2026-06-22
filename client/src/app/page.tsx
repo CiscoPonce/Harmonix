@@ -9,6 +9,7 @@ import { LandingHero } from '@/components/LandingHero';
 import { LandingFeatures } from '@/components/LandingFeatures';
 import { LandingTestimonials } from '@/components/LandingTestimonials';
 import { LandingFooter } from '@/components/LandingFooter';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function LandingPage() {
   const { user, isLoading } = useAuth();
@@ -37,7 +38,7 @@ export default function LandingPage() {
       <nav className="landing-nav">
         <div className="landing-nav-inner">
           <Link href="/" className="landing-logo-link">
-            <Image src="/logo.png" alt="Harmonix Logo" width={32} height={32} />
+            <Image src="/logo.png" alt="Harmonix Logo" width={48} height={48} />
             <div className="landing-logo-text">
               <span className="landing-logo-name">Harmonix</span>
               <span className="landing-logo-sub">Learn Words Through Music</span>
@@ -51,7 +52,8 @@ export default function LandingPage() {
             <a href="#about" className="landing-nav-link">About</a>
           </div>
 
-          <div className="landing-nav-actions">
+          <div className="landing-nav-actions flex items-center gap-4">
+            <ThemeToggle />
             <Link href="/login" className="landing-btn-outline">
               Sign In
             </Link>
