@@ -12,9 +12,10 @@ import { BadgeGrid } from '@/components/BadgeGrid';
 import { LanguageBadge } from '@/components/LanguageBadge';
 import { ReviewCountBadge } from '@/components/ReviewCountBadge';
 import { BadgeUnlockToast } from '@/components/BadgeUnlockToast';
-import { Sparkles, Trophy, BookOpen, Clock, Award, ListMusic } from 'lucide-react';
+import { Sparkles, Trophy, BookOpen, Clock, Award, ListMusic, LogOut } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { HarmonixWordmark } from '@/components/HarmonixWordmark';
 
 export default function DashboardPage() {
   const { user, isLoading, logout } = useAuth();
@@ -144,8 +145,8 @@ export default function DashboardPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black text-zinc-900 dark:text-white">
         <div className="flex flex-col items-center gap-3">
-          <Image src="/logo.png" alt="Harmonix" width={2816} height={1536} className="h-16 w-auto animate-pulse" />
-          <p className="text-xl font-medium animate-pulse uppercase tracking-widest italic font-black">Harmonix</p>
+          <HarmonixWordmark showTagline />
+          <p className="text-sm font-medium uppercase tracking-widest text-zinc-500 animate-pulse">Loading</p>
         </div>
       </div>
     );
@@ -158,21 +159,27 @@ export default function DashboardPage() {
       <BadgeUnlockToast badge={unlockedBadge} onDismiss={() => setUnlockedBadge(null)} />
 
       {/* Navigation */}
-      <nav className="p-6 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-900 bg-white/50 dark:bg-black/50 backdrop-blur-xl sticky top-0 z-10">
-        <Link href="/dashboard" className="flex items-center gap-3">
-          <Image src="/logo.png" alt="Harmonix" width={2816} height={1536} className="h-12 w-auto" />
-          <h1 className="text-2xl font-black tracking-tighter uppercase italic">Harmonix</h1>
-        </Link>
-        <div className="flex items-center gap-4">
-          <LanguageBadge />
-          <ThemeToggle />
-          <div className="hidden md:flex flex-col items-end">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Logged in as</span>
-            <span className="text-xs font-bold">{user.email}</span>
+      <nav className="app-nav">
+        <div className="app-nav-inner">
+          <HarmonixWordmark href="/dashboard" />
+          <div className="app-nav-actions">
+            <LanguageBadge compact />
+            <ThemeToggle />
+            <div className="hidden md:flex flex-col items-end">
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Logged in as</span>
+              <span className="max-w-[12rem] truncate text-xs font-bold">{user.email}</span>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={logout}
+              className="h-9 w-9 p-0 sm:h-8 sm:w-auto sm:px-3"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4 sm:hidden" />
+              <span className="hidden text-[10px] font-bold uppercase tracking-widest sm:inline">Logout</span>
+            </Button>
           </div>
-          <Button variant="secondary" size="sm" onClick={logout} className="text-[10px] font-bold uppercase tracking-widest h-8">
-            Logout
-          </Button>
         </div>
       </nav>
 

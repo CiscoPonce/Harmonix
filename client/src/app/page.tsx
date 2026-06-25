@@ -10,6 +10,7 @@ import { LandingFeatures } from '@/components/LandingFeatures';
 import { LandingTestimonials } from '@/components/LandingTestimonials';
 import { LandingFooter } from '@/components/LandingFooter';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { HarmonixWordmark } from '@/components/HarmonixWordmark';
 
 export default function LandingPage() {
   const { user, isLoading } = useAuth();
@@ -37,15 +38,9 @@ export default function LandingPage() {
       {/* Landing Navigation */}
       <nav className="landing-nav">
         <div className="landing-nav-inner">
-          <Link href="/" className="landing-logo-link">
-            <Image src="/logo.png" alt="Harmonix" width={2816} height={1536} priority className="landing-nav-logo-img" />
-            <div className="landing-logo-text">
-              <span className="landing-logo-name">Harmonix</span>
-              <span className="landing-logo-sub">Learn Words Through Music</span>
-            </div>
-          </Link>
-          
-          <div className="landing-nav-links hidden md:flex">
+          <HarmonixWordmark href="/" showTagline />
+
+          <div className="landing-nav-links hidden lg:flex">
             <a href="#features" className="landing-nav-link">Features</a>
             <a href="#how-it-works" className="landing-nav-link">How It Works</a>
             <a href="#testimonials" className="landing-nav-link">Testimonials</a>
@@ -53,9 +48,7 @@ export default function LandingPage() {
           </div>
 
           <div className="landing-nav-actions">
-            <div className="hidden sm:block">
-              <ThemeToggle />
-            </div>
+            <ThemeToggle />
             <Link href="/login" className="landing-btn-outline">
               Sign In
             </Link>
