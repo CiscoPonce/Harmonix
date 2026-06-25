@@ -38,7 +38,7 @@ export default function LandingPage() {
       <nav className="landing-nav">
         <div className="landing-nav-inner">
           <Link href="/" className="landing-logo-link">
-            <Image src="/logo.png" alt="Harmonix Logo" width={2816} height={1536} className="h-12 w-auto" />
+            <Image src="/logo.png" alt="Harmonix" width={2816} height={1536} priority className="landing-nav-logo-img" />
             <div className="landing-logo-text">
               <span className="landing-logo-name">Harmonix</span>
               <span className="landing-logo-sub">Learn Words Through Music</span>
@@ -52,8 +52,10 @@ export default function LandingPage() {
             <a href="#about" className="landing-nav-link">About</a>
           </div>
 
-          <div className="landing-nav-actions flex items-center gap-4">
-            <ThemeToggle />
+          <div className="landing-nav-actions">
+            <div className="hidden sm:block">
+              <ThemeToggle />
+            </div>
             <Link href="/login" className="landing-btn-outline">
               Sign In
             </Link>
