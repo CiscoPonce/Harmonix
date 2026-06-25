@@ -8,7 +8,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { SongSearch } from '@/components/SongSearch';
 import { DailyWordCard } from '@/components/DailyWordCard';
-import { Sparkles, Trophy, BookOpen, Clock } from 'lucide-react';
+import { BadgeGrid } from '@/components/BadgeGrid';
+import { LanguageBadge } from '@/components/LanguageBadge';
+import { ReviewCountBadge } from '@/components/ReviewCountBadge';
+import { BadgeUnlockToast } from '@/components/BadgeUnlockToast';
+import { Sparkles, Trophy, BookOpen, Clock, Award, ListMusic } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -34,12 +38,27 @@ export default function DashboardPage() {
     song_artist: string | null;
   }>>([]);
 
+  const [playlists, setPlaylists] = useState<Array<{
+    id: string;
+    name: string;
+    song_count: number;
+  }>>([]);
+
   const [loadingData, setLoadingData] = useState(true);
+  const [unlockedBadge, setUnlockedBadge] = useState<{ id: string; name: string; icon?: string; category?: string } | null>(null);
   const dailyWordRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
+    if (!isLoading) {
+      if (!user) {
+        router.push('/login');
+      } else if (!user.native_language) {
+        const key = 'onboarding_redirected';
+        if (!sessionStorage.getItem(key)) {
+          sessionStorage.setItem(key, 'true');
+          router.push('/onboarding');
+        }
+      }
     }
   }, [user, isLoading, router]);
 
@@ -49,9 +68,10 @@ export default function DashboardPage() {
     let active = true;
     async function fetchData() {
       try {
-        const [statsRes, recentRes] = await Promise.all([
+        const [statsRes, recentRes, playlistsRes] = await Promise.all([
           apiFetch('/progress/stats'),
-          apiFetch('/study/recent')
+          apiFetch('/study/recent'),
+          apiFetch('/playlists?limit=3')
         ]);
         
         if (!active) return;
@@ -59,10 +79,26 @@ export default function DashboardPage() {
         if (statsRes.ok) {
           const statsData = await statsRes.json();
           setStats(statsData);
+          if (statsData.badges_unlocked?.length > 0) {
+            const b = statsData.badges_unlocked[0];
+            setUnlockedBadge({ id: b.id, name: b.name, icon: b.icon, category: b.category });
+          }
         }
         if (recentRes.ok) {
           const recentData = await recentRes.json();
           setRecentSessions(recentData.recent || []);
+          if (recentData.badges_unlocked?.length > 0) {
+            const b = recentData.badges_unlocked[0];
+            setUnlockedBadge({ id: b.id, name: b.name, icon: b.icon, category: b.category });
+          }
+        }
+        if (playlistsRes.ok) {
+          const playlistsData = await playlistsRes.json();
+          setPlaylists(playlistsData.playlists || []);
+          if (playlistsData.badges_unlocked?.length > 0) {
+            const b = playlistsData.badges_unlocked[0];
+            setUnlockedBadge({ id: b.id, name: b.name, icon: b.icon, category: b.category });
+          }
         }
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -96,13 +132,16 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black text-zinc-900 dark:text-white font-sans selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">
+      <BadgeUnlockToast badge={unlockedBadge} onDismiss={() => setUnlockedBadge(null)} />
+
       {/* Navigation */}
       <nav className="p-6 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-900 bg-white/50 dark:bg-black/50 backdrop-blur-xl sticky top-0 z-10">
         <Link href="/dashboard" className="flex items-center gap-3">
           <Image src="/logo.png" alt="Harmonix" width={48} height={48} />
           <h1 className="text-2xl font-black tracking-tighter uppercase italic">Harmonix</h1>
         </Link>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
+          <LanguageBadge />
           <ThemeToggle />
           <div className="hidden md:flex flex-col items-end">
             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Logged in as</span>
@@ -141,8 +180,10 @@ export default function DashboardPage() {
           <SongSearch />
         </section>
 
+        <ReviewCountBadge />
+
         {/* Features Grid */}
-        <div className="grid gap-6 sm:grid-cols-3 w-full mt-24">
+        <div className="grid gap-6 sm:grid-cols-2 w-full mt-24">
           {/* Recent sessions card */}
           <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px]">
             <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors shrink-0">
@@ -239,6 +280,56 @@ export default function DashboardPage() {
             </div>
             <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2 shrink-0">Daily</h3>
             <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">One word, one song, one lyric moment — every day.</p>
+          </div>
+
+          {/* Achievements card */}
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px]">
+            <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors shrink-0">
+              <Award className="w-6 h-6" />
+            </div>
+            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2 shrink-0">Achievements</h3>
+            <div className="flex-1">
+              <BadgeGrid />
+            </div>
+          </div>
+
+          {/* Playlists card */}
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px]">
+            <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors shrink-0">
+              <ListMusic className="w-6 h-6" />
+            </div>
+            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2 shrink-0">Playlists</h3>
+            {loadingData ? (
+              <div className="space-y-3 animate-pulse flex-1">
+                <div className="h-8 bg-zinc-900 rounded w-full"></div>
+                <div className="h-8 bg-zinc-900 rounded w-full"></div>
+                <div className="h-8 bg-zinc-900 rounded w-3/4"></div>
+              </div>
+            ) : playlists.length > 0 ? (
+              <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 scrollbar-thin scrollbar-thumb-zinc-800">
+                {playlists.map((pl) => (
+                  <Link
+                    key={pl.id}
+                    href={`/playlists/${pl.id}`}
+                    className="flex justify-between items-center p-3 rounded-lg border border-zinc-200 dark:border-zinc-900 bg-zinc-50 dark:bg-black/40 hover:border-zinc-300 dark:hover:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900/20 transition-all group/item"
+                  >
+                    <span className="text-xs font-bold text-zinc-900 dark:text-white truncate uppercase tracking-wider">{pl.name}</span>
+                    <span className="text-[10px] text-zinc-500 font-bold shrink-0 ml-2">{pl.song_count} {pl.song_count === 1 ? 'song' : 'songs'}</span>
+                  </Link>
+                ))}
+                <Link
+                  href="/playlists"
+                  className="block text-center text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white py-2 mt-1 border-t border-zinc-800/50"
+                >
+                  View all →
+                </Link>
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">
+                Your collection is empty.{' '}
+                <Link href="/" className="underline underline-offset-4 hover:text-white">Explore songs</Link>
+              </p>
+            )}
           </div>
         </div>
       </main>
