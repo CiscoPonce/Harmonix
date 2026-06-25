@@ -136,9 +136,11 @@ router.get('/:songId', async (req, res) => {
     const syncedLyricsText = lyricsData.syncedLyrics || '';
     if (!lyricsText && !syncedLyricsText) return res.status(404).json({ error: 'Lyrics content empty' });
 
-    // 3. Extract and Align
-    // TODO: Determine language dynamically? For now, default to Spanish as per project context
-    const vocab = await aiService.extractVocabulary(lyricsText, 'Spanish', userCefr);
+    // 3. Extract and Align — use user's target_language instead of hardcoded 'Spanish'
+    const LANG_CODE_TO_NAME = { es: 'Spanish', en: 'English', fr: 'French', de: 'German', pt: 'Portuguese' };
+    const langCode = req.user.target_language || 'es';
+    const targetLangName = LANG_CODE_TO_NAME[langCode] || 'Spanish';
+    const vocab = await aiService.extractVocabulary(lyricsText, targetLangName, userCefr);
     const vocabWithIds = vocab.map(v => ({ ...v, id: nanoid() }));
 
  // Align against the SAME lines the frontend renders. The karaoke player uses

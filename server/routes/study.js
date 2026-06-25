@@ -4,6 +4,7 @@ const { nanoid } = require('nanoid');
 const db = require('../db');
 const quizGenerator = require('../services/quizGenerator');
 const srs = require('../services/srsEngine');
+const badgeService = require('../services/badgeService');
 
 router.get('/recent', (req, res) => {
   const userId = req.user.id;
@@ -134,9 +135,11 @@ router.post('/:sessionId/finish', (req, res) => {
  }
  });
 
- updates();
+  updates();
 
- res.json({ session_id: sessionId, score, total_questions: total });
+  const badges_unlocked = badgeService.checkAndUnlockBadges(userId);
+
+  res.json({ session_id: sessionId, score, total_questions: total, badges_unlocked });
 });
 
 router.get('/:sessionId/result', (req, res) => {
