@@ -112,7 +112,7 @@ html {
 }
 
 .landing-hero-logo-img {
-  @apply w-48 h-48 md:w-64 md:h-64 object-contain drop-shadow-2xl;
+  @apply h-32 md:h-40 w-auto object-contain drop-shadow-2xl;
 }
 
 .landing-hero-brand {

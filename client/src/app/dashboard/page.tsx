@@ -121,7 +121,7 @@ export default function DashboardPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black text-zinc-900 dark:text-white">
         <div className="flex flex-col items-center gap-3">
-          <Image src="/logo.png" alt="Harmonix" width={64} height={64} className="animate-pulse" />
+          <Image src="/logo.png" alt="Harmonix" width={2816} height={1536} className="h-16 w-auto animate-pulse" />
           <p className="text-xl font-medium animate-pulse uppercase tracking-widest italic font-black">Harmonix</p>
         </div>
       </div>
@@ -137,7 +137,7 @@ export default function DashboardPage() {
       {/* Navigation */}
       <nav className="p-6 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-900 bg-white/50 dark:bg-black/50 backdrop-blur-xl sticky top-0 z-10">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <Image src="/logo.png" alt="Harmonix" width={48} height={48} />
+          <Image src="/logo.png" alt="Harmonix" width={2816} height={1536} className="h-12 w-auto" />
           <h1 className="text-2xl font-black tracking-tighter uppercase italic">Harmonix</h1>
         </Link>
         <div className="flex items-center gap-4">

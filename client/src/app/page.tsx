@@ -25,7 +25,7 @@ export default function LandingPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white text-black">
         <div className="flex flex-col items-center gap-3">
-          <Image src="/logo.png" alt="Harmonix" width={48} height={48} className="animate-pulse" />
+          <Image src="/logo.png" alt="Harmonix" width={2816} height={1536} className="h-12 w-auto animate-pulse" />
           <p className="text-xl font-medium animate-pulse uppercase tracking-widest italic font-black">Harmonix</p>
         </div>
       </div>
@@ -38,7 +38,7 @@ export default function LandingPage() {
       <nav className="landing-nav">
         <div className="landing-nav-inner">
           <Link href="/" className="landing-logo-link">
-            <Image src="/logo.png" alt="Harmonix Logo" width={48} height={48} />
+            <Image src="/logo.png" alt="Harmonix Logo" width={2816} height={1536} className="h-12 w-auto" />
             <div className="landing-logo-text">
               <span className="landing-logo-name">Harmonix</span>
               <span className="landing-logo-sub">Learn Words Through Music</span>

@@ -2,7 +2,7 @@
 
 Learn Words Through Music. AI-first language learning through real music lyrics. Validated vocabulary extraction + spaced repetition tied to actual songs.
 
-![Harmonix Logo](./logoharmonix.png)
+![Harmonix Logo](./logoharmonix2.png)
 
 ## Features
 
