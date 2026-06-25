@@ -9,12 +9,11 @@ import Image from 'next/image';
 import { SongSearch } from '@/components/SongSearch';
 import { DailyWordCard } from '@/components/DailyWordCard';
 import { BadgeGrid } from '@/components/BadgeGrid';
-import { LanguageBadge } from '@/components/LanguageBadge';
 import { ReviewCountBadge } from '@/components/ReviewCountBadge';
 import { BadgeUnlockToast } from '@/components/BadgeUnlockToast';
-import { Sparkles, Trophy, BookOpen, Clock, Award, ListMusic, LogOut } from 'lucide-react';
+import { Sparkles, Trophy, BookOpen, Clock, Award, ListMusic } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { AppHeader } from '@/components/AppHeader';
 import { HarmonixWordmark } from '@/components/HarmonixWordmark';
 
 export default function DashboardPage() {
@@ -158,30 +157,7 @@ export default function DashboardPage() {
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black text-zinc-900 dark:text-white font-sans selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">
       <BadgeUnlockToast badge={unlockedBadge} onDismiss={() => setUnlockedBadge(null)} />
 
-      {/* Navigation */}
-      <nav className="app-nav">
-        <div className="app-nav-inner">
-          <HarmonixWordmark href="/dashboard" />
-          <div className="app-nav-actions">
-            <LanguageBadge compact />
-            <ThemeToggle />
-            <div className="hidden md:flex flex-col items-end">
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Logged in as</span>
-              <span className="max-w-[12rem] truncate text-xs font-bold">{user.email}</span>
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={logout}
-              className="h-9 w-9 p-0 sm:h-8 sm:w-auto sm:px-3"
-              title="Logout"
-            >
-              <LogOut className="h-4 w-4 sm:hidden" />
-              <span className="hidden text-[10px] font-bold uppercase tracking-widest sm:inline">Logout</span>
-            </Button>
-          </div>
-        </div>
-      </nav>
+      <AppHeader userEmail={user.email} onLogout={logout} homeHref="/dashboard" />
 
       <main className="flex-1 flex flex-col items-center px-6 py-12 md:py-24 max-w-5xl mx-auto w-full">
         {/* Hero Section */}
