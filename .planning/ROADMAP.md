@@ -9,7 +9,7 @@
 - [x] **Phase 5: Retention & Gamification** — SRS flashcards and progression tracking.
 - [x] **Phase 6: Data Reliability** — Validation loop and persistent caching.
 - [x] **Phase 7: Daily Word** — Word-first daily learning with validated song context. (completed 2026-06-14)
-- [ ] **Phase 8: Harmonix Rebrand & Landing Page** — Full rebrand to Harmonix with public marketing landing page.
+- [x] **Phase 8: Harmonix Rebrand & Landing Page** — Full rebrand to Harmonix with public marketing landing page. (completed)
 - [x] **Phase 9: Retention, Gamification & Personalization** — Playlists, badges, SRS review room, and multi-language support. (completed 2026-06-25)
 
 ## Phase Details
@@ -112,8 +112,8 @@
   4. Authenticated users are redirected from '/' to '/dashboard' where the full study experience lives.
   5. The landing page is responsive, uses a light theme, and matches the Harmonix design reference.
 **Plans**: 2 plans
-- [ ] 08-01-PLAN.md — Full Brand Rename (LyricWord → Harmonix)
-- [ ] 08-02-PLAN.md — Public Landing Page & Route Architecture
+- [x] 08-01-PLAN.md — Full Brand Rename (LyricWord → Harmonix)
+- [x] 08-02-PLAN.md — Public Landing Page & Route Architecture
 **UI hint**: yes
 
 ### Phase 9: Retention, Gamification & Personalization
@@ -144,5 +144,5 @@
 | 5. Retention & Gamification | 1/1 | Completed | 2026-06-13 |
 | 6. Data Reliability | 1/1 | Completed | 2026-06-13 |
 | 7. Daily Word | 1/1 | Completed | 2026-06-14 |
-| 8. Harmonix Rebrand & Landing | 0/2 | Planned | — |
+| 8. Harmonix Rebrand & Landing | 2/2 | Completed | — |
 | 9. Retention, Gamification & Personalization | 4/4 | Completed | 2026-06-25 |
