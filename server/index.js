@@ -10,6 +10,7 @@ const studyRouter = require('./routes/study');
 const progressRouter = require('./routes/progress');
 const validationRouter = require('./routes/validation');
 const dailyWordRouter = require('./routes/dailyWord');
+const playlistsRouter = require('./routes/playlists');
 require('dotenv').config();
 
 const app = express();
@@ -144,7 +145,7 @@ app.post('/api/auth/refresh', (req, res) => {
 // Get Current User
 app.get('/api/auth/me', authenticateToken, (req, res) => {
   console.log('GET /api/auth/me - for user:', req.user.id);
-  const user = db.prepare('SELECT id, email, created_at, cefr_level, target_language, genre, difficulty FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT id, email, created_at, cefr_level, target_language, genre, difficulty, native_language FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.sendStatus(404);
   res.json(user);
 });
@@ -268,6 +269,7 @@ app.use('/api/study', authenticateToken, studyRouter);
 app.use('/api/progress', authenticateToken, progressRouter);
 app.use('/api/validation', authenticateToken, validationRouter);
 app.use('/api/daily-word', authenticateToken, dailyWordRouter);
+app.use('/api/playlists', authenticateToken, playlistsRouter);
 
 // --- Frontend Proxy ---
 const { createProxyMiddleware } = require('http-proxy-middleware');
