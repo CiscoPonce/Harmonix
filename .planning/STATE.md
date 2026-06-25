@@ -1,3 +1,17 @@
+---
+gsd_state_version: 1.0
+milestone: v1.1
+milestone_name: harmonix-rebrand
+status: in_progress
+last_updated: "2026-06-25T17:03:00.000Z"
+progress:
+  total_phases: 12
+  completed_phases: 7
+  total_plans: 17
+  completed_plans: 13
+  percent: 68
+---
+
 |---
 gsd_state_version: 1.0
 milestone: v1.1
@@ -17,20 +31,20 @@ progress:
 ## Project Reference
 
 **Core Value**: Contextual language learning through real music lyrics with 100% accurate, AI-personalized content.
-**Current Focus**: Harmonix Rebrand & Landing Page (Phase 8, in progress).
+**Current Focus**: Retention, Gamification & Personalization (Phase 9, planned).
 
 ## Current Position
 
-- **Phase**: 8
-- **Plan**: 08-01 (pending)
-- **Status**: In Progress
+- **Phase**: 9
+- **Plan**: 09-01A (pending)
+- **Status**: Planned
 - **Progress**: [████████░░] 87%
 
 ## Performance Metrics
 
 - **Requirement Coverage**: 100% (v1) + 2 new (v1.1)
-- **Phase Completion**: 7/8
-- **Plan Completion**: 13/15
+- **Phase Completion**: 7/9
+- **Plan Completion**: 13/17
 
 ## Accumulated Context
 
@@ -53,6 +67,10 @@ progress:
 - [x] Phase 7 Daily Word completed
 - [ ] Phase 8 Plan 1: Full brand rename (LyricWord → Harmonix)
 - [ ] Phase 8 Plan 2: Public landing page & route architecture
+- [ ] Phase 9 Plan 01A: Backend Foundation — DB schema, services, playlist routes, badge routes, user routes
+- [ ] Phase 9 Plan 01B: Backend Completion — AI language fix, study.js badge detection, AuthContext, tests
+- [ ] Phase 9 Plan 02: Frontend Pages — Onboarding, SRS review room, playlist pages
+- [ ] Phase 9 Plan 03: Dashboard Integration — Badges card, playlists card, language badge, review count, onboarding redirect
 
 ### Blockers
 

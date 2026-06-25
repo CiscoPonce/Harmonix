@@ -119,13 +119,18 @@
 ### Phase 9: Retention, Gamification & Personalization
 **Goal**: Shift Harmonix from a stateless utility into a sticky, engaging daily habit with playlists, badges, SRS review, and multi-language support.
 **Depends on**: Phase 8
-**Requirements**: TBD
+**Requirements**: STUDY-01, STUDY-03, AI-02
 **Success Criteria** (what must be TRUE):
   1. User can set their native and target language via an onboarding flow; AI respects these in extraction prompts.
   2. User can create, view, and manage custom song playlists.
   3. User can unlock badges and achievements for milestones (streaks, words learned, etc.).
   4. User can review learned words via a dedicated SRS flashcard room with SM-2 algorithm.
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 09-01A-PLAN.md — Backend Foundation: DB schema, services, playlist/badge/user routes
+- [ ] 09-01B-PLAN.md — Backend Completion: AI language fix, badge detection, AuthContext, tests
+- [ ] 09-02-PLAN.md — Frontend Pages: Onboarding wizard, SRS review room, playlists
+- [ ] 09-03-PLAN.md — Dashboard Integration: Badges card, playlists card, language badge, review count, onboarding redirect
+
 **UI hint**: yes
 
 ## Progress
@@ -140,4 +145,4 @@
 | 6. Data Reliability | 1/1 | Completed | 2026-06-13 |
 | 7. Daily Word | 1/1 | Completed | 2026-06-14 |
 | 8. Harmonix Rebrand & Landing | 0/2 | Planned | — |
-| 9. Retention, Gamification & Personalization | 0/0 | Planned | — |
+| 9. Retention, Gamification & Personalization | 0/4 | Planned | — |
