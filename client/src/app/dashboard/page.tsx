@@ -28,14 +28,10 @@ export default function DashboardPage() {
     today_goal_met: boolean;
   } | null>(null);
 
-  const [recentSessions, setRecentSessions] = useState<Array<{
-    session_id: string;
-    song_id: string;
-    completed_at: string;
-    score: number;
-    total_questions: number;
-    song_title: string | null;
-    song_artist: string | null;
+  const [recentDailyWords, setRecentDailyWords] = useState<Array<{
+    date: string;
+    word: { text: string; translation: string | null };
+    song: { id: string; title: string; artist: string } | null;
   }>>([]);
 
   const [playlists, setPlaylists] = useState<Array<{
@@ -70,7 +66,7 @@ export default function DashboardPage() {
       try {
         const [statsRes, recentRes, playlistsRes] = await Promise.all([
           apiFetch('/progress/stats'),
-          apiFetch('/study/recent'),
+          apiFetch('/daily-word/recent?days=7'),
           apiFetch('/playlists?limit=3')
         ]);
         
@@ -86,11 +82,7 @@ export default function DashboardPage() {
         }
         if (recentRes.ok) {
           const recentData = await recentRes.json();
-          setRecentSessions(recentData.recent || []);
-          if (recentData.badges_unlocked?.length > 0) {
-            const b = recentData.badges_unlocked[0];
-            setUnlockedBadge({ id: b.id, name: b.name, icon: b.icon, category: b.category });
-          }
+          setRecentDailyWords(recentData.recent || []);
         }
         if (playlistsRes.ok) {
           const playlistsData = await playlistsRes.json();
@@ -112,6 +104,18 @@ export default function DashboardPage() {
     fetchData();
     return () => { active = false; };
   }, [user]);
+
+  const formatDailyWordDate = (dateStr: string) => {
+    const date = new Date(`${dateStr}T12:00:00`);
+    const today = new Date();
+    const todayKey = today.toISOString().slice(0, 10);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = yesterday.toISOString().slice(0, 10);
+    if (dateStr === todayKey) return 'Today';
+    if (dateStr === yesterdayKey) return 'Yesterday';
+    return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  };
 
   const scrollToDailyWord = () => {
     dailyWordRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -184,37 +188,43 @@ export default function DashboardPage() {
 
         {/* Features Grid */}
         <div className="grid gap-6 sm:grid-cols-2 w-full mt-24">
-          {/* Recent sessions card */}
+          {/* Recent daily words card */}
           <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px]">
             <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors shrink-0">
               <Clock className="w-6 h-6" />
             </div>
-            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2 shrink-0">Recent</h3>
+            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-1 shrink-0">Recent</h3>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3 shrink-0">Last 7 days</p>
             {loadingData ? (
               <div className="space-y-3 animate-pulse flex-1">
                 <div className="h-10 bg-zinc-900 rounded w-full"></div>
                 <div className="h-10 bg-zinc-900 rounded w-full"></div>
               </div>
-            ) : recentSessions.length > 0 ? (
+            ) : recentDailyWords.length > 0 ? (
               <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 scrollbar-thin scrollbar-thumb-zinc-800">
-                {recentSessions.map((session) => (
-                  <Link 
-                    key={session.session_id} 
-                    href={`/player/${session.song_id}`}
+                {recentDailyWords.map((entry) => (
+                  <Link
+                    key={entry.date}
+                    href={entry.song?.id ? `/player/${entry.song.id}` : '#'}
                     className="block p-3 rounded-lg border border-zinc-200 dark:border-zinc-900 bg-zinc-50 dark:bg-black/40 hover:border-zinc-300 dark:hover:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900/20 transition-all group/item"
                   >
                     <div className="flex justify-between items-center gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-zinc-900 dark:text-white truncate uppercase tracking-wider">
-                          {session.song_title || 'Unknown Song'}
+                        <p className="text-xs font-black text-zinc-900 dark:text-white truncate uppercase tracking-wider">
+                          {entry.word.text}
                         </p>
                         <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest truncate">
-                          {session.song_artist || 'Unknown Artist'}
+                          {entry.word.translation || entry.song?.title || 'Daily word'}
                         </p>
+                        {entry.song && (
+                          <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                            {entry.song.title} · {entry.song.artist}
+                          </p>
+                        )}
                       </div>
                       <div className="shrink-0">
-                        <span className="text-xs font-black text-zinc-900 dark:text-white bg-white dark:bg-zinc-900 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800">
-                          {session.score}/{session.total_questions}
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                          {formatDailyWordDate(entry.date)}
                         </span>
                       </div>
                     </div>
@@ -222,7 +232,9 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">Your last learning sessions will appear here.</p>
+              <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">
+                Your daily words from the past 7 days will appear here.
+              </p>
             )}
           </div>
 

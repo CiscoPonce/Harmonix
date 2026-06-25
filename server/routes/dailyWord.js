@@ -30,6 +30,12 @@ async function handleDailyWord(req, res, force) {
   }
 }
 
+router.get("/recent", (req, res) => {
+  const days = req.query.days || 7;
+  const recent = dailyWordService.getRecentDailyWords(req.user.id, days);
+  res.json({ recent });
+});
+
 router.get("/", (req, res) => handleDailyWord(req, res, false));
 router.post("/new", (req, res) => handleDailyWord(req, res, true));
 

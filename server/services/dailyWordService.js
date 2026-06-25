@@ -149,6 +149,46 @@ function saveDailyWord(userId, date, payload) {
   `).run(userId, date, JSON.stringify(payload));
 }
 
+function summarizeDailyWordPayload(payload) {
+  if (!payload?.word?.text) return null;
+  return {
+    date: payload.date,
+    word: {
+      text: payload.word.text,
+      translation: payload.word.translation || null,
+    },
+    song: payload.song
+      ? {
+          id: payload.song.id,
+          title: payload.song.title,
+          artist: payload.song.artist,
+        }
+      : null,
+  };
+}
+
+function getRecentDailyWords(userId, days = 7) {
+  const limit = Math.max(1, Math.min(parseInt(days, 10) || 7, 30));
+  const rows = db.prepare(`
+    SELECT date, word_json
+    FROM daily_words
+    WHERE user_id = ?
+      AND date >= date('now', ?)
+    ORDER BY date DESC
+    LIMIT ?
+  `).all(userId, `-${limit - 1} days`, limit);
+
+  return rows
+    .map((row) => {
+      try {
+        return summarizeDailyWordPayload(JSON.parse(row.word_json));
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
 
 function assertForceCooldown(userId) {
   const row = db.prepare(
@@ -278,5 +318,7 @@ module.exports = {
   searchDeezerTrack,
   getCachedDailyWord,
   saveDailyWord,
+  summarizeDailyWordPayload,
+  getRecentDailyWords,
   generateDailyWord,
 };

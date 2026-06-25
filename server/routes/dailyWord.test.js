@@ -31,6 +31,40 @@ describe("Daily Word Routes", () => {
     dailyWordService.generateDailyWord = original;
   });
 
+  it("GET /recent returns daily words from the past 7 days", () => {
+    db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
+
+    const dayOffset = (n) => {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      return d.toISOString().slice(0, 10);
+    };
+
+    const save = (date, word) => {
+      db.prepare(`
+        INSERT INTO daily_words (user_id, date, word_json)
+        VALUES (?, ?, ?)
+      `).run(userId, date, JSON.stringify({
+        date,
+        word: { text: word, translation: `${word}-en` },
+        song: { id: "123", title: "Song", artist: "Artist" },
+      }));
+    };
+
+    save(dayOffset(1), "nuevo");
+    save(dayOffset(5), "viejo");
+    save(dayOffset(10), "muy-viejo");
+
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/recent").route.stack[0].handle;
+    const req = { user: { id: userId }, query: { days: "7" } };
+    const res = mockRes();
+    handler(req, res);
+
+    expect(res.body.recent).to.have.lengthOf(2);
+    expect(res.body.recent[0].word.text).to.equal("nuevo");
+    expect(res.body.recent[1].word.text).to.equal("viejo");
+  });
+
   it("POST /new forces regeneration", async () => {
     const original = dailyWordService.generateDailyWord;
     let forced = false;
