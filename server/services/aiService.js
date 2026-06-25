@@ -4,6 +4,7 @@ require('dotenv').config();
 const openai = new OpenAI({
   apiKey: process.env.NVIDIA_NIM_API_KEY,
   baseURL: process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1',
+  timeout: 60000, maxRetries: 0,
 });
 
 
@@ -135,7 +136,6 @@ Output Format (JSON):
 }`;
 
   const response = await createChatCompletion({
-    model: 'stepfun-ai/step-3.7-flash',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: `Lyrics:\n${lyricsText}` },
@@ -188,7 +188,6 @@ Reply with ONLY a JSON object containing a "candidates" array, no markdown or ex
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const response = await createChatCompletion({
-        model: 'stepfun-ai/step-3.7-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Generate 5 ${languageName} word-of-the-day candidates with matching songs.` },

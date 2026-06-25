@@ -5,6 +5,7 @@ const db = require('../db');
 const openai = new OpenAI({
  apiKey: process.env.NVIDIA_NIM_API_KEY,
  baseURL: process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1',
+ timeout: 60000, maxRetries: 0,
 });
 
 function buildQuizPrompt(mappedVocab, unmappedVocab, lyricsLines) {
@@ -45,8 +46,7 @@ async function generateQuiz(songId, mappedVocab, unmappedVocab, lyricsLines) {
  const prompt = buildQuizPrompt(mappedVocab, unmappedVocab, lyricsLines);
 
  async function callOnce() {
- const response = await openai.chat.completions.create({
- model: 'stepfun-ai/step-3.7-flash',
+  const response = await openai.chat.completions.create({
  messages: [
  { role: 'system', content: 'You are a JSON generator. Always output valid JSON matching the requested schema. Do not include markdown code blocks or explanations.' },
  { role: 'user', content: prompt }

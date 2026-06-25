@@ -122,6 +122,7 @@ router.get('/:songId', async (req, res) => {
     const trackRes = await fetch(`https://api.deezer.com/track/${songId}`);
     const trackData = await trackRes.json();
     if (trackData.error) return res.status(404).json({ error: 'Track not found' });
+    if (!trackData.preview) return res.status(404).json({ error: 'No audio preview available for this track' });
 
     const artist = trackData.artist.name;
     const title = trackData.title;
@@ -274,6 +275,31 @@ router.get('/:songId', async (req, res) => {
   } catch (err) {
     console.error('Vocab Error:', err);
     res.status(500).json({ error: 'Internal server error during vocab extraction' });
+  }
+});
+
+// List all vocabulary words a user has learned (reps > 0)
+router.get('/learned', (req, res) => {
+  const userId = req.user.id;
+  try {
+    const words = db.prepare(`
+      SELECT DISTINCT vi.id, vi.word, vi.lemma, vi.definition, vi.cefr_level, vi.language_code,
+             uv.reps, uv.stability, uv.last_review, uv.next_review,
+             svm.song_id,
+             COALESCE(json_extract(sc.track_json, '$.title'), '') as song_title,
+             COALESCE(json_extract(sc.track_json, '$.artist'), '') as song_artist
+      FROM user_vocab_progress uv
+      JOIN vocab_items vi ON vi.id = uv.vocab_id
+      LEFT JOIN song_vocab_map svm ON svm.vocab_id = uv.vocab_id
+      LEFT JOIN song_cache sc ON sc.song_id = svm.song_id
+      WHERE uv.user_id = ? AND uv.reps > 0
+      ORDER BY uv.last_review DESC
+      LIMIT 200
+    `).all(userId);
+    res.json({ words });
+  } catch (err) {
+    console.error('GET /vocab/learned error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

@@ -210,6 +210,7 @@ app.get('/api/tracks/:id', async (req, res) => {
     
     const data = await response.json();
     if (data.error) return res.status(404).json({ error: data.error.message });
+    if (!data.preview) return res.status(404).json({ error: 'No audio preview available for this track' });
 
     const duration = data.duration;
     let previewOffset = 0;

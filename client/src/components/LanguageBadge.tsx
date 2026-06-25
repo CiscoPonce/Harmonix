@@ -10,7 +10,7 @@ export function LanguageBadge() {
 
   return (
     <Link
-      href="/settings"
+      href="/onboarding"
       className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded border border-zinc-800 bg-black/50 text-zinc-300 hover:text-white hover:border-zinc-600 transition-all"
     >
       {user.native_language} → {user.target_language}
