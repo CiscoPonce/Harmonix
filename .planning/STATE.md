@@ -5,7 +5,7 @@ milestone_name: harmonix-rebrand
 status: in_progress
 last_updated: "2026-06-22T00:00:00.000Z"
 progress:
- total_phases: 8
+ total_phases: 9
  completed_phases: 7
  total_plans: 15
  completed_plans: 13
