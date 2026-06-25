@@ -10,7 +10,7 @@
 - [x] **Phase 6: Data Reliability** — Validation loop and persistent caching.
 - [x] **Phase 7: Daily Word** — Word-first daily learning with validated song context. (completed 2026-06-14)
 - [ ] **Phase 8: Harmonix Rebrand & Landing Page** — Full rebrand to Harmonix with public marketing landing page.
-- [ ] **Phase 9: Retention, Gamification & Personalization** — Playlists, badges, SRS review room, and multi-language support.
+- [x] **Phase 9: Retention, Gamification & Personalization** — Playlists, badges, SRS review room, and multi-language support. (completed 2026-06-25)
 
 ## Phase Details
 
@@ -126,10 +126,10 @@
   3. User can unlock badges and achievements for milestones (streaks, words learned, etc.).
   4. User can review learned words via a dedicated SRS flashcard room with SM-2 algorithm.
 **Plans**: 4 plans
-- [ ] 09-01A-PLAN.md — Backend Foundation: DB schema, services, playlist/badge/user routes
-- [ ] 09-01B-PLAN.md — Backend Completion: AI language fix, badge detection, AuthContext, tests
-- [ ] 09-02-PLAN.md — Frontend Pages: Onboarding wizard, SRS review room, playlists
-- [ ] 09-03-PLAN.md — Dashboard Integration: Badges card, playlists card, language badge, review count, onboarding redirect
+- [x] 09-01A-PLAN.md — Backend Foundation: DB schema, services, playlist/badge/user routes
+- [x] 09-01B-PLAN.md — Backend Completion: AI language fix, badge detection, AuthContext, tests
+- [x] 09-02-PLAN.md — Frontend Pages: Onboarding wizard, SRS review room, playlists
+- [x] 09-03-PLAN.md — Dashboard Integration: Badges card, playlists card, language badge, review count, onboarding redirect
 
 **UI hint**: yes
 
@@ -145,4 +145,4 @@
 | 6. Data Reliability | 1/1 | Completed | 2026-06-13 |
 | 7. Daily Word | 1/1 | Completed | 2026-06-14 |
 | 8. Harmonix Rebrand & Landing | 0/2 | Planned | — |
-| 9. Retention, Gamification & Personalization | 0/4 | Planned | — |
+| 9. Retention, Gamification & Personalization | 4/4 | Completed | 2026-06-25 |
