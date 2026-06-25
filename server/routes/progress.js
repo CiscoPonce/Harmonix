@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const srs = require('../services/srsEngine');
+const dailyWordService = require('../services/dailyWordService');
 
 router.get('/stats', (req, res) => {
  const userId = req.user.id;
@@ -12,20 +13,18 @@ router.get('/stats', (req, res) => {
  stats = db.prepare('SELECT * FROM user_stats WHERE user_id = ?').get(userId);
  }
 
- const today = new Date().toISOString().slice(0, 10);
- const todayCount = db.prepare(`
- SELECT COUNT(*) as count FROM quiz_answers qa
- JOIN quiz_sessions qs ON qa.session_id = qs.id
- WHERE qs.user_id = ? AND DATE(qa.answered_at) = ?
- `).get(userId, today).count;
+ const dailyStats = dailyWordService.getDailyWordStats(userId);
 
  res.json({
- streak_days: stats.streak_days,
+ streak_days: dailyStats.streak_days,
+ total_words: dailyStats.total_words,
  total_xp: stats.total_xp,
  last_study_date: stats.last_study_date,
- daily_goal: stats.daily_goal,
- today_answers: todayCount,
- today_goal_met: todayCount >= stats.daily_goal
+ daily_goal: dailyStats.daily_goal,
+ today_words: dailyStats.today_words,
+ today_goal_met: dailyStats.today_goal_met,
+ // Legacy field kept for older clients
+ today_answers: dailyStats.today_words,
  });
 });
 

@@ -3,7 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { SongSearch } from '@/components/SongSearch';
@@ -22,8 +22,8 @@ export default function DashboardPage() {
 
   const [stats, setStats] = useState<{
     streak_days: number;
-    total_xp: number;
-    today_answers: number;
+    total_words: number;
+    today_words: number;
     daily_goal: number;
     today_goal_met: boolean;
   } | null>(null);
@@ -57,6 +57,25 @@ export default function DashboardPage() {
       }
     }
   }, [user, isLoading, router]);
+
+  const refreshDashboardData = useCallback(async () => {
+    try {
+      const [statsRes, recentRes] = await Promise.all([
+        apiFetch('/progress/stats'),
+        apiFetch('/daily-word/recent?days=7'),
+      ]);
+
+      if (statsRes.ok) {
+        setStats(await statsRes.json());
+      }
+      if (recentRes.ok) {
+        const recentData = await recentRes.json();
+        setRecentDailyWords(recentData.recent || []);
+      }
+    } catch (err) {
+      console.error('Error refreshing dashboard data:', err);
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -173,7 +192,7 @@ export default function DashboardPage() {
         </section>
 
         <div ref={dailyWordRef} className="w-full max-w-3xl flex justify-center">
-          <DailyWordCard />
+          <DailyWordCard onWordChange={refreshDashboardData} />
         </div>
 
         <section className="w-full mt-16 space-y-4">
@@ -260,25 +279,25 @@ export default function DashboardPage() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
-                    <span className="text-zinc-500">Total XP</span>
-                    <span className="text-zinc-900 dark:text-white">{stats.total_xp} XP</span>
+                    <span className="text-zinc-500">Words learned</span>
+                    <span className="text-zinc-900 dark:text-white">{stats.total_words}</span>
                   </div>
                 </div>
                 <div className="space-y-1 mt-auto">
                   <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                    <span>Daily Goal</span>
-                    <span>{stats.today_answers}/{stats.daily_goal} answers</span>
+                    <span>Today&apos;s word</span>
+                    <span>{stats.today_words}/{stats.daily_goal}</span>
                   </div>
                   <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full transition-all duration-500 ${stats.today_goal_met ? 'bg-green-500' : 'bg-zinc-500'}`}
-                      style={{ width: `${Math.min(100, (stats.today_answers / stats.daily_goal) * 100)}%` }}
+                      style={{ width: `${Math.min(100, (stats.today_words / stats.daily_goal) * 100)}%` }}
                     />
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">Track your streak and vocabulary progress.</p>
+              <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">Track your daily word streak and progress.</p>
             )}
           </div>
 

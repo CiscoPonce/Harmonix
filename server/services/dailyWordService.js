@@ -189,6 +189,50 @@ function getRecentDailyWords(userId, days = 7) {
     .filter(Boolean);
 }
 
+function computeDailyWordStreak(userId) {
+  const dates = db.prepare(`
+    SELECT date FROM daily_words WHERE user_id = ? ORDER BY date DESC
+  `).all(userId).map((row) => row.date);
+
+  if (!dates.length) return 0;
+
+  const dateSet = new Set(dates);
+  const cursor = new Date();
+  const today = todayDate();
+
+  if (!dateSet.has(today)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  let streak = 0;
+  while (true) {
+    const key = cursor.toISOString().slice(0, 10);
+    if (!dateSet.has(key)) break;
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return streak;
+}
+
+function getDailyWordStats(userId) {
+  const today = todayDate();
+  const totalWords = db.prepare(
+    "SELECT COUNT(*) as count FROM daily_words WHERE user_id = ?"
+  ).get(userId).count;
+  const todayHasWord = !!db.prepare(
+    "SELECT 1 FROM daily_words WHERE user_id = ? AND date = ?"
+  ).get(userId, today);
+
+  return {
+    streak_days: computeDailyWordStreak(userId),
+    total_words: totalWords,
+    daily_goal: 1,
+    today_words: todayHasWord ? 1 : 0,
+    today_goal_met: todayHasWord,
+  };
+}
+
 
 function assertForceCooldown(userId) {
   const row = db.prepare(
@@ -320,5 +364,7 @@ module.exports = {
   saveDailyWord,
   summarizeDailyWordPayload,
   getRecentDailyWords,
+  computeDailyWordStreak,
+  getDailyWordStats,
   generateDailyWord,
 };

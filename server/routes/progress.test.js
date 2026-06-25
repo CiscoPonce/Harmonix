@@ -18,7 +18,8 @@ describe('Progress API Routes', () => {
  ensureUser('fresh-user');
  ensureUser('u-progress');
  ensureUser('user-due');
- // Delete leaves before roots, in strict FK dependency order.
+ ensureUser('stats-daily');
+ db.prepare('DELETE FROM daily_words').run();
  db.prepare('DELETE FROM quiz_answers').run();
  db.prepare('DELETE FROM user_vocab_progress').run();
  db.prepare('DELETE FROM song_vocab_map').run();
@@ -28,14 +29,42 @@ describe('Progress API Routes', () => {
  });
 
  describe('GET /stats', () => {
- it('creates a stats row on first request and returns today\'s progress', async () => {
+ it('creates a stats row on first request and returns daily word progress', async () => {
  const handler = progressRouter.stack.find(s => s.route.path === '/stats').route.stack[0].handle;
  const req = { user: { id: 'fresh-user' } };
  const res = mockRes();
  await handler(req, res);
  expect(res.body).to.have.property('streak_days');
- expect(res.body).to.have.property('total_xp');
- expect(res.body.daily_goal).to.equal(20);
+ expect(res.body).to.have.property('total_words');
+ expect(res.body.daily_goal).to.equal(1);
+ expect(res.body.today_words).to.equal(0);
+ expect(res.body.today_goal_met).to.equal(false);
+ });
+
+ it('reflects daily word streak and today completion', async () => {
+ const dayOffset = (n) => {
+ const d = new Date();
+ d.setDate(d.getDate() - n);
+ return d.toISOString().slice(0, 10);
+ };
+
+ db.prepare(`
+ INSERT INTO daily_words (user_id, date, word_json)
+ VALUES (?, ?, ?), (?, ?, ?)
+ `).run(
+ 'stats-daily', dayOffset(1), JSON.stringify({ date: dayOffset(1), word: { text: 'ayer' } }),
+ 'stats-daily', dayOffset(0), JSON.stringify({ date: dayOffset(0), word: { text: 'hoy' } })
+ );
+
+ const handler = progressRouter.stack.find(s => s.route.path === '/stats').route.stack[0].handle;
+ const req = { user: { id: 'stats-daily' } };
+ const res = mockRes();
+ await handler(req, res);
+
+ expect(res.body.streak_days).to.equal(2);
+ expect(res.body.total_words).to.equal(2);
+ expect(res.body.today_words).to.equal(1);
+ expect(res.body.today_goal_met).to.equal(true);
  });
  });
 

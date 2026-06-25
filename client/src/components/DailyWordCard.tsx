@@ -50,7 +50,7 @@ function highlightWord(snippet: string, start: number, end: number) {
   );
 }
 
-export function DailyWordCard() {
+export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const [data, setData] = useState<DailyWordPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -93,6 +93,7 @@ export function DailyWordCard() {
       setError(null);
       setRefreshError(null);
       setStatusMessage(null);
+      onWordChange?.();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to load daily word";
       if (force && data) {
@@ -105,7 +106,7 @@ export function DailyWordCard() {
       setRefreshing(false);
       setStatusMessage(null);
     }
-  }, [data]);
+  }, [data, onWordChange]);
 
   useEffect(() => { loadDailyWord(false); }, []);
 
