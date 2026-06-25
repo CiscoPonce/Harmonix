@@ -229,8 +229,76 @@ db.exec(`
  )
 `);
 
-// Canonicalize a word for the unique-key index: lowercase + accent-fold so
-// "Corazón", "CORAZÓN", "corazon" all collapse to one row.
+// Migration: Add native_language to users
+const userLangCols = db.prepare("PRAGMA table_info(users)").all();
+if (!userLangCols.some(col => col.name === 'native_language')) {
+  db.exec("ALTER TABLE users ADD COLUMN native_language TEXT DEFAULT 'en'");
+}
+
+// Playlist and Gamification tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS playlists (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS playlist_songs (
+    id TEXT PRIMARY KEY,
+    playlist_id TEXT NOT NULL,
+    song_id TEXT NOT NULL,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
+  )
+`);
+
+db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_playlist_songs_unique ON playlist_songs(playlist_id, song_id)`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS badges (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    icon TEXT NOT NULL,
+    category TEXT NOT NULL,
+    criteria_json TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_badges (
+    user_id TEXT NOT NULL,
+    badge_id TEXT NOT NULL,
+    unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, badge_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (badge_id) REFERENCES badges(id)
+  )
+`);
+
+// Seed badges
+const badgeCount = db.prepare('SELECT COUNT(*) as count FROM badges').get().count;
+if (badgeCount === 0) {
+  const insertBadge = db.prepare('INSERT OR IGNORE INTO badges (id, name, description, icon, category, criteria_json) VALUES (?, ?, ?, ?, ?, ?)');
+  const seedData = [
+    ['streak_7', '7-Day Streak', 'Maintain a 7-day study streak', 'Flame', 'streak', JSON.stringify({type:'streak_days',threshold:7})],
+    ['vocab_50', 'Vocabulary Builder', 'Master 50 vocabulary words', 'BookOpen', 'vocabulary', JSON.stringify({type:'vocab_count',threshold:50})],
+    ['quiz_perfect', 'Quiz Master', 'Score 100% on a quiz', 'Award', 'quiz', JSON.stringify({type:'perfect_quiz',threshold:1})],
+    ['playlist_first', 'Curator', 'Create your first playlist', 'ListMusic', 'playlist', JSON.stringify({type:'playlist_count',threshold:1})],
+    ['daily_word_7', 'Daily Dedication', 'Get your daily word 7 days in a row', 'CalendarDays', 'daily_word', JSON.stringify({type:'daily_word_streak',threshold:7})]
+  ];
+  const txn = db.transaction(() => {
+    for (const b of seedData) insertBadge.run(...b);
+  });
+  txn();
+}
+
 const { ensureCanonicalKeys } = require('./services/canonicalKeyService');
 ensureCanonicalKeys(db);
 
