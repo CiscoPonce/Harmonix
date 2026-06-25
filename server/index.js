@@ -12,6 +12,7 @@ const validationRouter = require('./routes/validation');
 const dailyWordRouter = require('./routes/dailyWord');
 const playlistsRouter = require('./routes/playlists');
 const badgesRouter = require('./routes/badges');
+const userRouter = require('./routes/user');
 require('dotenv').config();
 
 const app = express();
@@ -272,6 +273,7 @@ app.use('/api/validation', authenticateToken, validationRouter);
 app.use('/api/daily-word', authenticateToken, dailyWordRouter);
 app.use('/api/playlists', authenticateToken, playlistsRouter);
 app.use('/api/badges', authenticateToken, badgesRouter);
+app.use('/api/user', authenticateToken, userRouter);
 
 // --- Frontend Proxy ---
 const { createProxyMiddleware } = require('http-proxy-middleware');
