@@ -145,7 +145,7 @@ export default function DashboardPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black text-zinc-900 dark:text-white">
         <div className="flex flex-col items-center gap-3">
-          <HarmonixWordmark showTagline />
+          <HarmonixWordmark href={null} showTagline />
           <p className="text-sm font-medium uppercase tracking-widest text-zinc-500 animate-pulse">Loading</p>
         </div>
       </div>

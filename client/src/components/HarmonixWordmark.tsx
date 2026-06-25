@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 interface HarmonixWordmarkProps {
-  href?: string;
+  href?: string | null;
   showTagline?: boolean;
   className?: string;
 }
