@@ -7,6 +7,11 @@ import { useRouter } from 'next/navigation';
 export interface User {
   id: string;
   email: string;
+  native_language?: string;
+  target_language?: string;
+  genre?: string;
+  difficulty?: string;
+  cefr_level?: string;
 }
 
 export interface AuthContextType {
