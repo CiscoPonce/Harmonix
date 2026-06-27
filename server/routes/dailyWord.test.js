@@ -65,6 +65,34 @@ describe("Daily Word Routes", () => {
     expect(res.body.recent[1].word.text).to.equal("viejo");
   });
 
+  it("GET /recent returns every word discovered today, not just the latest", () => {
+    db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const save = (word) => {
+      db.prepare(`
+        INSERT INTO daily_words (user_id, date, word_json, generated_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      `).run(userId, today, JSON.stringify({
+        date: today,
+        word: { text: word, translation: `${word}-en` },
+        song: { id: "123", title: "Song", artist: "Artist" },
+      }));
+    };
+
+    save("primero");
+    save("segundo");
+    save("tercero");
+
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/recent").route.stack[0].handle;
+    const req = { user: { id: userId }, query: { days: "7" } };
+    const res = mockRes();
+    handler(req, res);
+
+    expect(res.body.recent).to.have.lengthOf(3);
+    expect(res.body.recent.map((entry) => entry.word.text)).to.include.members(["primero", "segundo", "tercero"]);
+  });
+
   it("POST /new forces regeneration", async () => {
     const original = dailyWordService.generateDailyWord;
     let forced = false;

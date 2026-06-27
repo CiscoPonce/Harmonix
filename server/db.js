@@ -224,10 +224,35 @@ db.exec(`
  date TEXT NOT NULL,
  word_json TEXT NOT NULL,
  generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
- UNIQUE(user_id, date),
  FOREIGN KEY (user_id) REFERENCES users(id)
  )
 `);
+
+// Migration: allow multiple discovered words per day (drop one-word-per-day unique constraint).
+{
+  const dailyWordsSql = db.prepare(
+    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'daily_words'"
+  ).get()?.sql || '';
+  if (dailyWordsSql.includes('UNIQUE(user_id, date)')) {
+    db.exec(`
+      BEGIN;
+      CREATE TABLE daily_words_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        date TEXT NOT NULL,
+        word_json TEXT NOT NULL,
+        generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+      INSERT INTO daily_words_history (id, user_id, date, word_json, generated_at)
+      SELECT id, user_id, date, word_json, generated_at FROM daily_words;
+      DROP TABLE daily_words;
+      ALTER TABLE daily_words_history RENAME TO daily_words;
+      COMMIT;
+    `);
+  }
+}
+db.exec(`CREATE INDEX IF NOT EXISTS idx_daily_words_user_generated ON daily_words(user_id, generated_at DESC)`);
 
 // Migration: Add native_language to users
 const userLangCols = db.prepare("PRAGMA table_info(users)").all();

@@ -6,6 +6,7 @@ const {
   findWordOccurrence,
   getCachedDailyWord,
   saveDailyWord,
+  getRecentDailyWords,
   generateDailyWord,
 } = require("./dailyWordService");
 const aiService = require("./aiService");
@@ -44,6 +45,33 @@ describe("Daily Word Service", () => {
     const cached = getCachedDailyWord(userId, "2026-06-14");
     expect(cached.word.text).to.equal("hola");
     expect(cached.cached).to.equal(true);
+  });
+
+  it("keeps the latest daily word as cache when multiple are saved the same day", () => {
+    const date = "2026-06-15";
+    saveDailyWord(userId, date, { date, word: { text: "primero" } });
+    saveDailyWord(userId, date, { date, word: { text: "segundo" } });
+    const cached = getCachedDailyWord(userId, date);
+    expect(cached.word.text).to.equal("segundo");
+  });
+
+  it("returns all discovered words in recent history", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
+    saveDailyWord(userId, today, {
+      date: today,
+      word: { text: "amor", translation: "love" },
+      song: { id: "1", title: "Song A", artist: "Artist A" },
+    });
+    saveDailyWord(userId, today, {
+      date: today,
+      word: { text: "noche", translation: "night" },
+      song: { id: "2", title: "Song B", artist: "Artist B" },
+    });
+
+    const recent = getRecentDailyWords(userId, 7);
+    expect(recent).to.have.lengthOf(2);
+    expect(recent.map((entry) => entry.word.text)).to.include.members(["amor", "noche"]);
   });
 
   it("returns cached payload without calling AI", async () => {

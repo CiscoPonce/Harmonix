@@ -128,7 +128,10 @@ function buildPayload(date, suggestion, track, lyricsData, occurrence) {
 
 function getCachedDailyWord(userId, date) {
   const row = db.prepare(
-    "SELECT word_json FROM daily_words WHERE user_id = ? AND date = ?"
+    `SELECT word_json FROM daily_words
+     WHERE user_id = ? AND date = ?
+     ORDER BY generated_at DESC, id DESC
+     LIMIT 1`
   ).get(userId, date);
   if (!row) return null;
   try {
@@ -143,16 +146,15 @@ function saveDailyWord(userId, date, payload) {
   db.prepare(`
     INSERT INTO daily_words (user_id, date, word_json, generated_at)
     VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(user_id, date) DO UPDATE SET
-      word_json = excluded.word_json,
-      generated_at = CURRENT_TIMESTAMP
   `).run(userId, date, JSON.stringify(payload));
 }
 
-function summarizeDailyWordPayload(payload) {
+function summarizeDailyWordPayload(payload, meta = {}) {
   if (!payload?.word?.text) return null;
   return {
+    id: meta.id ?? null,
     date: payload.date,
+    discovered_at: meta.generated_at ?? null,
     word: {
       text: payload.word.text,
       translation: payload.word.translation || null,
@@ -168,20 +170,24 @@ function summarizeDailyWordPayload(payload) {
 }
 
 function getRecentDailyWords(userId, days = 7) {
-  const limit = Math.max(1, Math.min(parseInt(days, 10) || 7, 30));
+  const dayWindow = Math.max(1, Math.min(parseInt(days, 10) || 7, 30));
+  const maxEntries = 50;
   const rows = db.prepare(`
-    SELECT date, word_json
+    SELECT id, date, word_json, generated_at
     FROM daily_words
     WHERE user_id = ?
       AND date >= date('now', ?)
-    ORDER BY date DESC
+    ORDER BY generated_at DESC
     LIMIT ?
-  `).all(userId, `-${limit - 1} days`, limit);
+  `).all(userId, `-${dayWindow - 1} days`, maxEntries);
 
   return rows
     .map((row) => {
       try {
-        return summarizeDailyWordPayload(JSON.parse(row.word_json));
+        return summarizeDailyWordPayload(JSON.parse(row.word_json), {
+          id: row.id,
+          generated_at: row.generated_at,
+        });
       } catch {
         return null;
       }
@@ -220,16 +226,16 @@ function getDailyWordStats(userId) {
   const totalWords = db.prepare(
     "SELECT COUNT(*) as count FROM daily_words WHERE user_id = ?"
   ).get(userId).count;
-  const todayHasWord = !!db.prepare(
-    "SELECT 1 FROM daily_words WHERE user_id = ? AND date = ?"
-  ).get(userId, today);
+  const todayWords = db.prepare(
+    "SELECT COUNT(*) as count FROM daily_words WHERE user_id = ? AND date = ?"
+  ).get(userId, today).count;
 
   return {
     streak_days: computeDailyWordStreak(userId),
     total_words: totalWords,
     daily_goal: 1,
-    today_words: todayHasWord ? 1 : 0,
-    today_goal_met: todayHasWord,
+    today_words: todayWords,
+    today_goal_met: todayWords >= 1,
   };
 }
 

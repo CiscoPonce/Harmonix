@@ -29,7 +29,9 @@ export default function DashboardPage() {
   } | null>(null);
 
   const [recentDailyWords, setRecentDailyWords] = useState<Array<{
+    id: number | null;
     date: string;
+    discovered_at: string | null;
     word: { text: string; translation: string | null };
     song: { id: string; title: string; artist: string } | null;
   }>>([]);
@@ -125,7 +127,6 @@ export default function DashboardPage() {
   }, [user]);
 
   const formatDailyWordDate = (dateStr: string) => {
-    const date = new Date(`${dateStr}T12:00:00`);
     const today = new Date();
     const todayKey = today.toISOString().slice(0, 10);
     const yesterday = new Date(today);
@@ -133,7 +134,15 @@ export default function DashboardPage() {
     const yesterdayKey = yesterday.toISOString().slice(0, 10);
     if (dateStr === todayKey) return 'Today';
     if (dateStr === yesterdayKey) return 'Yesterday';
+    const date = new Date(`${dateStr}T12:00:00`);
     return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
+  const formatDiscoveredTime = (discoveredAt: string | null) => {
+    if (!discoveredAt) return null;
+    const when = new Date(`${discoveredAt.replace(' ', 'T')}Z`);
+    if (Number.isNaN(when.getTime())) return null;
+    return when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   };
 
   const scrollToDailyWord = () => {
@@ -196,17 +205,19 @@ export default function DashboardPage() {
               <Clock className="w-6 h-6" />
             </div>
             <h3 className="font-black uppercase italic tracking-tighter text-xl mb-1 shrink-0">Recent</h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3 shrink-0">Last 7 days</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3 shrink-0">Words you discovered · last 7 days</p>
             {loadingData ? (
               <div className="space-y-3 animate-pulse flex-1">
                 <div className="h-10 bg-zinc-900 rounded w-full"></div>
                 <div className="h-10 bg-zinc-900 rounded w-full"></div>
               </div>
             ) : recentDailyWords.length > 0 ? (
-              <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 scrollbar-thin scrollbar-thumb-zinc-800">
-                {recentDailyWords.map((entry) => (
+              <div className="space-y-2 flex-1 overflow-y-auto max-h-[220px] pr-1 scrollbar-thin scrollbar-thumb-zinc-800">
+                {recentDailyWords.map((entry) => {
+                  const timeLabel = formatDiscoveredTime(entry.discovered_at);
+                  return (
                   <Link
-                    key={entry.date}
+                    key={entry.id ?? `${entry.date}-${entry.word.text}`}
                     href={entry.song?.id ? `/player/${entry.song.id}` : '#'}
                     className="block p-3 rounded-lg border border-zinc-200 dark:border-zinc-900 bg-zinc-50 dark:bg-black/40 hover:border-zinc-300 dark:hover:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900/20 transition-all group/item"
                   >
@@ -216,7 +227,7 @@ export default function DashboardPage() {
                           {entry.word.text}
                         </p>
                         <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest truncate">
-                          {entry.word.translation || entry.song?.title || 'Daily word'}
+                          {entry.word.translation || entry.song?.title || 'Discovered word'}
                         </p>
                         {entry.song && (
                           <p className="text-[10px] text-zinc-400 truncate mt-0.5">
@@ -224,18 +235,24 @@ export default function DashboardPage() {
                           </p>
                         )}
                       </div>
-                      <div className="shrink-0">
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                      <div className="shrink-0 text-right">
+                        <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                           {formatDailyWordDate(entry.date)}
                         </span>
+                        {timeLabel && (
+                          <span className="block text-[10px] text-zinc-400 mt-0.5">
+                            {timeLabel}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">
-                Your daily words from the past 7 days will appear here.
+                Every word you discover will show up here — daily words and refreshes included.
               </p>
             )}
           </div>
