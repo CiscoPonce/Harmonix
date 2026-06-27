@@ -1,8 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { VALID_LANGUAGE_CODES } = require('../constants/languages');
 
-const VALID_LANGUAGES = ['en', 'es', 'fr', 'de', 'pt'];
+function rejectInvalidLanguage(res, field, value) {
+  if (value && !VALID_LANGUAGE_CODES.includes(value)) {
+    res.status(400).json({
+      error: `Invalid ${field}. Must be one of: ${VALID_LANGUAGE_CODES.join(', ')}`,
+    });
+    return true;
+  }
+  return false;
+}
 
 router.get('/preferences', (req, res) => {
   const userId = req.user.id;
@@ -20,9 +29,8 @@ router.patch('/preferences', (req, res) => {
   const userId = req.user.id;
   const { native_language, target_language, genre, difficulty, cefr_level } = req.body;
 
-  if (target_language && !VALID_LANGUAGES.includes(target_language)) {
-    return res.status(400).json({ error: 'Invalid target_language. Must be one of: ' + VALID_LANGUAGES.join(', ') });
-  }
+  if (rejectInvalidLanguage(res, 'native_language', native_language)) return;
+  if (rejectInvalidLanguage(res, 'target_language', target_language)) return;
 
   try {
     const sets = [];

@@ -5,6 +5,7 @@ const aiService = require('../services/aiService');
 const alignment = require('../utils/alignment');
 const validation = require('../services/validationService');
 const { foldWord } = require('../services/canonicalKeyService');
+const { languageNameFromCode } = require('../constants/languages');
 const { nanoid } = require('nanoid');
 
 // Parse a block of LRCLib-style lyrics (synced or plain) into the same
@@ -138,9 +139,8 @@ router.get('/:songId', async (req, res) => {
     if (!lyricsText && !syncedLyricsText) return res.status(404).json({ error: 'Lyrics content empty' });
 
     // 3. Extract and Align — use user's target_language instead of hardcoded 'Spanish'
-    const LANG_CODE_TO_NAME = { es: 'Spanish', en: 'English', fr: 'French', de: 'German', pt: 'Portuguese' };
     const langCode = req.user.target_language || 'es';
-    const targetLangName = LANG_CODE_TO_NAME[langCode] || 'Spanish';
+    const targetLangName = languageNameFromCode(langCode);
     const vocab = await aiService.extractVocabulary(lyricsText, targetLangName, userCefr);
     const vocabWithIds = vocab.map(v => ({ ...v, id: nanoid() }));
 

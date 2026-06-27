@@ -1,5 +1,10 @@
 const { expect } = require('chai');
-const { extractVocabulary, openai } = require('./aiService');
+const {
+  extractVocabulary,
+  createChatCompletion,
+  AVAILABLE_MODELS,
+  openai,
+} = require('./aiService');
 
 describe('AI Service', () => {
   let originalCreate;
@@ -10,6 +15,10 @@ describe('AI Service', () => {
 
   after(() => {
     openai.chat.completions.create = originalCreate;
+  });
+
+  it('uses kimi-k2.6 as the default primary model', () => {
+    expect(AVAILABLE_MODELS[0]).to.equal('moonshotai/kimi-k2.6');
   });
 
   it('should construct correct prompt and return vocabulary', async () => {
@@ -24,13 +33,13 @@ describe('AI Service', () => {
                   lemma: 'test',
                   definition: 'a trial',
                   cefr_level: 'A1',
-                  reason: 'common word'
-                }
-              ]
-            })
-          }
-        }
-      ]
+                  reason: 'common word',
+                },
+              ],
+            }),
+          },
+        },
+      ],
     };
 
     let capturedArgs;
@@ -39,14 +48,36 @@ describe('AI Service', () => {
       return mockResponse;
     };
 
-    const lyrics = "This is a test song.";
+    const lyrics = 'This is a test song.';
     const result = await extractVocabulary(lyrics, 'English', 'A1');
 
     expect(result).to.be.an('array');
     expect(result[0].word).to.equal('test');
-    expect(capturedArgs.model).to.equal('stepfun-ai/step-3.7-flash');
+    expect(capturedArgs.model).to.equal('moonshotai/kimi-k2.6');
     expect(capturedArgs.messages[0].content).to.contain('English');
     expect(capturedArgs.messages[0].content).to.contain('A1');
     expect(capturedArgs.messages[1].content).to.contain(lyrics);
+  });
+
+  it('falls back to the next model on rate limit', async () => {
+    let callCount = 0;
+    openai.chat.completions.create = async (args) => {
+      callCount += 1;
+      if (args.model === AVAILABLE_MODELS[0]) {
+        const err = new Error('429 Too Many Requests');
+        err.status = 429;
+        throw err;
+      }
+      return {
+        choices: [{ message: { content: '{"ok":true}' } }],
+      };
+    };
+
+    const response = await createChatCompletion({
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+
+    expect(callCount).to.be.at.least(2);
+    expect(response.choices[0].message.content).to.equal('{"ok":true}');
   });
 });

@@ -120,4 +120,44 @@ describe("Daily Word Service", () => {
 
     aiService.generateDailyWord = originalAi;
   });
+
+  for (const [code, name] of [
+    ['pt', 'Portuguese'],
+    ['de', 'German'],
+    ['en', 'English'],
+    ['fr', 'French'],
+    ['es', 'Spanish'],
+  ]) {
+    it(`passes ${name} to AI for target_language=${code}`, async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      db.prepare('UPDATE users SET target_language = ? WHERE id = ?').run(code, userId);
+      db.prepare('DELETE FROM daily_words WHERE user_id = ? AND date = ?').run(userId, today);
+
+      let capturedLanguage;
+      const originalAi = aiService.generateDailyWord;
+      aiService.generateDailyWord = async (args) => {
+        capturedLanguage = args.languageName;
+        return [{
+          target_word: 'teste',
+          translation: 'test',
+          song_title: 'Song',
+          artist: 'Artist',
+          genre: 'pop',
+        }];
+      };
+
+      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      try {
+        await generateDailyWord(user, {
+          force: true,
+          fetchImpl: async () => ({ ok: false, status: 404 }),
+        });
+      } catch (err) {
+        expect(err.message).to.equal('daily_word_generation_failed');
+      }
+
+      expect(capturedLanguage).to.equal(name);
+      aiService.generateDailyWord = originalAi;
+    });
+  }
 });

@@ -13,15 +13,15 @@ function sleep(ms) {
 }
 
 const modelsEnv = process.env.NVIDIA_NIM_MODELS || process.env.NVIDIA_NIM_MODEL;
-const AVAILABLE_MODELS = modelsEnv 
+const AVAILABLE_MODELS = modelsEnv
   ? modelsEnv.split(',').map(m => m.trim())
   : [
-      'meta/llama-3.1-8b-instruct',
+      'moonshotai/kimi-k2.6',
       'meta/llama-3.3-70b-instruct',
+      'meta/llama-3.1-8b-instruct',
       'mistralai/mistral-medium-3.5-128b',
       'minimaxai/minimax-m3',
-      'moonshotai/kimi-k2.6',
-      'stepfun-ai/step-3.7-flash'
+      'stepfun-ai/step-3.7-flash',
     ];
 
 function isRateLimitError(err) {
@@ -221,5 +221,7 @@ Reply with ONLY a JSON object containing a "candidates" array, no markdown or ex
 module.exports = {
   extractVocabulary,
   generateDailyWord,
+  createChatCompletion,
+  AVAILABLE_MODELS,
   openai,
 };

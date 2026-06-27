@@ -2,10 +2,10 @@ const db = require("../db");
 const aiService = require("./aiService");
 const validation = require("./validationService");
 const alignment = require("../utils/alignment");
+const { languageNameFromCode } = require("../constants/languages");
 
 const MAX_RETRIES = 3;
 const FORCE_COOLDOWN_MS = process.env.FORCE_COOLDOWN_MS ? parseInt(process.env.FORCE_COOLDOWN_MS, 10) : 90_000;
-const LANGUAGE_NAMES = { es: "Spanish", en: "English", fr: "French" };
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
@@ -258,7 +258,7 @@ async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}
   }
 
   const targetLanguage = user.target_language || "es";
-  const languageName = LANGUAGE_NAMES[targetLanguage] || "Spanish";
+  const languageName = languageNameFromCode(targetLanguage);
   const cefrLevel = user.cefr_level || "B1";
   const genre = user.genre || "pop";
   const difficulty = user.difficulty || "medium";

@@ -17,6 +17,11 @@ describe('User Preferences API Routes', () => {
   beforeEach(() => {
     ensureUser('up-test');
     ensureUser('up-partial');
+    db.prepare(`
+      UPDATE users
+      SET native_language = 'en', target_language = 'es', genre = 'pop', difficulty = 'medium', cefr_level = 'B1'
+      WHERE id IN ('up-test', 'up-partial')
+    `).run();
   });
 
   describe('GET /preferences', () => {
@@ -46,6 +51,14 @@ describe('User Preferences API Routes', () => {
     it('rejects invalid target_language with 400', () => {
       const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
       const req = { body: { target_language: 'invalid' }, user: { id: 'up-test' } };
+      const res = mockRes();
+      handler(req, res);
+      expect(res.statusCode).to.equal(400);
+    });
+
+    it('rejects invalid native_language with 400', () => {
+      const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
+      const req = { body: { native_language: 'invalid' }, user: { id: 'up-test' } };
       const res = mockRes();
       handler(req, res);
       expect(res.statusCode).to.equal(400);
