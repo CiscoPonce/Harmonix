@@ -50,7 +50,7 @@
 |------------|--------|------------|
 | Search bar | Songs, artists, words | Deezer search → `/player/[id]` |
 | Trending Songs carousel | Cards + fluency % | **v1.1** — optional `10-03C` |
-| New Vocabulary row | Komorebi, Saudade cards | `GET /daily-word/recent` |
+| New Vocabulary row | Komorebi, Saudade cards + **32 READY** badge | `GET /daily-word/recent` + `GET /daily-word/queue-status` |
 | Lyric Context card | Mono snippet | Recent daily word lyric |
 | Streak chip | 12 DAYS ACTIVE | `GET /progress/stats` → `streak_days` |
 | Level chip | B2 UPPER INT. | User `cefr_level` |
