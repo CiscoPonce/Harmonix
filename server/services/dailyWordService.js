@@ -3,6 +3,7 @@ const aiService = require("./aiService");
 const validation = require("./validationService");
 const alignment = require("../utils/alignment");
 const { languageNameFromCode } = require("../constants/languages");
+const wordQueue = require("./wordQueueService");
 
 const MAX_RETRIES = 3;
 const FORCE_COOLDOWN_MS = process.env.FORCE_COOLDOWN_MS ? parseInt(process.env.FORCE_COOLDOWN_MS, 10) : 90_000;
@@ -126,6 +127,92 @@ function buildPayload(date, suggestion, track, lyricsData, occurrence) {
   };
 }
 
+function persistPayloadSideEffects(payload, track, lyricsData, syncCheck) {
+  validation.cacheSongData(String(track.id), lyricsData, {
+    id: track.id,
+    title: track.title,
+    artist: track.artist.name,
+    preview: track.preview,
+    duration: track.duration,
+    preview_offset: previewOffset(track.duration),
+  });
+  validation.recordValidation(String(track.id), track.artist.name, track.title, track.duration, syncCheck);
+
+  db.prepare(`
+    INSERT INTO song_lyrics_snapshot (song_id, synced_lyrics, plain_lyrics)
+    VALUES (?, ?, ?)
+    ON CONFLICT(song_id) DO UPDATE SET
+      synced_lyrics = excluded.synced_lyrics,
+      plain_lyrics = excluded.plain_lyrics,
+      fetched_at = CURRENT_TIMESTAMP
+  `).run(String(track.id), lyricsData.syncedLyrics, lyricsData.plainLyrics || null);
+}
+
+async function tryValidateSuggestion(suggestion, date, fetchImpl = fetch) {
+  try {
+    const track = await searchDeezerTrack(suggestion.artist, suggestion.song_title, fetchImpl);
+    if (!track) return { error: "deezer_not_found" };
+
+    const lyricsData = await fetchLyrics(track.artist.name, track.title, track.duration, fetchImpl);
+    if (!lyricsData?.syncedLyrics) return { error: "lyrics_not_found" };
+
+    const syncCheck = validation.validateSongSync({ duration: track.duration }, lyricsData.syncedLyrics);
+    if (!syncCheck.valid) return { error: "lyrics_validation_failed" };
+
+    const occurrence = findWordOccurrence(suggestion.target_word, lyricsData.syncedLyrics);
+    if (!occurrence) return { error: "word_not_in_lyrics" };
+
+    const payload = buildPayload(date, suggestion, track, lyricsData, occurrence);
+    return { payload, track, lyricsData, syncCheck, genre: suggestion.genre || null };
+  } catch (err) {
+    if (err.code === "ai_rate_limit") throw err;
+    return { error: err.code || err.message || "generation_failed" };
+  }
+}
+
+function genreBoostScore(genre, userGenre) {
+  if (!genre || !userGenre || userGenre === "any") return 0;
+  const g = String(genre).toLowerCase();
+  const u = String(userGenre).toLowerCase();
+  if (g.includes(u) || u.includes(g)) return 2;
+  return 0;
+}
+
+async function validateAllCandidates(candidates, date, userGenre, fetchImpl = fetch) {
+  const results = [];
+  let lastError = null;
+
+  for (const suggestion of candidates) {
+    const result = await tryValidateSuggestion(suggestion, date, fetchImpl);
+    if (result.payload) {
+      results.push(result);
+    } else if (result.error) {
+      lastError = result.error;
+    }
+  }
+
+  results.sort((a, b) => genreBoostScore(b.genre, userGenre) - genreBoostScore(a.genre, userGenre));
+
+  return {
+    valid: results.map((r) => r.payload),
+    sideEffects: results,
+    lastError,
+  };
+}
+
+function getAvoidWords(userId) {
+  const history = db.prepare(`
+    SELECT json_extract(word_json, '$.word.text') as word
+    FROM daily_words
+    WHERE user_id = ?
+    ORDER BY generated_at DESC
+    LIMIT 14
+  `).all(userId).map((r) => r.word).filter(Boolean);
+
+  const queued = wordQueue.getQueuedWordTexts(userId);
+  return [...new Set([...history, ...queued])];
+}
+
 function getCachedDailyWord(userId, date) {
   const row = db.prepare(
     `SELECT word_json FROM daily_words
@@ -147,6 +234,13 @@ function saveDailyWord(userId, date, payload) {
     INSERT INTO daily_words (user_id, date, word_json, generated_at)
     VALUES (?, ?, ?, CURRENT_TIMESTAMP)
   `).run(userId, date, JSON.stringify(payload));
+}
+
+function deliverPayload(userId, payload, { fromQueue = false } = {}) {
+  const date = todayDate();
+  const delivered = { ...payload, date, cached: false, from_queue: fromQueue };
+  saveDailyWord(userId, date, delivered);
+  return delivered;
 }
 
 function summarizeDailyWordPayload(payload, meta = {}) {
@@ -197,7 +291,7 @@ function getRecentDailyWords(userId, days = 7) {
 
 function computeDailyWordStreak(userId) {
   const dates = db.prepare(`
-    SELECT date FROM daily_words WHERE user_id = ? ORDER BY date DESC
+    SELECT DISTINCT date FROM daily_words WHERE user_id = ? ORDER BY date DESC
   `).all(userId).map((row) => row.date);
 
   if (!dates.length) return 0;
@@ -239,7 +333,6 @@ function getDailyWordStats(userId) {
   };
 }
 
-
 function assertForceCooldown(userId) {
   const row = db.prepare(
     "SELECT generated_at FROM daily_words WHERE user_id = ? ORDER BY generated_at DESC LIMIT 1"
@@ -255,108 +348,102 @@ function assertForceCooldown(userId) {
   }
 }
 
-async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}) {
+async function fetchAiCandidates(user) {
+  const languageName = languageNameFromCode(user.target_language || "es");
+  const aiResult = await aiService.generateDailyWord({
+    languageName,
+    cefrLevel: user.cefr_level || "B1",
+    genre: user.genre || "pop",
+    difficulty: user.difficulty || "medium",
+    avoidWords: getAvoidWords(user.id),
+  });
+  return Array.isArray(aiResult) ? aiResult : [aiResult];
+}
+
+async function generateValidatedBatch(user, fetchImpl = fetch) {
   const date = todayDate();
-  if (force) assertForceCooldown(user.id);
-  if (!force) {
-    const cached = getCachedDailyWord(user.id, date);
-    if (cached) return cached;
-  }
-
-  const targetLanguage = user.target_language || "es";
-  const languageName = languageNameFromCode(targetLanguage);
-  const cefrLevel = user.cefr_level || "B1";
-  const genre = user.genre || "pop";
-  const difficulty = user.difficulty || "medium";
-
-  const recentWords = db.prepare(`
-    SELECT json_extract(word_json, '$.word.text') as word
-    FROM daily_words
-    WHERE user_id = ?
-    ORDER BY generated_at DESC
-    LIMIT 14
-  `).all(user.id).map((r) => r.word).filter(Boolean);
-
-  let lastError = null;
   let candidates = [];
   try {
-    const aiResult = await aiService.generateDailyWord({
-      languageName,
-      cefrLevel,
-      genre,
-      difficulty,
-      avoidWords: recentWords,
-    });
-    candidates = Array.isArray(aiResult) ? aiResult : [aiResult];
+    candidates = await fetchAiCandidates(user);
   } catch (err) {
-    if (err.code === 'ai_rate_limit' || err.code === 'cooldown_active') throw err;
-    lastError = err.code || err.message || "generation_failed";
+    if (err.code === "ai_rate_limit") throw err;
+    return { valid: [], sideEffects: [], lastError: err.code || err.message || "generation_failed" };
   }
 
-  for (const suggestion of candidates) {
-    try {
-      const track = await searchDeezerTrack(suggestion.artist, suggestion.song_title, fetchImpl);
-      if (!track) {
-        lastError = "deezer_not_found";
-        continue;
-      }
+  if (!candidates.length) {
+    return { valid: [], sideEffects: [], lastError: "invalid_ai_daily_word_response" };
+  }
 
-      const lyricsData = await fetchLyrics(track.artist.name, track.title, track.duration, fetchImpl);
-      if (!lyricsData?.syncedLyrics) {
-        lastError = "lyrics_not_found";
-        continue;
-      }
+  return validateAllCandidates(candidates, date, user.genre || "pop", fetchImpl);
+}
 
-      const syncCheck = validation.validateSongSync({ duration: track.duration }, lyricsData.syncedLyrics);
-      if (!syncCheck.valid) {
-        lastError = "lyrics_validation_failed";
-        continue;
-      }
-
-      const occurrence = findWordOccurrence(suggestion.target_word, lyricsData.syncedLyrics);
-      if (!occurrence) {
-        lastError = "word_not_in_lyrics";
-        continue;
-      }
-
-      const payload = buildPayload(date, suggestion, track, lyricsData, occurrence);
-      saveDailyWord(user.id, date, payload);
-
-      validation.cacheSongData(String(track.id), lyricsData, {
-        id: track.id,
-        title: track.title,
-        artist: track.artist.name,
-        preview: track.preview,
-        duration: track.duration,
-        preview_offset: previewOffset(track.duration),
-      });
-      validation.recordValidation(String(track.id), track.artist.name, track.title, track.duration, syncCheck);
-
-      db.prepare(`
-        INSERT INTO song_lyrics_snapshot (song_id, synced_lyrics, plain_lyrics)
-        VALUES (?, ?, ?)
-        ON CONFLICT(song_id) DO UPDATE SET
-          synced_lyrics = excluded.synced_lyrics,
-          plain_lyrics = excluded.plain_lyrics,
-          fetched_at = CURRENT_TIMESTAMP
-      `).run(String(track.id), lyricsData.syncedLyrics, lyricsData.plainLyrics || null);
-
-      return payload;
-    } catch (err) {
-      if (err.code === 'ai_rate_limit' || err.code === 'cooldown_active') throw err;
-      lastError = err.code || err.message || "generation_failed";
+async function refillQueue(user, fetchImpl = fetch) {
+  while (wordQueue.countReady(user.id) < wordQueue.QUEUE_MAX) {
+    const { valid, sideEffects, lastError } = await generateValidatedBatch(user, fetchImpl);
+    if (!valid.length) {
+      const err = new Error("queue_refill_failed");
+      err.code = lastError || "unknown";
+      throw err;
     }
+
+    for (const effect of sideEffects) {
+      persistPayloadSideEffects(effect.payload, effect.track, effect.lyricsData, effect.syncCheck);
+    }
+
+    const inserted = wordQueue.enqueuePayloads(user.id, valid);
+    if (!inserted) break;
+    if (wordQueue.countReady(user.id) >= wordQueue.REFILL_THRESHOLD) break;
+  }
+}
+
+function scheduleRefill(user, fetchImpl = fetch) {
+  if (process.env.NODE_ENV === "test") return;
+  wordQueue.triggerRefillIfNeeded(user, (u) => refillQueue(u, fetchImpl));
+}
+
+async function consumeNextDailyWord(user, fetchImpl = fetch) {
+  const queued = wordQueue.consumeNext(user.id);
+  if (!queued) return null;
+
+  const delivered = deliverPayload(user.id, queued, { fromQueue: true });
+  scheduleRefill(user, fetchImpl);
+  return delivered;
+}
+
+async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}) {
+  const date = todayDate();
+
+  if (!force) {
+    const cached = getCachedDailyWord(user.id, date);
+    if (cached) {
+      scheduleRefill(user, fetchImpl);
+      return cached;
+    }
+
+    const instant = await consumeNextDailyWord(user, fetchImpl);
+    if (instant) return instant;
+  } else {
+    const instant = await consumeNextDailyWord(user, fetchImpl);
+    if (instant) return instant;
+    assertForceCooldown(user.id);
   }
 
-  if (candidates.length <= 1) {
+  const { valid, sideEffects, lastError } = await generateValidatedBatch(user, fetchImpl);
+  if (!valid.length) {
     const err = new Error("daily_word_generation_failed");
     err.code = lastError || "unknown";
     throw err;
   }
 
-  const err = new Error("daily_word_generation_failed");
-  err.code = lastError || "unknown";
-  throw err;
+  for (const effect of sideEffects) {
+    persistPayloadSideEffects(effect.payload, effect.track, effect.lyricsData, effect.syncCheck);
+  }
+
+  const [first, ...rest] = valid;
+  const delivered = deliverPayload(user.id, first, { fromQueue: false });
+  wordQueue.enqueuePayloads(user.id, rest);
+  scheduleRefill(user, fetchImpl);
+  return delivered;
 }
 
 module.exports = {
@@ -366,11 +453,18 @@ module.exports = {
   findWordOccurrence,
   fetchLyrics,
   searchDeezerTrack,
+  buildPayload,
+  tryValidateSuggestion,
+  validateAllCandidates,
   getCachedDailyWord,
   saveDailyWord,
+  deliverPayload,
   summarizeDailyWordPayload,
   getRecentDailyWords,
   computeDailyWordStreak,
   getDailyWordStats,
+  generateValidatedBatch,
+  refillQueue,
+  consumeNextDailyWord,
   generateDailyWord,
 };

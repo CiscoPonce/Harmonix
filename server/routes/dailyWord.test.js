@@ -16,6 +16,8 @@ describe("Daily Word Routes", () => {
 
   beforeEach(() => {
     db.prepare("INSERT OR IGNORE INTO users (id, email, password_hash) VALUES (?, ?, ?)").run(userId, "route@test.com", "x");
+    db.prepare("DELETE FROM user_word_queue WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM user_queue_refill WHERE user_id = ?").run(userId);
   });
 
   it("GET / returns daily word payload", async () => {
@@ -109,5 +111,39 @@ describe("Daily Word Routes", () => {
     expect(forced).to.equal(true);
     expect(res.body.word.text).to.equal("nuevo");
     dailyWordService.generateDailyWord = original;
+  });
+
+  it("GET /queue-status returns ready count", () => {
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/queue-status").route.stack[0].handle;
+    const req = { user: { id: userId } };
+    const res = mockRes();
+    handler(req, res);
+    expect(res.body).to.have.property("ready");
+    expect(res.body).to.have.property("refilling");
+    expect(res.body.target).to.equal(3);
+  });
+
+  it("POST /next serves instantly from queue when stocked", async () => {
+    db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
+    const today = new Date().toISOString().slice(0, 10);
+    db.prepare(`
+      INSERT INTO user_word_queue (user_id, word_json, expires_at)
+      VALUES (?, ?, datetime('now', '+7 days'))
+    `).run(userId, JSON.stringify({
+      date: today,
+      word: { text: "instant", translation: "fast" },
+      lyric: { snippet: "instant", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 7 },
+      song: { id: "9", title: "Song", artist: "Artist" },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+    }));
+
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/next").route.stack[0].handle;
+    const req = { user: { id: userId } };
+    const res = mockRes();
+    await handler(req, res);
+
+    expect(res.body.word.text).to.equal("instant");
+    expect(res.body.from_queue).to.equal(true);
+    expect(res.body.queue).to.have.property("ready");
   });
 });

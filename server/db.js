@@ -254,6 +254,28 @@ db.exec(`
 }
 db.exec(`CREATE INDEX IF NOT EXISTS idx_daily_words_user_generated ON daily_words(user_id, generated_at DESC)`);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_word_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    word_json TEXT NOT NULL,
+    generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    consumed_at DATETIME,
+    expires_at DATETIME NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_user_word_queue_ready ON user_word_queue(user_id, consumed_at, expires_at)`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_queue_refill (
+    user_id TEXT PRIMARY KEY,
+    refilling INTEGER DEFAULT 0,
+    started_at DATETIME,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
 // Migration: Add native_language to users
 const userLangCols = db.prepare("PRAGMA table_info(users)").all();
 if (!userLangCols.some(col => col.name === 'native_language')) {

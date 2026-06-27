@@ -7,8 +7,11 @@ const {
   getCachedDailyWord,
   saveDailyWord,
   getRecentDailyWords,
+  validateAllCandidates,
+  consumeNextDailyWord,
   generateDailyWord,
 } = require("./dailyWordService");
+const wordQueue = require("./wordQueueService");
 const aiService = require("./aiService");
 
 describe("Daily Word Service", () => {
@@ -17,6 +20,8 @@ describe("Daily Word Service", () => {
   beforeEach(() => {
     db.prepare("INSERT OR IGNORE INTO users (id, email, password_hash) VALUES (?, ?, ?)").run(userId, "daily@test.com", "x");
     db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM user_word_queue WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM user_queue_refill WHERE user_id = ?").run(userId);
   });
 
   it("formats timestamps as m:ss", () => {
@@ -147,6 +152,67 @@ describe("Daily Word Service", () => {
     expect(result.audio.preview_url).to.contain("preview.mp3");
 
     aiService.generateDailyWord = originalAi;
+  });
+
+  it("validates all AI candidates and can enqueue multiple valid words", async () => {
+    const mockFetch = async (url) => {
+      if (url.includes("deezer.com/search")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: [{
+              id: 100,
+              title: "Test Song",
+              duration: 200,
+              preview: "https://cdn.example/preview.mp3",
+              artist: { name: "Test Artist" },
+            }],
+          }),
+        };
+      }
+      if (url.includes("lrclib.net")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            syncedLyrics: "[00:10.00] El amor y la noche brillan\n[00:20.00] Siempre juntos\n[00:30.00] Para ti",
+            plainLyrics: "El amor y la noche brillan",
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+
+    const candidates = [
+      { target_word: "amor", translation: "love", song_title: "Test Song", artist: "Test Artist", genre: "pop" },
+      { target_word: "noche", translation: "night", song_title: "Test Song", artist: "Test Artist", genre: "pop" },
+    ];
+
+    const { valid } = await validateAllCandidates(candidates, "2026-06-27", "pop", mockFetch);
+    expect(valid).to.have.lengthOf(2);
+    expect(valid.map((p) => p.word.text)).to.include.members(["amor", "noche"]);
+
+    const inserted = wordQueue.enqueuePayloads(userId, valid.slice(1));
+    expect(inserted).to.equal(1);
+    expect(wordQueue.countReady(userId)).to.equal(1);
+  });
+
+  it("serves next word instantly from queue", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const payload = {
+      date: today,
+      word: { text: "cola", translation: "queue" },
+      lyric: { snippet: "cola", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 4 },
+      song: { id: "55", title: "Song", artist: "Artist" },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+    };
+    wordQueue.enqueuePayloads(userId, [payload]);
+
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const result = await consumeNextDailyWord(user);
+    expect(result.word.text).to.equal("cola");
+    expect(result.from_queue).to.equal(true);
   });
 
   for (const [code, name] of [

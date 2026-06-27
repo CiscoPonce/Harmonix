@@ -6,9 +6,17 @@ import { apiFetch } from "@/lib/api";
 import { Button } from "./ui/Button";
 import { BookOpen, Loader2, Music2, Play, Pause, RefreshCw, Sparkles } from "lucide-react";
 
+interface QueueStatus {
+  ready: number;
+  refilling: boolean;
+  target: number;
+  max: number;
+}
+
 interface DailyWordPayload {
   date: string;
   cached?: boolean;
+  from_queue?: boolean;
   word: {
     text: string;
     translation: string;
@@ -35,6 +43,7 @@ interface DailyWordPayload {
     duration_seconds: number;
     preview_offset: number;
   };
+  queue?: QueueStatus;
 }
 
 function highlightWord(snippet: string, start: number, end: number) {
@@ -52,6 +61,7 @@ function highlightWord(snippet: string, start: number, end: number) {
 
 export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const [data, setData] = useState<DailyWordPayload | null>(null);
+  const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,22 +70,48 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const loadDailyWord = useCallback(async (force = false) => {
-    if (force) {
+  const fetchQueueStatus = useCallback(async () => {
+    try {
+      const res = await apiFetch("/daily-word/queue-status");
+      if (res.ok) {
+        setQueueStatus(await res.json());
+      }
+    } catch {
+      /* non-fatal */
+    }
+  }, []);
+
+  const applyPayload = useCallback((payload: DailyWordPayload) => {
+    setData(payload);
+    if (payload.queue) setQueueStatus(payload.queue);
+    setError(null);
+    setRefreshError(null);
+    setStatusMessage(null);
+    onWordChange?.();
+  }, [onWordChange]);
+
+  const loadDailyWord = useCallback(async (initial = false) => {
+    if (!initial) {
       setRefreshing(true);
       setRefreshError(null);
-      setStatusMessage("Finding a new word in a real song...");
     } else {
       setLoading(true);
       setError(null);
     }
 
+    const hasBuffered = (queueStatus?.ready ?? 0) > 0;
+    if (!initial && hasBuffered) {
+      setStatusMessage(null);
+    } else if (!initial) {
+      setStatusMessage("Finding a new word in a real song...");
+    }
+
     try {
-      const res = await apiFetch(force ? "/daily-word/new" : "/daily-word", {
-        method: force ? "POST" : "GET",
-      });
+      const endpoint = initial ? "/daily-word" : "/daily-word/next";
+      const res = await apiFetch(endpoint, { method: initial ? "GET" : "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        if (body.queue) setQueueStatus(body.queue);
         let msg = body.reason || "Could not load daily word";
         if (body.reason === "invalid_ai_daily_word_response") {
           msg = "AI could not find a valid word. Please try again.";
@@ -88,15 +124,10 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         }
         throw new Error(msg);
       }
-      const payload = await res.json();
-      setData(payload);
-      setError(null);
-      setRefreshError(null);
-      setStatusMessage(null);
-      onWordChange?.();
+      applyPayload(await res.json());
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to load daily word";
-      if (force && data) {
+      if (!initial && data) {
         setRefreshError(msg);
       } else {
         setError(msg);
@@ -105,10 +136,20 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       setLoading(false);
       setRefreshing(false);
       setStatusMessage(null);
+      fetchQueueStatus();
     }
-  }, [data, onWordChange]);
+  }, [applyPayload, data, fetchQueueStatus, queueStatus?.ready]);
 
-  useEffect(() => { loadDailyWord(false); }, []);
+  useEffect(() => {
+    loadDailyWord(true);
+    fetchQueueStatus();
+  }, []);
+
+  useEffect(() => {
+    if (!queueStatus?.refilling) return;
+    const timer = setInterval(fetchQueueStatus, 3000);
+    return () => clearInterval(timer);
+  }, [queueStatus?.refilling, fetchQueueStatus]);
 
   useEffect(() => {
     if (!refreshing) return;
@@ -142,12 +183,14 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     return () => { audio.removeEventListener("ended", stop); audio.removeEventListener("pause", stop); };
   }, [data]);
 
+  const showHeavyOverlay = refreshing && (queueStatus?.ready ?? 0) === 0 && !queueStatus?.refilling;
+
   if (loading && !data) {
     return (
       <div className="w-full max-w-3xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-10 flex flex-col items-center justify-center gap-3 text-zinc-500 dark:text-zinc-400">
         <Loader2 className="w-5 h-5 animate-spin" />
         <span className="text-xs font-bold uppercase tracking-widest text-zinc-900 dark:text-white">Loading your word...</span>
-        <span className="text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-600">First load may take up to a minute</span>
+        <span className="text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-600">First load may take up to a minute while we stock your queue</span>
       </div>
     );
   }
@@ -156,7 +199,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     return (
       <div className="w-full max-w-3xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-8 space-y-4 text-center">
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{error || "No word available right now."}</p>
-        <Button onClick={() => loadDailyWord(true)} disabled={refreshing}>
+        <Button onClick={() => loadDailyWord(false)} disabled={refreshing}>
           {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Try again"}
         </Button>
       </div>
@@ -164,14 +207,15 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   }
 
   const playerHref = "/player/" + data.song.id;
+  const readyCount = queueStatus?.ready ?? data.queue?.ready ?? 0;
 
   return (
     <div className="relative w-full max-w-3xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden">
-      {refreshing && (
+      {showHeavyOverlay && (
         <div className="absolute inset-0 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-8 text-center">
           <Loader2 className="w-8 h-8 animate-spin text-zinc-900 dark:text-white" />
-          <p className="text-sm font-bold uppercase tracking-widest text-zinc-900 dark:text-white">{statusMessage || "Finding a new word..."}</p>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Please wait — AI is picking a word and validating the song</p>
+          <p className="text-sm font-bold uppercase tracking-widest text-zinc-900 dark:text-white">{statusMessage || "Generating your next words..."}</p>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Queue empty — validating songs in the background</p>
         </div>
       )}
 
@@ -186,10 +230,18 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
           Word of the day
           {data.cached && !refreshing && <span className="text-zinc-400 dark:text-zinc-600">· cached</span>}
+          {readyCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px]">
+              {readyCount} ready
+            </span>
+          )}
+          {queueStatus?.refilling && readyCount === 0 && (
+            <span className="text-zinc-400 dark:text-zinc-600">· stocking queue</span>
+          )}
         </div>
-        <Button variant="ghost" size="sm" onClick={() => loadDailyWord(true)} disabled={refreshing} className="text-[10px] font-bold uppercase tracking-widest gap-2">
+        <Button variant="ghost" size="sm" onClick={() => loadDailyWord(false)} disabled={refreshing} className="text-[10px] font-bold uppercase tracking-widest gap-2">
           {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-          New word
+          {readyCount > 0 ? "Next word" : "New word"}
         </Button>
       </div>
 
@@ -202,6 +254,9 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
               <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-900 dark:text-white">{data.word.part_of_speech}</span>
             )}
             {data.word.pronunciation && <span className="text-zinc-500">{data.word.pronunciation}</span>}
+            {data.from_queue && (
+              <span className="text-[10px] uppercase tracking-widest text-green-600 dark:text-green-400">Instant</span>
+            )}
           </div>
         </div>
 
@@ -231,10 +286,10 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       </div>
 
       {data.audio.preview_url && (
-        <audio 
-          ref={audioRef} 
-          src={data.audio.preview_url} 
-          preload="none" 
+        <audio
+          ref={audioRef}
+          src={data.audio.preview_url}
+          preload="none"
           onError={(e) => {
             console.error("Audio preview load failed:", e);
             setRefreshError("Audio preview unavailable in your region.");
