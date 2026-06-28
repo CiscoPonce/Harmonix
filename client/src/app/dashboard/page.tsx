@@ -163,22 +163,22 @@ export default function DashboardPage() {
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black text-zinc-900 dark:text-white font-sans selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">
+    <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black text-zinc-900 dark:text-white font-sans selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black overflow-x-hidden">
       <BadgeUnlockToast badge={unlockedBadge} onDismiss={() => setUnlockedBadge(null)} />
 
       <AppHeader userEmail={user.email} onLogout={logout} homeHref="/dashboard" />
 
-      <main className="flex-1 flex flex-col items-center px-6 py-12 md:py-24 max-w-5xl mx-auto w-full">
+      <main className="flex-1 flex flex-col items-center px-4 py-8 sm:px-6 sm:py-12 md:py-24 max-w-5xl mx-auto w-full min-w-0">
         {/* Hero Section */}
-        <section className="w-full text-center space-y-6 mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-            <Sparkles className="w-3 h-3 text-yellow-400" />
-            Learn through the music you love
+        <section className="w-full text-center space-y-4 sm:space-y-6 mb-8 sm:mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-500 dark:text-zinc-400">
+            <Sparkles className="w-3 h-3 text-yellow-400 shrink-0" />
+            <span>Learn through the music you love</span>
           </div>
-          <h2 className="text-4xl md:text-6xl font-black tracking-tighter uppercase italic leading-tight">
+          <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight uppercase sm:italic leading-tight px-1">
             Today&apos;s <span className="text-zinc-600">word</span>
           </h2>
-          <p className="max-w-xl mx-auto text-zinc-500 font-medium md:text-lg">
+          <p className="max-w-xl mx-auto text-zinc-500 font-medium text-sm sm:text-base md:text-lg px-2">
             Get one personalized word, hear it in a real song lyric, then dive deeper when you are ready.
           </p>
         </section>
@@ -198,14 +198,14 @@ export default function DashboardPage() {
         <ReviewCountBadge />
 
         {/* Features Grid */}
-        <div className="grid gap-6 sm:grid-cols-2 w-full mt-24">
+        <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 w-full mt-16 sm:mt-24 min-w-0">
           {/* Recent daily words card */}
-          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px]">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-5 sm:p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px] min-w-0 overflow-hidden">
             <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors shrink-0">
               <Clock className="w-6 h-6" />
             </div>
-            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-1 shrink-0">Recent</h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3 shrink-0">Words you discovered · last 7 days</p>
+            <h3 className="font-black uppercase sm:italic tracking-tight text-xl mb-1 shrink-0 pl-0.5">Recent</h3>
+            <p className="text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-500 mb-3 shrink-0">Words you discovered · last 7 days</p>
             {loadingData ? (
               <div className="space-y-3 animate-pulse flex-1">
                 <div className="h-10 bg-zinc-900 rounded w-full"></div>
@@ -223,10 +223,10 @@ export default function DashboardPage() {
                   >
                     <div className="flex justify-between items-center gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-black text-zinc-900 dark:text-white truncate uppercase tracking-wider">
+                        <p className="text-xs font-black text-zinc-900 dark:text-white truncate uppercase tracking-wide">
                           {entry.word.text}
                         </p>
-                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest truncate">
+                        <p className="text-[11px] text-zinc-500 line-clamp-2 normal-case leading-snug">
                           {entry.word.translation || entry.song?.title || 'Discovered word'}
                         </p>
                         {entry.song && (
@@ -251,18 +251,18 @@ export default function DashboardPage() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">
+              <p className="text-sm text-zinc-500 font-medium normal-case sm:uppercase tracking-normal sm:tracking-widest leading-relaxed flex-1">
                 Every word you discover will show up here — daily words and refreshes included.
               </p>
             )}
           </div>
 
           {/* Stats card */}
-          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px]">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-5 sm:p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px] min-w-0 overflow-hidden">
             <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors shrink-0">
               <Trophy className="w-6 h-6" />
             </div>
-            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2 shrink-0">Stats</h3>
+            <h3 className="font-black uppercase sm:italic tracking-tight text-xl mb-2 shrink-0 pl-0.5">Stats</h3>
             {loadingData ? (
               <div className="space-y-4 animate-pulse flex-1">
                 <div className="h-4 bg-zinc-900 rounded w-2/3"></div>
@@ -297,39 +297,39 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">Track your daily word streak and progress.</p>
+              <p className="text-sm text-zinc-500 font-medium normal-case sm:uppercase tracking-normal sm:tracking-widest leading-relaxed flex-1">Track your daily word streak and progress.</p>
             )}
           </div>
 
           {/* Daily word scroll card */}
           <div 
             onClick={scrollToDailyWord}
-            className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group cursor-pointer flex flex-col min-h-[250px]"
+            className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-5 sm:p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group cursor-pointer flex flex-col min-h-[250px] min-w-0 overflow-hidden"
           >
             <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors shrink-0">
               <BookOpen className="w-6 h-6" />
             </div>
-            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2 shrink-0">Daily</h3>
-            <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">One word, one song, one lyric moment — every day.</p>
+            <h3 className="font-black uppercase sm:italic tracking-tight text-xl mb-2 shrink-0 pl-0.5">Daily</h3>
+            <p className="text-sm text-zinc-500 font-medium normal-case sm:uppercase tracking-normal sm:tracking-widest leading-relaxed flex-1">One word, one song, one lyric moment — every day.</p>
           </div>
 
           {/* Achievements card */}
-          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px]">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-5 sm:p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px] min-w-0 overflow-hidden">
             <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors shrink-0">
               <Award className="w-6 h-6" />
             </div>
-            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2 shrink-0">Achievements</h3>
+            <h3 className="font-black uppercase sm:italic tracking-tight text-xl mb-2 shrink-0 pl-0.5">Achievements</h3>
             <div className="flex-1">
               <BadgeGrid />
             </div>
           </div>
 
           {/* Playlists card */}
-          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px]">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-5 sm:p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px] min-w-0 overflow-hidden">
             <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors shrink-0">
               <ListMusic className="w-6 h-6" />
             </div>
-            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-2 shrink-0">Playlists</h3>
+            <h3 className="font-black uppercase sm:italic tracking-tight text-xl mb-2 shrink-0 pl-0.5">Playlists</h3>
             {loadingData ? (
               <div className="space-y-3 animate-pulse flex-1">
                 <div className="h-8 bg-zinc-900 rounded w-full"></div>
@@ -356,7 +356,7 @@ export default function DashboardPage() {
                 </Link>
               </div>
             ) : (
-              <p className="text-sm text-zinc-500 font-medium uppercase tracking-widest leading-relaxed flex-1">
+              <p className="text-sm text-zinc-500 font-medium normal-case sm:uppercase tracking-normal sm:tracking-widest leading-relaxed flex-1">
                 Your collection is empty.{' '}
                 <Link href="/" className="underline underline-offset-4 hover:text-white">Explore songs</Link>
               </p>

@@ -19,6 +19,12 @@ export const metadata: Metadata = {
   description: "Master vocabulary with every beat. Unlock language through rhythm and melody. Turn your favorite songs into powerful learning tools.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

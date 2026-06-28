@@ -58,7 +58,7 @@ export function SongSearch() {
   }, [debouncedQuery]);
 
   return (
-    <div className="w-full max-w-2xl space-y-4">
+    <div className="w-full max-w-2xl space-y-4 min-w-0 px-1">
       <div className="relative group">
         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
           {loading ? (
@@ -69,10 +69,10 @@ export function SongSearch() {
         </div>
         <Input
           type="text"
-          placeholder="Search for a song or artist to start learning..."
+          placeholder="Search songs or artists..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="pl-12 py-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white text-lg focus:border-zinc-900 dark:focus:border-white transition-all rounded-xl"
+          className="pl-12 py-5 sm:py-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white text-base sm:text-lg focus:border-zinc-900 dark:focus:border-white transition-all rounded-xl w-full min-w-0"
         />
       </div>
 

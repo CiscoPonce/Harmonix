@@ -115,7 +115,7 @@ export function BadgeGrid() {
               />
             </div>
             <span
-              className={`text-[8px] font-bold uppercase tracking-widest text-center leading-tight ${
+              className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-center leading-tight px-1 break-words max-w-full ${
                 isUnlocked ? 'text-white' : 'text-zinc-700'
               }`}
             >

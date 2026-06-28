@@ -225,10 +225,10 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         </div>
       )}
 
-      <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-900 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/40">
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-          <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
-          Word of the day
+      <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-zinc-100 dark:border-zinc-900 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-zinc-50 dark:bg-zinc-900/40">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-500 dark:text-zinc-400 min-w-0">
+          <Sparkles className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+          <span className="shrink-0">Word of the day</span>
           {data.cached && !refreshing && <span className="text-zinc-400 dark:text-zinc-600">· cached</span>}
           {readyCount > 0 && (
             <span className="px-2 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px]">
@@ -239,17 +239,17 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
             <span className="text-zinc-400 dark:text-zinc-600">· stocking queue</span>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={() => loadDailyWord(false)} disabled={refreshing} className="text-[10px] font-bold uppercase tracking-widest gap-2">
+        <Button variant="ghost" size="sm" onClick={() => loadDailyWord(false)} disabled={refreshing} className="self-start sm:self-auto text-[10px] font-bold uppercase tracking-wide sm:tracking-widest gap-2 shrink-0">
           {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           {readyCount > 0 ? "Next word" : "New word"}
         </Button>
       </div>
 
-      <div className="p-8 md:p-10 space-y-8">
-        <div className="space-y-3">
-          <p className="text-5xl md:text-6xl font-black tracking-tighter uppercase italic text-zinc-900 dark:text-white">{data.word.text}</p>
-          <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-600 dark:text-zinc-400">
-            <span className="font-bold text-zinc-900 dark:text-white">{data.word.translation}</span>
+      <div className="p-5 sm:p-8 md:p-10 space-y-6 sm:space-y-8">
+        <div className="space-y-3 min-w-0">
+          <p className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight uppercase sm:italic text-zinc-900 dark:text-white break-words [overflow-wrap:anywhere]">{data.word.text}</p>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-zinc-600 dark:text-zinc-400">
+            <span className="font-bold text-zinc-900 dark:text-white break-words">{data.word.translation}</span>
             {data.word.part_of_speech && (
               <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-900 dark:text-white">{data.word.part_of_speech}</span>
             )}
@@ -260,12 +260,12 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           </div>
         </div>
 
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black p-6 space-y-4">
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-500">
-            <Music2 className="w-3.5 h-3.5" />
-            Found in {data.song.title} · {data.song.artist}
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black p-4 sm:p-6 space-y-4 min-w-0">
+          <div className="flex items-start gap-2 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-600 dark:text-zinc-500 min-w-0">
+            <Music2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <span className="line-clamp-2 break-words">Found in {data.song.title} · {data.song.artist}</span>
           </div>
-          <blockquote className="text-xl md:text-2xl font-medium leading-relaxed text-zinc-800 dark:text-zinc-200 italic">
+          <blockquote className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-zinc-800 dark:text-zinc-200 italic break-words">
             &ldquo;{highlightWord(data.lyric.snippet, data.lyric.char_start, data.lyric.char_end)}&rdquo;
           </blockquote>
           <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-600">At {data.lyric.timestamp}</p>

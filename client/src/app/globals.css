@@ -22,13 +22,15 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 @layer base {
   body {
-    @apply antialiased bg-white text-zinc-900 dark:bg-black dark:text-white;
+    @apply antialiased bg-white text-zinc-900 dark:bg-black dark:text-white overflow-x-hidden;
     background-color: var(--background);
     color: var(--foreground);
+    max-width: 100vw;
   }
 }
 
