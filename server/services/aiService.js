@@ -178,7 +178,7 @@ ${rubric}
 
 Rules:
 1. Each target_word MUST appear verbatim (same spelling) in its matching song lyrics.
-2. Choose popular songs likely to have synced lyrics on LRCLib and previews on Deezer.
+2. Choose globally known hit songs that exist on Deezer with a 30s preview. Use exact official artist and song_title as listed on Deezer (main artist only, no "feat." in artist field).
 3. Every candidate MUST match BOTH the CEFR level (${cefrLevel}) AND difficulty (${diff}).
 4. Return realistic song_title and artist names only — no made-up songs.
 5. Each candidate MUST include cefr_level (A1-C2) and difficulty (easy|medium|hard) matching the rules above.

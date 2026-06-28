@@ -79,30 +79,11 @@ async function fetchLyrics(artist, title, duration, fetchImpl = fetch) {
 }
 
 async function searchDeezerTrack(artist, title, fetchImpl = fetch) {
-  const q = encodeURIComponent(`${artist} ${title}`);
-  const res = await fetchImpl(`https://api.deezer.com/search?q=${q}&limit=10`);
-  if (!res.ok) throw new Error(`deezer_http_${res.status}`);
-  const data = await res.json();
-  const tracks = data.data || [];
-  if (!tracks.length) return null;
-
-  const norm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9\u00c0-\u024f\s]/g, "").trim();
-  const wantArtist = norm(artist);
-  const wantTitle = norm(title);
-
-  const ranked = tracks
-    .map((t) => {
-      let score = 0;
-      if (norm(t.artist?.name).includes(wantArtist) || wantArtist.includes(norm(t.artist?.name))) score += 2;
-      if (norm(t.title).includes(wantTitle) || wantTitle.includes(norm(t.title))) score += 2;
-      if (t.preview) score += 1;
-      return { track: t, score };
-    })
-    .sort((a, b) => b.score - a.score);
-
-  const best = ranked[0];
-  if (!best || best.score < 2 || !best.track.preview) return null;
-  return best.track;
+  const track = await deezer.searchTrack(artist, title, fetchImpl);
+  if (!track) {
+    console.warn(`deezer_not_found: no match for artist="${artist}" title="${title}"`);
+  }
+  return track;
 }
 
 function buildPayload(date, suggestion, track, lyricsData, occurrence) {
@@ -465,7 +446,22 @@ async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}
     assertForceCooldown(user.id);
   }
 
-  const { valid, sideEffects, lastError } = await generateValidatedBatch(user, fetchImpl);
+  const MAX_BATCH_ATTEMPTS = 3;
+  let valid = [];
+  let sideEffects = [];
+  let lastError = "unknown";
+
+  for (let attempt = 0; attempt < MAX_BATCH_ATTEMPTS; attempt++) {
+    const batch = await generateValidatedBatch(user, fetchImpl);
+    if (batch.valid.length) {
+      valid = batch.valid;
+      sideEffects = batch.sideEffects;
+      break;
+    }
+    lastError = batch.lastError || "unknown";
+    console.warn(`daily word batch attempt ${attempt + 1}/${MAX_BATCH_ATTEMPTS} failed: ${lastError}`);
+  }
+
   if (!valid.length) {
     const err = new Error("daily_word_generation_failed");
     err.code = lastError || "unknown";
