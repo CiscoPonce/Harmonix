@@ -6,9 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cap:sync": "npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:sync": "npx cap sync android",
+    "android:build": "cd android && ./gradlew assembleDebug",
+    "android:install": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
     "@radix-ui/react-popover": "^1.1.16",
     "@radix-ui/react-select": "^2.3.0",
     "class-variance-authority": "^0.7.1",
@@ -22,6 +32,7 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

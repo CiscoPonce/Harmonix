@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: mobile-dual-frontend
-status: planned
-last_updated: "2026-06-27T20:00:00.000Z"
+status: in_progress
+last_updated: "2026-06-28T08:00:00.000Z"
 progress:
   total_phases: 11
   completed_phases: 10
@@ -16,13 +16,13 @@ progress:
 
 ## Current Focus
 
-**Phase 10 planned** — Mobile: Capacitor APK (Option B) → test → Flutter (Option C) → dual frontend.
+**Phase 10 in progress** — Capacitor Android wrapper (Option B). Build APK locally with Android Studio.
 
 ## Phase 10 Progress
 
-- [ ] Plan 10-00A: Prerequisites — no domain (ngrok OK)
+- [x] Plan 10-00A: Capacitor config + ngrok URL + env docs + sideload guide
 - [ ] Plan 10-00B: Prerequisites — domain + Play Store
-- [ ] Plan 10-01: Option B — Capacitor Android wrapper (web UI bridge)
+- [x] Plan 10-01: Capacitor Android project (`com.harmonix.app`, icons, ngrok header)
 - [ ] Plan 10-02: Option B — test & Google Play internal track
 - [ ] Plan 10-03: Option C — Flutter MVP matching [UI spec](./phases/10-mobile-dual-frontend/10-UI-SPEC.md)
 - [ ] Plan 10-04: Option C — test & dual-frontend parity

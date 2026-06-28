@@ -38,6 +38,7 @@ kill -9 $(lsof -t -i:${BACKEND_PORT}) 2>/dev/null || true
 kill -9 $(lsof -t -i:${FRONTEND_PORT}) 2>/dev/null || true
 pkill -f "/home/ubuntu/lyric/server.*node index.js" 2>/dev/null || true
 pkill -f "/home/ubuntu/lyric/client.*next dev" 2>/dev/null || true
+pkill -f "/home/ubuntu/lyric/client.*next start" 2>/dev/null || true
 pkill -f "ngrok http ${BACKEND_PORT}" 2>/dev/null || true
 sleep 2
 
@@ -47,9 +48,12 @@ nohup npm start > "$LOG_DIR/server.log" 2>&1 &
 echo $! > "$LOG_DIR/server.pid"
 wait_for_port "$BACKEND_PORT" "Backend"
 
-echo "Starting Frontend on port ${FRONTEND_PORT}..."
+echo "Building Frontend (production)..."
 cd "$PROJECT_ROOT/client"
-nohup npm run dev -- -p "$FRONTEND_PORT" > "$LOG_DIR/client.log" 2>&1 &
+npm run build > "$LOG_DIR/client-build.log" 2>&1
+
+echo "Starting Frontend on port ${FRONTEND_PORT}..."
+nohup npm run start -- -p "$FRONTEND_PORT" > "$LOG_DIR/client.log" 2>&1 &
 echo $! > "$LOG_DIR/client.pid"
 wait_for_port "$FRONTEND_PORT" "Frontend"
 
