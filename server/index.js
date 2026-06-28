@@ -18,6 +18,22 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+app.set('trust proxy', 1);
+
+/** Cookie options that work in WebView over ngrok HTTPS (Capacitor). */
+function authCookieOptions(req) {
+  const secure =
+    req.secure ||
+    req.headers['x-forwarded-proto'] === 'https' ||
+    process.env.FORCE_SECURE_COOKIES === 'true';
+  return {
+    httpOnly: true,
+    secure,
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
+}
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
@@ -93,12 +109,7 @@ app.post('/api/auth/login', async (req, res) => {
     const accessToken = auth.generateAccessToken(user);
     const refreshToken = auth.generateRefreshToken(user);
 
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
+    res.cookie('refreshToken', refreshToken, authCookieOptions(req));
 
     console.log('POST /api/auth/login - success');
     res.json({ accessToken, user: { id: user.id, email: user.email } });
@@ -129,12 +140,7 @@ app.post('/api/auth/refresh', (req, res) => {
     const accessToken = auth.generateAccessToken(user);
     const newRefreshToken = auth.generateRefreshToken(user);
 
-    res.cookie('refreshToken', newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie('refreshToken', newRefreshToken, authCookieOptions(req));
 
     console.log('POST /api/auth/refresh - success');
     res.json({ accessToken });
@@ -179,7 +185,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
 // Logout
 app.post('/api/auth/logout', (req, res) => {
-  res.clearCookie('refreshToken');
+  res.clearCookie('refreshToken', authCookieOptions(req));
   res.json({ message: 'Logged out successfully' });
 });
 
