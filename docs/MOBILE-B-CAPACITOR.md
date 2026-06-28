@@ -70,12 +70,14 @@ In Android Studio:
 Requires `JAVA_HOME` pointing to Android Studio's JDK:
 
 ```bash
-export JAVA_HOME=/path/to/android-studio/jbr   # Linux example
+export JAVA_HOME=$HOME/android-studio/jbr   # Linux — adjust for macOS/Windows
 cd client
 npm run android:build
 ```
 
-APK output:
+**Pre-built APK:** [`releases/Harmonix-debug.apk`](../releases/Harmonix-debug.apk) — for testers without Android Studio.
+
+APK output (when building locally):
 
 ```text
 client/android/app/build/outputs/apk/debug/app-debug.apk
@@ -93,7 +95,7 @@ npm run android:install
 ## Sideload on team phones (no Play Store)
 
 1. Build debug APK (above).
-2. Transfer `app-debug.apk` (USB, email, Slack, etc.).
+2. Transfer `Harmonix-debug.apk` from [`releases/`](../releases/) (or your local build) via USB, Drive, WhatsApp, email, etc..
 3. On the phone: **Settings → Security → Install unknown apps** (allow your file manager).
 4. Open the APK and install.
 5. Launch **Harmonix** — should load the ngrok URL automatically.

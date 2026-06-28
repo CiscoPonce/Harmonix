@@ -22,7 +22,7 @@ progress:
 
 - [x] Plan 10-00A: Capacitor config + ngrok URL + env docs + sideload guide
 - [ ] Plan 10-00B: Prerequisites — domain + Play Store
-- [x] Plan 10-01: Capacitor Android project (`com.harmonix.app`, icons, ngrok header)
+- [x] Plan 10-01: Capacitor Android project — debug APK in `releases/Harmonix-debug.apk`
 - [ ] Plan 10-02: Option B — test & Google Play internal track
 - [ ] Plan 10-03: Option C — Flutter MVP matching [UI spec](./phases/10-mobile-dual-frontend/10-UI-SPEC.md)
 - [ ] Plan 10-04: Option C — test & dual-frontend parity
