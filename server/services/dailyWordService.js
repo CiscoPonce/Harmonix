@@ -4,6 +4,7 @@ const validation = require("./validationService");
 const alignment = require("../utils/alignment");
 const { languageNameFromCode } = require("../constants/languages");
 const wordQueue = require("./wordQueueService");
+const deezer = require("./deezerService");
 
 const MAX_RETRIES = 3;
 const FORCE_COOLDOWN_MS = process.env.FORCE_COOLDOWN_MS ? parseInt(process.env.FORCE_COOLDOWN_MS, 10) : 90_000;
@@ -120,7 +121,7 @@ function buildPayload(date, suggestion, track, lyricsData, occurrence) {
       genre: suggestion.genre || null,
     },
     audio: {
-      preview_url: track.preview,
+      preview_url: deezer.previewProxyPath(String(track.id)),
       duration_seconds: duration,
       preview_offset: offset,
     },
@@ -410,6 +411,13 @@ async function consumeNextDailyWord(user, fetchImpl = fetch) {
   return delivered;
 }
 
+function hydratePayloadAudio(payload) {
+  if (!payload?.song?.id) return payload;
+  if (!payload.audio) payload.audio = {};
+  payload.audio.preview_url = deezer.previewProxyPath(String(payload.song.id));
+  return payload;
+}
+
 async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}) {
   const date = todayDate();
 
@@ -417,14 +425,14 @@ async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}
     const cached = getCachedDailyWord(user.id, date);
     if (cached) {
       scheduleRefill(user, fetchImpl);
-      return cached;
+      return hydratePayloadAudio(cached);
     }
 
     const instant = await consumeNextDailyWord(user, fetchImpl);
-    if (instant) return instant;
+    if (instant) return hydratePayloadAudio(instant);
   } else {
     const instant = await consumeNextDailyWord(user, fetchImpl);
-    if (instant) return instant;
+    if (instant) return hydratePayloadAudio(instant);
     assertForceCooldown(user.id);
   }
 
@@ -443,7 +451,7 @@ async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}
   const delivered = deliverPayload(user.id, first, { fromQueue: false });
   wordQueue.enqueuePayloads(user.id, rest);
   scheduleRefill(user, fetchImpl);
-  return delivered;
+  return hydratePayloadAudio(delivered);
 }
 
 module.exports = {
@@ -467,4 +475,5 @@ module.exports = {
   refillQueue,
   consumeNextDailyWord,
   generateDailyWord,
+  hydratePayloadAudio,
 };

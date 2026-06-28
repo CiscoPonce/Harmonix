@@ -149,7 +149,7 @@ describe("Daily Word Service", () => {
     expect(result.word.text).to.equal("amor");
     expect(result.song.id).to.equal("999");
     expect(result.lyric.snippet).to.contain("amor");
-    expect(result.audio.preview_url).to.contain("preview.mp3");
+    expect(result.audio.preview_url).to.equal("/api/audio/preview/999");
 
     aiService.generateDailyWord = originalAi;
   });

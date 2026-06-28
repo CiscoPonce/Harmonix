@@ -13,6 +13,8 @@ const dailyWordRouter = require('./routes/dailyWord');
 const playlistsRouter = require('./routes/playlists');
 const badgesRouter = require('./routes/badges');
 const userRouter = require('./routes/user');
+const audioRouter = require('./routes/audio');
+const deezer = require('./services/deezerService');
 require('dotenv').config();
 
 const app = express();
@@ -233,7 +235,7 @@ app.get('/api/tracks/:id', async (req, res) => {
       id: data.id,
       title: data.title,
       artist: data.artist.name,
-      preview: data.preview,
+      preview: deezer.previewProxyPath(data.id),
       duration: duration,
       preview_offset: previewOffset
     });
@@ -271,6 +273,9 @@ app.get('/api/lyrics', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch lyrics from LRCLib' });
   }
 });
+
+// --- Audio preview proxy (same-origin; Deezer CDN URLs expire) ---
+app.use('/api/audio', audioRouter);
 
 // --- Vocabulary Endpoints ---
 app.use('/api/vocab', authenticateToken, vocabRouter);
