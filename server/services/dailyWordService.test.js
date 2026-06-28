@@ -9,6 +9,7 @@ const {
   getRecentDailyWords,
   validateAllCandidates,
   consumeNextDailyWord,
+  generateNextDailyWord,
   generateDailyWord,
 } = require("./dailyWordService");
 const wordQueue = require("./wordQueueService");
@@ -154,7 +155,60 @@ describe("Daily Word Service", () => {
     aiService.generateDailyWord = originalAi;
   });
 
-  it("validates all AI candidates and can enqueue multiple valid words", async () => {
+  it("generateNextDailyWord skips cooldown when queue is empty", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    db.prepare("DELETE FROM daily_words WHERE user_id = ? AND date = ?").run(userId, today);
+    saveDailyWord(userId, today, {
+      date: today,
+      word: { text: "recent", translation: "recent" },
+      song: { id: "1", title: "Song", artist: "Artist" },
+    });
+
+    const originalAi = aiService.generateDailyWord;
+    aiService.generateDailyWord = async () => [{
+      target_word: "sol",
+      translation: "sun",
+      song_title: "Test Song",
+      artist: "Test Artist",
+      genre: "pop",
+    }];
+
+    const mockFetch = async (url) => {
+      if (url.includes("deezer.com/search")) {
+        return {
+          ok: true,
+          json: async () => ({
+            data: [{
+              id: 501,
+              title: "Test Song",
+              duration: 200,
+              preview: "https://cdn.example/preview.mp3",
+              rank: 500000,
+              artist: { name: "Test Artist" },
+            }],
+          }),
+        };
+      }
+      if (url.includes("lrclib.net")) {
+        return {
+          ok: true,
+          json: async () => ({
+            syncedLyrics: "[00:10.00] Brilla el sol hoy\n[00:20.00] Siempre fuerte\n[00:30.00] Para ti",
+            plainLyrics: "Brilla el sol hoy\nSiempre fuerte\nPara ti",
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const result = await generateNextDailyWord(user, mockFetch);
+
+    expect(result.word.text).to.equal("sol");
+    aiService.generateDailyWord = originalAi;
+  });
+
+  it("queues remaining validated words from a batch of 5", async () => {
     const mockFetch = async (url) => {
       if (url.includes("deezer.com/search")) {
         return {

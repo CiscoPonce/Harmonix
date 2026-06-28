@@ -42,12 +42,31 @@ function parseLyricLines(lrc) {
     .filter(Boolean);
 }
 
-function findWordOccurrence(word, syncedLyrics) {
+function findWordOccurrence(word, syncedLyrics, plainLyrics = null) {
   const parsed = validation.parseLrc(syncedLyrics);
   if (!parsed.length) return null;
 
-  const plainLines = parsed.map((p) => ({ text: p.text }));
-  const occurrences = alignment.mapVocabToLyrics([{ id: "daily", word }], plainLines);
+  const syncLines = parsed.map((p) => ({ text: p.text }));
+  let occurrences = alignment.mapVocabToLyrics([{ id: "daily", word }], syncLines);
+
+  if (!occurrences.length && plainLyrics) {
+    const plainLines = plainLyrics
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((text) => ({ text }));
+    const plainOcc = alignment.mapVocabToLyrics([{ id: "daily", word }], plainLines);
+    if (plainOcc.length) {
+      const idx = Math.min(plainOcc[0].line_index, parsed.length - 1);
+      const onSyncLine = alignment.mapVocabToLyrics([{ id: "daily", word }], [syncLines[idx]].filter((l) => l.text));
+      if (onSyncLine.length) {
+        occurrences = [{ ...onSyncLine[0], line_index: idx }];
+      } else {
+        occurrences = [{ line_index: idx, char_start: plainOcc[0].char_start, char_end: plainOcc[0].char_end }];
+      }
+    }
+  }
+
   if (!occurrences.length) return null;
 
   const hit = occurrences[0];
@@ -147,7 +166,11 @@ async function tryValidateSuggestion(suggestion, date, fetchImpl = fetch) {
     const syncCheck = validation.validateSongSync({ duration: track.duration }, lyricsData.syncedLyrics);
     if (!syncCheck.valid) return { error: "lyrics_validation_failed" };
 
-    const occurrence = findWordOccurrence(suggestion.target_word, lyricsData.syncedLyrics);
+    const occurrence = findWordOccurrence(
+      suggestion.target_word,
+      lyricsData.syncedLyrics,
+      lyricsData.plainLyrics || null
+    );
     if (!occurrence) return { error: "word_not_in_lyrics" };
 
     const payload = buildPayload(date, suggestion, track, lyricsData, occurrence);
@@ -178,11 +201,17 @@ function candidateRankScore(suggestion, userGenre, userDifficulty, effectiveLeve
 
 async function validateAllCandidates(candidates, date, userGenre, userDifficulty = "medium", userCefr = "B1", fetchImpl = fetch) {
   const effectiveLevel = effectiveCefr(userCefr, userDifficulty);
-  const results = [];
   let lastError = null;
 
-  for (const suggestion of candidates) {
-    const result = await tryValidateSuggestion(suggestion, date, fetchImpl);
+  const outcomes = await Promise.all(
+    candidates.map(async (suggestion) => {
+      const result = await tryValidateSuggestion(suggestion, date, fetchImpl);
+      return { suggestion, result };
+    })
+  );
+
+  const results = [];
+  for (const { suggestion, result } of outcomes) {
     if (result.payload) {
       results.push({ ...result, suggestion });
     } else if (result.error) {
@@ -200,6 +229,7 @@ async function validateAllCandidates(candidates, date, userGenre, userDifficulty
     valid: results.map((r) => r.payload),
     sideEffects: results,
     lastError,
+    candidateCount: candidates.length,
   };
 }
 
@@ -388,22 +418,72 @@ async function generateValidatedBatch(user, fetchImpl = fetch) {
   );
 }
 
+const BATCH_AI_ATTEMPTS = 2;
+const REFILL_BATCH_ROUNDS = 3;
+
+async function persistBatchSideEffects(sideEffects) {
+  for (const effect of sideEffects) {
+    persistPayloadSideEffects(effect.payload, effect.track, effect.lyricsData, effect.syncCheck);
+  }
+}
+
+async function deliverFromBatch(user, batch, fetchImpl, { fromQueue = false } = {}) {
+  await persistBatchSideEffects(batch.sideEffects);
+  const [first, ...rest] = batch.valid;
+  if (rest.length) {
+    const inserted = wordQueue.enqueuePayloads(user.id, rest);
+    console.log(`daily word batch: delivered 1, queued ${inserted}/${rest.length} (${batch.valid.length}/${batch.candidateCount} validated)`);
+  } else {
+    console.log(`daily word batch: delivered 1 (${batch.valid.length}/${batch.candidateCount} validated)`);
+  }
+  scheduleRefill(user, fetchImpl);
+  return deliverPayload(user.id, first, { fromQueue });
+}
+
+async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = BATCH_AI_ATTEMPTS } = {}) {
+  let lastError = "unknown";
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const batch = await generateValidatedBatch(user, fetchImpl);
+    if (batch.valid.length) {
+      return deliverFromBatch(user, batch, fetchImpl);
+    }
+    lastError = batch.lastError || "unknown";
+    console.warn(
+      `daily word batch attempt ${attempt + 1}/${maxAttempts}: 0/${batch.candidateCount || 5} passed (${lastError})`
+    );
+  }
+
+  const err = new Error("daily_word_generation_failed");
+  err.code = lastError;
+  throw err;
+}
+
 async function refillQueue(user, fetchImpl = fetch) {
-  while (wordQueue.countReady(user.id) < wordQueue.QUEUE_MAX) {
-    const { valid, sideEffects, lastError } = await generateValidatedBatch(user, fetchImpl);
-    if (!valid.length) {
-      const err = new Error("queue_refill_failed");
-      err.code = lastError || "unknown";
-      throw err;
+  let emptyRounds = 0;
+
+  while (wordQueue.countReady(user.id) < wordQueue.QUEUE_MAX && emptyRounds < REFILL_BATCH_ROUNDS) {
+    const batch = await generateValidatedBatch(user, fetchImpl);
+    if (!batch.valid.length) {
+      emptyRounds += 1;
+      console.warn(
+        `queue refill round ${emptyRounds}/${REFILL_BATCH_ROUNDS}: 0/${batch.candidateCount || 5} valid (${batch.lastError})`
+      );
+      continue;
     }
 
-    for (const effect of sideEffects) {
-      persistPayloadSideEffects(effect.payload, effect.track, effect.lyricsData, effect.syncCheck);
-    }
-
-    const inserted = wordQueue.enqueuePayloads(user.id, valid);
+    emptyRounds = 0;
+    await persistBatchSideEffects(batch.sideEffects);
+    const inserted = wordQueue.enqueuePayloads(user.id, batch.valid);
+    const ready = wordQueue.countReady(user.id);
+    console.log(`queue refill: +${inserted} (${batch.valid.length} validated) ready=${ready}/${wordQueue.QUEUE_MAX}`);
     if (!inserted) break;
-    if (wordQueue.countReady(user.id) >= wordQueue.REFILL_THRESHOLD) break;
+  }
+
+  if (wordQueue.countReady(user.id) === 0 && emptyRounds >= REFILL_BATCH_ROUNDS) {
+    const err = new Error("queue_refill_failed");
+    err.code = "generation_failed";
+    throw err;
   }
 }
 
@@ -419,6 +499,12 @@ async function consumeNextDailyWord(user, fetchImpl = fetch) {
   const delivered = deliverPayload(user.id, queued, { fromQueue: true });
   scheduleRefill(user, fetchImpl);
   return delivered;
+}
+
+async function generateNextDailyWord(user, fetchImpl = fetch) {
+  const instant = await consumeNextDailyWord(user, fetchImpl);
+  if (instant) return hydratePayloadAudio(instant);
+  return hydratePayloadAudio(await generateAndDeliverBatch(user, fetchImpl));
 }
 
 function hydratePayloadAudio(payload) {
@@ -437,46 +523,14 @@ async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}
       scheduleRefill(user, fetchImpl);
       return hydratePayloadAudio(cached);
     }
-
-    const instant = await consumeNextDailyWord(user, fetchImpl);
-    if (instant) return hydratePayloadAudio(instant);
-  } else {
-    const instant = await consumeNextDailyWord(user, fetchImpl);
-    if (instant) return hydratePayloadAudio(instant);
-    assertForceCooldown(user.id);
   }
 
-  const MAX_BATCH_ATTEMPTS = 3;
-  let valid = [];
-  let sideEffects = [];
-  let lastError = "unknown";
+  const instant = await consumeNextDailyWord(user, fetchImpl);
+  if (instant) return hydratePayloadAudio(instant);
 
-  for (let attempt = 0; attempt < MAX_BATCH_ATTEMPTS; attempt++) {
-    const batch = await generateValidatedBatch(user, fetchImpl);
-    if (batch.valid.length) {
-      valid = batch.valid;
-      sideEffects = batch.sideEffects;
-      break;
-    }
-    lastError = batch.lastError || "unknown";
-    console.warn(`daily word batch attempt ${attempt + 1}/${MAX_BATCH_ATTEMPTS} failed: ${lastError}`);
-  }
+  if (force) assertForceCooldown(user.id);
 
-  if (!valid.length) {
-    const err = new Error("daily_word_generation_failed");
-    err.code = lastError || "unknown";
-    throw err;
-  }
-
-  for (const effect of sideEffects) {
-    persistPayloadSideEffects(effect.payload, effect.track, effect.lyricsData, effect.syncCheck);
-  }
-
-  const [first, ...rest] = valid;
-  const delivered = deliverPayload(user.id, first, { fromQueue: false });
-  wordQueue.enqueuePayloads(user.id, rest);
-  scheduleRefill(user, fetchImpl);
-  return hydratePayloadAudio(delivered);
+  return hydratePayloadAudio(await generateAndDeliverBatch(user, fetchImpl));
 }
 
 module.exports = {
@@ -499,6 +553,8 @@ module.exports = {
   generateValidatedBatch,
   refillQueue,
   consumeNextDailyWord,
+  generateNextDailyWord,
+  generateAndDeliverBatch,
   generateDailyWord,
   hydratePayloadAudio,
 };

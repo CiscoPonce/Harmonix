@@ -183,7 +183,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     return () => { audio.removeEventListener("ended", stop); audio.removeEventListener("pause", stop); };
   }, [data]);
 
-  const showHeavyOverlay = refreshing && (queueStatus?.ready ?? 0) === 0 && !queueStatus?.refilling;
+  const showHeavyOverlay = refreshing && (queueStatus?.ready ?? 0) === 0;
 
   if (loading && !data) {
     return (
@@ -215,7 +215,9 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         <div className="absolute inset-0 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-8 text-center">
           <Loader2 className="w-8 h-8 animate-spin text-zinc-900 dark:text-white" />
           <p className="text-sm font-bold uppercase tracking-widest text-zinc-900 dark:text-white">{statusMessage || "Generating your next words..."}</p>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Queue empty — validating songs in the background</p>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
+            {queueStatus?.refilling ? "Stocking your word queue in the background…" : "Generating a batch of words — this can take up to a minute"}
+          </p>
         </div>
       )}
 

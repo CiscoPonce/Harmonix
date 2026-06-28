@@ -49,12 +49,7 @@ router.post("/next", async (req, res) => {
     const user = loadUser(req.user.id);
     if (!user) return res.sendStatus(404);
 
-    let payload = await dailyWordService.consumeNextDailyWord(user);
-    if (!payload) {
-      payload = await dailyWordService.generateDailyWord(user, { force: true });
-    } else {
-      payload = dailyWordService.hydratePayloadAudio(payload);
-    }
+    const payload = await dailyWordService.generateNextDailyWord(user);
 
     console.log(`POST /api/daily-word/next - success in ${Date.now() - started}ms: ${payload.word.text}${payload.from_queue ? " (queue)" : ""}`);
     res.json({ ...payload, queue: wordQueue.getQueueStatus(user.id) });
