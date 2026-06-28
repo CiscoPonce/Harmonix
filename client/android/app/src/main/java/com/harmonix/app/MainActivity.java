@@ -12,8 +12,8 @@ import java.util.Map;
 public class MainActivity extends BridgeActivity {
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public void onStart() {
+        super.onStart();
         Bridge bridge = getBridge();
         if (bridge != null && bridge.getWebView() != null) {
             bridge.getWebView().setWebViewClient(new NgrokWebViewClient(bridge));
