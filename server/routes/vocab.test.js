@@ -11,7 +11,7 @@ const mockRes = () => {
   return res;
 };
 
-const mockReq = (params = {}, user = { id: 'test-user', cefr_level: 'B1' }, query = {}) => ({
+const mockReq = (params = {}, user = { id: 'test-user' }, query = {}) => ({
   params,
   user,
   query,
@@ -33,7 +33,11 @@ if (!verRow || verRow.user_version < SCHEMA_VERSION) {
 }
 
 describe('Vocab API Routes', () => {
+ const testUserId = 'test-user';
+
  beforeEach(() => {
+ db.prepare('INSERT OR IGNORE INTO users (id, email, password_hash) VALUES (?, ?, ?)').run(testUserId, 'vocab@test.com', 'x');
+ db.prepare('UPDATE users SET cefr_level = ?, target_language = ?, difficulty = ? WHERE id = ?').run('B1', 'es', 'medium', testUserId);
  // Clean up DB before each test (children first to satisfy FK constraints)
  db.prepare('DELETE FROM quiz_answers').run();
  db.prepare('DELETE FROM quiz_sessions').run();
@@ -74,7 +78,7 @@ describe('Vocab API Routes', () => {
     const originalFetch = global.fetch;
     global.fetch = async (url) => {
       if (url.includes('deezer.com')) {
-        return { json: async () => ({ title: 'Test Song', artist: { name: 'Test Artist' } }) };
+        return { json: async () => ({ title: 'Test Song', artist: { name: 'Test Artist' }, preview: 'https://cdn.example/p.mp3' }) };
       }
       if (url.includes('lrclib.net')) {
         return { 
@@ -86,11 +90,15 @@ describe('Vocab API Routes', () => {
 
     // Mock AI service
     const originalExtract = aiService.extractVocabulary;
-    aiService.extractVocabulary = async () => [
+    let extractArgs;
+    aiService.extractVocabulary = async (...args) => {
+      extractArgs = args;
+      return [
       { word: 'Hola', lemma: 'hola', definition: 'hello', cefr_level: 'A1' },
       { word: 'Amigos', lemma: 'amigo', definition: 'friends', cefr_level: 'A1' },
       { word: 'Unmapped', lemma: 'unmapped', definition: 'not in lyrics', cefr_level: 'B2' }
     ];
+    };
 
     const req = mockReq({ songId });
     const res = mockRes();
@@ -105,6 +113,8 @@ describe('Vocab API Routes', () => {
     expect(res.body.mapped).to.have.length.at.least(2);
     expect(res.body.unmapped).to.have.lengthOf(1);
     expect(res.body.unmapped[0].word).to.equal('Unmapped');
+    expect(extractArgs[2]).to.equal('B1');
+    expect(extractArgs[3]).to.equal('medium');
 
     // Verify DB
     const count = db.prepare('SELECT count(*) as count FROM vocab_items').get().count;
@@ -113,6 +123,39 @@ describe('Vocab API Routes', () => {
     const mapCount = db.prepare('SELECT count(*) as count FROM song_vocab_map WHERE song_id = ?').get(songId).count;
     // 2 mapped + 1 unmapped = 3 entries in song_vocab_map (unmapped has -1, -1)
     expect(mapCount).to.equal(3);
+  });
+
+  it('loads user preferences from DB and applies easy difficulty as A2', async () => {
+    const songId = 'easy-prefs-song';
+    db.prepare('UPDATE users SET difficulty = ?, cefr_level = ? WHERE id = ?').run('easy', 'B1', testUserId);
+
+    const originalFetch = global.fetch;
+    const originalExtract = aiService.extractVocabulary;
+    let extractArgs;
+
+    global.fetch = async (url) => {
+      if (url.includes('deezer.com')) {
+        return { json: async () => ({ title: 'Easy Song', artist: { name: 'Artist' }, preview: 'https://cdn.example/p.mp3' }) };
+      }
+      if (url.includes('lrclib.net')) {
+        return { ok: true, json: async () => ({ plainLyrics: 'hola mundo', syncedLyrics: '' }) };
+      }
+    };
+    aiService.extractVocabulary = async (...args) => {
+      extractArgs = args;
+      return [{ word: 'hola', lemma: 'hola', definition: 'hello', cefr_level: 'A1' }];
+    };
+
+    const req = mockReq({ songId });
+    const res = mockRes();
+    const handler = vocabRouter.stack.find(s => s.route.path === '/:songId').route.stack[0].handle;
+    await handler(req, res);
+
+    global.fetch = originalFetch;
+    aiService.extractVocabulary = originalExtract;
+
+    expect(extractArgs[2]).to.equal('A2');
+    expect(extractArgs[3]).to.equal('easy');
   });
 
   describe('User never sees the same word twice for one song', () => {
@@ -125,7 +168,7 @@ describe('Vocab API Routes', () => {
       const originalExtract = aiService.extractVocabulary;
       global.fetch = async (url) => {
         if (url.includes('deezer.com')) {
-          return { json: async () => ({ title: 'T', artist: { name: 'A' } }) };
+          return { json: async () => ({ title: 'T', artist: { name: 'A' }, preview: 'https://cdn.example/p.mp3' }) };
         }
         if (url.includes('lrclib.net')) {
           return { ok: true, json: async () => fakeLyrics };
@@ -135,7 +178,7 @@ describe('Vocab API Routes', () => {
       try {
         const handler = vocabRouter.stack.find(s => s.route.path === '/:songId').route.stack[0].handle;
         const res = mockRes();
-        await handler({ params: { songId }, user: { id: 'u1' }, query: {} }, res);
+        await handler({ params: { songId }, user: { id: testUserId }, query: {} }, res);
         return res.body;
       } finally {
         global.fetch = originalFetch;

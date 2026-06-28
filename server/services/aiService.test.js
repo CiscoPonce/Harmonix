@@ -57,6 +57,25 @@ describe('AI Service', () => {
     expect(capturedArgs.messages[0].content).to.contain('English');
     expect(capturedArgs.messages[0].content).to.contain('A1');
     expect(capturedArgs.messages[1].content).to.contain(lyrics);
+    expect(capturedArgs.temperature).to.equal(0.6);
+  });
+
+  it('includes difficulty rubric in vocabulary extraction prompt', async () => {
+    const mockResponse = {
+      choices: [{ message: { content: JSON.stringify({ vocabulary: [] }) } }],
+    };
+
+    let capturedArgs;
+    openai.chat.completions.create = async (args) => {
+      capturedArgs = args;
+      return mockResponse;
+    };
+
+    await extractVocabulary('Lyrics line', 'Spanish', 'A2', 'easy');
+
+    expect(capturedArgs.messages[0].content).to.contain('EASY mode');
+    expect(capturedArgs.messages[0].content).to.contain('Difficulty setting: easy');
+    expect(capturedArgs.messages[0].content).to.contain('A2');
   });
 
   it('falls back to the next model on rate limit', async () => {

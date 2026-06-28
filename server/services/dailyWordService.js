@@ -3,6 +3,11 @@ const aiService = require("./aiService");
 const validation = require("./validationService");
 const alignment = require("../utils/alignment");
 const { languageNameFromCode } = require("../constants/languages");
+const {
+  effectiveCefr,
+  difficultyMatchScore,
+  cefrWithinBand,
+} = require("../constants/difficulty");
 const wordQueue = require("./wordQueueService");
 const deezer = require("./deezerService");
 
@@ -112,6 +117,7 @@ function buildPayload(date, suggestion, track, lyricsData, occurrence) {
       part_of_speech: suggestion.part_of_speech || null,
       pronunciation: suggestion.pronunciation || null,
       difficulty: suggestion.difficulty || "medium",
+      cefr_level: suggestion.cefr_level || null,
     },
     lyric: occurrence,
     song: {
@@ -179,20 +185,35 @@ function genreBoostScore(genre, userGenre) {
   return 0;
 }
 
-async function validateAllCandidates(candidates, date, userGenre, fetchImpl = fetch) {
+function candidateRankScore(suggestion, userGenre, userDifficulty, effectiveLevel) {
+  let score = genreBoostScore(suggestion.genre, userGenre);
+  score += difficultyMatchScore(suggestion.difficulty, userDifficulty);
+  if (suggestion.cefr_level && effectiveLevel) {
+    if (cefrWithinBand(suggestion.cefr_level, effectiveLevel, userDifficulty)) score += +2;
+    else score -= 1;
+  }
+  return score;
+}
+
+async function validateAllCandidates(candidates, date, userGenre, userDifficulty = "medium", userCefr = "B1", fetchImpl = fetch) {
+  const effectiveLevel = effectiveCefr(userCefr, userDifficulty);
   const results = [];
   let lastError = null;
 
   for (const suggestion of candidates) {
     const result = await tryValidateSuggestion(suggestion, date, fetchImpl);
     if (result.payload) {
-      results.push(result);
+      results.push({ ...result, suggestion });
     } else if (result.error) {
       lastError = result.error;
     }
   }
 
-  results.sort((a, b) => genreBoostScore(b.genre, userGenre) - genreBoostScore(a.genre, userGenre));
+  results.sort((a, b) => {
+    const rankA = candidateRankScore(a.suggestion, userGenre, userDifficulty, effectiveLevel);
+    const rankB = candidateRankScore(b.suggestion, userGenre, userDifficulty, effectiveLevel);
+    return rankB - rankA;
+  });
 
   return {
     valid: results.map((r) => r.payload),
@@ -351,11 +372,12 @@ function assertForceCooldown(userId) {
 
 async function fetchAiCandidates(user) {
   const languageName = languageNameFromCode(user.target_language || "es");
+  const difficulty = user.difficulty || "medium";
   const aiResult = await aiService.generateDailyWord({
     languageName,
-    cefrLevel: user.cefr_level || "B1",
+    cefrLevel: effectiveCefr(user.cefr_level || "B1", difficulty),
     genre: user.genre || "pop",
-    difficulty: user.difficulty || "medium",
+    difficulty,
     avoidWords: getAvoidWords(user.id),
   });
   return Array.isArray(aiResult) ? aiResult : [aiResult];
@@ -375,7 +397,14 @@ async function generateValidatedBatch(user, fetchImpl = fetch) {
     return { valid: [], sideEffects: [], lastError: "invalid_ai_daily_word_response" };
   }
 
-  return validateAllCandidates(candidates, date, user.genre || "pop", fetchImpl);
+  return validateAllCandidates(
+    candidates,
+    date,
+    user.genre || "pop",
+    user.difficulty || "medium",
+    user.cefr_level || "B1",
+    fetchImpl
+  );
 }
 
 async function refillQueue(user, fetchImpl = fetch) {

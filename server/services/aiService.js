@@ -1,4 +1,5 @@
 const { OpenAI } = require('openai');
+const { difficultyRubric, normalizeDifficulty } = require('../constants/difficulty');
 require('dotenv').config();
 
 const openai = new OpenAI({
@@ -82,6 +83,7 @@ function normalizeSingleDailyWord(content) {
       part_of_speech: nested.part_of_speech || content.part_of_speech,
       pronunciation: nested.pronunciation || content.pronunciation,
       difficulty: nested.difficulty || content.difficulty,
+      cefr_level: nested.cefr_level || content.cefr_level,
       song_title: nested.song_title || nested.title || content.song_title,
       artist: nested.artist || content.artist,
       genre: nested.genre || content.genre,
@@ -93,6 +95,7 @@ function normalizeSingleDailyWord(content) {
     part_of_speech: content.part_of_speech,
     pronunciation: content.pronunciation,
     difficulty: content.difficulty,
+    cefr_level: content.cefr_level,
     song_title: content.song_title || content.title,
     artist: content.artist,
     genre: content.genre,
@@ -111,16 +114,24 @@ function normalizeDailyWord(content) {
   return single ? [single] : null;
 }
 
-async function extractVocabulary(lyricsText, targetLanguage, cefrLevel = 'B1') {
+async function extractVocabulary(lyricsText, targetLanguage, cefrLevel = 'B1', difficulty = 'medium') {
+  const level = cefrLevel || 'B1';
+  const diff = normalizeDifficulty(difficulty);
+  const rubric = difficultyRubric(diff);
+
   const systemPrompt = `Act as a professional ${targetLanguage} teacher. Your task is to analyze song lyrics and extract 5-10 vocabulary words or phrases.
-Target Audience Level: ${cefrLevel}.
+Target Audience Level: ${level}.
+Difficulty setting: ${diff}
+
+${rubric}
 
 Constraints:
 1. Words must be essential for understanding the song's themes.
-2. Words should be AT or SLIGHTLY ABOVE the user's level.
+2. Words should match BOTH the CEFR level (${level}) AND the difficulty setting (${diff}).
 3. For A1/A2: Avoid idioms, focus on high-frequency concrete nouns and verbs.
 4. For B1/B2: Include common phrasal verbs and situational expressions.
 5. For C1/C2: Focus on nuanced synonyms, literary terms, and culturally specific metaphors.
+6. Every item MUST include an accurate cefr_level label (A1-C2).
 
 Output Format (JSON):
 {
@@ -142,7 +153,7 @@ Output Format (JSON):
     ],
     response_format: { type: 'json_object' },
     max_tokens: 16384,
-    temperature: 1.0,
+    temperature: 0.6,
     top_p: 0.95,
   });
 
@@ -154,19 +165,24 @@ async function generateDailyWord({ languageName, cefrLevel, genre, difficulty, a
   const avoidList = avoidWords.length
     ? `Avoid these recently used words: ${avoidWords.join(', ')}.`
     : '';
+  const diff = normalizeDifficulty(difficulty);
+  const rubric = difficultyRubric(diff);
 
   const systemPrompt = `You are a ${languageName} language teacher. Pick 5 DIFFERENT vocabulary words for a learner. Pair each word with a REAL, well-known ${languageName} song that contains that exact word in its lyrics.
 
-Learner level: ${cefrLevel}
+Learner CEFR level: ${cefrLevel}
 Preferred genre: ${genre}
-Difficulty: ${difficulty}
+Difficulty setting: ${diff}
+
+${rubric}
 
 Rules:
 1. Each target_word MUST appear verbatim (same spelling) in its matching song lyrics.
 2. Choose popular songs likely to have synced lyrics on LRCLib and previews on Deezer.
-3. The words should match the learner level (${cefrLevel}).
+3. Every candidate MUST match BOTH the CEFR level (${cefrLevel}) AND difficulty (${diff}).
 4. Return realistic song_title and artist names only — no made-up songs.
-5. ${avoidList}
+5. Each candidate MUST include cefr_level (A1-C2) and difficulty (easy|medium|hard) matching the rules above.
+6. ${avoidList}
 
 Reply with ONLY a JSON object containing a "candidates" array, no markdown or explanation:
 {
@@ -176,6 +192,7 @@ Reply with ONLY a JSON object containing a "candidates" array, no markdown or ex
       "translation": "English translation",
       "part_of_speech": "noun|verb|adjective|...",
       "pronunciation": "optional IPA or phonetic",
+      "cefr_level": "A1-C2",
       "difficulty": "easy|medium|hard",
       "song_title": "Song Title",
       "artist": "Artist Name",

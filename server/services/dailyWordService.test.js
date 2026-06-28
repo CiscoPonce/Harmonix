@@ -189,13 +189,53 @@ describe("Daily Word Service", () => {
       { target_word: "noche", translation: "night", song_title: "Test Song", artist: "Test Artist", genre: "pop" },
     ];
 
-    const { valid } = await validateAllCandidates(candidates, "2026-06-27", "pop", mockFetch);
+    const { valid } = await validateAllCandidates(candidates, "2026-06-27", "pop", "medium", "B1", mockFetch);
     expect(valid).to.have.lengthOf(2);
     expect(valid.map((p) => p.word.text)).to.include.members(["amor", "noche"]);
 
     const inserted = wordQueue.enqueuePayloads(userId, valid.slice(1));
     expect(inserted).to.equal(1);
     expect(wordQueue.countReady(userId)).to.equal(1);
+  });
+
+  it("prefers easy-matched candidates when user difficulty is easy", async () => {
+    const mockFetch = async (url) => {
+      if (url.includes("deezer.com/search")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: [{
+              id: 100,
+              title: "Test Song",
+              duration: 200,
+              preview: "https://cdn.example/preview.mp3",
+              artist: { name: "Test Artist" },
+            }],
+          }),
+        };
+      }
+      if (url.includes("lrclib.net")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            syncedLyrics: "[00:10.00] El amor y la noche brillan\n[00:20.00] Siempre juntos\n[00:30.00] Para ti",
+            plainLyrics: "El amor y la noche brillan",
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+
+    const candidates = [
+      { target_word: "noche", translation: "night", difficulty: "hard", cefr_level: "C1", song_title: "Test Song", artist: "Test Artist", genre: "pop" },
+      { target_word: "amor", translation: "love", difficulty: "easy", cefr_level: "A1", song_title: "Test Song", artist: "Test Artist", genre: "pop" },
+    ];
+
+    const { valid } = await validateAllCandidates(candidates, "2026-06-27", "pop", "easy", "B1", mockFetch);
+    expect(valid).to.have.lengthOf(2);
+    expect(valid[0].word.text).to.equal("amor");
   });
 
   it("serves next word instantly from queue", async () => {

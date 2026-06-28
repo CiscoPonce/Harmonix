@@ -6,7 +6,14 @@ const alignment = require('../utils/alignment');
 const validation = require('../services/validationService');
 const { foldWord } = require('../services/canonicalKeyService');
 const { languageNameFromCode } = require('../constants/languages');
+const { effectiveCefr, filterVocabularyByLevel } = require('../constants/difficulty');
 const { nanoid } = require('nanoid');
+
+function loadUser(userId) {
+  return db.prepare(
+    'SELECT id, cefr_level, target_language, difficulty FROM users WHERE id = ?'
+  ).get(userId);
+}
 
 // Parse a block of LRCLib-style lyrics (synced or plain) into the same
 // `{ text }` line objects that the alignment utility expects. Synced lines
@@ -29,7 +36,11 @@ const MIGRATED_ROW_FLAG = '__has_char_end__';
 
 router.get('/:songId', async (req, res) => {
  const { songId } = req.params;
- const userCefr = req.user.cefr_level || 'B1';
+ const user = loadUser(req.user.id);
+ if (!user) return res.sendStatus(404);
+
+ const userDifficulty = user.difficulty || 'medium';
+ const userCefr = effectiveCefr(user.cefr_level || 'B1', userDifficulty);
  const force = req.query.force === 'true';
 
  try {
@@ -138,10 +149,11 @@ router.get('/:songId', async (req, res) => {
     const syncedLyricsText = lyricsData.syncedLyrics || '';
     if (!lyricsText && !syncedLyricsText) return res.status(404).json({ error: 'Lyrics content empty' });
 
-    // 3. Extract and Align — use user's target_language instead of hardcoded 'Spanish'
-    const langCode = req.user.target_language || 'es';
+    // 3. Extract and Align — use user's target_language and difficulty prefs
+    const langCode = user.target_language || 'es';
     const targetLangName = languageNameFromCode(langCode);
-    const vocab = await aiService.extractVocabulary(lyricsText, targetLangName, userCefr);
+    let vocab = await aiService.extractVocabulary(lyricsText, targetLangName, userCefr, userDifficulty);
+    vocab = filterVocabularyByLevel(vocab, userCefr, userDifficulty);
     const vocabWithIds = vocab.map(v => ({ ...v, id: nanoid() }));
 
  // Align against the SAME lines the frontend renders. The karaoke player uses
