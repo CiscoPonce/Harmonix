@@ -1,5 +1,9 @@
 # Harmonix
 
+<!-- x-release-please-start-version -->
+**Version:** 0.0.1 (v0.01)
+<!-- x-release-please-end -->
+
 Learn Words Through Music. AI-first language learning through real music lyrics. Validated vocabulary extraction + spaced repetition tied to actual songs.
 
 ![Harmonix Logo](./logoharmonix2.png)
@@ -27,8 +31,9 @@ Learn Words Through Music. AI-first language learning through real music lyrics.
 - `server/`: Express API, SQLite DB (`harmonix.db`), business logic
 - `client/`: Next.js frontend + Capacitor Android project (`client/android/`)
 - `releases/`: Pre-built debug APK for sideload testing
-- `docs/`: Runbooks including [MOBILE-B-CAPACITOR.md](./docs/MOBILE-B-CAPACITOR.md)
+- `docs/`: Runbooks including [MOBILE-B-CAPACITOR.md](./docs/MOBILE-B-CAPACITOR.md) and [RELEASES.md](./docs/RELEASES.md)
 - `.planning/`: Roadmap and phase plans (Phase 10 mobile)
+- `CHANGELOG.md` / `version.txt`: Release history and current version ([release-please](https://github.com/googleapis/release-please))
 
 ## Quickstart
 
@@ -86,6 +91,13 @@ npm test
 - **Audio Previews:** Stay short due to copyright limitations.
 - **UI:** Dynamic Light/Dark-mode minimalist design.
 - **Mobile:** Option B (Capacitor) = web UI in WebView; Option C (Flutter mockup) planned in Phase 10.
+
+## Releases
+
+Versioning is automated with [release-please](https://github.com/googleapis/release-please). See [docs/RELEASES.md](./docs/RELEASES.md) for the workflow and [CHANGELOG.md](./CHANGELOG.md) for release notes.
+
+- Latest: [GitHub Releases](https://github.com/CiscoPonce/Harmonix/releases)
+- Commits on `main` should follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, etc.)
 
 ## License
 
