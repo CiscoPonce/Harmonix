@@ -10,6 +10,7 @@ const {
 } = require("../constants/difficulty");
 const wordQueue = require("./wordQueueService");
 const deezer = require("./deezerService");
+const lrcLib = require("./lrcLibService");
 
 const MAX_RETRIES = 3;
 const FORCE_COOLDOWN_MS = process.env.FORCE_COOLDOWN_MS ? parseInt(process.env.FORCE_COOLDOWN_MS, 10) : 90_000;
@@ -84,17 +85,7 @@ function findWordOccurrence(word, syncedLyrics, plainLyrics = null) {
 }
 
 async function fetchLyrics(artist, title, duration, fetchImpl = fetch) {
-  const url = new URL("https://lrclib.net/api/get");
-  url.searchParams.append("artist_name", artist);
-  url.searchParams.append("track_name", title);
-  if (duration) url.searchParams.append("duration", String(duration));
-
-  const res = await fetchImpl(url.toString());
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`lrclib_http_${res.status}`);
-  const data = await res.json();
-  if (!data.syncedLyrics) return null;
-  return data;
+  return lrcLib.fetchLyricsForTrack(artist, title, duration, fetchImpl);
 }
 
 async function searchDeezerTrack(artist, title, fetchImpl = fetch) {
@@ -156,27 +147,38 @@ function persistPayloadSideEffects(payload, track, lyricsData, syncCheck) {
 }
 
 async function tryValidateSuggestion(suggestion, date, fetchImpl = fetch) {
+  const label = `"${suggestion.target_word}" / ${suggestion.artist} - ${suggestion.song_title}`;
   try {
     const track = await searchDeezerTrack(suggestion.artist, suggestion.song_title, fetchImpl);
     if (!track) return { error: "deezer_not_found" };
 
     const lyricsData = await fetchLyrics(track.artist.name, track.title, track.duration, fetchImpl);
-    if (!lyricsData?.syncedLyrics) return { error: "lyrics_not_found" };
+    if (!lyricsData?.syncedLyrics) {
+      console.warn(`daily word reject: lyrics_not_found ${label}`);
+      return { error: "lyrics_not_found" };
+    }
 
     const syncCheck = validation.validateSongSync({ duration: track.duration }, lyricsData.syncedLyrics);
-    if (!syncCheck.valid) return { error: "lyrics_validation_failed" };
+    if (!syncCheck.valid) {
+      console.warn(`daily word reject: lyrics_validation_failed ${label} (${syncCheck.issues.join(', ')})`);
+      return { error: "lyrics_validation_failed" };
+    }
 
     const occurrence = findWordOccurrence(
       suggestion.target_word,
       lyricsData.syncedLyrics,
       lyricsData.plainLyrics || null
     );
-    if (!occurrence) return { error: "word_not_in_lyrics" };
+    if (!occurrence) {
+      console.warn(`daily word reject: word_not_in_lyrics ${label}`);
+      return { error: "word_not_in_lyrics" };
+    }
 
     const payload = buildPayload(date, suggestion, track, lyricsData, occurrence);
     return { payload, track, lyricsData, syncCheck, genre: suggestion.genre || null };
   } catch (err) {
     if (err.code === "ai_rate_limit") throw err;
+    console.warn(`daily word reject: ${err.code || err.message} ${label}`);
     return { error: err.code || err.message || "generation_failed" };
   }
 }
