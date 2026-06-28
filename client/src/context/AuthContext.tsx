@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { apiFetch, setAccessToken } from '@/lib/api';
+import { apiFetch, setAccessToken, parseJsonResponse } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
 export interface User {
@@ -56,15 +56,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiFetch('/auth/refresh', { method: 'POST' });
       console.log(`[Auth] Refresh response status: ${res.status}`);
       if (res.ok) {
-        const data = await res.json();
+        const data = await parseJsonResponse<{ accessToken: string }>(res);
         console.log('[Auth] Refresh token accepted');
         setAccessToken(data.accessToken);
-        
-        // Fetch user data
+
         console.log('[Auth] Fetching user info...');
         const userRes = await apiFetch('/auth/me');
         if (userRes.ok) {
-          const userData = await userRes.json();
+          const userData = await parseJsonResponse<User>(userRes);
           console.log('[Auth] User info received:', userData.email);
           setUser(userData);
         }
@@ -95,13 +94,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (res.ok) {
-      const data = await res.json();
+      const data = await parseJsonResponse<{ accessToken: string; user: User }>(res);
       console.log('[Auth] Login successful');
       setAccessToken(data.accessToken);
       setUser(data.user);
       router.push('/dashboard');
     } else {
-      const errorData = await res.json();
+      const errorData = await parseJsonResponse<{ error?: string }>(res).catch(() => ({
+        error: 'Login failed',
+      }));
       console.warn('[Auth] Login failed:', errorData.error);
       throw new Error(friendlyAuthError(errorData.error, 'login'));
     }
@@ -120,7 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Backend register doesn't return token, so login after registration
       await login(email, password);
     } else {
-      const errorData = await res.json();
+      const errorData = await parseJsonResponse<{ error?: string }>(res).catch(() => ({
+        error: 'Registration failed',
+      }));
       console.warn('[Auth] Registration failed:', errorData.error);
       throw new Error(friendlyAuthError(errorData.error, 'register'));
     }
@@ -134,7 +137,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
-      const errorData = await res.json();
+      const errorData = await parseJsonResponse<{ error?: string }>(res).catch(() => ({
+        error: 'Password reset failed',
+      }));
       throw new Error(errorData.error || 'Password reset failed');
     }
     await login(email, password);
