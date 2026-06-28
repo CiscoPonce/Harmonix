@@ -15,6 +15,15 @@ export default function LandingPage() {
   const router = useRouter();
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    if (w <= 280 && h <= 340) {
+      window.location.replace('/watch');
+    }
+  }, []);
+
+  useEffect(() => {
     if (!isLoading && user) {
       router.push('/dashboard');
     }

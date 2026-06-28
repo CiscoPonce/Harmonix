@@ -1,0 +1,17 @@
+/* Round Wear OS screens: keep content inside the safe circle */
+.watch-root {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.watch-screen {
+  max-width: 220px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 12px 8px 16px;
+}
+
+@media (min-width: 240px) {
+  .watch-screen {
+    max-width: 240px;
+  }
+}

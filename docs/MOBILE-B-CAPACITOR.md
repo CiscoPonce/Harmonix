@@ -157,6 +157,36 @@ bash /home/ubuntu/lyric/run_env.sh
 
 ---
 
+## Wear OS preview (Samsung / Wear OS 6)
+
+Minimal watch UI at **`/watch`** — Daily Word only, large tap targets, round-screen safe layout.
+
+### On the watch
+
+1. Enable **Developer options** + **Wireless debugging** (you already did this).
+2. Sideload `Harmonix-debug.apk` (Easy Fire Tools / Bugjaeger / `adb install`).
+3. Open **Harmonix** on the watch — very small screens auto-redirect to `/watch`.
+4. Or open directly: `https://<your-ngrok-host>/watch` in the watch browser.
+5. Sign in at `/watch/login`, then use **Hear it** / **Next word**.
+
+### What you get
+
+| Screen | Content |
+|--------|---------|
+| Login | Email + password only |
+| Daily word | Word, translation, lyric snippet, audio at timestamp |
+
+This is a **preview**, not the final Flutter Wear companion (Phase 10+).
+
+### adb open URL (optional)
+
+```bash
+adb connect <watch-ip>:<port>
+adb shell am start -a android.intent.action.VIEW -d "https://moral-sparrow-nationally.ngrok-free.app/watch"
+```
+
+---
+
 ## Next steps (Phase 10-02)
 
 - Internal Play Store track (requires Plan 10-00B domain)

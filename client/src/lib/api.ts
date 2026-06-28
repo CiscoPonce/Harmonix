@@ -85,7 +85,8 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
         console.log(`[apiFetch] Refresh failed, redirecting to login`);
         accessToken = null;
         if (typeof window !== 'undefined') {
-          window.location.href = '/login';
+          const watch = window.location.pathname.startsWith('/watch');
+          window.location.href = watch ? '/watch/login' : '/login';
         }
       }
     }
