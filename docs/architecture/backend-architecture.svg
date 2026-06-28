@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d0d14"/>
+      <stop offset="100%" stop-color="#08080e"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8b949e"/>
+    </marker>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#58a6ff" flood-opacity="0.25"/>
+    </filter>
+    <style type="text/css"><![CDATA[
+      text { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+      .title { fill: #f0f6fc; font-size: 22px; font-weight: 700; }
+      .subtitle { fill: #8b949e; font-size: 12px; }
+      .label { fill: #8b949e; font-size: 11px; font-weight: 600; }
+      .body { fill: #c9d1d9; font-size: 10px; }
+      .small { fill: #8b949e; font-size: 9px; }
+    ]]></style>
+  </defs>
+
+  <rect width="960" height="720" fill="url(#bg)"/>
+  <text class="title" x="480" y="42" text-anchor="middle">Harmonix - Backend Architecture</text>
+  <text class="subtitle" x="480" y="64" text-anchor="middle">Express gateway on VPS | port 3001 | SQLite | external APIs | AI via NVIDIA NIM</text>
+
+  <!-- Clients -->
+  <rect x="40" y="100" width="880" height="72" rx="10" fill="#161b22" stroke="#30363d"/>
+  <text class="label" x="60" y="128">CLIENTS</text>
+  <rect x="60" y="138" width="150" height="24" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="135" y="154" text-anchor="middle">Browser / PWA</text>
+  <rect x="230" y="138" width="150" height="24" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="305" y="154" text-anchor="middle">Capacitor Android</text>
+  <rect x="400" y="138" width="150" height="24" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="475" y="154" text-anchor="middle">WebView (ngrok)</text>
+  <text x="780" y="154" fill="#58a6ff" font-size="11" text-anchor="end">HTTPS -&gt; ngrok tunnel</text>
+
+  <line x1="480" y1="172" x2="480" y2="198" stroke="#8b949e" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- VPS note -->
+  <rect x="40" y="200" width="70" height="48" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="small" x="75" y="220" text-anchor="middle" font-weight="600">run_env</text>
+  <text class="small" x="75" y="234" text-anchor="middle">.sh</text>
+  <text class="small" x="75" y="246" text-anchor="middle">VPS</text>
+
+  <!-- Express core -->
+  <rect x="120" y="200" width="720" height="300" rx="14" fill="#0d1117" stroke="#58a6ff" stroke-width="2" filter="url(#glow)"/>
+  <text x="150" y="228" fill="#58a6ff" font-size="14" font-weight="700">Express Server</text>
+  <text class="subtitle" x="150" y="246">server/index.js | :3001 | trust proxy | JWT auth | cookie refresh</text>
+
+  <rect x="150" y="262" width="200" height="100" rx="8" fill="#161b22" stroke="#3fb950"/>
+  <text x="165" y="282" fill="#3fb950" font-size="11" font-weight="700">AUTH (public)</text>
+  <text class="body" x="165" y="300">POST /api/auth/register</text>
+  <text class="body" x="165" y="314">POST /api/auth/login</text>
+  <text class="body" x="165" y="328">POST /api/auth/refresh</text>
+  <text class="body" x="165" y="342">GET  /api/auth/me</text>
+  <text class="small" x="165" y="356">bcrypt + JWT + httpOnly cookie</text>
+
+  <rect x="370" y="262" width="200" height="100" rx="8" fill="#161b22" stroke="#d29922"/>
+  <text x="385" y="282" fill="#d29922" font-size="11" font-weight="700">MEDIA PROXY</text>
+  <text class="body" x="385" y="300">GET /api/search -&gt; Deezer</text>
+  <text class="body" x="385" y="314">GET /api/tracks/:id</text>
+  <text class="body" x="385" y="328">GET /api/lyrics -&gt; LRCLib</text>
+  <text class="small" x="385" y="342">30s preview offset calc</text>
+  <text class="small" x="385" y="356">no API keys exposed to client</text>
+
+  <rect x="590" y="262" width="230" height="100" rx="8" fill="#161b22" stroke="#bc8cff"/>
+  <text x="605" y="282" fill="#bc8cff" font-size="11" font-weight="700">PROTECTED API (JWT)</text>
+  <text class="body" x="605" y="300">/api/vocab | /api/daily-word</text>
+  <text class="body" x="605" y="314">/api/study | /api/progress</text>
+  <text class="body" x="605" y="328">/api/validation | /api/badges</text>
+  <text class="body" x="605" y="342">/api/playlists | /api/user</text>
+  <text class="small" x="605" y="356">authenticateToken middleware</text>
+
+  <rect x="150" y="380" width="670" height="100" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text class="label" x="165" y="400">SERVICES LAYER</text>
+  <rect x="165" y="410" width="120" height="56" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text x="225" y="432" fill="#f85149" font-size="10" text-anchor="middle" font-weight="600">aiService</text>
+  <text class="small" x="225" y="448" text-anchor="middle">NVIDIA NIM</text>
+  <text class="small" x="225" y="460" text-anchor="middle">model fallback</text>
+  <rect x="305" y="410" width="120" height="56" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="365" y="432" text-anchor="middle" font-weight="600">validation</text>
+  <text class="small" x="365" y="448" text-anchor="middle">LRC quality</text>
+  <text class="small" x="365" y="460" text-anchor="middle">score gate</text>
+  <rect x="445" y="410" width="120" height="56" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="505" y="432" text-anchor="middle" font-weight="600">alignment</text>
+  <text class="small" x="505" y="448" text-anchor="middle">word to lyric</text>
+  <text class="small" x="505" y="460" text-anchor="middle">line index</text>
+  <rect x="585" y="410" width="120" height="56" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="645" y="432" text-anchor="middle" font-weight="600">quiz / SRS</text>
+  <text class="small" x="645" y="448" text-anchor="middle">study engine</text>
+  <text class="small" x="645" y="460" text-anchor="middle">badges</text>
+  <rect x="725" y="410" width="80" height="56" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="765" y="432" text-anchor="middle" font-weight="600">dailyWord</text>
+  <text class="small" x="765" y="448" text-anchor="middle">queue</text>
+  <text class="small" x="765" y="460" text-anchor="middle">cache</text>
+
+  <rect x="280" y="530" width="180" height="64" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="370" y="556" fill="#3fb950" font-size="12" font-weight="700" text-anchor="middle">SQLite</text>
+  <text class="body" x="370" y="574" text-anchor="middle">harmonix.db</text>
+  <text class="small" x="370" y="588" text-anchor="middle">users | vocab | songs | progress</text>
+  <line x1="370" y1="480" x2="370" y2="528" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="500" y="530" width="180" height="64" rx="10" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="590" y="556" fill="#58a6ff" font-size="12" font-weight="700" text-anchor="middle">Next.js :3009</text>
+  <text class="body" x="590" y="574" text-anchor="middle">production build</text>
+  <text class="small" x="590" y="588" text-anchor="middle">/* -&gt; http-proxy-middleware</text>
+  <line x1="590" y1="500" x2="590" y2="528" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text class="small" x="590" y="518" text-anchor="middle">non-/api routes</text>
+
+  <rect x="40" y="630" width="260" height="64" rx="10" fill="#161b22" stroke="#d29922"/>
+  <text x="170" y="656" fill="#d29922" font-size="12" font-weight="700" text-anchor="middle">Deezer API</text>
+  <text class="small" x="170" y="674" text-anchor="middle">search | track metadata | 30s preview URL</text>
+  <line x1="470" y1="312" x2="300" y2="630" stroke="#d29922" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+  <rect x="350" y="630" width="260" height="64" rx="10" fill="#161b22" stroke="#d29922"/>
+  <text x="480" y="656" fill="#d29922" font-size="12" font-weight="700" text-anchor="middle">LRCLib API</text>
+  <text class="small" x="480" y="674" text-anchor="middle">synced + plain lyrics | timestamped LRC</text>
+  <line x1="470" y1="312" x2="480" y2="628" stroke="#d29922" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+  <rect x="660" y="630" width="260" height="64" rx="10" fill="#161b22" stroke="#f85149"/>
+  <text x="790" y="656" fill="#f85149" font-size="12" font-weight="700" text-anchor="middle">NVIDIA NIM</text>
+  <text class="small" x="790" y="674" text-anchor="middle">Kimi K2.6 + fallback models | OpenAI-compatible</text>
+  <line x1="225" y1="466" x2="790" y2="628" stroke="#f85149" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+</svg>

@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 860">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d0d14"/>
+      <stop offset="100%" stop-color="#08080e"/>
+    </linearGradient>
+    <marker id="arrow2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#8b949e"/>
+    </marker>
+    <marker id="arrowFlow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#484f58"/>
+    </marker>
+    <style type="text/css"><![CDATA[
+      text { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+      .title { fill: #f0f6fc; font-size: 22px; font-weight: 700; }
+      .subtitle { fill: #8b949e; font-size: 12px; }
+      .body { fill: #c9d1d9; font-size: 10px; }
+      .small { fill: #8b949e; font-size: 9px; }
+    ]]></style>
+  </defs>
+
+  <rect width="1040" height="860" fill="url(#bg2)"/>
+  <text class="title" x="520" y="40" text-anchor="middle">Harmonix - App Flow (AI + APIs)</text>
+  <text class="subtitle" x="520" y="62" text-anchor="middle">Next.js client -&gt; apiFetch -&gt; Express -&gt; validate -&gt; cache -&gt; respond</text>
+
+  <!-- Frontend -->
+  <rect x="40" y="88" width="960" height="88" rx="12" fill="#161b22" stroke="#58a6ff"/>
+  <text x="60" y="112" fill="#58a6ff" font-size="12" font-weight="700">NEXT.JS CLIENT (client/src)</text>
+  <rect x="60" y="122" width="110" height="40" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="115" y="140" text-anchor="middle">LoginPage</text>
+  <text class="small" x="115" y="154" text-anchor="middle">/login</text>
+  <rect x="185" y="122" width="110" height="40" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="240" y="140" text-anchor="middle">Dashboard</text>
+  <text class="small" x="240" y="154" text-anchor="middle">DailyWordCard</text>
+  <rect x="310" y="122" width="110" height="40" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="365" y="140" text-anchor="middle">SongSearch</text>
+  <text class="small" x="365" y="154" text-anchor="middle">/search</text>
+  <rect x="435" y="122" width="110" height="40" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="490" y="140" text-anchor="middle">Player</text>
+  <text class="small" x="490" y="154" text-anchor="middle">/player/[id]</text>
+  <rect x="560" y="122" width="110" height="40" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="615" y="140" text-anchor="middle">StudyQuiz</text>
+  <text class="small" x="615" y="154" text-anchor="middle">SRS + badges</text>
+  <rect x="720" y="122" width="260" height="40" rx="6" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="850" y="140" fill="#58a6ff" font-size="10" text-anchor="middle" font-weight="600">apiFetch (client/src/lib/api.ts)</text>
+  <text class="small" x="850" y="154" text-anchor="middle">JWT Bearer | cookie refresh | ngrok header</text>
+
+  <line x1="520" y1="176" x2="520" y2="200" stroke="#8b949e" stroke-width="2" marker-end="url(#arrow2)"/>
+
+  <rect x="360" y="202" width="320" height="48" rx="10" fill="#0d1117" stroke="#58a6ff" stroke-width="2"/>
+  <text x="520" y="224" fill="#58a6ff" font-size="13" font-weight="700" text-anchor="middle">Express API Gateway</text>
+  <text class="subtitle" x="520" y="240" text-anchor="middle">/api/* on same origin (port 3001)</text>
+
+  <!-- Flow 1 -->
+  <rect x="40" y="280" width="460" height="148" rx="10" fill="#161b22" stroke="#3fb950"/>
+  <text x="60" y="302" fill="#3fb950" font-size="12" font-weight="700">(1) AUTH FLOW</text>
+  <text class="body" x="60" y="322">1. LoginPage -&gt; POST /api/auth/login</text>
+  <text class="body" x="60" y="338">2. Server verifies bcrypt hash in SQLite -&gt; returns accessToken (JWT)</text>
+  <text class="body" x="60" y="354">3. refreshToken stored in httpOnly cookie (Secure over ngrok HTTPS)</text>
+  <text class="body" x="60" y="370">4. apiFetch attaches Authorization: Bearer on every request</text>
+  <text class="body" x="60" y="386">5. On 401 -&gt; POST /api/auth/refresh -&gt; retry or redirect /login</text>
+  <rect x="60" y="398" width="420" height="20" rx="4" fill="#21262d"/>
+  <text class="small" x="270" y="412" text-anchor="middle">No AI | SQLite only | Capacitor WebView uses ngrok-skip-browser-warning header</text>
+
+  <!-- Flow 2 -->
+  <rect x="540" y="280" width="460" height="148" rx="10" fill="#161b22" stroke="#d29922"/>
+  <text x="560" y="302" fill="#d29922" font-size="12" font-weight="700">(2) SONG SEARCH</text>
+  <text class="body" x="560" y="322">1. SongSearch -&gt; GET /api/search?q=...</text>
+  <text class="body" x="560" y="338">2. Express proxies to Deezer search API</text>
+  <text class="body" x="560" y="354">3. User picks track -&gt; navigate to /player/[deezerId]</text>
+  <text class="body" x="560" y="370">4. Player loads GET /api/tracks/:id (preview URL + offset)</text>
+  <text class="body" x="560" y="386">5. Player loads GET /api/lyrics (LRCLib synced LRC)</text>
+  <rect x="560" y="398" width="420" height="20" rx="4" fill="#21262d"/>
+  <text class="small" x="770" y="412" text-anchor="middle">External APIs only | 30s audio preview (copyright limit)</text>
+
+  <!-- Flow 3 -->
+  <rect x="40" y="450" width="960" height="200" rx="12" fill="#161b22" stroke="#f85149" stroke-width="1.5"/>
+  <text x="60" y="474" fill="#f85149" font-size="13" font-weight="700">(3) VOCAB EXTRACTION - GET /api/vocab/:songId (core AI pipeline)</text>
+
+  <!-- Pipeline boxes -->
+  <rect x="55" y="492" width="118" height="56" rx="6" fill="#21262d" stroke="#484f58"/>
+  <text class="body" x="114" y="514" text-anchor="middle" font-weight="600">Cache hit?</text>
+  <text class="small" x="114" y="530" text-anchor="middle">SQLite vocab_items</text>
+  <text class="small" x="114" y="542" text-anchor="middle">+ lyrics snapshot</text>
+
+  <line x1="173" y1="520" x2="195" y2="520" stroke="#484f58" stroke-width="2" marker-end="url(#arrowFlow)"/>
+
+  <rect x="195" y="492" width="118" height="56" rx="6" fill="#21262d" stroke="#d29922"/>
+  <text x="254" y="514" fill="#d29922" font-size="10" text-anchor="middle" font-weight="600">Fetch track</text>
+  <text class="small" x="254" y="530" text-anchor="middle">Deezer /track/:id</text>
+  <text class="small" x="254" y="542" text-anchor="middle">require preview</text>
+
+  <line x1="313" y1="520" x2="335" y2="520" stroke="#484f58" stroke-width="2" marker-end="url(#arrowFlow)"/>
+
+  <rect x="335" y="492" width="118" height="56" rx="6" fill="#21262d" stroke="#d29922"/>
+  <text x="394" y="514" fill="#d29922" font-size="10" text-anchor="middle" font-weight="600">Fetch lyrics</text>
+  <text class="small" x="394" y="530" text-anchor="middle">LRCLib /api/get</text>
+  <text class="small" x="394" y="542" text-anchor="middle">synced + plain</text>
+
+  <line x1="453" y1="520" x2="475" y2="520" stroke="#484f58" stroke-width="2" marker-end="url(#arrowFlow)"/>
+
+  <rect x="475" y="492" width="140" height="56" rx="6" fill="#21262d" stroke="#f85149"/>
+  <text x="545" y="514" fill="#f85149" font-size="10" text-anchor="middle" font-weight="600">AI extractVocabulary</text>
+  <text class="small" x="545" y="530" text-anchor="middle">NVIDIA NIM | Kimi K2.6</text>
+  <text class="small" x="545" y="542" text-anchor="middle">CEFR-aware JSON output</text>
+
+  <line x1="615" y1="520" x2="637" y2="520" stroke="#484f58" stroke-width="2" marker-end="url(#arrowFlow)"/>
+
+  <rect x="637" y="492" width="118" height="56" rx="6" fill="#21262d" stroke="#bc8cff"/>
+  <text x="696" y="514" fill="#bc8cff" font-size="10" text-anchor="middle" font-weight="600">Align + validate</text>
+  <text class="small" x="696" y="530" text-anchor="middle">map word to lyric line</text>
+  <text class="small" x="696" y="542" text-anchor="middle">LRC quality gate</text>
+
+  <line x1="755" y1="520" x2="777" y2="520" stroke="#484f58" stroke-width="2" marker-end="url(#arrowFlow)"/>
+
+  <rect x="777" y="492" width="118" height="56" rx="6" fill="#21262d" stroke="#3fb950"/>
+  <text x="836" y="518" fill="#3fb950" font-size="10" text-anchor="middle" font-weight="600">Cache</text>
+  <text class="small" x="836" y="534" text-anchor="middle">SQLite</text>
+
+  <text class="body" x="60" y="572">Response: mapped[], unmapped[], synced_lyrics -&gt; LyricList highlights words in karaoke player</text>
+  <text class="body" x="60" y="588">AudioPlayer plays 30s Deezer preview at calculated offset</text>
+  <text class="small" x="60" y="606">Validation first: if song lrc_valid=0 in DB -&gt; 409 song_quality_too_low (blocks bad lyrics before AI runs)</text>
+  <text class="small" x="60" y="622">aiService.createChatCompletion tries primary model, falls back through NVIDIA_NIM_MODELS on 429/5xx</text>
+  <text class="small" x="60" y="638">User CEFR level + target_language from JWT profile drive prompt constraints (not hardcoded Spanish)</text>
+
+  <!-- Flow 4 -->
+  <rect x="40" y="670" width="470" height="120" rx="10" fill="#161b22" stroke="#bc8cff"/>
+  <text x="60" y="692" fill="#bc8cff" font-size="12" font-weight="700">(4) DAILY WORD - GET /api/daily-word</text>
+  <text class="body" x="60" y="712">1. Check SQLite cache for today | else word queue</text>
+  <text class="body" x="60" y="728">2. AI generateDailyWord (genre, CEFR, avoid recent words)</text>
+  <text class="body" x="60" y="744">3. Deezer search to match suggested song | LRCLib for synced lyrics</text>
+  <text class="body" x="60" y="760">4. Validate LRC | align word occurrence | return lyric snippet + timestamp</text>
+  <text class="small" x="60" y="776">DailyWordCard renders word, translation, audio preview at lyric moment</text>
+
+  <!-- Flow 5 -->
+  <rect x="530" y="670" width="470" height="120" rx="10" fill="#161b22" stroke="#58a6ff"/>
+  <text x="550" y="692" fill="#58a6ff" font-size="12" font-weight="700">(5) STUDY QUIZ - POST /api/study/:songId/start</text>
+  <text class="body" x="550" y="712">1. Load cached vocab + lyrics from SQLite</text>
+  <text class="body" x="550" y="728">2. AI quizGenerator -&gt; 5 fill-in-the-blank questions (JSON)</text>
+  <text class="body" x="550" y="744">3. Fallback: local quiz if model empty/fails (up to 3 retries)</text>
+  <text class="body" x="550" y="760">4. POST answer -&gt; SRS engine updates intervals | badge checks</text>
+  <text class="small" x="550" y="776">Progress + streaks via /api/progress | /api/badges</text>
+
+  <!-- Legend -->
+  <rect x="40" y="810" width="960" height="1" fill="#30363d"/>
+  <circle cx="70" cy="836" r="5" fill="#f85149"/>
+  <text class="small" x="82" y="840">NVIDIA NIM (AI)</text>
+  <circle cx="200" cy="836" r="5" fill="#d29922"/>
+  <text class="small" x="212" y="840">External APIs (Deezer, LRCLib)</text>
+  <circle cx="420" cy="836" r="5" fill="#3fb950"/>
+  <text class="small" x="432" y="840">SQLite cache</text>
+  <circle cx="560" cy="836" r="5" fill="#bc8cff"/>
+  <text class="small" x="572" y="840">Validation / alignment</text>
+  <circle cx="740" cy="836" r="5" fill="#58a6ff"/>
+  <text class="small" x="752" y="840">Next.js UI</text>
+</svg>

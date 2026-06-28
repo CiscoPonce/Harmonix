@@ -31,7 +31,7 @@ Learn Words Through Music. AI-first language learning through real music lyrics.
 - `server/`: Express API, SQLite DB (`harmonix.db`), business logic
 - `client/`: Next.js frontend + Capacitor Android project (`client/android/`)
 - `releases/`: Pre-built debug APK for sideload testing
-- `docs/`: Runbooks including [MOBILE-B-CAPACITOR.md](./docs/MOBILE-B-CAPACITOR.md) and [RELEASES.md](./docs/RELEASES.md)
+- `docs/`: Runbooks including [MOBILE-B-CAPACITOR.md](./docs/MOBILE-B-CAPACITOR.md), [RELEASES.md](./docs/RELEASES.md), and [architecture diagrams](./docs/architecture/README.md)
 - `.planning/`: Roadmap and phase plans (Phase 10 mobile)
 - `CHANGELOG.md` / `version.txt`: Release history and current version ([release-please](https://github.com/googleapis/release-please))
 
