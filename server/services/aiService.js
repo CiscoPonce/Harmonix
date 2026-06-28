@@ -236,9 +236,115 @@ Reply with ONLY a JSON object containing a "candidates" array, no markdown or ex
   throw lastErr || new Error('invalid_ai_daily_word_response');
 }
 
+const GENRE_HIT_EXAMPLES = {
+  reggaeton: 'Gasolina (Daddy Yankee), Despacito (Luis Fonsi), Dákiti (Bad Bunny), Tití Me Preguntó (Bad Bunny), Con Calma (Daddy Yankee), Me Porto Bonito (Bad Bunny)',
+  pop: 'Despacito (Luis Fonsi), Bailando (Enrique Iglesias), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives)',
+  rock: 'Latinoamérica (Calle 13), A Dios le Pido (Juanes), Me Enamora (Juanes)',
+  any: 'Despacito (Luis Fonsi), Gasolina (Daddy Yankee), Vivir Mi Vida (Marc Anthony)',
+};
+
+async function generateDailyWordSongs({ languageName, genre, difficulty }) {
+  const hits = GENRE_HIT_EXAMPLES[String(genre || 'pop').toLowerCase()] || GENRE_HIT_EXAMPLES.any;
+
+  const systemPrompt = `You are a music curator for ${languageName} language learners.
+Pick 5 DIFFERENT globally famous ${languageName} songs in the "${genre}" genre.
+
+Difficulty context: ${difficulty} — choose well-known hits learners likely recognize.
+
+STRICT RULES:
+1. Every song MUST be a real chart hit that exists on Deezer with a 30s preview.
+2. Every song MUST have lyrics on LRCLib (pick famous songs only).
+3. Use exact official artist and song_title as on Deezer/Spotify.
+4. Main artist only — no "feat." in the artist field.
+5. NEVER invent songs. NEVER use a vocabulary word as the song title.
+6. song_title must NOT be a single rare word — use the real commercial track name.
+7. Prefer songs like: ${hits}
+
+Reply with ONLY JSON:
+{
+  "candidates": [
+    {
+      "song_title": "Real Song Title",
+      "artist": "Artist Name",
+      "genre": "${genre}"
+    }
+  ]
+}`;
+
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await createChatCompletion({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `List 5 famous ${languageName} ${genre} songs for a word-of-the-day playlist.` },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 4096,
+        temperature: 0.3,
+        top_p: 0.9,
+      });
+
+      const raw = response.choices?.[0]?.message?.content;
+      const parsed = normalizeDailyWord(parseJsonContent(raw));
+      if (!parsed?.length) {
+        lastErr = new Error('invalid_ai_daily_word_response');
+        continue;
+      }
+      return parsed.filter((c) => c.song_title && c.artist);
+    } catch (err) {
+      if (isRateLimitError(err)) {
+        const e = new Error('ai_rate_limit');
+        e.code = 'ai_rate_limit';
+        throw e;
+      }
+      lastErr = err;
+    }
+  }
+
+  throw lastErr || new Error('invalid_ai_daily_word_response');
+}
+
+async function glossDailyWords(items, languageName) {
+  if (!items?.length) return [];
+
+  const response = await createChatCompletion({
+    messages: [
+      {
+        role: 'system',
+        content: `You translate ${languageName} vocabulary for learners. Return JSON only.`,
+      },
+      {
+        role: 'user',
+        content: `For each item give English translation and part_of_speech.
+Items: ${JSON.stringify(items)}
+
+Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "noun|verb|..." } ] }`,
+      },
+    ],
+    response_format: { type: 'json_object' },
+    max_tokens: 2048,
+    temperature: 0.2,
+  });
+
+  const raw = parseJsonContent(response.choices?.[0]?.message?.content);
+  const list = raw?.words || raw?.items || [];
+  const byWord = new Map(list.map((w) => [String(w.word || '').toLowerCase(), w]));
+
+  return items.map((item) => {
+    const hit = byWord.get(String(item.word || '').toLowerCase());
+    return {
+      translation: hit?.translation || item.word,
+      part_of_speech: hit?.part_of_speech || null,
+    };
+  });
+}
+
 module.exports = {
   extractVocabulary,
   generateDailyWord,
+  generateDailyWordSongs,
+  glossDailyWords,
   createChatCompletion,
   AVAILABLE_MODELS,
   openai,

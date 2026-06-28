@@ -11,9 +11,22 @@ const {
   consumeNextDailyWord,
   generateNextDailyWord,
   generateDailyWord,
+  pickWordFromLyricsHeuristic,
 } = require("./dailyWordService");
 const wordQueue = require("./wordQueueService");
 const aiService = require("./aiService");
+
+function stubSongPipeline(songCandidates) {
+  const originalSongs = aiService.generateDailyWordSongs;
+  const originalGloss = aiService.glossDailyWords;
+  aiService.generateDailyWordSongs = async () => songCandidates;
+  aiService.glossDailyWords = async (items) =>
+    items.map((item) => ({ translation: item.word, part_of_speech: "noun" }));
+  return () => {
+    aiService.generateDailyWordSongs = originalSongs;
+    aiService.glossDailyWords = originalGloss;
+  };
+}
 
 describe("Daily Word Service", () => {
   const userId = "daily-word-test-user";
@@ -100,20 +113,16 @@ describe("Daily Word Service", () => {
     aiService.generateDailyWord = original;
   });
 
+  it("picks vocabulary words from real lyric lines", () => {
+    const picked = pickWordFromLyricsHeuristic("El amor y la noche brillan", "easy", new Set());
+    expect(picked.word.toLowerCase()).to.be.oneOf(["amor", "noche", "brillan"]);
+  });
+
   it("generates a validated daily word with mocked externals", async () => {
     const today = new Date().toISOString().slice(0, 10);
     db.prepare("DELETE FROM daily_words WHERE user_id = ? AND date = ?").run(userId, today);
 
-    const originalAi = aiService.generateDailyWord;
-    aiService.generateDailyWord = async () => ({
-      target_word: "amor",
-      translation: "love",
-      part_of_speech: "noun",
-      difficulty: "medium",
-      song_title: "Test Song",
-      artist: "Test Artist",
-      genre: "pop",
-    });
+    const restore = stubSongPipeline([{ song_title: "Test Song", artist: "Test Artist", genre: "pop" }]);
 
     const mockFetch = async (url) => {
       if (url.includes("deezer.com/search")) {
@@ -147,12 +156,12 @@ describe("Daily Word Service", () => {
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     const result = await generateDailyWord(user, { force: true, fetchImpl: mockFetch });
 
-    expect(result.word.text).to.equal("amor");
+    expect(result.word.text.toLowerCase()).to.be.oneOf(["amor", "noche", "brillan", "fuerte", "siempre"]);
     expect(result.song.id).to.equal("999");
     expect(result.lyric.snippet).to.contain("amor");
     expect(result.audio.preview_url).to.equal("/api/audio/preview/999");
 
-    aiService.generateDailyWord = originalAi;
+    restore();
   });
 
   it("generateNextDailyWord skips cooldown when queue is empty", async () => {
@@ -164,14 +173,7 @@ describe("Daily Word Service", () => {
       song: { id: "1", title: "Song", artist: "Artist" },
     });
 
-    const originalAi = aiService.generateDailyWord;
-    aiService.generateDailyWord = async () => [{
-      target_word: "sol",
-      translation: "sun",
-      song_title: "Test Song",
-      artist: "Test Artist",
-      genre: "pop",
-    }];
+    const restore = stubSongPipeline([{ song_title: "Test Song", artist: "Test Artist", genre: "pop" }]);
 
     const mockFetch = async (url) => {
       if (url.includes("deezer.com/search")) {
@@ -204,8 +206,8 @@ describe("Daily Word Service", () => {
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     const result = await generateNextDailyWord(user, mockFetch);
 
-    expect(result.word.text).to.equal("sol");
-    aiService.generateDailyWord = originalAi;
+    expect(result.word.text.toLowerCase()).to.be.oneOf(["sol", "brilla", "hoy", "para", "fuerte", "siempre"]);
+    restore();
   });
 
   it("queues remaining validated words from a batch of 5", async () => {
@@ -239,20 +241,26 @@ describe("Daily Word Service", () => {
     };
 
     const candidates = [
-      { target_word: "amor", translation: "love", song_title: "Test Song", artist: "Test Artist", genre: "pop" },
-      { target_word: "noche", translation: "night", song_title: "Test Song", artist: "Test Artist", genre: "pop" },
+      { song_title: "Test Song", artist: "Test Artist", genre: "pop" },
+      { song_title: "Test Song", artist: "Test Artist", genre: "pop" },
     ];
 
-    const { valid } = await validateAllCandidates(candidates, "2026-06-27", "pop", "medium", "B1", mockFetch);
-    expect(valid).to.have.lengthOf(2);
-    expect(valid.map((p) => p.word.text)).to.include.members(["amor", "noche"]);
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const originalGloss = aiService.glossDailyWords;
+    aiService.glossDailyWords = async (items) =>
+      items.map((item) => ({ translation: item.word, part_of_speech: "noun" }));
+
+    const { valid } = await validateAllCandidates(candidates, "2026-06-27", user, mockFetch);
+    aiService.glossDailyWords = originalGloss;
+    expect(valid).to.have.lengthOf(1);
+    expect(valid[0].word.text).to.be.oneOf(["amor", "noche", "brillan"]);
 
     const inserted = wordQueue.enqueuePayloads(userId, valid.slice(1));
-    expect(inserted).to.equal(1);
-    expect(wordQueue.countReady(userId)).to.equal(1);
+    expect(inserted).to.equal(0);
+    expect(wordQueue.countReady(userId)).to.equal(0);
   });
 
-  it("prefers easy-matched candidates when user difficulty is easy", async () => {
+  it("validates multiple songs and picks words from lyrics", async () => {
     const mockFetch = async (url) => {
       if (url.includes("deezer.com/search")) {
         return {
@@ -283,13 +291,19 @@ describe("Daily Word Service", () => {
     };
 
     const candidates = [
-      { target_word: "noche", translation: "night", difficulty: "hard", cefr_level: "C1", song_title: "Test Song", artist: "Test Artist", genre: "pop" },
-      { target_word: "amor", translation: "love", difficulty: "easy", cefr_level: "A1", song_title: "Test Song", artist: "Test Artist", genre: "pop" },
+      { song_title: "Test Song", artist: "Test Artist", genre: "pop" },
     ];
 
-    const { valid } = await validateAllCandidates(candidates, "2026-06-27", "pop", "easy", "B1", mockFetch);
-    expect(valid).to.have.lengthOf(2);
-    expect(valid[0].word.text).to.equal("amor");
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    user.difficulty = "easy";
+    const originalGloss = aiService.glossDailyWords;
+    aiService.glossDailyWords = async (items) =>
+      items.map((item) => ({ translation: item.word, part_of_speech: "noun" }));
+
+    const { valid } = await validateAllCandidates(candidates, "2026-06-27", user, mockFetch);
+    aiService.glossDailyWords = originalGloss;
+    expect(valid).to.have.lengthOf(1);
+    expect(valid[0].word.text).to.be.oneOf(["amor", "noche", "brillan"]);
   });
 
   it("serves next word instantly from queue", async () => {
@@ -322,17 +336,13 @@ describe("Daily Word Service", () => {
       db.prepare('DELETE FROM daily_words WHERE user_id = ? AND date = ?').run(userId, today);
 
       let capturedLanguage;
-      const originalAi = aiService.generateDailyWord;
-      aiService.generateDailyWord = async (args) => {
+      const originalSongs = aiService.generateDailyWordSongs;
+      aiService.generateDailyWordSongs = async (args) => {
         capturedLanguage = args.languageName;
-        return [{
-          target_word: 'teste',
-          translation: 'test',
-          song_title: 'Song',
-          artist: 'Artist',
-          genre: 'pop',
-        }];
+        return [{ song_title: "Song", artist: "Artist", genre: "pop" }];
       };
+      const originalGloss = aiService.glossDailyWords;
+      aiService.glossDailyWords = async () => [{ translation: "test", part_of_speech: "noun" }];
 
       const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
       try {
@@ -345,7 +355,8 @@ describe("Daily Word Service", () => {
       }
 
       expect(capturedLanguage).to.equal(name);
-      aiService.generateDailyWord = originalAi;
+      aiService.generateDailyWordSongs = originalSongs;
+      aiService.glossDailyWords = originalGloss;
     });
   }
 });

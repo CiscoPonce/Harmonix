@@ -7,13 +7,57 @@ const {
   effectiveCefr,
   difficultyMatchScore,
   cefrWithinBand,
+  normalizeDifficulty,
 } = require("../constants/difficulty");
 const wordQueue = require("./wordQueueService");
 const deezer = require("./deezerService");
 const lrcLib = require("./lrcLibService");
 
-const MAX_RETRIES = 3;
 const FORCE_COOLDOWN_MS = process.env.FORCE_COOLDOWN_MS ? parseInt(process.env.FORCE_COOLDOWN_MS, 10) : 90_000;
+const BATCH_AI_ATTEMPTS = 2;
+const REFILL_BATCH_ROUNDS = 3;
+
+const LYRIC_STOPWORDS = new Set([
+  'que', 'de', 'la', 'el', 'en', 'y', 'a', 'los', 'las', 'un', 'una', 'por', 'con',
+  'no', 'es', 'se', 'te', 'lo', 'le', 'da', 'su', 'yo', 'tu', 'mi', 'ya', 'si',
+  'bien', 'muy', 'mas', 'más', 'del', 'al', 'le', 'les', 'nos', 'me', 'fue', 'ser',
+]);
+
+function plainFromLyricsData(lyricsData) {
+  if (lyricsData.plainLyrics) return lyricsData.plainLyrics;
+  return validation.parseLrc(lyricsData.syncedLyrics).map((p) => p.text).join('\n');
+}
+
+function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new Set()) {
+  const diff = normalizeDifficulty(difficulty);
+  const minLen = diff === 'easy' ? 3 : diff === 'hard' ? 7 : 4;
+  const maxLen = diff === 'easy' ? 7 : diff === 'hard' ? 24 : 12;
+  const targetLen = diff === 'easy' ? 4 : diff === 'hard' ? 9 : 6;
+
+  const lines = String(plainLyrics || '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const candidates = [];
+  for (const line of lines) {
+    const tokens = line.match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜ]+/gu) || [];
+    for (const token of tokens) {
+      const lower = token.toLowerCase();
+      if (lower.length < minLen || lower.length > maxLen) continue;
+      if (LYRIC_STOPWORDS.has(lower)) continue;
+      if (avoidWords.has(lower)) continue;
+      candidates.push({ word: token, line });
+    }
+  }
+
+  if (!candidates.length) return null;
+  candidates.sort(
+    (a, b) =>
+      Math.abs(a.word.length - targetLen) - Math.abs(b.word.length - targetLen)
+  );
+  return candidates[0];
+}
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
@@ -146,11 +190,14 @@ function persistPayloadSideEffects(payload, track, lyricsData, syncCheck) {
   `).run(String(track.id), lyricsData.syncedLyrics, lyricsData.plainLyrics || null);
 }
 
-async function tryValidateSuggestion(suggestion, date, fetchImpl = fetch) {
-  const label = `"${suggestion.target_word}" / ${suggestion.artist} - ${suggestion.song_title}`;
+async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetchImpl = fetch) {
+  const label = `${suggestion.artist} - ${suggestion.song_title}`;
   try {
     const track = await searchDeezerTrack(suggestion.artist, suggestion.song_title, fetchImpl);
-    if (!track) return { error: "deezer_not_found" };
+    if (!track) {
+      console.warn(`daily word reject: deezer_not_found ${label}`);
+      return { error: "deezer_not_found" };
+    }
 
     const lyricsData = await fetchLyrics(track.artist.name, track.title, track.duration, fetchImpl);
     if (!lyricsData?.syncedLyrics) {
@@ -160,19 +207,58 @@ async function tryValidateSuggestion(suggestion, date, fetchImpl = fetch) {
 
     const syncCheck = validation.validateSongSync({ duration: track.duration }, lyricsData.syncedLyrics);
     if (!syncCheck.valid) {
-      console.warn(`daily word reject: lyrics_validation_failed ${label} (${syncCheck.issues.join(', ')})`);
+      console.warn(`daily word reject: lyrics_validation_failed ${label} (${syncCheck.issues.join(", ")})`);
       return { error: "lyrics_validation_failed" };
     }
+
+    const plain = plainFromLyricsData(lyricsData);
+    const picked = pickWordFromLyricsHeuristic(plain, user.difficulty || "medium", avoidWords);
+    if (!picked) {
+      console.warn(`daily word reject: no_suitable_word ${label}`);
+      return { error: "no_suitable_word" };
+    }
+
+    const occurrence = findWordOccurrence(picked.word, lyricsData.syncedLyrics, plain);
+    if (!occurrence) {
+      console.warn(`daily word reject: word_not_in_lyrics ${label} (${picked.word})`);
+      return { error: "word_not_in_lyrics" };
+    }
+
+    return {
+      picked,
+      suggestion,
+      track,
+      lyricsData,
+      syncCheck,
+      genre: suggestion.genre || null,
+      occurrence,
+    };
+  } catch (err) {
+    if (err.code === "ai_rate_limit") throw err;
+    console.warn(`daily word reject: ${err.code || err.message} ${label}`);
+    return { error: err.code || err.message || "generation_failed" };
+  }
+}
+
+/** @deprecated word-first path — kept for tests */
+async function tryValidateSuggestion(suggestion, date, fetchImpl = fetch) {
+  const label = `"${suggestion.target_word}" / ${suggestion.artist} - ${suggestion.song_title}`;
+  try {
+    const track = await searchDeezerTrack(suggestion.artist, suggestion.song_title, fetchImpl);
+    if (!track) return { error: "deezer_not_found" };
+
+    const lyricsData = await fetchLyrics(track.artist.name, track.title, track.duration, fetchImpl);
+    if (!lyricsData?.syncedLyrics) return { error: "lyrics_not_found" };
+
+    const syncCheck = validation.validateSongSync({ duration: track.duration }, lyricsData.syncedLyrics);
+    if (!syncCheck.valid) return { error: "lyrics_validation_failed" };
 
     const occurrence = findWordOccurrence(
       suggestion.target_word,
       lyricsData.syncedLyrics,
       lyricsData.plainLyrics || null
     );
-    if (!occurrence) {
-      console.warn(`daily word reject: word_not_in_lyrics ${label}`);
-      return { error: "word_not_in_lyrics" };
-    }
+    if (!occurrence) return { error: "word_not_in_lyrics" };
 
     const payload = buildPayload(date, suggestion, track, lyricsData, occurrence);
     return { payload, track, lyricsData, syncCheck, genre: suggestion.genre || null };
@@ -201,31 +287,68 @@ function candidateRankScore(suggestion, userGenre, userDifficulty, effectiveLeve
   return score;
 }
 
-async function validateAllCandidates(candidates, date, userGenre, userDifficulty = "medium", userCefr = "B1", fetchImpl = fetch) {
-  const effectiveLevel = effectiveCefr(userCefr, userDifficulty);
+async function validateAllCandidates(candidates, date, user, fetchImpl = fetch) {
+  const userGenre = user.genre || "pop";
+  const userDifficulty = user.difficulty || "medium";
+  const avoidWords = new Set(getAvoidWords(user.id).map((w) => String(w).toLowerCase()));
   let lastError = null;
 
+  const seenSongs = new Set();
+  const uniqueCandidates = candidates.filter((suggestion) => {
+    const key = `${String(suggestion.artist || "").toLowerCase()}|${String(suggestion.song_title || "").toLowerCase()}`;
+    if (seenSongs.has(key)) return false;
+    seenSongs.add(key);
+    return true;
+  });
+
   const outcomes = await Promise.all(
-    candidates.map(async (suggestion) => {
-      const result = await tryValidateSuggestion(suggestion, date, fetchImpl);
-      return { suggestion, result };
-    })
+    uniqueCandidates.map((suggestion) => tryValidateSongCandidate(suggestion, user, date, avoidWords, fetchImpl))
   );
 
-  const results = [];
-  for (const { suggestion, result } of outcomes) {
-    if (result.payload) {
-      results.push({ ...result, suggestion });
+  const partials = [];
+  const usedWords = new Set();
+  for (const result of outcomes) {
+    if (result.picked) {
+      const key = result.picked.word.toLowerCase();
+      if (usedWords.has(key)) continue;
+      usedWords.add(key);
+      partials.push(result);
     } else if (result.error) {
       lastError = result.error;
     }
   }
 
-  results.sort((a, b) => {
-    const rankA = candidateRankScore(a.suggestion, userGenre, userDifficulty, effectiveLevel);
-    const rankB = candidateRankScore(b.suggestion, userGenre, userDifficulty, effectiveLevel);
-    return rankB - rankA;
+  if (!partials.length) {
+    return { valid: [], sideEffects: [], lastError, candidateCount: candidates.length };
+  }
+
+  const languageName = languageNameFromCode(user.target_language || "es");
+  const glosses = await aiService.glossDailyWords(
+    partials.map((p) => ({ word: p.picked.word, line: p.picked.line })),
+    languageName
+  );
+
+  const results = partials.map((p, i) => {
+    const gloss = glosses[i] || { translation: p.picked.word, part_of_speech: null };
+    const wordSuggestion = {
+      target_word: p.picked.word,
+      translation: gloss.translation,
+      part_of_speech: gloss.part_of_speech,
+      difficulty: userDifficulty,
+      genre: p.genre,
+    };
+    const payload = buildPayload(date, wordSuggestion, p.track, p.lyricsData, p.occurrence);
+    return {
+      payload,
+      track: p.track,
+      lyricsData: p.lyricsData,
+      syncCheck: p.syncCheck,
+      suggestion: p.suggestion,
+      genre: p.genre,
+    };
   });
+
+  results.sort((a, b) => genreBoostScore(b.genre, userGenre) - genreBoostScore(a.genre, userGenre));
 
   return {
     valid: results.map((r) => r.payload),
@@ -386,12 +509,10 @@ function assertForceCooldown(userId) {
 async function fetchAiCandidates(user) {
   const languageName = languageNameFromCode(user.target_language || "es");
   const difficulty = user.difficulty || "medium";
-  const aiResult = await aiService.generateDailyWord({
+  const aiResult = await aiService.generateDailyWordSongs({
     languageName,
-    cefrLevel: effectiveCefr(user.cefr_level || "B1", difficulty),
     genre: user.genre || "pop",
     difficulty,
-    avoidWords: getAvoidWords(user.id),
   });
   return Array.isArray(aiResult) ? aiResult : [aiResult];
 }
@@ -410,18 +531,8 @@ async function generateValidatedBatch(user, fetchImpl = fetch) {
     return { valid: [], sideEffects: [], lastError: "invalid_ai_daily_word_response" };
   }
 
-  return validateAllCandidates(
-    candidates,
-    date,
-    user.genre || "pop",
-    user.difficulty || "medium",
-    user.cefr_level || "B1",
-    fetchImpl
-  );
+  return validateAllCandidates(candidates, date, user, fetchImpl);
 }
-
-const BATCH_AI_ATTEMPTS = 2;
-const REFILL_BATCH_ROUNDS = 3;
 
 async function persistBatchSideEffects(sideEffects) {
   for (const effect of sideEffects) {
@@ -543,6 +654,8 @@ module.exports = {
   fetchLyrics,
   searchDeezerTrack,
   buildPayload,
+  pickWordFromLyricsHeuristic,
+  tryValidateSongCandidate,
   tryValidateSuggestion,
   validateAllCandidates,
   getCachedDailyWord,
