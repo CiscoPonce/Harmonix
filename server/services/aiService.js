@@ -17,12 +17,12 @@ const modelsEnv = process.env.NVIDIA_NIM_MODELS || process.env.NVIDIA_NIM_MODEL;
 const AVAILABLE_MODELS = modelsEnv
   ? modelsEnv.split(',').map(m => m.trim())
   : [
-      'moonshotai/kimi-k2.6',
-      'meta/llama-3.3-70b-instruct',
+      'stepfun-ai/step-3.7-flash',
       'meta/llama-3.1-8b-instruct',
+      'meta/llama-3.3-70b-instruct',
       'mistralai/mistral-medium-3.5-128b',
       'minimaxai/minimax-m3',
-      'stepfun-ai/step-3.7-flash',
+      'moonshotai/kimi-k2.6',
     ];
 
 function isRateLimitError(err) {
@@ -237,28 +237,60 @@ Reply with ONLY a JSON object containing a "candidates" array, no markdown or ex
 }
 
 const GENRE_HIT_EXAMPLES = {
-  reggaeton: 'Gasolina (Daddy Yankee), Despacito (Luis Fonsi), Dákiti (Bad Bunny), Tití Me Preguntó (Bad Bunny), Con Calma (Daddy Yankee), Me Porto Bonito (Bad Bunny)',
-  pop: 'Despacito (Luis Fonsi), Bailando (Enrique Iglesias), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives)',
-  rock: 'Latinoamérica (Calle 13), A Dios le Pido (Juanes), Me Enamora (Juanes)',
-  any: 'Despacito (Luis Fonsi), Gasolina (Daddy Yankee), Vivir Mi Vida (Marc Anthony)',
+  es: {
+    reggaeton: 'Gasolina (Daddy Yankee), Despacito (Luis Fonsi), Dákiti (Bad Bunny), Tití Me Preguntó (Bad Bunny), Con Calma (Daddy Yankee), Me Porto Bonito (Bad Bunny)',
+    pop: 'Despacito (Luis Fonsi), Bailando (Enrique Iglesias), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives)',
+    rock: 'Latinoamérica (Calle 13), A Dios le Pido (Juanes), Me Enamora (Juanes)',
+    any: 'Despacito (Luis Fonsi), Gasolina (Daddy Yankee), Vivir Mi Vida (Marc Anthony)',
+  },
+  en: {
+    pop: 'Shape of You (Ed Sheeran), Blinding Lights (The Weeknd), Someone Like You (Adele), Bad Guy (Billie Eilish)',
+    rock: 'Bohemian Rhapsody (Queen), Mr. Brightside (The Killers), Yellow (Coldplay)',
+    any: 'Shape of You (Ed Sheeran), Blinding Lights (The Weeknd), Rolling in the Deep (Adele)',
+  },
+  fr: {
+    pop: 'Dernière Danse (Indila), Je veux (Zaz), Papaoutai (Stromae), Tourner dans le vide (Indila)',
+    rock: 'Comme des enfants (Cœur de pirate), Mistral gagnant (Renaud)',
+    any: 'Dernière Danse (Indila), Papaoutai (Stromae), Je veux (Zaz)',
+  },
+  de: {
+    pop: 'Atemlos (Helene Fischer), 99 Luftballons (Nena), Leider geil (Deichkind)',
+    rock: 'Du hast (Rammstein), Wind of Change (Scorpions), Major Tom (Peter Schilling)',
+    any: 'Atemlos (Helene Fischer), 99 Luftballons (Nena), Du hast (Rammstein)',
+  },
+  pt: {
+    pop: 'Garota de Ipanema (Tom Jobim), Ai Se Eu Te Pego (Michel Teló), Evidências (Chitãozinho & Xororó)',
+    any: 'Garota de Ipanema (Tom Jobim), Ai Se Eu Te Pego (Michel Teló), Evidências (Chitãozinho & Xororó)',
+  },
 };
 
-async function generateDailyWordSongs({ languageName, genre, difficulty }) {
-  const hits = GENRE_HIT_EXAMPLES[String(genre || 'pop').toLowerCase()] || GENRE_HIT_EXAMPLES.any;
+function genreExamplesForLanguage(languageCode, genre) {
+  const byLang = GENRE_HIT_EXAMPLES[normalizeLanguageCode(languageCode)] || GENRE_HIT_EXAMPLES.es;
+  return byLang[String(genre || 'pop').toLowerCase()] || byLang.any;
+}
+
+function normalizeLanguageCode(code) {
+  return String(code || 'es').toLowerCase();
+}
+
+async function generateDailyWordSongs({ languageName, languageCode, genre, difficulty }) {
+  const langCode = normalizeLanguageCode(languageCode);
+  const hits = genreExamplesForLanguage(langCode, genre);
 
   const systemPrompt = `You are a music curator for ${languageName} language learners.
-Pick 5 DIFFERENT globally famous ${languageName} songs in the "${genre}" genre.
+Pick 5 DIFFERENT globally famous songs sung primarily in ${languageName} in the "${genre}" genre.
 
 Difficulty context: ${difficulty} — choose well-known hits learners likely recognize.
 
 STRICT RULES:
-1. Every song MUST be a real chart hit that exists on Deezer with a 30s preview.
-2. Every song MUST have lyrics on LRCLib (pick famous songs only).
-3. Use exact official artist and song_title as on Deezer/Spotify.
-4. Main artist only — no "feat." in the artist field.
-5. NEVER invent songs. NEVER use a vocabulary word as the song title.
-6. song_title must NOT be a single rare word — use the real commercial track name.
-7. Prefer songs like: ${hits}
+1. Every song MUST be sung in ${languageName} — NOT English-only tracks unless the target language IS English.
+2. Every song MUST be a real chart hit that exists on Deezer with a 30s preview.
+3. Every song MUST have lyrics on LRCLib (pick famous songs only).
+4. Use exact official artist and song_title as on Deezer/Spotify.
+5. Main artist only — no "feat." in the artist field.
+6. NEVER invent songs. NEVER use a vocabulary word as the song title.
+7. song_title must NOT be a single rare word — use the real commercial track name.
+8. Prefer songs like: ${hits}
 
 Reply with ONLY JSON:
 {
@@ -277,7 +309,7 @@ Reply with ONLY JSON:
       const response = await createChatCompletion({
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `List 5 famous ${languageName} ${genre} songs for a word-of-the-day playlist.` },
+          { role: 'user', content: `List 5 famous ${languageName}-language ${genre} songs for a word-of-the-day playlist. Songs must be sung in ${languageName}.` },
         ],
         response_format: { type: 'json_object' },
         max_tokens: 4096,

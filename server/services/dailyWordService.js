@@ -2,7 +2,7 @@ const db = require("../db");
 const aiService = require("./aiService");
 const validation = require("./validationService");
 const alignment = require("../utils/alignment");
-const { languageNameFromCode } = require("../constants/languages");
+const { languageNameFromCode, wordMatchesTargetLanguage, normalizeLangCode } = require("../constants/languages");
 const {
   effectiveCefr,
   difficultyMatchScore,
@@ -28,7 +28,7 @@ function plainFromLyricsData(lyricsData) {
   return validation.parseLrc(lyricsData.syncedLyrics).map((p) => p.text).join('\n');
 }
 
-function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new Set()) {
+function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new Set(), langCode = "es") {
   const diff = normalizeDifficulty(difficulty);
   const minLen = diff === 'easy' ? 3 : diff === 'hard' ? 7 : 4;
   const maxLen = diff === 'easy' ? 7 : diff === 'hard' ? 24 : 12;
@@ -41,12 +41,13 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
 
   const candidates = [];
   for (const line of lines) {
-    const tokens = line.match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜ]+/gu) || [];
+    const tokens = line.match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜàâäçéèêëîïôùûüãõß]+/gu) || [];
     for (const token of tokens) {
       const lower = token.toLowerCase();
       if (lower.length < minLen || lower.length > maxLen) continue;
       if (LYRIC_STOPWORDS.has(lower)) continue;
       if (avoidWords.has(lower)) continue;
+      if (!wordMatchesTargetLanguage(token, langCode)) continue;
       candidates.push({ word: token, line });
     }
   }
@@ -140,12 +141,13 @@ async function searchDeezerTrack(artist, title, fetchImpl = fetch) {
   return track;
 }
 
-function buildPayload(date, suggestion, track, lyricsData, occurrence) {
+function buildPayload(date, suggestion, track, lyricsData, occurrence, langCode = "es") {
   const duration = track.duration;
   const offset = previewOffset(duration);
   return {
     date,
     cached: false,
+    language_code: normalizeLangCode(langCode),
     word: {
       text: suggestion.target_word,
       translation: suggestion.translation,
@@ -192,6 +194,7 @@ function persistPayloadSideEffects(payload, track, lyricsData, syncCheck) {
 
 async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetchImpl = fetch) {
   const label = `${suggestion.artist} - ${suggestion.song_title}`;
+  const langCode = normalizeLangCode(user.target_language || "es");
   try {
     const track = await searchDeezerTrack(suggestion.artist, suggestion.song_title, fetchImpl);
     if (!track) {
@@ -212,10 +215,15 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
     }
 
     const plain = plainFromLyricsData(lyricsData);
-    const picked = pickWordFromLyricsHeuristic(plain, user.difficulty || "medium", avoidWords);
+    const picked = pickWordFromLyricsHeuristic(plain, user.difficulty || "medium", avoidWords, langCode);
     if (!picked) {
       console.warn(`daily word reject: no_suitable_word ${label}`);
       return { error: "no_suitable_word" };
+    }
+
+    if (!wordMatchesTargetLanguage(picked.word, langCode)) {
+      console.warn(`daily word reject: wrong_language ${label} (${picked.word} not ${langCode})`);
+      return { error: "wrong_language" };
     }
 
     const occurrence = findWordOccurrence(picked.word, lyricsData.syncedLyrics, plain);
@@ -337,7 +345,7 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch) 
       difficulty: userDifficulty,
       genre: p.genre,
     };
-    const payload = buildPayload(date, wordSuggestion, p.track, p.lyricsData, p.occurrence);
+    const payload = buildPayload(date, wordSuggestion, p.track, p.lyricsData, p.occurrence, user.target_language || "es");
     return {
       payload,
       track: p.track,
@@ -371,7 +379,14 @@ function getAvoidWords(userId) {
   return [...new Set([...history, ...queued])];
 }
 
-function getCachedDailyWord(userId, date) {
+function payloadMatchesUserLanguage(payload, langCode) {
+  if (!payload?.word?.text) return false;
+  const expected = normalizeLangCode(langCode);
+  if (payload.language_code && payload.language_code !== expected) return false;
+  return wordMatchesTargetLanguage(payload.word.text, expected);
+}
+
+function getCachedDailyWord(userId, date, langCode = "es") {
   const row = db.prepare(
     `SELECT word_json FROM daily_words
      WHERE user_id = ? AND date = ?
@@ -381,6 +396,7 @@ function getCachedDailyWord(userId, date) {
   if (!row) return null;
   try {
     const payload = JSON.parse(row.word_json);
+    if (!payloadMatchesUserLanguage(payload, langCode)) return null;
     return { ...payload, cached: true };
   } catch {
     return null;
@@ -507,10 +523,12 @@ function assertForceCooldown(userId) {
 }
 
 async function fetchAiCandidates(user) {
-  const languageName = languageNameFromCode(user.target_language || "es");
+  const langCode = normalizeLangCode(user.target_language || "es");
+  const languageName = languageNameFromCode(langCode);
   const difficulty = user.difficulty || "medium";
   const aiResult = await aiService.generateDailyWordSongs({
     languageName,
+    languageCode: langCode,
     genre: user.genre || "pop",
     difficulty,
   });
@@ -606,12 +624,24 @@ function scheduleRefill(user, fetchImpl = fetch) {
 }
 
 async function consumeNextDailyWord(user, fetchImpl = fetch) {
-  const queued = wordQueue.consumeNext(user.id);
-  if (!queued) return null;
+  const langCode = normalizeLangCode(user.target_language || "es");
+  const maxSkips = wordQueue.QUEUE_MAX + 2;
 
-  const delivered = deliverPayload(user.id, queued, { fromQueue: true });
-  scheduleRefill(user, fetchImpl);
-  return delivered;
+  for (let i = 0; i < maxSkips; i++) {
+    const queued = wordQueue.consumeNext(user.id);
+    if (!queued) return null;
+
+    if (!payloadMatchesUserLanguage(queued, langCode)) {
+      console.warn(`daily word skip: wrong language for "${queued.word?.text}" (want ${langCode})`);
+      continue;
+    }
+
+    const delivered = deliverPayload(user.id, queued, { fromQueue: true });
+    scheduleRefill(user, fetchImpl);
+    return delivered;
+  }
+
+  return null;
 }
 
 async function generateNextDailyWord(user, fetchImpl = fetch) {
@@ -631,7 +661,7 @@ async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}
   const date = todayDate();
 
   if (!force) {
-    const cached = getCachedDailyWord(user.id, date);
+    const cached = getCachedDailyWord(user.id, date, user.target_language || "es");
     if (cached) {
       scheduleRefill(user, fetchImpl);
       return hydratePayloadAudio(cached);

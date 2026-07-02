@@ -306,10 +306,44 @@ describe("Daily Word Service", () => {
     expect(valid[0].word.text).to.be.oneOf(["amor", "noche", "brillan"]);
   });
 
+  it("prefers target-language words from bilingual lyrics", () => {
+    const plain = "screaming in the night\nla mañana es buena";
+    const picked = pickWordFromLyricsHeuristic(plain, "medium", new Set(), "es");
+    expect(picked.word.toLowerCase()).to.equal("mañana");
+  });
+
+  it("skips English queued words for Spanish learners", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const englishPayload = {
+      date: today,
+      language_code: "es",
+      word: { text: "screaming", translation: "screaming" },
+      lyric: { snippet: "screaming", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 9 },
+      song: { id: "99", title: "Song", artist: "Artist" },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+    };
+    const spanishPayload = {
+      date: today,
+      language_code: "es",
+      word: { text: "tranquila", translation: "calm" },
+      lyric: { snippet: "tranquila", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 9 },
+      song: { id: "55", title: "Song", artist: "Artist" },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+    };
+    wordQueue.enqueuePayloads(userId, [englishPayload, spanishPayload]);
+
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    db.prepare("UPDATE users SET target_language = 'es' WHERE id = ?").run(userId);
+    const result = await consumeNextDailyWord(user);
+    expect(result.word.text).to.equal("tranquila");
+    expect(result.from_queue).to.equal(true);
+  });
+
   it("serves next word instantly from queue", async () => {
     const today = new Date().toISOString().slice(0, 10);
     const payload = {
       date: today,
+      language_code: "es",
       word: { text: "cola", translation: "queue" },
       lyric: { snippet: "cola", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 4 },
       song: { id: "55", title: "Song", artist: "Artist" },

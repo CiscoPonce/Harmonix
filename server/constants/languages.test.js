@@ -3,6 +3,7 @@ const {
   VALID_LANGUAGE_CODES,
   LANG_CODE_TO_NAME,
   languageNameFromCode,
+  wordMatchesTargetLanguage,
 } = require('./languages');
 
 describe('Language constants', () => {
@@ -27,5 +28,18 @@ describe('Language constants', () => {
   it('falls back for unknown codes', () => {
     expect(languageNameFromCode('xx')).to.equal('Spanish');
     expect(languageNameFromCode(null, 'English')).to.equal('English');
+  });
+
+  it('rejects obvious English words when learning Spanish', () => {
+    expect(wordMatchesTargetLanguage('screaming', 'es')).to.equal(false);
+    expect(wordMatchesTargetLanguage('searching', 'es')).to.equal(false);
+    expect(wordMatchesTargetLanguage('contratos', 'es')).to.equal(true);
+    expect(wordMatchesTargetLanguage('tranquila', 'es')).to.equal(true);
+    expect(wordMatchesTargetLanguage('corazón', 'es')).to.equal(true);
+  });
+
+  it('accepts English words only for English learners', () => {
+    expect(wordMatchesTargetLanguage('screaming', 'en')).to.equal(true);
+    expect(wordMatchesTargetLanguage('corazón', 'en')).to.equal(false);
   });
 });

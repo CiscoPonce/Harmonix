@@ -17,8 +17,9 @@ describe('AI Service', () => {
     openai.chat.completions.create = originalCreate;
   });
 
-  it('uses kimi-k2.6 as the default primary model', () => {
-    expect(AVAILABLE_MODELS[0]).to.equal('moonshotai/kimi-k2.6');
+  it('uses a fast model as the default primary for lower latency', () => {
+    expect(AVAILABLE_MODELS[0]).to.equal('stepfun-ai/step-3.7-flash');
+    expect(AVAILABLE_MODELS).to.include('moonshotai/kimi-k2.6');
   });
 
   it('should construct correct prompt and return vocabulary', async () => {
@@ -53,7 +54,7 @@ describe('AI Service', () => {
 
     expect(result).to.be.an('array');
     expect(result[0].word).to.equal('test');
-    expect(capturedArgs.model).to.equal('moonshotai/kimi-k2.6');
+    expect(capturedArgs.model).to.equal('stepfun-ai/step-3.7-flash');
     expect(capturedArgs.messages[0].content).to.contain('English');
     expect(capturedArgs.messages[0].content).to.contain('A1');
     expect(capturedArgs.messages[1].content).to.contain(lyrics);
