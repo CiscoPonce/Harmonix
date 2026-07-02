@@ -124,6 +124,29 @@ function isRefilling(userId) {
   return true;
 }
 
+function listReadyItems(userId) {
+  purgeExpired(userId);
+  return db.prepare(`
+    SELECT id, word_json FROM user_word_queue
+    WHERE user_id = ?
+      AND consumed_at IS NULL
+      AND expires_at > datetime('now')
+    ORDER BY id ASC
+  `).all(userId).map((row) => {
+    try {
+      return { id: row.id, payload: JSON.parse(row.word_json) };
+    } catch {
+      return null;
+    }
+  }).filter(Boolean);
+}
+
+function updatePayload(id, payload) {
+  db.prepare(`
+    UPDATE user_word_queue SET word_json = ? WHERE id = ?
+  `).run(JSON.stringify(payload), id);
+}
+
 function getQueueStatus(userId) {
   return {
     ready: countReady(userId),
@@ -159,6 +182,8 @@ module.exports = {
   enqueuePayloads,
   peekNext,
   consumeNext,
+  listReadyItems,
+  updatePayload,
   getQueuedWordTexts,
   getQueueStatus,
   isRefilling,

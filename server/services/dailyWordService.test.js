@@ -12,6 +12,8 @@ const {
   generateNextDailyWord,
   generateDailyWord,
   pickWordFromLyricsHeuristic,
+  filterUniquePayloads,
+  getUserDiscoveryHistory,
 } = require("./dailyWordService");
 const wordQueue = require("./wordQueueService");
 const aiService = require("./aiService");
@@ -355,6 +357,64 @@ describe("Daily Word Service", () => {
     const result = await consumeNextDailyWord(user);
     expect(result.word.text).to.equal("cola");
     expect(result.from_queue).to.equal(true);
+  });
+
+  it("skips duplicate queued words already seen in history", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    saveDailyWord(userId, today, {
+      date: today,
+      word: { text: "amor" },
+      song: { id: "1", title: "Song A", artist: "Artist A" },
+    });
+    wordQueue.enqueuePayloads(userId, [
+      {
+        date: today,
+        language_code: "es",
+        word: { text: "amor", translation: "love" },
+        lyric: { snippet: "amor", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 4 },
+        song: { id: "2", title: "Song B", artist: "Artist B" },
+        audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      },
+      {
+        date: today,
+        language_code: "es",
+        word: { text: "noche", translation: "night" },
+        lyric: { snippet: "noche", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 5 },
+        song: { id: "3", title: "Song C", artist: "Artist C" },
+        audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      },
+    ]);
+
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const result = await consumeNextDailyWord(user);
+    expect(result.word.text).to.equal("noche");
+  });
+
+  it("tracks full discovery history for dedupe", () => {
+    saveDailyWord(userId, "2026-06-01", {
+      date: "2026-06-01",
+      word: { text: "amor" },
+      song: { id: "1", title: "Song A", artist: "Artist A" },
+    });
+    const history = getUserDiscoveryHistory(userId);
+    expect(history.words.has("amor")).to.equal(true);
+    expect(history.songIds.has("1")).to.equal(true);
+  });
+
+  it("filterUniquePayloads drops duplicate words and songs", () => {
+    saveDailyWord(userId, "2026-06-01", {
+      date: "2026-06-01",
+      word: { text: "amor" },
+      song: { id: "1", title: "Song A", artist: "Artist A" },
+    });
+    const filtered = filterUniquePayloads(userId, [
+      { word: { text: "amor" }, song: { id: "2", title: "Song B", artist: "Artist B" } },
+      { word: { text: "noche" }, song: { id: "1", title: "Song A", artist: "Artist A" } },
+      { word: { text: "noche" }, song: { id: "3", title: "Song C", artist: "Artist C" } },
+    ]);
+    expect(filtered).to.have.lengthOf(1);
+    expect(filtered[0].word.text).to.equal("noche");
+    expect(filtered[0].song.id).to.equal("3");
   });
 
   for (const [code, name] of [

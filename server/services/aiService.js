@@ -8,6 +8,18 @@ const openai = new OpenAI({
   timeout: 60000, maxRetries: 0,
 });
 
+const openrouter = process.env.OPENROUTER_API_KEY
+  ? new OpenAI({
+    apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+    timeout: 60000,
+    maxRetries: 0,
+    defaultHeaders: {
+      'HTTP-Referer': process.env.OPENROUTER_REFERER || 'https://harmonix.app',
+      'X-Title': process.env.OPENROUTER_APP_NAME || 'Harmonix',
+    },
+  })
+  : null;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -17,34 +29,88 @@ const modelsEnv = process.env.NVIDIA_NIM_MODELS || process.env.NVIDIA_NIM_MODEL;
 const AVAILABLE_MODELS = modelsEnv
   ? modelsEnv.split(',').map(m => m.trim())
   : [
+      'moonshotai/kimi-k2.6',
       'stepfun-ai/step-3.7-flash',
       'meta/llama-3.1-8b-instruct',
       'meta/llama-3.3-70b-instruct',
       'mistralai/mistral-medium-3.5-128b',
       'minimaxai/minimax-m3',
-      'moonshotai/kimi-k2.6',
     ];
+
+const OPENROUTER_MODELS = (process.env.OPENROUTER_MODELS
+  || 'poolside/laguna-xs-2.1:free,cohere/north-mini-code:free,nvidia/nemotron-3.5-content-safety:free')
+  .split(',')
+  .map((m) => m.trim())
+  .filter(Boolean);
+
+const FAST_MODELS = ['moonshotai/kimi-k2.6', 'stepfun-ai/step-3.7-flash', 'meta/llama-3.1-8b-instruct'];
+
+const NIM_COOLDOWN_MS = parseInt(process.env.NIM_RATE_LIMIT_COOLDOWN_MS || '300000', 10);
+let nimRateLimitedUntil = 0;
+
+function isNimInCooldown() {
+  return Date.now() < nimRateLimitedUntil;
+}
+
+function markNimRateLimited() {
+  nimRateLimitedUntil = Date.now() + NIM_COOLDOWN_MS;
+  console.warn(`NVIDIA rate-limited — using OpenRouter first for ${Math.round(NIM_COOLDOWN_MS / 1000)}s`);
+}
 
 function isRateLimitError(err) {
   return err && (err.status === 429 || String(err.message || '').includes('429'));
 }
 
-async function createChatCompletion(params) {
-  const primaryModel = params.model || AVAILABLE_MODELS[0];
-  const modelsToTry = [primaryModel, ...AVAILABLE_MODELS.filter(m => m !== primaryModel)];
+function isRetryableError(err) {
+  return isRateLimitError(err) || (err?.status >= 500 && err?.status < 600);
+}
 
+function buildModelAttempts(primaryModel, { fast = false } = {}) {
+  const nimChain = fast
+    ? [...new Set([primaryModel, ...FAST_MODELS, ...AVAILABLE_MODELS])]
+    : [primaryModel, ...AVAILABLE_MODELS.filter((m) => m !== primaryModel)];
+
+  const attempts = [];
+  const nimPrimary = nimChain[0];
+  const skipNim = isNimInCooldown();
+
+  if (nimPrimary && !skipNim) {
+    attempts.push({ client: openai, provider: 'nvidia', model: nimPrimary });
+  }
+
+  if (openrouter) {
+    for (const model of OPENROUTER_MODELS) {
+      attempts.push({ client: openrouter, provider: 'openrouter', model });
+    }
+  }
+
+  if (!skipNim) {
+    for (const model of nimChain.slice(1)) {
+      attempts.push({ client: openai, provider: 'nvidia', model });
+    }
+  } else if (!openrouter) {
+    for (const model of nimChain.slice(1)) {
+      attempts.push({ client: openai, provider: 'nvidia', model });
+    }
+  }
+
+  return attempts;
+}
+
+async function tryChatCompletion(params, { fast = false, label = 'ChatCompletion' } = {}) {
+  const primaryModel = params.model || (fast ? FAST_MODELS[0] : AVAILABLE_MODELS[0]);
+  const attempts = buildModelAttempts(primaryModel, { fast });
   let lastErr = null;
-  for (const model of modelsToTry) {
+
+  for (const { client, provider, model } of attempts) {
     try {
-      console.log(`Calling ChatCompletion with model: ${model}`);
-      return await openai.chat.completions.create({
-        ...params,
-        model: model,
-      });
+      console.log(`Calling ${label} [${provider}] model: ${model}`);
+      return await client.chat.completions.create({ ...params, model });
     } catch (err) {
       lastErr = err;
-      console.warn(`Model ${model} failed: ${err.message || err}. Status: ${err.status}`);
-      if (isRateLimitError(err) || (err.status >= 500 && err.status < 600)) {
+      if (provider === 'nvidia' && isRateLimitError(err)) markNimRateLimited();
+      console.warn(`${label} [${provider}] ${model} failed: ${err.message || err}. Status: ${err.status}`);
+      if (isRetryableError(err)) {
         console.warn(`Attempting fallback to next model...`);
         continue;
       }
@@ -52,7 +118,12 @@ async function createChatCompletion(params) {
       continue;
     }
   }
+
   throw lastErr || new Error('All chat completion models failed');
+}
+
+async function createChatCompletion(params) {
+  return tryChatCompletion(params, { fast: false, label: 'ChatCompletion' });
 }
 
 function parseJsonContent(raw) {
@@ -183,7 +254,8 @@ Rules:
 4. Every candidate MUST match BOTH the CEFR level (${cefrLevel}) AND difficulty (${diff}).
 5. Return realistic song_title and artist names only — no made-up songs.
 6. Each candidate MUST include cefr_level (A1-C2) and difficulty (easy|medium|hard) matching the rules above.
-7. ${avoidList}
+7. Each candidate MUST include pronunciation as IPA or readable phonetic spelling for the target_word.
+8. ${avoidList}
 
 Reply with ONLY a JSON object containing a "candidates" array, no markdown or explanation:
 {
@@ -192,7 +264,7 @@ Reply with ONLY a JSON object containing a "candidates" array, no markdown or ex
       "target_word": "word in lyrics",
       "translation": "English translation",
       "part_of_speech": "noun|verb|adjective|...",
-      "pronunciation": "optional IPA or phonetic",
+      "pronunciation": "IPA phonetic spelling, e.g. /eŋ.konˈtɾar/",
       "cefr_level": "A1-C2",
       "difficulty": "easy|medium|hard",
       "song_title": "Song Title",
@@ -236,12 +308,71 @@ Reply with ONLY a JSON object containing a "candidates" array, no markdown or ex
   throw lastErr || new Error('invalid_ai_daily_word_response');
 }
 
+const VERIFIED_SONGS = {
+  es: [
+    { song_title: 'Vivir Mi Vida', artist: 'Marc Anthony', genre: 'pop' },
+    { song_title: 'Despacito', artist: 'Luis Fonsi', genre: 'reggaeton' },
+    { song_title: 'Gasolina', artist: 'Daddy Yankee', genre: 'reggaeton' },
+    { song_title: 'La Bicicleta', artist: 'Carlos Vives', genre: 'pop' },
+    { song_title: 'Propuesta Indecente', artist: 'Romeo Santos', genre: 'pop' },
+    { song_title: 'Con Calma', artist: 'Daddy Yankee', genre: 'reggaeton' },
+    { song_title: 'Tití Me Preguntó', artist: 'Bad Bunny', genre: 'reggaeton' },
+    { song_title: 'Me Porto Bonito', artist: 'Bad Bunny', genre: 'reggaeton' },
+    { song_title: 'Yo Perreo Sola', artist: 'Bad Bunny', genre: 'reggaeton' },
+    { song_title: 'Dákiti', artist: 'Bad Bunny', genre: 'reggaeton' },
+    { song_title: 'Felices los 4', artist: 'Maluma', genre: 'pop' },
+    { song_title: 'Corazón', artist: 'Maluma', genre: 'pop' },
+    { song_title: 'Sin Pijama', artist: 'Becky G', genre: 'reggaeton' },
+    { song_title: 'Échame La Culpa', artist: 'Luis Fonsi', genre: 'pop' },
+    { song_title: 'Bailando', artist: 'Enrique Iglesias', genre: 'pop' },
+    { song_title: 'Ella Me Levantó', artist: 'Aventura', genre: 'pop' },
+    { song_title: 'Obsesión', artist: 'Aventura', genre: 'pop' },
+    { song_title: 'Danza Kuduro', artist: 'Don Omar', genre: 'reggaeton' },
+    { song_title: 'Pepas', artist: 'Farruko', genre: 'reggaeton' },
+    { song_title: 'Hawái', artist: 'Maluma', genre: 'pop' },
+    { song_title: 'Señorita', artist: 'Shawn Mendes', genre: 'pop' },
+    { song_title: 'Taki Taki', artist: 'DJ Snake', genre: 'reggaeton' },
+    { song_title: 'A Dios le Pido', artist: 'Juanes', genre: 'rock' },
+    { song_title: 'La Camisa Negra', artist: 'Juanes', genre: 'rock' },
+    { song_title: 'Color Esperanza', artist: 'Diego Torres', genre: 'pop' },
+    { song_title: 'Tusa', artist: 'Karol G', genre: 'reggaeton' },
+    { song_title: 'Baila Baila Baila', artist: 'Ozuna', genre: 'reggaeton' },
+    { song_title: 'Te Boté', artist: 'Casper Magico', genre: 'reggaeton' },
+    { song_title: 'Mi Gente', artist: 'J Balvin', genre: 'reggaeton' },
+    { song_title: 'X', artist: 'Nicki Minaj', genre: 'reggaeton' },
+    { song_title: 'Baila Conmigo', artist: 'Selena Gomez', genre: 'pop' },
+    { song_title: 'Amor Prohibido', artist: 'Selena', genre: 'pop' },
+    { song_title: 'Bidi Bidi Bom Bom', artist: 'Selena', genre: 'pop' },
+    { song_title: 'Fuiste Tú', artist: 'Ricardo Arjona', genre: 'pop' },
+    { song_title: 'Creo En Ti', artist: 'Reik', genre: 'pop' },
+    { song_title: 'Espacio Sideral', artist: 'Jesse & Joy', genre: 'pop' },
+    { song_title: 'En El Muelle de San Blas', artist: 'Maná', genre: 'rock' },
+    { song_title: 'Clavado en Un Bar', artist: 'Maná', genre: 'rock' },
+    { song_title: 'Rayando el Sol', artist: 'Maná', genre: 'rock' },
+    { song_title: 'El Perdón', artist: 'Nicky Jam', genre: 'reggaeton' },
+    { song_title: 'Hasta el Amanecer', artist: 'Nicky Jam', genre: 'reggaeton' },
+    { song_title: 'Caramelo', artist: 'Ozuna', genre: 'reggaeton' },
+    { song_title: 'Se Preparó', artist: 'Ozuna', genre: 'reggaeton' },
+    { song_title: 'Sofía', artist: 'Alvaro Soler', genre: 'pop' },
+    { song_title: 'La Gozadera', artist: 'Marc Anthony', genre: 'pop' },
+    { song_title: 'Vivir Así Es Morir de Amor', artist: 'Camilo Sesto', genre: 'pop' },
+  ],
+};
+
+function getVerifiedSongCandidates(languageCode, genre) {
+  const langCode = normalizeLanguageCode(languageCode);
+  const list = VERIFIED_SONGS[langCode] || VERIFIED_SONGS.es || [];
+  const g = String(genre || 'pop').toLowerCase();
+  const matched = list.filter((s) => s.genre === g || g === 'any');
+  return matched.length ? matched : list;
+}
+
 const GENRE_HIT_EXAMPLES = {
   es: {
-    reggaeton: 'Gasolina (Daddy Yankee), Despacito (Luis Fonsi), Dákiti (Bad Bunny), Tití Me Preguntó (Bad Bunny), Con Calma (Daddy Yankee), Me Porto Bonito (Bad Bunny)',
-    pop: 'Despacito (Luis Fonsi), Bailando (Enrique Iglesias), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives)',
-    rock: 'Latinoamérica (Calle 13), A Dios le Pido (Juanes), Me Enamora (Juanes)',
-    any: 'Despacito (Luis Fonsi), Gasolina (Daddy Yankee), Vivir Mi Vida (Marc Anthony)',
+    reggaeton: 'Gasolina (Daddy Yankee), Despacito (Luis Fonsi), Dákiti (Bad Bunny), Tití Me Preguntó (Bad Bunny), Con Calma (Daddy Yankee), Me Porto Bonito (Bad Bunny), Yo Perreo Sola (Bad Bunny), Pepas (Farruko), Danza Kuduro (Don Omar), Taki Taki (DJ Snake), Mi Gente (J Balvin), Tusa (Karol G), El Perdón (Nicky Jam), Caramelo (Ozuna)',
+    pop: 'Despacito (Luis Fonsi), Bailando (Enrique Iglesias), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives), Propuesta Indecente (Romeo Santos), Felices los 4 (Maluma), Hawái (Maluma), Échame La Culpa (Luis Fonsi), Color Esperanza (Diego Torres), Sofía (Alvaro Soler), Fuiste Tú (Ricardo Arjona), Creo En Ti (Reik)',
+    rock: 'A Dios le Pido (Juanes), La Camisa Negra (Juanes), En El Muelle de San Blas (Maná), Clavado en Un Bar (Maná), Rayando el Sol (Maná)',
+    any: 'Despacito (Luis Fonsi), Gasolina (Daddy Yankee), Vivir Mi Vida (Marc Anthony), Bailando (Enrique Iglesias), La Bicicleta (Carlos Vives), Propuesta Indecente (Romeo Santos)',
   },
   en: {
     pop: 'Shape of You (Ed Sheeran), Blinding Lights (The Weeknd), Someone Like You (Adele), Bad Guy (Billie Eilish)',
@@ -293,23 +424,8 @@ function getCuratedSongCandidates(languageCode, genre) {
   return parseCuratedSongs(hits, genre || 'pop');
 }
 
-const FAST_MODELS = ['stepfun-ai/step-3.7-flash', 'meta/llama-3.1-8b-instruct'];
-
 async function createFastChatCompletion(params, timeoutMs = 20000) {
-  let lastErr = null;
-  const work = (async () => {
-    for (const model of FAST_MODELS) {
-      try {
-        console.log(`Calling fast ChatCompletion with model: ${model}`);
-        return await openai.chat.completions.create({ ...params, model });
-      } catch (err) {
-        lastErr = err;
-        console.warn(`Fast model ${model} failed: ${err.message || err}`);
-        if (isRateLimitError(err) || (err.status >= 500 && err.status < 600)) continue;
-      }
-    }
-    throw lastErr || new Error('fast_models_failed');
-  })();
+  const work = tryChatCompletion(params, { fast: true, label: 'fast ChatCompletion' });
 
   return Promise.race([
     work,
@@ -323,12 +439,15 @@ async function createFastChatCompletion(params, timeoutMs = 20000) {
   ]);
 }
 
-async function generateDailyWordSongs({ languageName, languageCode, genre, difficulty }) {
+async function generateDailyWordSongs({ languageName, languageCode, genre, difficulty, avoidSongs = [] }) {
   const langCode = normalizeLanguageCode(languageCode);
   const hits = genreExamplesForLanguage(langCode, genre);
+  const avoidList = avoidSongs.length
+    ? `NEVER pick these already-used songs: ${avoidSongs.map((k) => k.replace("|", " - ")).join("; ")}.`
+    : "";
 
   const systemPrompt = `You are a music curator for ${languageName} language learners.
-Pick 3 DIFFERENT globally famous songs sung primarily in ${languageName} in the "${genre}" genre.
+Pick 5 DIFFERENT globally famous songs sung primarily in ${languageName} in the "${genre}" genre.
 
 Difficulty context: ${difficulty} — choose well-known hits learners likely recognize.
 
@@ -340,7 +459,9 @@ STRICT RULES:
 5. Main artist only — no "feat." in the artist field.
 6. NEVER invent songs. NEVER use a vocabulary word as the song title.
 7. song_title must NOT be a single rare word — use the real commercial track name.
-8. Prefer songs like: ${hits}
+8. Each song MUST be different from every other song you pick.
+9. ${avoidList}
+10. Prefer songs like: ${hits}
 
 Reply with ONLY JSON:
 {
@@ -354,18 +475,27 @@ Reply with ONLY JSON:
 }`;
 
   let lastErr = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const response = await createFastChatCompletion({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `List 3 famous ${languageName}-language ${genre} songs for a word-of-the-day playlist. Songs must be sung in ${languageName}.` },
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens: 800,
-        temperature: 0.3,
-        top_p: 0.9,
-      }, 20000);
+      const response = await Promise.race([
+        createChatCompletion({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `List 5 famous ${languageName}-language ${genre} songs for a word-of-the-day playlist. Songs must be sung in ${languageName}. Return JSON only.` },
+          ],
+          response_format: { type: 'json_object' },
+          max_tokens: 1200,
+          temperature: 0.3,
+          top_p: 0.9,
+        }),
+        new Promise((_, reject) => {
+          setTimeout(() => {
+            const err = new Error('ai_timeout');
+            err.code = 'ai_timeout';
+            reject(err);
+          }, 35000);
+        }),
+      ]);
 
       const raw = response.choices?.[0]?.message?.content;
       const parsed = normalizeDailyWord(parseJsonContent(raw));
@@ -387,8 +517,27 @@ Reply with ONLY JSON:
   throw lastErr || new Error('invalid_ai_daily_word_response');
 }
 
-async function glossDailyWords(items, languageName, { fast = false } = {}) {
+function sanitizeGloss(word, gloss) {
+  if (!gloss) return { translation: null, part_of_speech: null, pronunciation: null };
+  const raw = String(gloss.translation || "").trim();
+  const sameWord = raw.toLowerCase() === String(word || "").toLowerCase();
+  return {
+    translation: raw && !sameWord ? raw : null,
+    part_of_speech: gloss.part_of_speech || null,
+    pronunciation: gloss.pronunciation || null,
+  };
+}
+
+async function glossDailyWords(items, languageName, { fast = false, nativeLanguageName = "English" } = {}) {
   if (!items?.length) return [];
+
+  const glossUserPrompt = `For each item, use the lyric "line" to choose the correct sense of the word in that context.
+Ambiguous words MUST match how they are used in the line (e.g. Spanish "pendiente" in "Un pendiente de oro" → "earring", not "pending").
+The learner's native language is ${nativeLanguageName}. Give translation in ${nativeLanguageName} only (1–3 words, never repeat the ${languageName} word).
+Also give part_of_speech and pronunciation (IPA or readable phonetic for how to say the ${languageName} word).
+Items: ${JSON.stringify(items)}
+
+Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "noun|verb|...", "pronunciation": "/.../" } ] }`;
 
   const runGloss = async () => {
     const response = await (fast
@@ -396,14 +545,11 @@ async function glossDailyWords(items, languageName, { fast = false } = {}) {
         messages: [
           {
             role: 'system',
-            content: `You translate ${languageName} vocabulary for learners. Return JSON only.`,
+            content: `You translate ${languageName} vocabulary for language learners. Use lyric context to disambiguate. Return JSON only.`,
           },
           {
             role: 'user',
-            content: `For each item give English translation and part_of_speech.
-Items: ${JSON.stringify(items)}
-
-Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "noun|verb|..." } ] }`,
+            content: glossUserPrompt,
           },
         ],
         response_format: { type: 'json_object' },
@@ -414,14 +560,11 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
         messages: [
           {
             role: 'system',
-            content: `You translate ${languageName} vocabulary for learners. Return JSON only.`,
+            content: `You translate ${languageName} vocabulary for language learners. Use lyric context to disambiguate. Return JSON only.`,
           },
           {
             role: 'user',
-            content: `For each item give English translation and part_of_speech.
-Items: ${JSON.stringify(items)}
-
-Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "noun|verb|..." } ] }`,
+            content: glossUserPrompt,
           },
         ],
         response_format: { type: 'json_object' },
@@ -435,10 +578,11 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
 
     return items.map((item) => {
       const hit = byWord.get(String(item.word || '').toLowerCase());
-      return {
-        translation: hit?.translation || item.word,
-        part_of_speech: hit?.part_of_speech || null,
-      };
+      return sanitizeGloss(item.word, {
+        translation: hit?.translation,
+        part_of_speech: hit?.part_of_speech,
+        pronunciation: hit?.pronunciation,
+      });
     });
   };
 
@@ -448,7 +592,7 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
     return await runGloss();
   } catch (err) {
     console.warn(`daily word gloss fallback: ${err.message || err}`);
-    return items.map((item) => ({ translation: item.word, part_of_speech: null }));
+    return items.map((item) => sanitizeGloss(item.word, null));
   }
 }
 
@@ -457,9 +601,13 @@ module.exports = {
   generateDailyWord,
   generateDailyWordSongs,
   getCuratedSongCandidates,
+  getVerifiedSongCandidates,
   glossDailyWords,
+  sanitizeGloss,
   createChatCompletion,
   createFastChatCompletion,
   AVAILABLE_MODELS,
+  OPENROUTER_MODELS,
   openai,
+  openrouter,
 };

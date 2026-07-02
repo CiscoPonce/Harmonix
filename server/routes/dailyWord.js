@@ -6,7 +6,7 @@ const wordQueue = require("../services/wordQueueService");
 
 function loadUser(userId) {
   return db.prepare(
-    "SELECT id, email, cefr_level, target_language, genre, difficulty FROM users WHERE id = ?"
+    "SELECT id, email, cefr_level, native_language, target_language, genre, difficulty FROM users WHERE id = ?"
   ).get(userId);
 }
 

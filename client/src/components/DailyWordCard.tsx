@@ -3,8 +3,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "./ui/Button";
-import { BookOpen, Loader2, Music2, Play, Pause, RefreshCw, Sparkles } from "lucide-react";
+import { BookOpen, Loader2, Music2, Play, Pause, RefreshCw, Sparkles, RotateCw } from "lucide-react";
 
 interface QueueStatus {
   ready: number;
@@ -60,6 +61,7 @@ function highlightWord(snippet: string, start: number, end: number) {
 }
 
 export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
+  const { user } = useAuth();
   const [data, setData] = useState<DailyWordPayload | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,6 +70,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const fetchQueueStatus = useCallback(async () => {
@@ -83,6 +86,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
 
   const applyPayload = useCallback((payload: DailyWordPayload) => {
     setData(payload);
+    setIsFlipped(false);
     if (payload.queue) setQueueStatus(payload.queue);
     setError(null);
     setRefreshError(null);
@@ -91,6 +95,8 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   }, [onWordChange]);
 
   const loadDailyWord = useCallback(async (initial = false) => {
+    const hasBuffered = (queueStatus?.ready ?? 0) > 0;
+
     if (!initial) {
       setRefreshing(true);
       setRefreshError(null);
@@ -99,7 +105,6 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       setError(null);
     }
 
-    const hasBuffered = (queueStatus?.ready ?? 0) > 0;
     if (!initial && hasBuffered) {
       setStatusMessage(null);
     } else if (!initial) {
@@ -114,7 +119,9 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         if (body.queue) setQueueStatus(body.queue);
         let msg = body.reason || "Could not load daily word";
         if (body.reason === "invalid_ai_daily_word_response") {
-          msg = "AI could not find a valid word. Please try again.";
+          msg = "Couldn't find a new word in a song right now. Your song library may be exhausted — try again in a minute.";
+        } else if (body.reason === "daily_word_generation_failed" || body.reason === "generation_failed") {
+          msg = "Couldn't find a new word in a song right now. Please try again shortly.";
         } else if (body.reason === "ai_rate_limit" || body.reason?.includes("429")) {
           msg = "AI is busy (rate limit). Please wait a minute and try again.";
         } else if (body.reason === "cooldown_active") {
@@ -185,14 +192,39 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     return () => { audio.removeEventListener("ended", stop); audio.removeEventListener("pause", stop); };
   }, [data]);
 
-  const showHeavyOverlay = refreshing && (queueStatus?.ready ?? 0) === 0;
+  const toggleFlip = () => {
+    if (refreshing) return;
+    setIsFlipped((prev) => !prev);
+  };
+
+  const formatPronunciation = (raw: string) => {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("/") || trimmed.startsWith("[") || trimmed.includes("ˈ")) return trimmed;
+    return `/${trimmed}/`;
+  };
 
   if (loading && !data) {
     return (
-      <div className="w-full max-w-3xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-10 flex flex-col items-center justify-center gap-3 text-zinc-500 dark:text-zinc-400">
-        <Loader2 className="w-5 h-5 animate-spin" />
-        <span className="text-xs font-bold uppercase tracking-widest text-zinc-900 dark:text-white">Loading your word...</span>
-        <span className="text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-600">First load may take up to a minute while we stock your queue</span>
+      <div className="w-full max-w-3xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden">
+        <div className="px-4 py-3 sm:px-6 border-b border-zinc-100 dark:border-zinc-900 flex flex-row items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-900/40">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <Sparkles className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+            <span>Word of the day</span>
+          </div>
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
+        </div>
+        <div className="p-5 sm:p-8 md:p-10">
+          <div className="min-h-[17rem] sm:min-h-[19rem] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 p-5 sm:p-8 flex flex-col justify-between animate-pulse">
+            <div className="flex justify-center pt-2">
+              <div className="h-12 sm:h-16 w-2/3 max-w-xs rounded-lg bg-zinc-200 dark:bg-zinc-800" />
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <div className="h-5 w-24 rounded bg-zinc-200 dark:bg-zinc-800" />
+              <div className="h-5 w-16 rounded-full bg-zinc-200 dark:bg-zinc-800" />
+              <div className="h-5 w-32 rounded bg-zinc-200 dark:bg-zinc-800" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -210,6 +242,12 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
 
   const playerHref = "/player/" + data.song.id;
   const readyCount = queueStatus?.ready ?? data.queue?.ready ?? 0;
+  const showHeavyOverlay = refreshing && (queueStatus?.ready ?? 0) === 0;
+  const homeLanguage = (user?.native_language || "en").toUpperCase();
+  const meaning = data.word.translation?.trim();
+  const showMeaning = Boolean(
+    meaning && meaning.toLowerCase() !== data.word.text.toLowerCase()
+  );
 
   return (
     <div className="relative w-full max-w-3xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden">
@@ -229,63 +267,112 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         </div>
       )}
 
-      <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-zinc-100 dark:border-zinc-900 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-zinc-50 dark:bg-zinc-900/40">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-500 dark:text-zinc-400 min-w-0">
+      <div className="px-4 py-3 sm:px-6 border-b border-zinc-100 dark:border-zinc-900 flex flex-row items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-900/40">
+        <div className="flex items-center gap-2 min-w-0 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-500 dark:text-zinc-400">
           <Sparkles className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
           <span className="shrink-0">Word of the day</span>
-          {data.cached && !refreshing && <span className="text-zinc-400 dark:text-zinc-600">· cached</span>}
           {readyCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px]">
+            <span className="px-2 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px] shrink-0">
               {readyCount} ready
             </span>
           )}
           {queueStatus?.refilling && readyCount === 0 && !refreshing && (
-            <span className="text-zinc-400 dark:text-zinc-600">· stocking queue</span>
+            <span className="text-zinc-400 dark:text-zinc-600 truncate">· stocking</span>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={() => loadDailyWord(false)} disabled={refreshing} className="self-start sm:self-auto text-[10px] font-bold uppercase tracking-wide sm:tracking-widest gap-2 shrink-0">
+        <Button variant="ghost" size="sm" onClick={() => loadDailyWord(false)} disabled={refreshing} className="shrink-0 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest gap-2 whitespace-nowrap">
           {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           {readyCount > 0 ? "Next word" : "New word"}
         </Button>
       </div>
 
-      <div className="p-5 sm:p-8 md:p-10 space-y-6 sm:space-y-8">
-        <div className="space-y-3 min-w-0">
-          <p className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight uppercase sm:italic text-zinc-900 dark:text-white break-words [overflow-wrap:anywhere]">{data.word.text}</p>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-zinc-600 dark:text-zinc-400">
-            <span className="font-bold text-zinc-900 dark:text-white break-words">{data.word.translation}</span>
-            {data.word.part_of_speech && (
-              <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-900 dark:text-white">{data.word.part_of_speech}</span>
-            )}
-            {data.word.pronunciation && <span className="text-zinc-500">{data.word.pronunciation}</span>}
-            {data.from_queue && (
-              <span className="text-[10px] uppercase tracking-widest text-green-600 dark:text-green-400">Instant</span>
-            )}
-          </div>
-        </div>
+      <div className="p-5 sm:p-8 md:p-10">
+        <div className="daily-word-flip-scene">
+          <div
+            className={`daily-word-flip-inner ${isFlipped ? "is-flipped" : ""}`}
+            aria-live="polite"
+          >
+            {/* Front — word & translation */}
+            <button
+              type="button"
+              className="daily-word-flip-face daily-word-flip-front flex flex-col justify-between text-left w-full min-h-[17rem] sm:min-h-[19rem] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 p-5 sm:p-8 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-600"
+              onClick={toggleFlip}
+              disabled={refreshing}
+              aria-label="Show song context for this word"
+            >
+              <div className="flex justify-center pt-1 sm:pt-2 min-w-0">
+                <p className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight uppercase sm:italic text-zinc-900 dark:text-white break-words [overflow-wrap:anywhere] text-center">
+                  {data.word.text}
+                </p>
+              </div>
 
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black p-4 sm:p-6 space-y-4 min-w-0">
-          <div className="flex items-start gap-2 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-600 dark:text-zinc-500 min-w-0">
-            <Music2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            <span className="line-clamp-2 break-words">Found in {data.song.title} · {data.song.artist}</span>
-          </div>
-          <blockquote className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-zinc-800 dark:text-zinc-200 italic break-words">
-            &ldquo;{highlightWord(data.lyric.snippet, data.lyric.char_start, data.lyric.char_end)}&rdquo;
-          </blockquote>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-600">At {data.lyric.timestamp}</p>
-        </div>
+              <div className="mt-auto space-y-4 min-w-0">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  {data.word.pronunciation && (
+                    <span className="text-base sm:text-lg font-medium text-zinc-500 dark:text-zinc-400 tracking-wide font-serif italic break-words">
+                      {formatPronunciation(data.word.pronunciation)}
+                    </span>
+                  )}
+                  {data.word.part_of_speech && (
+                    <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-900 dark:text-white shrink-0">
+                      {data.word.part_of_speech}
+                    </span>
+                  )}
+                  {showMeaning && (
+                    <span className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white break-words">
+                      {meaning}
+                      <span className="ml-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                        {homeLanguage}
+                      </span>
+                    </span>
+                  )}
+                </div>
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                  <RotateCw className="w-3 h-3 shrink-0" />
+                  Tap for song context
+                </p>
+              </div>
+            </button>
 
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={togglePlay} disabled={refreshing} className="gap-2 uppercase tracking-widest text-[10px] font-bold">
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            Hear it in the song
-          </Button>
-          <Link href={playerHref}>
-            <Button variant="secondary" disabled={refreshing} className="gap-2 uppercase tracking-widest text-[10px] font-bold">
-              <BookOpen className="w-4 h-4" />
-              Open full player
-            </Button>
-          </Link>
+            {/* Back — lyric snippet & actions */}
+            <div
+              className="daily-word-flip-face daily-word-flip-back flex flex-col justify-between min-h-[17rem] sm:min-h-[19rem] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black p-4 sm:p-6 space-y-4 min-w-0 cursor-pointer"
+              onClick={toggleFlip}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleFlip(); } }}
+              role="button"
+              tabIndex={0}
+              aria-label="Back to word"
+            >
+              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 self-start">
+                <RotateCw className="w-3 h-3 shrink-0" />
+                Tap to flip back
+              </p>
+
+              <div className="space-y-4 min-w-0 flex-1 flex flex-col justify-center pointer-events-none">
+                <div className="flex items-start gap-2 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-600 dark:text-zinc-500 min-w-0">
+                  <Music2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span className="line-clamp-2 break-words">Found in {data.song.title} · {data.song.artist}</span>
+                </div>
+                <blockquote className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-zinc-800 dark:text-zinc-200 italic break-words">
+                  &ldquo;{highlightWord(data.lyric.snippet, data.lyric.char_start, data.lyric.char_end)}&rdquo;
+                </blockquote>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-600">At {data.lyric.timestamp}</p>
+              </div>
+
+              <div className="flex flex-wrap gap-3 pt-2" onClick={(e) => e.stopPropagation()}>
+                <Button onClick={togglePlay} disabled={refreshing} className="gap-2 uppercase tracking-widest text-[10px] font-bold">
+                  {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  Hear it in the song
+                </Button>
+                <Link href={playerHref}>
+                  <Button variant="secondary" disabled={refreshing} className="gap-2 uppercase tracking-widest text-[10px] font-bold">
+                    <BookOpen className="w-4 h-4" />
+                    Open full player
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
