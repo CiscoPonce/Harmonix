@@ -2,7 +2,7 @@ const { normText } = require('./deezerService');
 
 const LRCLIB_TIMEOUT_MS = process.env.LRCLIB_TIMEOUT_MS
   ? parseInt(process.env.LRCLIB_TIMEOUT_MS, 10)
-  : 12_000;
+  : 6_000;
 
 const GATEWAY_ERRORS = new Set([502, 503, 504]);
 
@@ -122,36 +122,36 @@ async function lrclibSearch(artist, title, duration, fetchImpl = fetch) {
 }
 
 async function fetchLyricsForTrack(artist, title, duration, fetchImpl = fetch) {
+  // Search is often faster than /api/get when LRCLib is under load — try it first after a quick get miss.
   const strategies = [
     () => lrclibGet(artist, title, duration, fetchImpl),
     () => lrclibSearch(artist, title, duration, fetchImpl),
-    () => lrclibGet(artist, title, null, fetchImpl),
   ];
 
-  let sawGatewayError = false;
+  let sawSlowFailure = false;
 
   for (const strategy of strategies) {
     try {
       const raw = await strategy();
       if (raw?.__gatewayError) {
-        sawGatewayError = true;
+        sawSlowFailure = true;
         continue;
       }
       const normalized = normalizeLyricsPayload(raw, duration);
       if (normalized) return normalized;
     } catch (err) {
       if (err.code === 'lrclib_timeout') {
-        sawGatewayError = true;
+        sawSlowFailure = true;
         continue;
       }
       if (String(err.message || '').startsWith('lrclib_http_')) {
-        sawGatewayError = true;
+        sawSlowFailure = true;
         continue;
       }
     }
   }
 
-  if (sawGatewayError) return null;
+  if (sawSlowFailure) return null;
   return null;
 }
 

@@ -278,7 +278,7 @@ async function generateDailyWordSongs({ languageName, languageCode, genre, diffi
   const hits = genreExamplesForLanguage(langCode, genre);
 
   const systemPrompt = `You are a music curator for ${languageName} language learners.
-Pick 5 DIFFERENT globally famous songs sung primarily in ${languageName} in the "${genre}" genre.
+Pick 3 DIFFERENT globally famous songs sung primarily in ${languageName} in the "${genre}" genre.
 
 Difficulty context: ${difficulty} — choose well-known hits learners likely recognize.
 
@@ -309,7 +309,7 @@ Reply with ONLY JSON:
       const response = await createChatCompletion({
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `List 5 famous ${languageName}-language ${genre} songs for a word-of-the-day playlist. Songs must be sung in ${languageName}.` },
+          { role: 'user', content: `List 3 famous ${languageName}-language ${genre} songs for a word-of-the-day playlist. Songs must be sung in ${languageName}.` },
         ],
         response_format: { type: 'json_object' },
         max_tokens: 4096,

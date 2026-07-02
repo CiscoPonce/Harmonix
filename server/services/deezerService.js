@@ -79,9 +79,30 @@ function buildSearchQueries(artist, title) {
   return [...new Set(queries.map((q) => q.trim()).filter(Boolean))];
 }
 
+const DEEZER_TIMEOUT_MS = process.env.DEEZER_TIMEOUT_MS
+  ? parseInt(process.env.DEEZER_TIMEOUT_MS, 10)
+  : 5_000;
+
+async function fetchWithTimeout(url, fetchImpl = fetch, timeoutMs = DEEZER_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetchImpl(url, { signal: controller.signal });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      const timeoutErr = new Error('deezer_timeout');
+      timeoutErr.code = 'deezer_timeout';
+      throw timeoutErr;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function searchTracks(query, fetchImpl = fetch, limit = 15) {
   const url = `${DEEZER_SEARCH_URL}?q=${encodeURIComponent(query)}&limit=${limit}`;
-  const res = await fetchImpl(url);
+  const res = await fetchWithTimeout(url, fetchImpl);
   if (!res.ok) throw new Error(`deezer_http_${res.status}`);
   const data = await res.json();
   return data.data || [];
@@ -117,7 +138,7 @@ async function searchTrack(artist, title, fetchImpl = fetch) {
 }
 
 async function fetchTrack(trackId, fetchImpl = fetch) {
-  const res = await fetchImpl(`${DEEZER_TRACK_URL}/${trackId}`);
+  const res = await fetchWithTimeout(`${DEEZER_TRACK_URL}/${trackId}`, fetchImpl);
   if (!res.ok) {
     const err = new Error('track_not_found');
     err.code = 'track_not_found';

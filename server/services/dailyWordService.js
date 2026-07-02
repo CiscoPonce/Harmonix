@@ -16,6 +16,9 @@ const lrcLib = require("./lrcLibService");
 const FORCE_COOLDOWN_MS = process.env.FORCE_COOLDOWN_MS ? parseInt(process.env.FORCE_COOLDOWN_MS, 10) : 90_000;
 const BATCH_AI_ATTEMPTS = 2;
 const REFILL_BATCH_ROUNDS = 3;
+const USER_BATCH_STOP_AFTER = 1;
+
+const batchGenerationInProgress = new Set();
 
 const LYRIC_STOPWORDS = new Set([
   'que', 'de', 'la', 'el', 'en', 'y', 'a', 'los', 'las', 'un', 'una', 'por', 'con',
@@ -129,7 +132,19 @@ function findWordOccurrence(word, syncedLyrics, plainLyrics = null) {
   };
 }
 
-async function fetchLyrics(artist, title, duration, fetchImpl = fetch) {
+async function fetchLyrics(artist, title, duration, fetchImpl = fetch, trackId = null) {
+  if (trackId) {
+    const snapshot = db.prepare(
+      "SELECT synced_lyrics, plain_lyrics FROM song_lyrics_snapshot WHERE song_id = ?"
+    ).get(String(trackId));
+    if (snapshot?.synced_lyrics) {
+      return { syncedLyrics: snapshot.synced_lyrics, plainLyrics: snapshot.plain_lyrics || null };
+    }
+    const cached = validation.getCachedSong(String(trackId));
+    if (cached?.lyrics?.syncedLyrics) {
+      return cached.lyrics;
+    }
+  }
   return lrcLib.fetchLyricsForTrack(artist, title, duration, fetchImpl);
 }
 
@@ -202,7 +217,7 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
       return { error: "deezer_not_found" };
     }
 
-    const lyricsData = await fetchLyrics(track.artist.name, track.title, track.duration, fetchImpl);
+    const lyricsData = await fetchLyrics(track.artist.name, track.title, track.duration, fetchImpl, track.id);
     if (!lyricsData?.syncedLyrics) {
       console.warn(`daily word reject: lyrics_not_found ${label}`);
       return { error: "lyrics_not_found" };
@@ -295,7 +310,8 @@ function candidateRankScore(suggestion, userGenre, userDifficulty, effectiveLeve
   return score;
 }
 
-async function validateAllCandidates(candidates, date, user, fetchImpl = fetch) {
+async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, options = {}) {
+  const stopAfter = options.stopAfter ?? candidates.length;
   const userGenre = user.genre || "pop";
   const userDifficulty = user.difficulty || "medium";
   const avoidWords = new Set(getAvoidWords(user.id).map((w) => String(w).toLowerCase()));
@@ -309,35 +325,51 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch) 
     return true;
   });
 
-  const outcomes = await Promise.all(
-    uniqueCandidates.map((suggestion) => tryValidateSongCandidate(suggestion, user, date, avoidWords, fetchImpl))
-  );
-
   const partials = [];
   const usedWords = new Set();
-  for (const result of outcomes) {
+  let resolveEarly = null;
+  const earlyDone = new Promise((resolve) => { resolveEarly = resolve; });
+  let pending = uniqueCandidates.length;
+
+  const tasks = uniqueCandidates.map((suggestion) => (async () => {
+    const result = await tryValidateSongCandidate(suggestion, user, date, avoidWords, fetchImpl);
     if (result.picked) {
       const key = result.picked.word.toLowerCase();
-      if (usedWords.has(key)) continue;
-      usedWords.add(key);
-      partials.push(result);
+      if (!usedWords.has(key)) {
+        usedWords.add(key);
+        partials.push(result);
+        if (partials.length >= stopAfter && resolveEarly) resolveEarly();
+      }
     } else if (result.error) {
       lastError = result.error;
     }
+    pending -= 1;
+    if (pending === 0 && resolveEarly) resolveEarly();
+    return result;
+  })());
+
+  if (stopAfter < uniqueCandidates.length) {
+    await Promise.race([earlyDone, Promise.all(tasks)]);
+  } else {
+    await Promise.all(tasks);
   }
 
   if (!partials.length) {
-    return { valid: [], sideEffects: [], lastError, candidateCount: candidates.length };
+    if (pending > 0) await Promise.all(tasks);
+    if (!partials.length) {
+      return { valid: [], sideEffects: [], lastError, candidateCount: candidates.length };
+    }
   }
 
   const languageName = languageNameFromCode(user.target_language || "es");
+  const glossTarget = partials.slice(0, stopAfter);
   const glosses = await aiService.glossDailyWords(
-    partials.map((p) => ({ word: p.picked.word, line: p.picked.line })),
+    glossTarget.map((p) => ({ word: p.picked.word, line: p.picked.line })),
     languageName
   );
 
-  const results = partials.map((p, i) => {
-    const gloss = glosses[i] || { translation: p.picked.word, part_of_speech: null };
+  const buildResults = (items, glossList) => items.map((p, i) => {
+    const gloss = glossList[i] || { translation: p.picked.word, part_of_speech: null };
     const wordSuggestion = {
       target_word: p.picked.word,
       translation: gloss.translation,
@@ -356,13 +388,34 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch) 
     };
   });
 
-  results.sort((a, b) => genreBoostScore(b.genre, userGenre) - genreBoostScore(a.genre, userGenre));
+  const immediateResults = buildResults(glossTarget, glosses);
+  immediateResults.sort((a, b) => genreBoostScore(b.genre, userGenre) - genreBoostScore(a.genre, userGenre));
+
+  const finishBackground = async () => {
+    if (pending > 0) await Promise.all(tasks);
+    const extraPartials = partials.slice(glossTarget.length);
+    if (!extraPartials.length) return { queued: 0 };
+
+    const extraGlosses = await aiService.glossDailyWords(
+      extraPartials.map((p) => ({ word: p.picked.word, line: p.picked.line })),
+      languageName
+    );
+    const extraResults = buildResults(extraPartials, extraGlosses);
+    for (const effect of extraResults) {
+      persistPayloadSideEffects(effect.payload, effect.track, effect.lyricsData, effect.syncCheck);
+    }
+    const inserted = wordQueue.enqueuePayloads(user.id, extraResults.map((r) => r.payload));
+    console.log(`daily word background: queued ${inserted}/${extraResults.length} extra words`);
+    scheduleRefill(user, fetchImpl);
+    return { queued: inserted };
+  };
 
   return {
-    valid: results.map((r) => r.payload),
-    sideEffects: results,
+    valid: immediateResults.map((r) => r.payload),
+    sideEffects: immediateResults,
     lastError,
     candidateCount: candidates.length,
+    finishBackground: stopAfter < uniqueCandidates.length ? finishBackground : null,
   };
 }
 
@@ -535,7 +588,7 @@ async function fetchAiCandidates(user) {
   return Array.isArray(aiResult) ? aiResult : [aiResult];
 }
 
-async function generateValidatedBatch(user, fetchImpl = fetch) {
+async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
   const date = todayDate();
   let candidates = [];
   try {
@@ -549,7 +602,7 @@ async function generateValidatedBatch(user, fetchImpl = fetch) {
     return { valid: [], sideEffects: [], lastError: "invalid_ai_daily_word_response" };
   }
 
-  return validateAllCandidates(candidates, date, user, fetchImpl);
+  return validateAllCandidates(candidates, date, user, fetchImpl, options);
 }
 
 async function persistBatchSideEffects(sideEffects) {
@@ -567,34 +620,65 @@ async function deliverFromBatch(user, batch, fetchImpl, { fromQueue = false } = 
   } else {
     console.log(`daily word batch: delivered 1 (${batch.valid.length}/${batch.candidateCount} validated)`);
   }
-  scheduleRefill(user, fetchImpl);
+  if (batch.finishBackground) {
+    setImmediate(() => {
+      batch.finishBackground().catch((err) => {
+        console.warn(`daily word background failed for ${user.id}:`, err.message || err);
+      });
+    });
+  } else {
+    scheduleRefill(user, fetchImpl);
+  }
   return deliverPayload(user.id, first, { fromQueue });
 }
 
-async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = BATCH_AI_ATTEMPTS } = {}) {
-  let lastError = "unknown";
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const batch = await generateValidatedBatch(user, fetchImpl);
-    if (batch.valid.length) {
-      return deliverFromBatch(user, batch, fetchImpl);
-    }
-    lastError = batch.lastError || "unknown";
-    console.warn(
-      `daily word batch attempt ${attempt + 1}/${maxAttempts}: 0/${batch.candidateCount || 5} passed (${lastError})`
-    );
+async function withBatchLock(userId, fn) {
+  if (batchGenerationInProgress.has(userId)) {
+    const err = new Error("batch_in_progress");
+    err.code = "batch_in_progress";
+    throw err;
   }
+  batchGenerationInProgress.add(userId);
+  try {
+    return await fn();
+  } finally {
+    batchGenerationInProgress.delete(userId);
+  }
+}
 
-  const err = new Error("daily_word_generation_failed");
-  err.code = lastError;
-  throw err;
+async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = BATCH_AI_ATTEMPTS } = {}) {
+  return withBatchLock(user.id, async () => {
+    const started = Date.now();
+    let lastError = "unknown";
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const batch = await generateValidatedBatch(user, fetchImpl, { stopAfter: USER_BATCH_STOP_AFTER });
+      if (batch.valid.length) {
+        console.log(`daily word batch: first valid in ${Date.now() - started}ms (attempt ${attempt + 1})`);
+        return deliverFromBatch(user, batch, fetchImpl);
+      }
+      lastError = batch.lastError || "unknown";
+      console.warn(
+        `daily word batch attempt ${attempt + 1}/${maxAttempts}: 0/${batch.candidateCount || 5} passed (${lastError})`
+      );
+    }
+
+    const err = new Error("daily_word_generation_failed");
+    err.code = lastError;
+    throw err;
+  });
 }
 
 async function refillQueue(user, fetchImpl = fetch) {
+  if (batchGenerationInProgress.size > 0) return;
+
   let emptyRounds = 0;
 
   while (wordQueue.countReady(user.id) < wordQueue.QUEUE_MAX && emptyRounds < REFILL_BATCH_ROUNDS) {
-    const batch = await generateValidatedBatch(user, fetchImpl);
+    if (batchGenerationInProgress.size > 0) break;
+
+    const needed = wordQueue.QUEUE_MAX - wordQueue.countReady(user.id);
+    const batch = await generateValidatedBatch(user, fetchImpl, { stopAfter: needed });
     if (!batch.valid.length) {
       emptyRounds += 1;
       console.warn(
@@ -620,6 +704,7 @@ async function refillQueue(user, fetchImpl = fetch) {
 
 function scheduleRefill(user, fetchImpl = fetch) {
   if (process.env.NODE_ENV === "test") return;
+  if (batchGenerationInProgress.has(user.id)) return;
   wordQueue.triggerRefillIfNeeded(user, (u) => refillQueue(u, fetchImpl));
 }
 
