@@ -150,9 +150,14 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   }, [applyPayload, data, fetchQueueStatus, queueStatus?.ready]);
 
   useEffect(() => {
+    if (!user?.target_language) return;
+    setData(null);
+    setError(null);
+    setRefreshError(null);
+    setIsFlipped(false);
     loadDailyWord(true);
     fetchQueueStatus();
-  }, []);
+  }, [user?.target_language, user?.native_language]);
 
   useEffect(() => {
     if (!queueStatus?.refilling) return;

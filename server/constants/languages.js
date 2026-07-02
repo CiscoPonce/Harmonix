@@ -1,4 +1,4 @@
-const VALID_LANGUAGE_CODES = ['en', 'es', 'fr', 'de', 'pt'];
+const VALID_LANGUAGE_CODES = ['en', 'es', 'fr', 'de', 'pt', 'it'];
 
 const LANG_CODE_TO_NAME = {
   en: 'English',
@@ -6,6 +6,7 @@ const LANG_CODE_TO_NAME = {
   fr: 'French',
   de: 'German',
   pt: 'Portuguese',
+  it: 'Italian',
 };
 
 /** English words common in bilingual pop/reggaeton lyrics — not valid learning targets for other languages. */
@@ -73,6 +74,12 @@ function wordMatchesTargetLanguage(word, langCode) {
     if (/[äöüß]/i.test(w)) return true;
     if (/^[a-z]+ing$/i.test(w)) return false;
     return /^[\p{L}äöüßÄÖÜ'-]+$/u.test(w);
+  }
+
+  if (code === 'it') {
+    if (/[àèéìòù]/i.test(w)) return true;
+    if (/^[a-z]+ing$/i.test(w)) return false;
+    return /^[\p{L}àèéìòùÀÈÉÌÒÙ'-]+$/u.test(w);
   }
 
   return true;

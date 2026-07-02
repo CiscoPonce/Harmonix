@@ -1,10 +1,16 @@
 package com.harmonix.app;
 
+import android.graphics.Color;
+import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
+import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
+
+import androidx.core.view.WindowCompat;
 
 import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeActivity;
@@ -19,8 +25,21 @@ import java.util.Map;
 public class MainActivity extends BridgeActivity {
 
     private static final String TAG = "Harmonix";
-    private static final String SERVER_URL = "https://moral-sparrow-nationally.ngrok-free.app";
     private boolean remoteLoaded = false;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        Window window = getWindow();
+        window.setBackgroundDrawableResource(android.R.color.black);
+        WindowCompat.setDecorFitsSystemWindows(window, false);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            window.setStatusBarColor(Color.TRANSPARENT);
+            window.setNavigationBarColor(Color.BLACK);
+        }
+    }
 
     @Override
     public void onStart() {
@@ -31,7 +50,9 @@ public class MainActivity extends BridgeActivity {
         }
 
         WebView webView = bridge.getWebView();
+        webView.setBackgroundColor(Color.BLACK);
         webView.getSettings().setDomStorageEnabled(true);
+        webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
@@ -41,10 +62,11 @@ public class MainActivity extends BridgeActivity {
 
         if (!remoteLoaded) {
             remoteLoaded = true;
+            String serverUrl = getString(R.string.server_url);
             Map<String, String> headers = new HashMap<>();
             headers.put("ngrok-skip-browser-warning", "true");
-            Log.i(TAG, "Loading remote Harmonix URL");
-            webView.loadUrl(SERVER_URL, headers);
+            Log.i(TAG, "Loading remote Harmonix URL: " + serverUrl);
+            webView.loadUrl(serverUrl, headers);
         }
     }
 

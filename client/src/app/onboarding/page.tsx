@@ -12,13 +12,14 @@ const LANGUAGES = [
   { value: 'fr', label: 'French' },
   { value: 'de', label: 'German' },
   { value: 'pt', label: 'Portuguese' },
+  { value: 'it', label: 'Italian' },
 ];
 
 const GENRES = ['Any', 'Pop', 'Rock', 'Hip-Hop', 'Reggaeton'];
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
 
 export default function OnboardingPage() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refreshUser } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [nativeLanguage, setNativeLanguage] = useState('');
@@ -51,6 +52,7 @@ export default function OnboardingPage() {
         body: JSON.stringify({ native_language: 'en', target_language: 'es' }),
       });
       if (!res.ok) throw new Error('Failed to save preferences');
+      await refreshUser();
       router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -59,12 +61,21 @@ export default function OnboardingPage() {
   };
 
   const handleSave = async () => {
+    if (!nativeLanguage || !targetLanguage) {
+      setError('Please select both native and target languages');
+      return;
+    }
+    if (nativeLanguage === targetLanguage) {
+      setError('Native and target language must be different');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      const body: Record<string, string> = {};
-      if (nativeLanguage) body.native_language = nativeLanguage;
-      if (targetLanguage) body.target_language = targetLanguage;
+      const body: Record<string, string> = {
+        native_language: nativeLanguage,
+        target_language: targetLanguage,
+      };
       if (genre) body.genre = genre.toLowerCase();
       if (difficulty) body.difficulty = difficulty.toLowerCase();
       const res = await apiFetch('/user/preferences', {
@@ -72,7 +83,11 @@ export default function OnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Failed to save preferences');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to save preferences');
+      }
+      await refreshUser();
       router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -123,10 +138,23 @@ export default function OnboardingPage() {
                 </select>
               </div>
             </div>
+            {error && <p className="text-sm text-red-500">{error}</p>}
             <Button
               variant="primary"
               className="w-full"
-              onClick={() => setStep(2)}
+              onClick={() => {
+                if (!nativeLanguage || !targetLanguage) {
+                  setError('Please select both native and target languages');
+                  return;
+                }
+                if (nativeLanguage === targetLanguage) {
+                  setError('Native and target language must be different');
+                  return;
+                }
+                setError(null);
+                setStep(2);
+              }}
+              disabled={!nativeLanguage || !targetLanguage || nativeLanguage === targetLanguage}
             >
               Continue
             </Button>

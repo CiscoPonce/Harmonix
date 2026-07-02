@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { CapacitorShell } from "@/components/CapacitorShell";
 import { AuthProvider } from "@/context/AuthContext";
 
 const geistSans = Geist({
@@ -23,6 +24,7 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
@@ -41,9 +43,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <CapacitorShell>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </CapacitorShell>
         </ThemeProvider>
       </body>
     </html>

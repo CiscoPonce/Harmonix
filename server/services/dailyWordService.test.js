@@ -423,6 +423,7 @@ describe("Daily Word Service", () => {
     ['en', 'English'],
     ['fr', 'French'],
     ['es', 'Spanish'],
+    ['it', 'Italian'],
   ]) {
     it(`passes ${name} to AI for target_language=${code}`, async () => {
       const today = new Date().toISOString().slice(0, 10);

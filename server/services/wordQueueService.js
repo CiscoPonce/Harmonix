@@ -173,11 +173,18 @@ function triggerRefillIfNeeded(user, refillFn) {
   });
 }
 
+function purgeAll(userId) {
+  db.prepare(`
+    DELETE FROM user_word_queue WHERE user_id = ?
+  `).run(userId);
+}
+
 module.exports = {
   REFILL_THRESHOLD,
   QUEUE_MAX,
   EXPIRY_DAYS,
   purgeExpired,
+  purgeAll,
   countReady,
   enqueuePayloads,
   peekNext,

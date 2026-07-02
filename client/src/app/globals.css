@@ -379,3 +379,32 @@ html {
   }
 }
 
+/* Capacitor Android shell — match mobile web PWA chrome */
+html.capacitor-native,
+html.capacitor-native body {
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+html.capacitor-native body {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+  background-color: #000000;
+  color: #ffffff;
+}
+
+html.capacitor-native:not(.dark) body {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+html.capacitor-android .daily-word-flip-scene {
+  transform: translateZ(0);
+}
+
+html.capacitor-android .daily-word-flip-inner {
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+}
+

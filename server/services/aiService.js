@@ -357,14 +357,109 @@ const VERIFIED_SONGS = {
     { song_title: 'La Gozadera', artist: 'Marc Anthony', genre: 'pop' },
     { song_title: 'Vivir Así Es Morir de Amor', artist: 'Camilo Sesto', genre: 'pop' },
   ],
+  en: [
+    { song_title: 'Bad Guy', artist: 'Billie Eilish', genre: 'pop' },
+    { song_title: 'Shallow', artist: 'Lady Gaga', genre: 'pop' },
+    { song_title: 'Rolling in the Deep', artist: 'Adele', genre: 'pop' },
+    { song_title: 'Heat Waves', artist: 'Glass Animals', genre: 'pop' },
+    { song_title: 'Someone You Loved', artist: 'Lewis Capaldi', genre: 'pop' },
+    { song_title: 'Blinding Lights', artist: 'The Weeknd', genre: 'pop' },
+    { song_title: 'Shape of You', artist: 'Ed Sheeran', genre: 'pop' },
+    { song_title: 'Perfect', artist: 'Ed Sheeran', genre: 'pop' },
+    { song_title: 'Counting Stars', artist: 'OneRepublic', genre: 'pop' },
+    { song_title: 'Radioactive', artist: 'Imagine Dragons', genre: 'rock' },
+    { song_title: 'Viva La Vida', artist: 'Coldplay', genre: 'rock' },
+    { song_title: 'Yellow', artist: 'Coldplay', genre: 'rock' },
+    { song_title: 'Mr. Brightside', artist: 'The Killers', genre: 'rock' },
+    { song_title: 'Someone Like You', artist: 'Adele', genre: 'pop' },
+    { song_title: 'Thinking Out Loud', artist: 'Ed Sheeran', genre: 'pop' },
+    { song_title: 'Shake It Off', artist: 'Taylor Swift', genre: 'pop' },
+    { song_title: 'Uptown Funk', artist: 'Mark Ronson', genre: 'pop' },
+    { song_title: 'Believer', artist: 'Imagine Dragons', genre: 'rock' },
+    { song_title: 'Thunder', artist: 'Imagine Dragons', genre: 'rock' },
+    { song_title: 'Demons', artist: 'Imagine Dragons', genre: 'rock' },
+  ],
+  fr: [
+    { song_title: 'Formidable', artist: 'Stromae', genre: 'pop' },
+    { song_title: 'On écrit sur les murs', artist: 'Kids United', genre: 'pop' },
+    { song_title: 'Mistral gagnant', artist: 'Renaud', genre: 'rock' },
+    { song_title: 'Dernière Danse', artist: 'Indila', genre: 'pop' },
+    { song_title: 'Je veux', artist: 'Zaz', genre: 'pop' },
+    { song_title: 'Papaoutai', artist: 'Stromae', genre: 'pop' },
+    { song_title: 'Alors on danse', artist: 'Stromae', genre: 'pop' },
+    { song_title: 'Tous les mêmes', artist: 'Stromae', genre: 'pop' },
+    { song_title: 'Tourner dans le vide', artist: 'Indila', genre: 'pop' },
+    { song_title: 'Elle me dit', artist: 'MIKA', genre: 'pop' },
+    { song_title: 'Comme des enfants', artist: 'Cœur de pirate', genre: 'rock' },
+    { song_title: 'Pour que tu m\'aimes encore', artist: 'Céline Dion', genre: 'pop' },
+    { song_title: 'Désenchantée', artist: 'Mylène Farmer', genre: 'pop' },
+    { song_title: 'Balance ton quoi', artist: 'Angèle', genre: 'pop' },
+  ],
+  de: [
+    { song_title: 'Du hast', artist: 'Rammstein', genre: 'rock' },
+    { song_title: 'Wind of Change', artist: 'Scorpions', genre: 'rock' },
+    { song_title: 'Auf uns', artist: 'Andreas Bourani', genre: 'pop' },
+    { song_title: '99 Luftballons', artist: 'Nena', genre: 'pop' },
+    { song_title: 'Engel', artist: 'Rammstein', genre: 'rock' },
+    { song_title: 'Deutschland', artist: 'Rammstein', genre: 'rock' },
+    { song_title: 'Ohne dich', artist: 'Rammstein', genre: 'rock' },
+    { song_title: 'Zeit', artist: 'Rammstein', genre: 'rock' },
+    { song_title: 'Ausländer', artist: 'Rammstein', genre: 'rock' },
+    { song_title: 'Atemlos durch die Nacht', artist: 'Helene Fischer', genre: 'pop' },
+    { song_title: 'Major Tom', artist: 'Peter Schilling', genre: 'rock' },
+    { song_title: 'Über sieben Gegen', artist: 'Peter Maffay', genre: 'rock' },
+    { song_title: 'Männer', artist: 'Herbert Grönemeyer', genre: 'pop' },
+    { song_title: 'Durch den Monsun', artist: 'Tokio Hotel', genre: 'rock' },
+    { song_title: 'Schrei nach Liebe', artist: 'Die Ärzte', genre: 'rock' },
+    { song_title: 'Leider geil', artist: 'Deichkind', genre: 'pop' },
+  ],
+  pt: [
+    { song_title: 'Ai Se Eu Te Pego', artist: 'Michel Teló', genre: 'pop' },
+    { song_title: 'Evidências', artist: 'Chitãozinho & Xororó', genre: 'pop' },
+    { song_title: 'Envolver', artist: 'Anitta', genre: 'pop' },
+    { song_title: 'Garota de Ipanema', artist: 'Tom Jobim', genre: 'pop' },
+    { song_title: 'Downtown', artist: 'Anitta', genre: 'pop' },
+    { song_title: 'Balada', artist: 'Gusttavo Lima', genre: 'pop' },
+    { song_title: 'Você Partiu Meu Coração', artist: 'Matheus & Kauan', genre: 'pop' },
+    { song_title: 'Deixa Alagar', artist: 'Gusttavo Lima', genre: 'pop' },
+    { song_title: 'O Sol', artist: 'Vitor Kley', genre: 'pop' },
+    { song_title: 'Amo Noite e Dia', artist: 'Pedro Sampaio', genre: 'pop' },
+    { song_title: 'Parabéns', artist: 'Anitta', genre: 'pop' },
+    { song_title: 'Olha a Explosão', artist: 'MC Kevinho', genre: 'pop' },
+  ],
+  it: [
+    { song_title: 'Zitti e buoni', artist: 'Måneskin', genre: 'rock' },
+    { song_title: 'Beggin\'', artist: 'Måneskin', genre: 'rock' },
+    { song_title: 'Più bella cosa', artist: 'Eros Ramazzotti', genre: 'pop' },
+    { song_title: 'Un\'altra te', artist: 'Eros Ramazzotti', genre: 'pop' },
+    { song_title: 'Sere nere', artist: 'Tiziano Ferro', genre: 'pop' },
+    { song_title: 'Tropicana', artist: 'Tiziano Ferro', genre: 'pop' },
+    { song_title: 'Guerriero', artist: 'Marco Mengoni', genre: 'pop' },
+    { song_title: 'L\'essenziale', artist: 'Marco Mengoni', genre: 'pop' },
+    { song_title: 'Con te partirò', artist: 'Andrea Bocelli', genre: 'pop' },
+    { song_title: 'Sarà perché ti amo', artist: 'Ricchi e Poveri', genre: 'pop' },
+    { song_title: 'Certe Notti', artist: 'Ligabue', genre: 'rock' },
+    { song_title: 'Gloria', artist: 'Umberto Tozzi', genre: 'pop' },
+    { song_title: 'Bello e impossibile', artist: 'Gianna Nannini', genre: 'rock' },
+    { song_title: 'Penso Positivo', artist: 'Jovanotti', genre: 'pop' },
+    { song_title: 'Laura non c\'è', artist: 'Nek', genre: 'pop' },
+    { song_title: 'Vivo per lei', artist: 'Giorgia', genre: 'pop' },
+  ],
 };
+
+function normalizeGenre(genre) {
+  const g = String(genre || 'pop').toLowerCase();
+  if (g === 'hip-hop' || g === 'hiphop') return 'pop';
+  return g;
+}
 
 function getVerifiedSongCandidates(languageCode, genre) {
   const langCode = normalizeLanguageCode(languageCode);
-  const list = VERIFIED_SONGS[langCode] || VERIFIED_SONGS.es || [];
-  const g = String(genre || 'pop').toLowerCase();
+  const list = VERIFIED_SONGS[langCode] || [];
+  if (!list.length) return getCuratedSongCandidates(languageCode, genre);
+  const g = normalizeGenre(genre);
   const matched = list.filter((s) => s.genre === g || g === 'any');
-  return matched.length ? matched : list;
+  return matched.length >= 5 ? matched : list;
 }
 
 const GENRE_HIT_EXAMPLES = {
@@ -393,6 +488,11 @@ const GENRE_HIT_EXAMPLES = {
     pop: 'Garota de Ipanema (Tom Jobim), Ai Se Eu Te Pego (Michel Teló), Evidências (Chitãozinho & Xororó)',
     any: 'Garota de Ipanema (Tom Jobim), Ai Se Eu Te Pego (Michel Teló), Evidências (Chitãozinho & Xororó)',
   },
+  it: {
+    pop: 'Più bella cosa (Eros Ramazzotti), Sere nere (Tiziano Ferro), Guerriero (Marco Mengoni), Con te partirò (Andrea Bocelli), Sarà perché ti amo (Ricchi e Poveri)',
+    rock: 'Zitti e buoni (Måneskin), Beggin\' (Måneskin), Certe Notti (Ligabue), Bello e impossibile (Gianna Nannini)',
+    any: 'Zitti e buoni (Måneskin), Più bella cosa (Eros Ramazzotti), Sere nere (Tiziano Ferro), Guerriero (Marco Mengoni)',
+  },
 };
 
 function normalizeLanguageCode(code) {
@@ -401,7 +501,8 @@ function normalizeLanguageCode(code) {
 
 function genreExamplesForLanguage(languageCode, genre) {
   const byLang = GENRE_HIT_EXAMPLES[normalizeLanguageCode(languageCode)] || GENRE_HIT_EXAMPLES.es;
-  return byLang[String(genre || 'pop').toLowerCase()] || byLang.any;
+  const g = normalizeGenre(genre);
+  return byLang[g] || byLang.any;
 }
 
 function parseCuratedSongs(hitsString, genre) {
@@ -602,6 +703,7 @@ module.exports = {
   generateDailyWordSongs,
   getCuratedSongCandidates,
   getVerifiedSongCandidates,
+  normalizeGenre,
   glossDailyWords,
   sanitizeGloss,
   createChatCompletion,

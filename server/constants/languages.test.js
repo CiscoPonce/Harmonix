@@ -7,8 +7,8 @@ const {
 } = require('./languages');
 
 describe('Language constants', () => {
-  it('defines all five supported language codes', () => {
-    expect(VALID_LANGUAGE_CODES).to.deep.equal(['en', 'es', 'fr', 'de', 'pt']);
+  it('defines all six supported language codes', () => {
+    expect(VALID_LANGUAGE_CODES).to.deep.equal(['en', 'es', 'fr', 'de', 'pt', 'it']);
   });
 
   it('maps every supported code to a display name', () => {
@@ -19,6 +19,7 @@ describe('Language constants', () => {
 
   it('resolves known codes via languageNameFromCode', () => {
     expect(languageNameFromCode('pt')).to.equal('Portuguese');
+    expect(languageNameFromCode('it')).to.equal('Italian');
     expect(languageNameFromCode('de')).to.equal('German');
     expect(languageNameFromCode('en')).to.equal('English');
     expect(languageNameFromCode('fr')).to.equal('French');
@@ -36,6 +37,12 @@ describe('Language constants', () => {
     expect(wordMatchesTargetLanguage('contratos', 'es')).to.equal(true);
     expect(wordMatchesTargetLanguage('tranquila', 'es')).to.equal(true);
     expect(wordMatchesTargetLanguage('corazón', 'es')).to.equal(true);
+  });
+
+  it('accepts Italian words with accented characters', () => {
+    expect(wordMatchesTargetLanguage('città', 'it')).to.equal(true);
+    expect(wordMatchesTargetLanguage('perché', 'it')).to.equal(true);
+    expect(wordMatchesTargetLanguage('screaming', 'it')).to.equal(false);
   });
 
   it('accepts English words only for English learners', () => {

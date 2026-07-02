@@ -64,6 +64,15 @@ describe('User Preferences API Routes', () => {
       expect(res.statusCode).to.equal(400);
     });
 
+    it('rejects matching native and target language with 400', () => {
+      const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
+      const req = { body: { native_language: 'fr', target_language: 'fr' }, user: { id: 'up-test' } };
+      const res = mockRes();
+      handler(req, res);
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.error).to.match(/different/i);
+    });
+
     it('partial update does not clear other fields', () => {
       const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
       let req = { body: { native_language: 'en', target_language: 'fr', difficulty: 'hard' }, user: { id: 'up-partial' } };
