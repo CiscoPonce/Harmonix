@@ -9,7 +9,7 @@ import { DailyWordCard } from '@/components/DailyWordCard';
 import { ReviewCountBadge } from '@/components/ReviewCountBadge';
 import { BadgeUnlockToast } from '@/components/BadgeUnlockToast';
 import { DashboardMatureCards } from '@/components/DashboardMatureCards';
-import { Sparkles, Trophy, Clock } from 'lucide-react';
+import { Trophy, Clock } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { AppHeader } from '@/components/AppHeader';
 import { HarmonixWordmark } from '@/components/HarmonixWordmark';
@@ -170,21 +170,7 @@ export default function DashboardPage() {
 
       <AppHeader userEmail={user.email} onLogout={logout} homeHref="/dashboard" />
 
-      <main className="flex-1 flex flex-col items-center px-4 py-8 sm:px-6 sm:py-12 md:py-24 max-w-5xl mx-auto w-full min-w-0">
-        {/* Hero Section */}
-        <section className="w-full text-center space-y-4 sm:space-y-6 mb-8 sm:mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-500 dark:text-zinc-400">
-            <Sparkles className="w-3 h-3 text-yellow-400 shrink-0" />
-            <span>Learn through the music you love</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight uppercase sm:italic leading-tight px-1">
-            Today&apos;s <span className="text-zinc-600">word</span>
-          </h2>
-          <p className="max-w-xl mx-auto text-zinc-500 font-medium text-sm sm:text-base md:text-lg px-2">
-            Get one personalized word, hear it in a real song lyric, then dive deeper when you are ready.
-          </p>
-        </section>
-
+      <main className="flex-1 flex flex-col items-center px-4 py-6 sm:px-6 sm:py-8 md:py-12 max-w-5xl mx-auto w-full min-w-0">
         <div ref={dailyWordRef} className="w-full max-w-3xl flex justify-center">
           <DailyWordCard onWordChange={refreshDashboardData} />
         </div>
