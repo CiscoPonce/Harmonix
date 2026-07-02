@@ -19,6 +19,7 @@ const REFILL_BATCH_ROUNDS = 3;
 const USER_BATCH_STOP_AFTER = 1;
 
 const batchGenerationInProgress = new Set();
+const batchGenerationWaiters = new Map();
 
 const LYRIC_STOPWORDS = new Set([
   'que', 'de', 'la', 'el', 'en', 'y', 'a', 'los', 'las', 'un', 'una', 'por', 'con',
@@ -633,17 +634,22 @@ async function deliverFromBatch(user, batch, fetchImpl, { fromQueue = false } = 
 }
 
 async function withBatchLock(userId, fn) {
-  if (batchGenerationInProgress.has(userId)) {
-    const err = new Error("batch_in_progress");
-    err.code = "batch_in_progress";
-    throw err;
+  if (batchGenerationWaiters.has(userId)) {
+    return batchGenerationWaiters.get(userId);
   }
-  batchGenerationInProgress.add(userId);
-  try {
-    return await fn();
-  } finally {
-    batchGenerationInProgress.delete(userId);
-  }
+
+  const run = (async () => {
+    batchGenerationInProgress.add(userId);
+    try {
+      return await fn();
+    } finally {
+      batchGenerationInProgress.delete(userId);
+      batchGenerationWaiters.delete(userId);
+    }
+  })();
+
+  batchGenerationWaiters.set(userId, run);
+  return run;
 }
 
 async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = BATCH_AI_ATTEMPTS } = {}) {
@@ -670,36 +676,34 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
 }
 
 async function refillQueue(user, fetchImpl = fetch) {
-  if (batchGenerationInProgress.size > 0) return;
+  return withBatchLock(user.id, async () => {
+    let emptyRounds = 0;
 
-  let emptyRounds = 0;
+    while (wordQueue.countReady(user.id) < wordQueue.QUEUE_MAX && emptyRounds < REFILL_BATCH_ROUNDS) {
+      const needed = wordQueue.QUEUE_MAX - wordQueue.countReady(user.id);
+      const batch = await generateValidatedBatch(user, fetchImpl, { stopAfter: needed });
+      if (!batch.valid.length) {
+        emptyRounds += 1;
+        console.warn(
+          `queue refill round ${emptyRounds}/${REFILL_BATCH_ROUNDS}: 0/${batch.candidateCount || 5} valid (${batch.lastError})`
+        );
+        continue;
+      }
 
-  while (wordQueue.countReady(user.id) < wordQueue.QUEUE_MAX && emptyRounds < REFILL_BATCH_ROUNDS) {
-    if (batchGenerationInProgress.size > 0) break;
-
-    const needed = wordQueue.QUEUE_MAX - wordQueue.countReady(user.id);
-    const batch = await generateValidatedBatch(user, fetchImpl, { stopAfter: needed });
-    if (!batch.valid.length) {
-      emptyRounds += 1;
-      console.warn(
-        `queue refill round ${emptyRounds}/${REFILL_BATCH_ROUNDS}: 0/${batch.candidateCount || 5} valid (${batch.lastError})`
-      );
-      continue;
+      emptyRounds = 0;
+      await persistBatchSideEffects(batch.sideEffects);
+      const inserted = wordQueue.enqueuePayloads(user.id, batch.valid);
+      const ready = wordQueue.countReady(user.id);
+      console.log(`queue refill: +${inserted} (${batch.valid.length} validated) ready=${ready}/${wordQueue.QUEUE_MAX}`);
+      if (!inserted) break;
     }
 
-    emptyRounds = 0;
-    await persistBatchSideEffects(batch.sideEffects);
-    const inserted = wordQueue.enqueuePayloads(user.id, batch.valid);
-    const ready = wordQueue.countReady(user.id);
-    console.log(`queue refill: +${inserted} (${batch.valid.length} validated) ready=${ready}/${wordQueue.QUEUE_MAX}`);
-    if (!inserted) break;
-  }
-
-  if (wordQueue.countReady(user.id) === 0 && emptyRounds >= REFILL_BATCH_ROUNDS) {
-    const err = new Error("queue_refill_failed");
-    err.code = "generation_failed";
-    throw err;
-  }
+    if (wordQueue.countReady(user.id) === 0 && emptyRounds >= REFILL_BATCH_ROUNDS) {
+      const err = new Error("queue_refill_failed");
+      err.code = "generation_failed";
+      throw err;
+    }
+  });
 }
 
 function scheduleRefill(user, fetchImpl = fetch) {

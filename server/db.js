@@ -276,6 +276,13 @@ db.exec(`
   )
 `);
 
+// Refill flags are in-memory; clear stale rows left by crashes/restarts.
+db.exec(`
+  UPDATE user_queue_refill
+  SET refilling = 0, started_at = NULL
+  WHERE refilling = 1
+`);
+
 // Migration: Add native_language to users
 const userLangCols = db.prepare("PRAGMA table_info(users)").all();
 if (!userLangCols.some(col => col.name === 'native_language')) {

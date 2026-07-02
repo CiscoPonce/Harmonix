@@ -111,9 +111,17 @@ function setRefilling(userId, active) {
 function isRefilling(userId) {
   if (refillInProgress.has(userId)) return true;
   const row = db.prepare(
-    "SELECT refilling FROM user_queue_refill WHERE user_id = ?"
+    "SELECT refilling, started_at FROM user_queue_refill WHERE user_id = ?"
   ).get(userId);
-  return !!row?.refilling;
+  if (!row?.refilling) return false;
+
+  // DB flag survived a crash/restart — not actually refilling in this process.
+  if (!refillInProgress.has(userId)) {
+    setRefilling(userId, false);
+    return false;
+  }
+
+  return true;
 }
 
 function getQueueStatus(userId) {

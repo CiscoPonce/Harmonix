@@ -121,6 +121,8 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           msg = body.retryAfterSec
             ? `Please wait ${body.retryAfterSec} seconds before requesting another word.`
             : "Please wait a moment before requesting another word.";
+        } else if (body.reason === "batch_in_progress") {
+          msg = "Still generating your word — please wait a moment.";
         }
         throw new Error(msg);
       }
@@ -237,7 +239,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
               {readyCount} ready
             </span>
           )}
-          {queueStatus?.refilling && readyCount === 0 && (
+          {queueStatus?.refilling && readyCount === 0 && !refreshing && (
             <span className="text-zinc-400 dark:text-zinc-600">· stocking queue</span>
           )}
         </div>

@@ -45,6 +45,18 @@ describe("Word Queue Service", () => {
     expect(wordQueue.countReady(userId)).to.equal(wordQueue.QUEUE_MAX);
   });
 
+  it("clears stale refilling flags not active in this process", () => {
+    db.prepare(`
+      INSERT INTO user_queue_refill (user_id, refilling, started_at)
+      VALUES (?, 1, '2026-06-28 18:04:09')
+      ON CONFLICT(user_id) DO UPDATE SET refilling = 1, started_at = excluded.started_at
+    `).run(userId);
+    wordQueue._refillInProgress.delete(userId);
+
+    expect(wordQueue.isRefilling(userId)).to.equal(false);
+    expect(wordQueue.getQueueStatus(userId).refilling).to.equal(false);
+  });
+
   it("reports queue status with refilling flag", () => {
     wordQueue.enqueuePayloads(userId, [samplePayload("ready")]);
     wordQueue.setRefilling(userId, true);
