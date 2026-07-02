@@ -120,7 +120,7 @@ describe("Daily Word Routes", () => {
     handler(req, res);
     expect(res.body).to.have.property("ready");
     expect(res.body).to.have.property("refilling");
-    expect(res.body.target).to.equal(3);
+    expect(res.body.target).to.equal(5);
   });
 
   it("POST /next serves instantly from queue when stocked", async () => {

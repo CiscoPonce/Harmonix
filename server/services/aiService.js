@@ -264,13 +264,63 @@ const GENRE_HIT_EXAMPLES = {
   },
 };
 
+function normalizeLanguageCode(code) {
+  return String(code || 'es').toLowerCase();
+}
+
 function genreExamplesForLanguage(languageCode, genre) {
   const byLang = GENRE_HIT_EXAMPLES[normalizeLanguageCode(languageCode)] || GENRE_HIT_EXAMPLES.es;
   return byLang[String(genre || 'pop').toLowerCase()] || byLang.any;
 }
 
-function normalizeLanguageCode(code) {
-  return String(code || 'es').toLowerCase();
+function parseCuratedSongs(hitsString, genre) {
+  const results = [];
+  const re = /([^,(]+?)\s*\(([^)]+)\)/g;
+  let match;
+  while ((match = re.exec(hitsString)) !== null) {
+    results.push({
+      song_title: match[1].trim(),
+      artist: match[2].trim(),
+      genre: genre || 'pop',
+    });
+  }
+  return results;
+}
+
+function getCuratedSongCandidates(languageCode, genre) {
+  const langCode = normalizeLanguageCode(languageCode);
+  const hits = genreExamplesForLanguage(langCode, genre);
+  return parseCuratedSongs(hits, genre || 'pop');
+}
+
+const FAST_MODELS = ['stepfun-ai/step-3.7-flash', 'meta/llama-3.1-8b-instruct'];
+
+async function createFastChatCompletion(params, timeoutMs = 20000) {
+  let lastErr = null;
+  const work = (async () => {
+    for (const model of FAST_MODELS) {
+      try {
+        console.log(`Calling fast ChatCompletion with model: ${model}`);
+        return await openai.chat.completions.create({ ...params, model });
+      } catch (err) {
+        lastErr = err;
+        console.warn(`Fast model ${model} failed: ${err.message || err}`);
+        if (isRateLimitError(err) || (err.status >= 500 && err.status < 600)) continue;
+      }
+    }
+    throw lastErr || new Error('fast_models_failed');
+  })();
+
+  return Promise.race([
+    work,
+    new Promise((_, reject) => {
+      setTimeout(() => {
+        const err = new Error('ai_timeout');
+        err.code = 'ai_timeout';
+        reject(err);
+      }, timeoutMs);
+    }),
+  ]);
 }
 
 async function generateDailyWordSongs({ languageName, languageCode, genre, difficulty }) {
@@ -304,18 +354,18 @@ Reply with ONLY JSON:
 }`;
 
   let lastErr = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const response = await createChatCompletion({
+      const response = await createFastChatCompletion({
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `List 3 famous ${languageName}-language ${genre} songs for a word-of-the-day playlist. Songs must be sung in ${languageName}.` },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 4096,
+        max_tokens: 800,
         temperature: 0.3,
         top_p: 0.9,
-      });
+      }, 20000);
 
       const raw = response.choices?.[0]?.message?.content;
       const parsed = normalizeDailyWord(parseJsonContent(raw));
@@ -337,47 +387,79 @@ Reply with ONLY JSON:
   throw lastErr || new Error('invalid_ai_daily_word_response');
 }
 
-async function glossDailyWords(items, languageName) {
+async function glossDailyWords(items, languageName, { fast = false } = {}) {
   if (!items?.length) return [];
 
-  const response = await createChatCompletion({
-    messages: [
-      {
-        role: 'system',
-        content: `You translate ${languageName} vocabulary for learners. Return JSON only.`,
-      },
-      {
-        role: 'user',
-        content: `For each item give English translation and part_of_speech.
+  const runGloss = async () => {
+    const response = await (fast
+      ? createFastChatCompletion({
+        messages: [
+          {
+            role: 'system',
+            content: `You translate ${languageName} vocabulary for learners. Return JSON only.`,
+          },
+          {
+            role: 'user',
+            content: `For each item give English translation and part_of_speech.
 Items: ${JSON.stringify(items)}
 
 Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "noun|verb|..." } ] }`,
-      },
-    ],
-    response_format: { type: 'json_object' },
-    max_tokens: 2048,
-    temperature: 0.2,
-  });
+          },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 512,
+        temperature: 0.2,
+      }, 10000)
+      : createChatCompletion({
+        messages: [
+          {
+            role: 'system',
+            content: `You translate ${languageName} vocabulary for learners. Return JSON only.`,
+          },
+          {
+            role: 'user',
+            content: `For each item give English translation and part_of_speech.
+Items: ${JSON.stringify(items)}
 
-  const raw = parseJsonContent(response.choices?.[0]?.message?.content);
-  const list = raw?.words || raw?.items || [];
-  const byWord = new Map(list.map((w) => [String(w.word || '').toLowerCase(), w]));
+Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "noun|verb|..." } ] }`,
+          },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 2048,
+        temperature: 0.2,
+      }));
 
-  return items.map((item) => {
-    const hit = byWord.get(String(item.word || '').toLowerCase());
-    return {
-      translation: hit?.translation || item.word,
-      part_of_speech: hit?.part_of_speech || null,
-    };
-  });
+    const raw = parseJsonContent(response.choices?.[0]?.message?.content);
+    const list = raw?.words || raw?.items || [];
+    const byWord = new Map(list.map((w) => [String(w.word || '').toLowerCase(), w]));
+
+    return items.map((item) => {
+      const hit = byWord.get(String(item.word || '').toLowerCase());
+      return {
+        translation: hit?.translation || item.word,
+        part_of_speech: hit?.part_of_speech || null,
+      };
+    });
+  };
+
+  if (!fast) return runGloss();
+
+  try {
+    return await runGloss();
+  } catch (err) {
+    console.warn(`daily word gloss fallback: ${err.message || err}`);
+    return items.map((item) => ({ translation: item.word, part_of_speech: null }));
+  }
 }
 
 module.exports = {
   extractVocabulary,
   generateDailyWord,
   generateDailyWordSongs,
+  getCuratedSongCandidates,
   glossDailyWords,
   createChatCompletion,
+  createFastChatCompletion,
   AVAILABLE_MODELS,
   openai,
 };

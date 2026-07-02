@@ -20,6 +20,20 @@ const USER_BATCH_STOP_AFTER = 1;
 
 const batchGenerationInProgress = new Set();
 const batchGenerationWaiters = new Map();
+const refillAbortControllers = new Map();
+
+function abortRefill(userId) {
+  const controller = refillAbortControllers.get(userId);
+  if (controller) controller.abort();
+}
+
+function shuffleInPlace(list) {
+  for (let i = list.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+}
 
 const LYRIC_STOPWORDS = new Set([
   'que', 'de', 'la', 'el', 'en', 'y', 'a', 'los', 'las', 'un', 'una', 'por', 'con',
@@ -366,7 +380,8 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
   const glossTarget = partials.slice(0, stopAfter);
   const glosses = await aiService.glossDailyWords(
     glossTarget.map((p) => ({ word: p.picked.word, line: p.picked.line })),
-    languageName
+    languageName,
+    { fast: stopAfter === USER_BATCH_STOP_AFTER }
   );
 
   const buildResults = (items, glossList) => items.map((p, i) => {
@@ -579,18 +594,57 @@ function assertForceCooldown(userId) {
 async function fetchAiCandidates(user) {
   const langCode = normalizeLangCode(user.target_language || "es");
   const languageName = languageNameFromCode(langCode);
+  const genre = user.genre || "pop";
   const difficulty = user.difficulty || "medium";
-  const aiResult = await aiService.generateDailyWordSongs({
-    languageName,
-    languageCode: langCode,
-    genre: user.genre || "pop",
-    difficulty,
-  });
-  return Array.isArray(aiResult) ? aiResult : [aiResult];
+
+  try {
+    const aiResult = await aiService.generateDailyWordSongs({
+      languageName,
+      languageCode: langCode,
+      genre,
+      difficulty,
+    });
+    return Array.isArray(aiResult) ? aiResult : [aiResult];
+  } catch (err) {
+    if (err.code === "ai_rate_limit") throw err;
+    const curated = shuffleInPlace([...aiService.getCuratedSongCandidates(langCode, genre)]);
+    console.warn(`daily word: AI song pick failed (${err.code || err.message}), using ${curated.length} curated hits`);
+    return curated.slice(0, 3);
+  }
+}
+
+function mergeCandidateLists(primary, secondary) {
+  const seen = new Set();
+  const merged = [];
+  for (const item of [...primary, ...secondary]) {
+    const key = `${String(item.artist || "").toLowerCase()}|${String(item.song_title || "").toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(item);
+  }
+  return merged;
 }
 
 async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
   const date = todayDate();
+  const langCode = normalizeLangCode(user.target_language || "es");
+  const genre = user.genre || "pop";
+
+  const curated = shuffleInPlace([...aiService.getCuratedSongCandidates(langCode, genre)]);
+  if (curated.length && options.tryCuratedFirst !== false) {
+    const curatedBatch = await validateAllCandidates(
+      curated.slice(0, 3),
+      date,
+      user,
+      fetchImpl,
+      { ...options, tryCuratedFirst: false }
+    );
+    if (curatedBatch.valid.length) {
+      console.log(`daily word batch: ${curatedBatch.valid.length} from curated hits`);
+      return curatedBatch;
+    }
+  }
+
   let candidates = [];
   try {
     candidates = await fetchAiCandidates(user);
@@ -603,7 +657,8 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
     return { valid: [], sideEffects: [], lastError: "invalid_ai_daily_word_response" };
   }
 
-  return validateAllCandidates(candidates, date, user, fetchImpl, options);
+  const merged = mergeCandidateLists(curated.slice(0, 3), candidates);
+  return validateAllCandidates(merged, date, user, fetchImpl, { ...options, tryCuratedFirst: false });
 }
 
 async function persistBatchSideEffects(sideEffects) {
@@ -633,7 +688,9 @@ async function deliverFromBatch(user, batch, fetchImpl, { fromQueue = false } = 
   return deliverPayload(user.id, first, { fromQueue });
 }
 
-async function withBatchLock(userId, fn) {
+async function withUserBatchLock(userId, fn) {
+  abortRefill(userId);
+
   if (batchGenerationWaiters.has(userId)) {
     return batchGenerationWaiters.get(userId);
   }
@@ -653,7 +710,7 @@ async function withBatchLock(userId, fn) {
 }
 
 async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = BATCH_AI_ATTEMPTS } = {}) {
-  return withBatchLock(user.id, async () => {
+  return withUserBatchLock(user.id, async () => {
     const started = Date.now();
     let lastError = "unknown";
 
@@ -676,12 +733,24 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
 }
 
 async function refillQueue(user, fetchImpl = fetch) {
-  return withBatchLock(user.id, async () => {
+  if (batchGenerationInProgress.has(user.id)) return;
+
+  const abort = new AbortController();
+  refillAbortControllers.set(user.id, abort);
+
+  try {
     let emptyRounds = 0;
 
-    while (wordQueue.countReady(user.id) < wordQueue.QUEUE_MAX && emptyRounds < REFILL_BATCH_ROUNDS) {
+    while (
+      !abort.signal.aborted &&
+      !batchGenerationInProgress.has(user.id) &&
+      wordQueue.countReady(user.id) < wordQueue.QUEUE_MAX &&
+      emptyRounds < REFILL_BATCH_ROUNDS
+    ) {
       const needed = wordQueue.QUEUE_MAX - wordQueue.countReady(user.id);
       const batch = await generateValidatedBatch(user, fetchImpl, { stopAfter: needed });
+      if (abort.signal.aborted || batchGenerationInProgress.has(user.id)) break;
+
       if (!batch.valid.length) {
         emptyRounds += 1;
         console.warn(
@@ -695,15 +764,24 @@ async function refillQueue(user, fetchImpl = fetch) {
       const inserted = wordQueue.enqueuePayloads(user.id, batch.valid);
       const ready = wordQueue.countReady(user.id);
       console.log(`queue refill: +${inserted} (${batch.valid.length} validated) ready=${ready}/${wordQueue.QUEUE_MAX}`);
+      if (batch.finishBackground) {
+        await batch.finishBackground();
+      }
       if (!inserted) break;
     }
 
-    if (wordQueue.countReady(user.id) === 0 && emptyRounds >= REFILL_BATCH_ROUNDS) {
+    if (
+      wordQueue.countReady(user.id) === 0 &&
+      emptyRounds >= REFILL_BATCH_ROUNDS &&
+      !batchGenerationInProgress.has(user.id)
+    ) {
       const err = new Error("queue_refill_failed");
       err.code = "generation_failed";
       throw err;
     }
-  });
+  } finally {
+    refillAbortControllers.delete(user.id);
+  }
 }
 
 function scheduleRefill(user, fetchImpl = fetch) {

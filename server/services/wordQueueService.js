@@ -1,6 +1,6 @@
 const db = require("../db");
 
-const REFILL_THRESHOLD = 3;
+const REFILL_THRESHOLD = 5;
 const QUEUE_MAX = 5;
 const EXPIRY_DAYS = 7;
 
