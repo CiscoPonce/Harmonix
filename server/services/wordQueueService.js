@@ -173,6 +173,16 @@ function triggerRefillIfNeeded(user, refillFn) {
   });
 }
 
+function discard(id) {
+  db.prepare(`DELETE FROM user_word_queue WHERE id = ?`).run(id);
+}
+
+function consumeById(id) {
+  db.prepare(`
+    UPDATE user_word_queue SET consumed_at = CURRENT_TIMESTAMP WHERE id = ?
+  `).run(id);
+}
+
 function purgeAll(userId) {
   db.prepare(`
     DELETE FROM user_word_queue WHERE user_id = ?
@@ -185,6 +195,8 @@ module.exports = {
   EXPIRY_DAYS,
   purgeExpired,
   purgeAll,
+  discard,
+  consumeById,
   countReady,
   enqueuePayloads,
   peekNext,
