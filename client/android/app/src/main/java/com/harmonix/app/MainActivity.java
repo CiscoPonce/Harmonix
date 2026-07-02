@@ -4,6 +4,7 @@ import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
@@ -33,10 +34,10 @@ public class MainActivity extends BridgeActivity {
 
         Window window = getWindow();
         window.setBackgroundDrawableResource(android.R.color.black);
-        WindowCompat.setDecorFitsSystemWindows(window, false);
+        WindowCompat.setDecorFitsSystemWindows(window, true);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            window.setStatusBarColor(Color.TRANSPARENT);
+            window.setStatusBarColor(Color.BLACK);
             window.setNavigationBarColor(Color.BLACK);
         }
     }
@@ -51,6 +52,9 @@ public class MainActivity extends BridgeActivity {
 
         WebView webView = bridge.getWebView();
         webView.setBackgroundColor(Color.BLACK);
+        webView.setVerticalScrollBarEnabled(true);
+        webView.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+        webView.setNestedScrollingEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
 

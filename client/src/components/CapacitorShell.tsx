@@ -24,7 +24,7 @@ export function CapacitorShell({ children }: { children: React.ReactNode }) {
       try {
         await StatusBar.setStyle({ style: Style.Dark });
         await StatusBar.setBackgroundColor({ color: "#000000" });
-        await StatusBar.setOverlaysWebView({ overlay: true });
+        await StatusBar.setOverlaysWebView({ overlay: false });
       } catch {
         /* unavailable outside native shell */
       }

@@ -380,16 +380,21 @@ html {
 }
 
 /* Capacitor Android shell — match mobile web PWA chrome */
-html.capacitor-native,
-html.capacitor-native body {
+html.capacitor-native {
+  height: auto;
   min-height: 100%;
-  min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 html.capacitor-native body {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: none;
   background-color: #000000;
   color: #ffffff;
 }
