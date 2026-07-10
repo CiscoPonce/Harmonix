@@ -5,11 +5,11 @@ milestone_name: mobile-dual-frontend
 status: in_progress
 last_updated: "2026-06-28T08:00:00.000Z"
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 10
-  total_plans: 26
+  total_plans: 27
   completed_plans: 19
-  percent: 73
+  percent: 70
 ---
 
 # Project State — Harmonix
@@ -27,6 +27,10 @@ progress:
 - [ ] Plan 10-03: Option C — Flutter MVP matching [UI spec](./phases/10-mobile-dual-frontend/10-UI-SPEC.md)
 - [ ] Plan 10-04: Option C — test & dual-frontend parity
 - [ ] Plan 10-05: Documentation & release runbook
+
+## Phase 11 Progress
+
+- [ ] Plan 11-01: Word Phonics TTS Integration
 
 ## Mobile design (team mockup)
 

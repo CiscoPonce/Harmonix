@@ -26,6 +26,22 @@
 
 ---
 
+## Phase 11 — Word Phonics TTS Integration
+
+**Status:** Planned  
+**Milestone:** v1.4 — Phonics Integration  
+**Strategy:** Run Pocket-TTS HTTP server to dynamically generate and cache phonetic pronunciation audio for target words.
+
+Context: [phases/11-word-phonics-tts/11-CONTEXT.md](./phases/11-word-phonics-tts/11-CONTEXT.md)
+
+| Plan | Name | Status |
+|------|------|--------|
+| 11-01 | Word Phonics TTS Integration | Pending |
+
+**End state:** Pocket-TTS running as a backend utility serving phonetic audio to Next.js and Flutter clients with SQLite caching.
+
+---
+
 ## Phase 9.5 — Background Word Queue Service
 
 **Status:** Complete  
