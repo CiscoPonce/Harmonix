@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const dailyWordRouter = require("./dailyWord");
 const dailyWordService = require("../services/dailyWordService");
+const ttsService = require("../services/ttsService");
 const db = require("../db");
 
 const mockRes = () => {
@@ -8,6 +9,8 @@ const mockRes = () => {
   r.status = (c) => { r.statusCode = c; return r; };
   r.json = (d) => { r.body = d; return r; };
   r.sendStatus = (c) => { r.statusCode = c; return r; };
+  r.setHeader = (k, v) => { r.headers = r.headers || {}; r.headers[k] = v; return r; };
+  r.send = (d) => { if (r.statusCode === undefined) r.statusCode = 200; r.body = d; return r; };
   return r;
 };
 
@@ -145,5 +148,71 @@ describe("Daily Word Routes", () => {
     expect(res.body.word.text).to.equal("instant");
     expect(res.body.from_queue).to.equal(true);
     expect(res.body.queue).to.have.property("ready");
+  });
+});
+
+describe("GET /pronounce", () => {
+  const userId = "pronounce-test-user";
+  const originalGetPronunciation = ttsService.getPronunciationForWord;
+
+  beforeEach(() => {
+    db.prepare("INSERT OR IGNORE INTO users (id, email, password_hash) VALUES (?, ?, ?)").run(userId, "pronounce@test.com", "x");
+    db.prepare("UPDATE users SET target_language = ? WHERE id = ?").run("es", userId);
+    db.prepare("DELETE FROM word_pronunciation_cache WHERE word = 'testword'").run();
+    db.prepare("DELETE FROM word_pronunciation_cache WHERE word = 'newword'").run();
+  });
+
+  afterEach(() => {
+    ttsService.getPronunciationForWord = originalGetPronunciation;
+  });
+
+  it("returns 400 when word param is missing", async () => {
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack[0].handle;
+    const req = { user: { id: userId }, query: {} };
+    const res = mockRes();
+    await handler(req, res);
+    expect(res.statusCode).to.equal(400);
+    expect(res.body.error).to.equal("word required");
+  });
+
+  it("returns 404 for unsupported language", async () => {
+    db.prepare("UPDATE users SET target_language = ? WHERE id = ?").run("zh", userId);
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack[0].handle;
+    const req = { user: { id: userId }, query: { word: "hola" } };
+    const res = mockRes();
+    await handler(req, res);
+    expect(res.statusCode).to.equal(404);
+    expect(res.body.error).to.equal("unsupported_language");
+  });
+
+  it("returns cached WAV on cache hit without calling Pocket-TTS", async () => {
+    const testWav = Buffer.alloc(64, 0);
+    testWav.writeUInt32LE(56, 0);
+    db.prepare("INSERT OR IGNORE INTO word_pronunciation_cache (word, audio_blob) VALUES (?, ?)").run("testword", testWav);
+
+    // Do NOT mock getPronunciationForWord — let it check the cache for real.
+    // If Pocket-TTS isn't running, a cache miss would throw. Passing = cache hit worked.
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack[0].handle;
+    const req = { user: { id: userId }, query: { word: "testword" } };
+    const res = mockRes();
+    await handler(req, res);
+    expect(res.statusCode).to.equal(200);
+    expect(res.headers["Content-Type"]).to.equal("audio/wav");
+  });
+
+  it("calls Pocket-TTS on cache miss and caches result", async () => {
+    const fakeWav = Buffer.alloc(48, 0);
+    fakeWav.writeUInt32LE(56, 0);
+    fakeWav.writeUInt32LE(4, 40);
+
+    let calledWith = null;
+    ttsService.getPronunciationForWord = async (word, lang) => { calledWith = [word, lang]; return fakeWav; };
+
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack[0].handle;
+    const req = { user: { id: userId }, query: { word: "newword" } };
+    const res = mockRes();
+    await handler(req, res);
+    expect(calledWith).to.deep.equal(["newword", "es"]);
+    expect(res.statusCode).to.equal(200);
   });
 });

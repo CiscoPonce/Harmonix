@@ -16,6 +16,11 @@ const ttsDaemon = {
       '--language', language,
     ], { stdio: 'pipe' });
 
+    this._process.on('error', () => {
+      this._process = null;
+      this._ready = false;
+    });
+
     this._process.stderr?.on('data', (d) => {
       const s = d.toString();
       if (s.includes('Application startup complete') || s.includes('Uvicorn running')) {
