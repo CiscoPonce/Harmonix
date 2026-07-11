@@ -399,11 +399,11 @@ const VERIFIED_SONGS = {
     { song_title: 'Carmen', artist: 'Stromae', genre: 'pop' },
   ],
   de: [
+    // German-language lyrics only — never English hits by German bands (Wind of Change, etc.)
     { song_title: 'Atemlos durch die Nacht', artist: 'Helene Fischer', genre: 'pop' },
     { song_title: 'Männer', artist: 'Herbert Grönemeyer', genre: 'pop' },
     { song_title: '99 Luftballons', artist: 'Nena', genre: 'pop' },
     { song_title: 'Du hast', artist: 'Rammstein', genre: 'rock' },
-    { song_title: 'Wind of Change', artist: 'Scorpions', genre: 'rock' },
     { song_title: 'Durch den Monsun', artist: 'Tokio Hotel', genre: 'rock' },
     { song_title: 'Über sieben Brücken', artist: 'Peter Maffay', genre: 'rock' },
     { song_title: 'Engel', artist: 'Rammstein', genre: 'rock' },
@@ -411,10 +411,15 @@ const VERIFIED_SONGS = {
     { song_title: 'Zeit', artist: 'Rammstein', genre: 'rock' },
     { song_title: 'Deutschland', artist: 'Rammstein', genre: 'rock' },
     { song_title: 'Ausländer', artist: 'Rammstein', genre: 'rock' },
-    { song_title: 'Major Tom', artist: 'Peter Schilling', genre: 'rock' },
+    { song_title: 'Major Tom (völlig losgelöst)', artist: 'Peter Schilling', genre: 'rock' },
     { song_title: 'Schrei nach Liebe', artist: 'Die Ärzte', genre: 'rock' },
     { song_title: 'Leider geil', artist: 'Deichkind', genre: 'pop' },
     { song_title: 'Auf uns', artist: 'Andreas Bourani', genre: 'pop' },
+    { song_title: 'Tage wie diese', artist: 'Die Toten Hosen', genre: 'rock' },
+    { song_title: 'Das Beste', artist: 'Silbermond', genre: 'pop' },
+    { song_title: 'Perfekte Welle', artist: 'Juli', genre: 'pop' },
+    { song_title: 'Nur ein Wort', artist: 'Wir sind Helden', genre: 'rock' },
+    { song_title: 'Dieser Weg', artist: 'Xavier Naidoo', genre: 'pop' },
   ],
   pt: [
     // Portuguese / Brazilian hits only — avoid Spanish or Spanglish Anitta tracks (Downtown, etc.)
@@ -450,8 +455,8 @@ const VERIFIED_SONGS = {
     { song_title: 'Vivo per lei', artist: 'Andrea Bocelli', genre: 'pop' },
     { song_title: 'L\'essenziale', artist: 'Marco Mengoni', genre: 'pop' },
     { song_title: 'Un\'altra te', artist: 'Eros Ramazzotti', genre: 'pop' },
-    { song_title: 'Beggin\'', artist: 'Måneskin', genre: 'rock' },
     { song_title: 'Bello e impossibile', artist: 'Gianna Nannini', genre: 'rock' },
+    { song_title: 'Felicità', artist: 'Al Bano & Romina Power', genre: 'pop' },
     { song_title: 'Penso Positivo', artist: 'Jovanotti', genre: 'pop' },
     { song_title: 'A te', artist: 'Jovanotti', genre: 'pop' },
   ],
@@ -490,9 +495,9 @@ const GENRE_HIT_EXAMPLES = {
     any: 'Formidable (Stromae), Je veux (Zaz), Mistral gagnant (Renaud), Tourner dans le vide (Indila)',
   },
   de: {
-    pop: 'Atemlos durch die Nacht (Helene Fischer), Männer (Herbert Grönemeyer), 99 Luftballons (Nena), Auf uns (Andreas Bourani)',
-    rock: 'Du hast (Rammstein), Wind of Change (Scorpions), Durch den Monsun (Tokio Hotel), Engel (Rammstein)',
-    any: 'Atemlos durch die Nacht (Helene Fischer), Männer (Herbert Grönemeyer), 99 Luftballons (Nena), Du hast (Rammstein)',
+    pop: 'Atemlos durch die Nacht (Helene Fischer), Männer (Herbert Grönemeyer), 99 Luftballons (Nena), Auf uns (Andreas Bourani), Das Beste (Silbermond), Perfekte Welle (Juli)',
+    rock: 'Du hast (Rammstein), Durch den Monsun (Tokio Hotel), Engel (Rammstein), Tage wie diese (Die Toten Hosen), Nur ein Wort (Wir sind Helden)',
+    any: 'Atemlos durch die Nacht (Helene Fischer), Männer (Herbert Grönemeyer), 99 Luftballons (Nena), Du hast (Rammstein), Das Beste (Silbermond)',
   },
   pt: {
     pop: 'Ai Se Eu Te Pego (Michel Teló), Envolver (Anitta), Garota de Ipanema (Tom Jobim), Balada (Gusttavo Lima), Olha a Explosão (MC Kevinho), Evidências (Chitãozinho & Xororó), Show das Poderosas (Anitta), Infiel (Marília Mendonça)',
@@ -558,11 +563,17 @@ async function generateDailyWordSongs({ languageName, languageCode, genre, diffi
     ? `NEVER pick these already-used songs: ${avoidSongs.map((k) => k.replace("|", " - ")).join("; ")}.`
     : "";
 
-  const spanishConfusionGuard = langCode === 'pt'
+  const languageConfusionGuard = langCode === 'pt'
     ? `\n11. CRITICAL for Portuguese: Do NOT pick Spanish-language songs. Never return Latin-pop Spanish hits (Maluma, Bad Bunny, Luis Fonsi, Romeo Santos, Marc Anthony, Daddy Yankee, Enrique Iglesias). Prefer Brazilian/Portuguese artists (Anitta Portuguese tracks, Michel Teló, Gusttavo Lima, Marília Mendonça, Legião Urbana, Tom Jobim). Reject Spanglish titles like Downtown / El Que Espera.`
     : langCode === 'es'
       ? `\n11. CRITICAL for Spanish: Do NOT pick Portuguese/Brazilian-only tracks as Spanish vocabulary sources.`
-      : '';
+      : langCode === 'de'
+        ? `\n11. CRITICAL for German: Songs MUST have primarily German lyrics. NEVER pick English songs by German artists (Wind of Change by Scorpions, Major Tom Coming Home English version, English Rammstein covers). Prefer Helene Fischer, Grönemeyer, Nena, Rammstein (German tracks), Tokio Hotel German tracks, Die Toten Hosen, Silbermond, Juli, Die Ärzte.`
+        : langCode === 'fr'
+          ? `\n11. CRITICAL for French: Songs MUST be sung in French — not English tracks by French artists.`
+          : langCode === 'it'
+            ? `\n11. CRITICAL for Italian: Songs MUST be sung in Italian. NEVER pick English covers (Beggin' by Måneskin). Prefer Eros Ramazzotti, Tiziano Ferro, Bocelli Italian tracks, Ligabue, Nek.`
+            : '';
 
   const systemPrompt = `You are a music curator for ${languageName} language learners.
 Pick 5 DIFFERENT globally famous songs sung primarily in ${languageName} in the "${genre}" genre.
@@ -579,7 +590,7 @@ STRICT RULES:
 7. song_title must NOT be a single rare word — use the real commercial track name.
 8. Each song MUST be different from every other song you pick.
 9. ${avoidList}
-10. Prefer songs like: ${hits}${spanishConfusionGuard}
+10. Prefer songs like: ${hits}${languageConfusionGuard}
 
 Reply with ONLY JSON:
 {

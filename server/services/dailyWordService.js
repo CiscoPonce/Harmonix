@@ -66,6 +66,8 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
       let accentBoost = 0;
       if (langCode === 'pt' && /[ãõç]/i.test(token)) accentBoost = -2;
       else if (langCode === 'es' && /[ñ]/i.test(token)) accentBoost = -2;
+      else if (langCode === 'de' && /[äöüß]/i.test(token)) accentBoost = -2;
+      else if (langCode === 'de' && /(ung|heit|keit|lich|schaft)$/i.test(token)) accentBoost = -1;
       else if (/[àâäçéèêëîïôùûüÿœæãõñáíóúüßàèìòù]/i.test(token)) accentBoost = -1;
       candidates.push({ word: token, line, accentBoost });
     }

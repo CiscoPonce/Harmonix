@@ -64,8 +64,16 @@ describe('Language constants', () => {
   it('filters bilingual English slips for French and German', () => {
     expect(wordMatchesTargetLanguage('tonight', 'fr')).to.equal(false);
     expect(wordMatchesTargetLanguage('baby', 'de')).to.equal(false);
+    expect(wordMatchesTargetLanguage('change', 'de')).to.equal(false);
+    expect(wordMatchesTargetLanguage('freedom', 'de')).to.equal(false);
+    expect(wordMatchesTargetLanguage('listening', 'de')).to.equal(false);
     expect(wordMatchesTargetLanguage('chanson', 'fr')).to.equal(true);
     expect(wordMatchesTargetLanguage('Männer', 'de')).to.equal(true);
+    expect(wordMatchesTargetLanguage('Atemlos', 'de')).to.equal(true);
+    expect(wordMatchesTargetLanguage('Liebe', 'de')).to.equal(true);
+    // German will/was must remain valid vocabulary
+    expect(wordMatchesTargetLanguage('will', 'de')).to.equal(true);
+    expect(wordMatchesTargetLanguage('was', 'de')).to.equal(true);
   });
 
   it('rejects Spanish orthography and false friends when learning Portuguese', () => {
@@ -94,5 +102,30 @@ describe('Language constants', () => {
     const portuguese = 'você não tem razão coração também explosão saudade';
     expect(lyricsMatchTargetLanguage(spanish, 'pt')).to.equal(false);
     expect(lyricsMatchTargetLanguage(portuguese, 'pt')).to.equal(true);
+  });
+
+  it('sniffs English lyrics as incompatible with German target', () => {
+    const { lyricsMatchTargetLanguage } = require('./languages');
+    const windOfChange =
+      'I follow the Moskva Down to Gorky Park Listening to the wind of change ' +
+      'The world is closing in Did you ever think That we could be so close, like brothers ' +
+      'The future\'s in the air I can feel it everywhere Blowing with the wind of change';
+    const atemlos =
+      'Atemlos durch die Nacht Ich kann dich nicht verlieren ' +
+      'Wir sind unzertrennlich und für immer und ewig ' +
+      'Ich will dich nicht verlieren was ist das für eine Liebe';
+    expect(lyricsMatchTargetLanguage(windOfChange, 'de')).to.equal(false);
+    expect(lyricsMatchTargetLanguage(atemlos, 'de')).to.equal(true);
+  });
+
+  it('sniffs English Beggin lyrics as incompatible with Italian', () => {
+    const { lyricsMatchTargetLanguage } = require('./languages');
+    const beggin =
+      'Put your hands up in the air Put your hands up in the air ' +
+      'I\'m beggin beggin you So put your loving hand out baby ' +
+      'I\'m beggin beggin you So put your loving hand out darling';
+    const italian = 'Più bella cosa non c\'è Di te amore mio quando stai con me sempre';
+    expect(lyricsMatchTargetLanguage(beggin, 'it')).to.equal(false);
+    expect(lyricsMatchTargetLanguage(italian, 'it')).to.equal(true);
   });
 });
