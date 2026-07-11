@@ -36,7 +36,8 @@ Context: [phases/11-word-phonics-tts/11-CONTEXT.md](./phases/11-word-phonics-tts
 
 | Plan | Name | Status |
 |------|------|--------|
-| 11-01 | Word Phonics TTS Integration | Pending |
+| 11-01 | Backend TTS Service + API Endpoint | Pending |
+| 11-02 | Frontend Pronunciation Button | Pending |
 
 **End state:** Pocket-TTS running as a backend utility serving phonetic audio to Next.js and Flutter clients with SQLite caching.
 
