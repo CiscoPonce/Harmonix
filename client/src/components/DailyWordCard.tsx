@@ -5,7 +5,9 @@ import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "./ui/Button";
-import { BookOpen, Loader2, Music2, Play, Pause, RefreshCw, Sparkles, RotateCw } from "lucide-react";
+import { BookOpen, Loader2, Music2, Play, Pause, RefreshCw, Sparkles, RotateCw, Volume2 } from "lucide-react";
+
+const SUPPORTED_PRONUNCIATION_LANGUAGES = ["es", "fr", "de", "pt", "en", "it"];
 
 interface QueueStatus {
   ready: number;
@@ -72,6 +74,8 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const pronunciationAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const fetchQueueStatus = useCallback(async () => {
     try {
@@ -202,6 +206,33 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     setIsFlipped((prev) => !prev);
   };
 
+  const playPronunciation = async () => {
+    if (isSpeaking) return;
+    for (let attempt = 0; attempt <= 1; attempt++) {
+      try {
+        const res = await apiFetch(`/daily-word/pronounce?word=${encodeURIComponent(data!.word.text)}`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || "Pronunciation unavailable");
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        pronunciationAudioRef.current = audio;
+        audio.play();
+        setIsSpeaking(true);
+        audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(url); };
+        audio.onerror = () => { setIsSpeaking(false); URL.revokeObjectURL(url); };
+        return;
+      } catch {
+        if (attempt === 1) {
+          setRefreshError("Pronunciation unavailable");
+          setTimeout(() => setRefreshError(null), 3000);
+        }
+      }
+    }
+  };
+
   const formatPronunciation = (raw: string) => {
     const trimmed = raw.trim();
     if (trimmed.startsWith("/") || trimmed.startsWith("[") || trimmed.includes("ˈ")) return trimmed;
@@ -317,6 +348,16 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
                     <span className="text-base sm:text-lg font-medium text-zinc-500 dark:text-zinc-400 tracking-wide font-serif italic break-words">
                       {formatPronunciation(data.word.pronunciation)}
                     </span>
+                  )}
+                  {SUPPORTED_PRONUNCIATION_LANGUAGES.includes(user?.target_language || "") && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); playPronunciation(); }}
+                      className="p-1 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+                      aria-label="Listen to pronunciation"
+                      disabled={isSpeaking}
+                    >
+                      <Volume2 className={`w-4 h-4 transition-colors ${isSpeaking ? "animate-pulse text-zinc-900 dark:text-white" : "text-zinc-400 dark:text-zinc-500"}`} />
+                    </button>
                   )}
                   {data.word.part_of_speech && (
                     <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-900 dark:text-white shrink-0">
