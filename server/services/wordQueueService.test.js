@@ -71,4 +71,20 @@ describe("Word Queue Service", () => {
     wordQueue.enqueuePayloads(userId, [samplePayload("amor"), samplePayload("noche")]);
     expect(wordQueue.getQueuedWordTexts(userId)).to.include.members(["amor", "noche"]);
   });
+
+  it("purgeAll removes every queue row for the user", () => {
+    wordQueue.enqueuePayloads(userId, [samplePayload("uno"), samplePayload("dos")]);
+    expect(wordQueue.countReady(userId)).to.equal(2);
+    wordQueue.purgeAll(userId);
+    expect(wordQueue.countReady(userId)).to.equal(0);
+  });
+
+  it("discard removes a single ready item by id", () => {
+    wordQueue.enqueuePayloads(userId, [samplePayload("uno"), samplePayload("dos")]);
+    const first = wordQueue.peekNext(userId);
+    expect(first).to.not.equal(null);
+    wordQueue.discard(first.id);
+    expect(wordQueue.countReady(userId)).to.equal(1);
+    expect(wordQueue.peekNext(userId).payload.word.text).to.equal("dos");
+  });
 });

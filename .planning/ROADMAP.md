@@ -2,27 +2,27 @@
 
 ## Phase 10 — Mobile: Android Wrapper → Native App → Dual Frontend
 
-**Status:** Planned  
+**Status:** In progress (Option C MVP)  
 **Milestone:** v1.3 — Mobile  
 **Strategy:** Option B (Capacitor APK) → test → Option C (Flutter) → test → **two frontends, one API**
 
 **Context:** [phases/10-mobile-dual-frontend/10-CONTEXT.md](./phases/10-mobile-dual-frontend/10-CONTEXT.md)  
-**UI spec (team mockup):** [phases/10-mobile-dual-frontend/10-UI-SPEC.md](./phases/10-mobile-dual-frontend/10-UI-SPEC.md)  
-**Mockup asset:** [phases/10-mobile-dual-frontend/design/android-mockup-v1.png](./phases/10-mobile-dual-frontend/design/android-mockup-v1.png)
+**UI spec (Flutter SoT — light/green):** [phases/10-mobile-dual-frontend/10-UI-SPEC.md](./phases/10-mobile-dual-frontend/10-UI-SPEC.md)  
+**Language reliability:** [docs/LANGUAGE-RELIABILITY.md](../docs/LANGUAGE-RELIABILITY.md)
 
 | Plan | Name | Status |
 |------|------|--------|
-| 10-00A | Prerequisites — no domain (ngrok OK) | Pending |
+| 10-00A | Prerequisites — no domain (ngrok OK) | Done |
 | 10-00B | Prerequisites — domain + Play Store | Pending |
-| 10-01 | Option B — Capacitor Android APK | Pending |
+| 10-01 | Option B — Capacitor Android APK | Done |
 | 10-02 | Option B — test & internal Play track | Pending |
-| 10-03 | Option C — Flutter MVP (**design mockup**) | Pending |
+| 10-03 | Option C — Flutter MVP (`mobile/`, light/green Learn) | Done (MVP) |
 | 10-04 | Option C — test & dual-frontend parity | Pending |
 | 10-05 | Documentation & dual-frontend runbook | Pending |
 
-**End state:** Next.js (web) + Flutter (Android) sharing Express/SQLite backend. Capacitor APK is a temporary bridge during 10-01/10-02.
+**End state:** Next.js (web) + Flutter (Android) sharing Express/SQLite backend. Capacitor APK is a temporary bridge; deprecate after Flutter public launch (D-10-04).
 
-**4 tabs (Flutter):** Discover · Library · Learn (Daily Word) · Settings (Stats & Achievements)
+**4 tabs (Flutter):** Discover · Library · Learn (Daily Word, default) · Settings (Stats & Achievements)
 
 ---
 

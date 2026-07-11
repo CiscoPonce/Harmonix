@@ -201,13 +201,51 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     return () => { audio.removeEventListener("ended", stop); audio.removeEventListener("pause", stop); };
   }, [data]);
 
+  // Reset pronunciation playback when the daily word changes.
+  useEffect(() => {
+    if (pronunciationAudioRef.current) {
+      try {
+        pronunciationAudioRef.current.pause();
+        pronunciationAudioRef.current.src = "";
+      } catch {
+        /* ignore */
+      }
+      pronunciationAudioRef.current = null;
+    }
+    setIsSpeaking(false);
+  }, [data?.word?.text]);
+
   const toggleFlip = () => {
     if (refreshing) return;
     setIsFlipped((prev) => !prev);
   };
 
   const playPronunciation = async () => {
-    if (isSpeaking) return;
+    // Stop any in-progress pronunciation so the user can replay freely.
+    if (pronunciationAudioRef.current) {
+      try {
+        pronunciationAudioRef.current.pause();
+        pronunciationAudioRef.current.src = "";
+      } catch {
+        /* ignore */
+      }
+      pronunciationAudioRef.current = null;
+    }
+
+    setIsSpeaking(true);
+    let objectUrl: string | null = null;
+    let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const finish = () => {
+      if (safetyTimer) clearTimeout(safetyTimer);
+      setIsSpeaking(false);
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+      }
+      pronunciationAudioRef.current = null;
+    };
+
     for (let attempt = 0; attempt <= 1; attempt++) {
       try {
         const res = await apiFetch(`/daily-word/pronounce?word=${encodeURIComponent(data!.word.text)}`);
@@ -216,21 +254,30 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           throw new Error(body.error || "Pronunciation unavailable");
         }
         const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
+        objectUrl = URL.createObjectURL(blob);
+        const audio = new Audio(objectUrl);
         pronunciationAudioRef.current = audio;
-        audio.play();
-        setIsSpeaking(true);
-        audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(url); };
-        audio.onerror = () => { setIsSpeaking(false); URL.revokeObjectURL(url); };
+
+        audio.addEventListener("ended", finish, { once: true });
+        audio.addEventListener("error", finish, { once: true });
+        // Safety: never leave the button stuck disabled if ended doesn't fire.
+        safetyTimer = setTimeout(finish, Math.max(8000, (blob.size / 48) + 2000));
+
+        await audio.play();
         return;
       } catch {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = null;
+        }
         if (attempt === 1) {
+          setIsSpeaking(false);
           setRefreshError("Pronunciation unavailable");
           setTimeout(() => setRefreshError(null), 3000);
         }
       }
     }
+    setIsSpeaking(false);
   };
 
   const formatPronunciation = (raw: string) => {
@@ -351,10 +398,10 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
                   )}
                   {SUPPORTED_PRONUNCIATION_LANGUAGES.includes(user?.target_language || "") && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); playPronunciation(); }}
+                      onClick={(e) => { e.stopPropagation(); void playPronunciation(); }}
                       className="p-1 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
                       aria-label="Listen to pronunciation"
-                      disabled={isSpeaking}
+                      type="button"
                     >
                       <Volume2 className={`w-4 h-4 transition-colors ${isSpeaking ? "animate-pulse text-zinc-900 dark:text-white" : "text-zinc-400 dark:text-zinc-500"}`} />
                     </button>

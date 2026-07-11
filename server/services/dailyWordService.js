@@ -2,7 +2,7 @@ const db = require("../db");
 const aiService = require("./aiService");
 const validation = require("./validationService");
 const alignment = require("../utils/alignment");
-const { languageNameFromCode, wordMatchesTargetLanguage, normalizeLangCode } = require("../constants/languages");
+const { languageNameFromCode, wordMatchesTargetLanguage, lyricsMatchTargetLanguage, normalizeLangCode, getLyricStopwords } = require("../constants/languages");
 const {
   effectiveCefr,
   difficultyMatchScore,
@@ -36,12 +36,6 @@ function shuffleInPlace(list) {
   return list;
 }
 
-const LYRIC_STOPWORDS = new Set([
-  'que', 'de', 'la', 'el', 'en', 'y', 'a', 'los', 'las', 'un', 'una', 'por', 'con',
-  'no', 'es', 'se', 'te', 'lo', 'le', 'da', 'su', 'yo', 'tu', 'mi', 'ya', 'si',
-  'bien', 'muy', 'mas', 'más', 'del', 'al', 'le', 'les', 'nos', 'me', 'fue', 'ser',
-]);
-
 function plainFromLyricsData(lyricsData) {
   if (lyricsData.plainLyrics) return lyricsData.plainLyrics;
   return validation.parseLrc(lyricsData.syncedLyrics).map((p) => p.text).join('\n');
@@ -52,6 +46,7 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
   const minLen = diff === 'easy' ? 3 : diff === 'hard' ? 7 : 4;
   const maxLen = diff === 'easy' ? 7 : diff === 'hard' ? 24 : 12;
   const targetLen = diff === 'easy' ? 4 : diff === 'hard' ? 9 : 6;
+  const stopwords = getLyricStopwords(langCode);
 
   const lines = String(plainLyrics || '')
     .split('\n')
@@ -60,21 +55,27 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
 
   const candidates = [];
   for (const line of lines) {
-    const tokens = line.match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜàâäçéèêëîïôùûüãõß]+/gu) || [];
+    const tokens = line.match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜàâäçéèêëîïôùûüãõßàèéìòù]+/gu) || [];
     for (const token of tokens) {
       const lower = token.toLowerCase();
       if (lower.length < minLen || lower.length > maxLen) continue;
-      if (LYRIC_STOPWORDS.has(lower)) continue;
+      if (stopwords.has(lower)) continue;
       if (avoidWords.has(lower)) continue;
       if (!wordMatchesTargetLanguage(token, langCode)) continue;
-      candidates.push({ word: token, line });
+      // Prefer language-marked tokens (Portuguese ãõç, Spanish ñ, etc.)
+      let accentBoost = 0;
+      if (langCode === 'pt' && /[ãõç]/i.test(token)) accentBoost = -2;
+      else if (langCode === 'es' && /[ñ]/i.test(token)) accentBoost = -2;
+      else if (/[àâäçéèêëîïôùûüÿœæãõñáíóúüßàèìòù]/i.test(token)) accentBoost = -1;
+      candidates.push({ word: token, line, accentBoost });
     }
   }
 
   if (!candidates.length) return null;
   candidates.sort(
     (a, b) =>
-      Math.abs(a.word.length - targetLen) - Math.abs(b.word.length - targetLen)
+      (a.accentBoost - b.accentBoost)
+      || Math.abs(a.word.length - targetLen) - Math.abs(b.word.length - targetLen)
   );
   return candidates[0];
 }
@@ -264,6 +265,11 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
       }
 
       const plain = plainFromLyricsData(lyricsData);
+      if (!lyricsMatchTargetLanguage(plain, langCode)) {
+        console.warn(`daily word reject: lyrics_wrong_language ${label} (want ${langCode})`);
+        return { error: "lyrics_wrong_language" };
+      }
+
       const picked = pickWordFromLyricsHeuristic(plain, user.difficulty || "medium", avoidWords, langCode);
       if (!picked) {
         console.warn(`daily word reject: no_suitable_word ${label}`);
@@ -1144,4 +1150,7 @@ module.exports = {
   getUserDiscoveryHistory,
   filterUniquePayloads,
   filterUnusedSongCandidates,
+  purgeQueueWrongLanguage,
+  payloadMatchesUserLanguage,
+  VALIDATE_CONCURRENCY,
 };

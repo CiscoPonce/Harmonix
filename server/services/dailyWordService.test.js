@@ -14,6 +14,8 @@ const {
   pickWordFromLyricsHeuristic,
   filterUniquePayloads,
   getUserDiscoveryHistory,
+  purgeQueueWrongLanguage,
+  VALIDATE_CONCURRENCY,
 } = require("./dailyWordService");
 const wordQueue = require("./wordQueueService");
 const aiService = require("./aiService");
@@ -35,6 +37,11 @@ describe("Daily Word Service", () => {
 
   beforeEach(() => {
     db.prepare("INSERT OR IGNORE INTO users (id, email, password_hash) VALUES (?, ?, ?)").run(userId, "daily@test.com", "x");
+    db.prepare(`
+      UPDATE users
+      SET native_language = 'en', target_language = 'es', genre = 'pop', difficulty = 'medium'
+      WHERE id = ?
+    `).run(userId);
     db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
     db.prepare("DELETE FROM user_word_queue WHERE user_id = ?").run(userId);
     db.prepare("DELETE FROM user_queue_refill WHERE user_id = ?").run(userId);
@@ -334,9 +341,10 @@ describe("Daily Word Service", () => {
     };
     wordQueue.enqueuePayloads(userId, [englishPayload, spanishPayload]);
 
-    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     db.prepare("UPDATE users SET target_language = 'es' WHERE id = ?").run(userId);
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     const result = await consumeNextDailyWord(user);
+    expect(result).to.not.be.null;
     expect(result.word.text).to.equal("tranquila");
     expect(result.from_queue).to.equal(true);
   });
@@ -401,7 +409,7 @@ describe("Daily Word Service", () => {
     expect(history.songIds.has("1")).to.equal(true);
   });
 
-  it("filterUniquePayloads drops duplicate words and songs", () => {
+  it("filterUniquePayloads drops duplicate words", () => {
     saveDailyWord(userId, "2026-06-01", {
       date: "2026-06-01",
       word: { text: "amor" },
@@ -414,7 +422,36 @@ describe("Daily Word Service", () => {
     ]);
     expect(filtered).to.have.lengthOf(1);
     expect(filtered[0].word.text).to.equal("noche");
-    expect(filtered[0].song.id).to.equal("3");
+    expect(filtered[0].song.id).to.equal("1");
+  });
+
+  it("limits validation concurrency to 3", () => {
+    expect(VALIDATE_CONCURRENCY).to.equal(3);
+  });
+
+  it("purgeQueueWrongLanguage discards FR queue items when target is DE", () => {
+    wordQueue.enqueuePayloads(userId, [
+      {
+        date: "2026-07-09",
+        language_code: "fr",
+        word: { text: "seulement", translation: "only" },
+        song: { id: "10", title: "FR Song", artist: "Artist" },
+        lyric: { snippet: "seulement", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 9 },
+        audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      },
+      {
+        date: "2026-07-09",
+        language_code: "de",
+        word: { text: "Männer", translation: "men" },
+        song: { id: "11", title: "DE Song", artist: "Artist" },
+        lyric: { snippet: "Männer", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 6 },
+        audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      },
+    ]);
+    expect(wordQueue.countReady(userId)).to.equal(2);
+    purgeQueueWrongLanguage(userId, "de");
+    expect(wordQueue.countReady(userId)).to.equal(1);
+    expect(wordQueue.peekNext(userId).payload.word.text).to.equal("Männer");
   });
 
   for (const [code, name] of [

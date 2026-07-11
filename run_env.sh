@@ -6,6 +6,9 @@ PROJECT_ROOT="/home/ubuntu/lyric"
 LOG_DIR="$PROJECT_ROOT/logs"
 BACKEND_PORT=3001
 FRONTEND_PORT=3009
+TTS_PORT=3002
+export PATH="/home/ubuntu/.local/bin:/home/ubuntu/pocket-tts/.venv/bin:$PATH"
+export POCKET_TTS_BIN="/home/ubuntu/pocket-tts/.venv/bin/pocket-tts"
 NGROK_URL="moral-sparrow-nationally.ngrok-free.app"
 
 mkdir -p "$LOG_DIR"
@@ -65,6 +68,8 @@ cleanup_processes() {
 
   kill -9 $(lsof -t -i:${BACKEND_PORT}) 2>/dev/null || true
   kill -9 $(lsof -t -i:${FRONTEND_PORT}) 2>/dev/null || true
+  kill -9 $(lsof -t -i:${TTS_PORT}) 2>/dev/null || true
+  pkill -f "pocket-tts serve" 2>/dev/null || true
   pkill -f "/home/ubuntu/lyric/server.*node index.js" 2>/dev/null || true
   pkill -f "/home/ubuntu/lyric/client.*next dev" 2>/dev/null || true
   pkill -f "/home/ubuntu/lyric/client.*next start" 2>/dev/null || true

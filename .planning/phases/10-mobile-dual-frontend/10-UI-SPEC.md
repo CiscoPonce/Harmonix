@@ -1,124 +1,91 @@
-# Phase 10 — Android UI Spec (team mockup v1)
+# Phase 10 — Android UI Spec (Flutter source of truth)
 
-**Source:** Design lead — [android-mockup-v1.png](./design/android-mockup-v1.png)  
-**Applies to:** Option C (Flutter). Option B uses existing web UI in WebView.
+**Applies to:** Option C (Flutter) in `mobile/`.  
+**Option B (Capacitor):** keeps existing web UI in WebView until Flutter replaces it (D-10-04).
+
+**Design source of truth (2026-07):** light background + dark-green accents from the Learn/WOTD screenshot.  
+The older neon-dark mockup (`design/android-mockup-v1.png`) is **superseded for Flutter**.
 
 ---
 
-## Mockup overview (4 screens → 4 tabs)
+## App shell (4 tabs)
 
-| # | Mockup title | App tab | Phase plan |
-|---|--------------|---------|------------|
-| 1 | Daily Word | **Learn** | 10-03 P0 |
-| 2 | Discover | **Discover** | 10-03 P0 |
-| 3 | Library | **Library** | 10-03 P0 |
-| 4 | Stats & Achievements | **Settings** (primary) | 10-03 P0 |
+| # | Tab | Primary screen |
+|---|-----|----------------|
+| 1 | Discover | Search + streak/level chips |
+| 2 | Library | Playlists + recent daily words |
+| 3 | Learn | Word of the Day (default tab) |
+| 4 | Settings | Stats, badges, prefs, logout |
 
 ```text
 ┌─────────────────────────────────────────┐
-│  Harmonix · profile · search              │
+│  avatar · Harmonix · search             │
 ├─────────────────────────────────────────┤
-│              Tab content                  │
+│              Tab content                │
 ├─────────────────────────────────────────┤
-│ Discover │ Library │ Learn │ Settings    │
+│ Discover │ Library │ Learn │ Settings   │
 └─────────────────────────────────────────┘
 ```
 
-**Option B:** single-page web dashboard — no bottom nav.  
-**Option C:** implement nav + screens per mockup.
+---
+
+## Screen — Learn (Word of the Day)
+
+| UI | Data |
+|----|------|
+| WORD OF THE DAY | static label + queue ready count |
+| Hero word (italic bold) | `word.text` |
+| IPA + speaker | `word.pronunciation` (device TTS) |
+| Definition | `word.translation` |
+| Lyric card + green left rail | `lyric.snippet` + highlight on target word |
+| Artist · title | `song.artist` · `song.title` |
+| Green Play | 30s `audio.preview_url`, seek `lyric.timestamp_ms` |
+| Headphones | open web player / Deezer deep link |
+| Share | share sheet: word + lyric + song |
+| Next word | `POST /daily-word/next` |
+
+Header: profile avatar (left), italic green **Harmonix** (center), search (right → Discover).
 
 ---
 
-## Screen 1 — Learn (Daily Word)
+## Screen — Discover / Library / Settings
 
-| UI element | Mockup | API / data |
-|------------|--------|------------|
-| Date label | MONDAY, OCT 23 | `payload.date` |
-| Hero word + POS + IPA | PARADISE · Noun | `word.text`, `part_of_speech`, `pronunciation` |
-| Definition + lyric quote (mono) | Quote with keyword | `translation`, `lyric.snippet` |
-| Daily Mastery bar | 85% green progress | `today_words / daily_goal` or queue fill |
-| Queue badge | (Phase 9.5) N ready | `GET /daily-word/queue-status` |
-| HEAR IT IN SONG | White pill CTA | `audio.preview_url`, seek to `lyric.timestamp_ms` |
-| OPEN PLAYER | Outline CTA | Navigate → player `song.id` |
-| Footer | Used in N songs · Level | CEFR from user; song count → v1.1 API |
+MVP maps to existing APIs (`/search`, `/progress/stats`, `/playlists`, `/daily-word/recent`, `/badges`).  
+Deferred: trending carousel, weekly XP chart, activity rhythm (same gaps as prior 10-03C/D).
 
 ---
 
-## Screen 2 — Discover
-
-| UI element | Mockup | API / data |
-|------------|--------|------------|
-| Search bar | Songs, artists, words | Deezer search → `/player/[id]` |
-| Trending Songs carousel | Cards + fluency % | **v1.1** — optional `10-03C` |
-| New Vocabulary row | Komorebi, Saudade cards + **32 READY** badge | `GET /daily-word/recent` + `GET /daily-word/queue-status` |
-| Lyric Context card | Mono snippet | Recent daily word lyric |
-| Streak chip | 12 DAYS ACTIVE | `GET /progress/stats` → `streak_days` |
-| Level chip | B2 UPPER INT. | User `cefr_level` |
-| FAB play | Quick resume | Local `last_song_id` — **gap** |
-
-**MVP:** search + streak/level + recent vocab. Trending deferred.
-
----
-
-## Screen 3 — Library
-
-| UI element | Mockup | API / data |
-|------------|--------|------------|
-| Explore Songs hero | Waveform art | Navigate → Discover search |
-| Playlist cards | Daily Groove, Top 40 | `GET /playlists` |
-| Create New | + tile | `POST /playlists` |
-| Recent Discoveries list | Word + POS + chevron | `GET /daily-word/recent` |
-
-Fully supported by existing API ✅
-
----
-
-## Screen 4 — Settings (Stats & Achievements)
-
-| UI element | Mockup | API / data |
-|------------|--------|------------|
-| Profile | Name, title, level, flame | Auth user + derived level |
-| Weekly Goal | XP bar 850/1000 | **Gap** — quiz XP aggregate |
-| Stats grid | Words learned · Songs mastered | `total_words`, study sessions |
-| Achievements list | Daily Dedication, Curator, Lyricist | `GET /badges` |
-| Activity Rhythm | 7-day bar chart | **Gap** — `GET /progress/activity?days=7` optional |
-
-Preferences (language, genre, logout): sub-screen from profile icon.
-
----
-
-## Design tokens
+## Design tokens (Flutter)
 
 | Token | Value |
 |-------|-------|
-| background | `#000000` |
-| surface | `#0A0A0A` – `#141414` |
-| accent | `#39FF14` (neon green — tune from asset) |
-| textPrimary | `#FFFFFF` |
-| textSecondary | `#888888` |
-| fontDisplay | Geist / Inter Bold |
-| fontMono | JetBrains Mono (lyrics) |
-| radiusButton | pill (9999px) |
+| background | `#FFFFFF` |
+| text primary | `#111111` |
+| text muted | `#6B6B6B` |
+| accent | `#006432` |
+| card border accent | left rail `#006432` |
+| brand wordmark | italic green Harmonix |
+| display word | large bold italic black |
+| lyric highlight | green italic on target word |
+| surface / border | `#FFFFFF` / `#E5E5E5` |
+
+Implemented in `mobile/lib/theme/harmonix_theme.dart`.
 
 ---
 
-## Asset checklist (design lead)
+## Asset checklist
 
 - [ ] Adaptive app icon  
-- [ ] Splash (black + Harmonix mark)  
-- [ ] Bottom nav icons (4 tabs)  
-- [ ] Waveform hero (Library / Discover)  
-- [ ] Empty states per tab  
+- [ ] Splash (white + Harmonix mark)  
+- [x] Bottom nav (Material 3 NavigationBar)  
+- [ ] Empty states polish per tab  
 
 ---
 
-## API mini-plans (non-blockers)
+## API notes
 
-| ID | Feature | When |
-|----|---------|------|
-| 10-03B | Mobile token auth | If WebView/cookies fail |
-| 10-03C | Trending songs | Flutter v1.1 |
-| 10-03D | Activity rhythm endpoint | Flutter week 2 |
-| 10-03E | Word frequency in songs | v1.1 |
-
-Core mockup flows work with today's API ✅
+| ID | Feature | Status |
+|----|---------|--------|
+| 10-03B | Mobile Bearer + body `refreshToken` | Done (`/api/auth/login`, `/api/auth/refresh`) |
+| 10-03C | Trending songs | Deferred |
+| 10-03D | Activity rhythm | Deferred |

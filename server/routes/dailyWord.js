@@ -88,7 +88,7 @@ router.get("/pronounce", async (req, res) => {
   try {
     const audioBuffer = await ttsService.getPronunciationForWord(word.trim(), langCode);
     res.setHeader("Content-Type", "audio/wav");
-    res.setHeader("Cache-Control", "private, max-age=86400");
+    res.setHeader("Cache-Control", "private, no-cache");
     res.send(audioBuffer);
   } catch (err) {
     console.error("GET /api/daily-word/pronounce error:", err.message);
