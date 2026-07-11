@@ -276,6 +276,14 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS word_pronunciation_cache (
+    word TEXT PRIMARY KEY,
+    audio_blob BLOB NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 // Refill flags are in-memory; clear stale rows left by crashes/restarts.
 db.exec(`
   UPDATE user_queue_refill

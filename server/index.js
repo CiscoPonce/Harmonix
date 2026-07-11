@@ -16,6 +16,8 @@ const userRouter = require('./routes/user');
 const audioRouter = require('./routes/audio');
 const deezer = require('./services/deezerService');
 require('dotenv').config();
+const ttsDaemon = require('./services/ttsDaemon');
+ttsDaemon.start('english');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -114,7 +116,19 @@ app.post('/api/auth/login', async (req, res) => {
     res.cookie('refreshToken', refreshToken, authCookieOptions(req));
 
     console.log('POST /api/auth/login - success');
-    res.json({ accessToken, user: { id: user.id, email: user.email } });
+    res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        native_language: user.native_language,
+        target_language: user.target_language,
+        genre: user.genre,
+        difficulty: user.difficulty,
+        cefr_level: user.cefr_level,
+      },
+    });
   } catch (err) {
     console.error('POST /api/auth/login - error:', err.message);
     res.status(500).json({ error: 'Internal server error' });
@@ -124,7 +138,7 @@ app.post('/api/auth/login', async (req, res) => {
 // Refresh Token
 app.post('/api/auth/refresh', (req, res) => {
   console.log('POST /api/auth/refresh - received');
-  const refreshToken = req.cookies.refreshToken;
+  const refreshToken = req.cookies.refreshToken || req.body?.refreshToken;
   if (!refreshToken) {
     console.log('POST /api/auth/refresh - no refresh token');
     return res.sendStatus(401);
@@ -145,7 +159,7 @@ app.post('/api/auth/refresh', (req, res) => {
     res.cookie('refreshToken', newRefreshToken, authCookieOptions(req));
 
     console.log('POST /api/auth/refresh - success');
-    res.json({ accessToken });
+    res.json({ accessToken, refreshToken: newRefreshToken });
   } catch (err) {
     console.log('POST /api/auth/refresh - error:', err.message);
     return res.sendStatus(403);
