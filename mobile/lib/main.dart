@@ -6,6 +6,7 @@ import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/api_client.dart';
 import 'state/auth_state.dart';
+import 'state/theme_controller.dart';
 import 'theme/harmonix_theme.dart';
 
 void main() {
@@ -24,12 +25,21 @@ class HarmonixApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (ctx) => AuthState(ctx.read<ApiClient>())..bootstrap(),
         ),
+        ChangeNotifierProvider(
+          create: (_) => ThemeController()..load(),
+        ),
       ],
-      child: MaterialApp(
-        title: 'Harmonix',
-        debugShowCheckedModeBanner: false,
-        theme: buildHarmonixTheme(),
-        home: const _RootGate(),
+      child: Consumer<ThemeController>(
+        builder: (context, themeCtrl, _) {
+          return MaterialApp(
+            title: 'Harmonix',
+            debugShowCheckedModeBanner: false,
+            theme: buildHarmonixLightTheme(),
+            darkTheme: buildHarmonixDarkTheme(),
+            themeMode: themeCtrl.mode,
+            home: const _RootGate(),
+          );
+        },
       ),
     );
   }
@@ -41,9 +51,10 @@ class _RootGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthState>();
+    final colors = HarmonixColors.of(context);
     if (auth.loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: HarmonixColors.accent)),
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator(color: colors.accent)),
       );
     }
     if (!auth.isAuthenticated) return const LoginScreen();

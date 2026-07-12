@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../services/api_client.dart';
 import '../state/auth_state.dart';
+import '../state/theme_controller.dart';
 import '../theme/harmonix_theme.dart';
 import 'onboarding_screen.dart';
 
@@ -46,38 +47,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthState>();
+    final themeCtrl = context.watch<ThemeController>();
+    final colors = HarmonixColors.of(context);
     final user = auth.user ?? {};
 
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: HarmonixColors.accent));
+      return Center(child: CircularProgressIndicator(color: colors.accent));
     }
 
     return RefreshIndicator(
-      color: HarmonixColors.accent,
+      color: colors.accent,
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text('Settings', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: HarmonixColors.textPrimary)),
+          Text(
+            'Settings',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: colors.textPrimary),
+          ),
           const SizedBox(height: 16),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const CircleAvatar(
-              backgroundColor: HarmonixColors.accent,
-              child: Icon(Icons.person, color: Colors.white),
+            leading: CircleAvatar(
+              backgroundColor: colors.accent,
+              child: Icon(Icons.person, color: colors.onAccent),
             ),
-            title: Text(user['email']?.toString() ?? 'Learner', style: const TextStyle(fontWeight: FontWeight.w800)),
+            title: Text(
+              user['email']?.toString() ?? 'Learner',
+              style: TextStyle(fontWeight: FontWeight.w800, color: colors.textPrimary),
+            ),
             subtitle: Text(
               '${user['native_language'] ?? '?'} → ${user['target_language'] ?? '?'} · ${user['cefr_level'] ?? ''}',
+              style: TextStyle(color: colors.textMuted),
             ),
             trailing: IconButton(
-              icon: const Icon(Icons.edit, color: HarmonixColors.accent),
+              icon: Icon(Icons.edit, color: colors.accent),
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const OnboardingScreen()),
                 );
               },
             ),
+          ),
+          const SizedBox(height: 8),
+          Text('APPEARANCE', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text('Dark mode', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700)),
+            subtitle: Text(
+              themeCtrl.isDark ? 'Dark theme on' : 'Light theme on',
+              style: TextStyle(color: colors.textMuted),
+            ),
+            secondary: Icon(
+              themeCtrl.isDark ? Icons.dark_mode : Icons.light_mode,
+              color: colors.accent,
+            ),
+            value: themeCtrl.isDark,
+            activeThumbColor: colors.onAccent,
+            activeTrackColor: colors.accent,
+            onChanged: (v) => themeCtrl.setDarkMode(v),
           ),
           const SizedBox(height: 16),
           Text('STATS', style: Theme.of(context).textTheme.titleSmall),
@@ -95,7 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text('ACHIEVEMENTS', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           if (_badges.isEmpty)
-            const Text('No badges yet', style: TextStyle(color: HarmonixColors.textMuted)),
+            Text('No badges yet', style: TextStyle(color: colors.textMuted)),
           ..._badges.map((raw) {
             final b = raw as Map<String, dynamic>;
             final unlocked = b['unlocked'] == 1 || b['unlocked'] == true;
@@ -103,7 +132,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               contentPadding: EdgeInsets.zero,
               leading: Icon(
                 unlocked ? Icons.emoji_events : Icons.lock_outline,
-                color: unlocked ? HarmonixColors.accent : HarmonixColors.textMuted,
+                color: unlocked ? colors.accent : colors.textMuted,
               ),
               title: Text(b['name']?.toString() ?? b['id']?.toString() ?? 'Badge'),
               subtitle: Text(b['description']?.toString() ?? b['category']?.toString() ?? ''),
@@ -113,8 +142,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           OutlinedButton(
             onPressed: () => auth.logout(),
             style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.red.shade700,
-              side: BorderSide(color: Colors.red.shade200),
+              foregroundColor: Colors.red.shade400,
+              side: BorderSide(color: Colors.red.shade300),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             child: const Text('Log out'),
@@ -132,16 +161,18 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = HarmonixColors.of(context);
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          border: Border.all(color: HarmonixColors.border),
+          color: colors.surface,
+          border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20)),
+            Text(value, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: colors.textPrimary)),
             Text(label, style: Theme.of(context).textTheme.titleSmall),
           ],
         ),

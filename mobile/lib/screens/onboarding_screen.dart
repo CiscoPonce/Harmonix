@@ -79,7 +79,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            Text('Set your languages', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: HarmonixColors.textPrimary)),
+            Text('Set your languages', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: HarmonixColors.of(context).textPrimary)),
             const SizedBox(height: 8),
             Text('Choose native and target languages', style: Theme.of(context).textTheme.bodyLarge),
             const SizedBox(height: 24),
@@ -130,7 +130,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _busy ? null : _save,
-              style: FilledButton.styleFrom(backgroundColor: HarmonixColors.accent),
+              style: FilledButton.styleFrom(backgroundColor: HarmonixColors.brand),
               child: Text(_busy ? 'Saving…' : 'Start learning'),
             ),
           ],

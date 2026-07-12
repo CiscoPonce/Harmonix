@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
               FilledButton(
                 onPressed: _busy ? null : _submit,
                 style: FilledButton.styleFrom(
-                  backgroundColor: HarmonixColors.accent,
+                  backgroundColor: HarmonixColors.brand,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: Text(_busy ? 'Please wait…' : (_register ? 'Register' : 'Login')),
@@ -90,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: _busy ? null : () => setState(() => _register = !_register),
                 child: Text(
                   _register ? 'Already have an account? Login' : 'Need an account? Register',
-                  style: const TextStyle(color: HarmonixColors.accent),
+                  style: const TextStyle(color: HarmonixColors.brand),
                 ),
               ),
             ],

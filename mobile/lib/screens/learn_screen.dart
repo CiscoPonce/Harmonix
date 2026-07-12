@@ -1,11 +1,19 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:audio_session/audio_session.dart';
+import 'package:audioplayers/audioplayers.dart' as ap;
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:just_audio/just_audio.dart';
+import 'package:just_audio/just_audio.dart' as ja;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_client.dart';
+import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
 
 class LearnScreen extends StatefulWidget {
@@ -18,23 +26,43 @@ class LearnScreen extends StatefulWidget {
 }
 
 class _LearnScreenState extends State<LearnScreen> {
-  final _player = AudioPlayer();
+  final _previewPlayer = ja.AudioPlayer();
+  final _pronouncePlayer = ap.AudioPlayer();
   final _tts = FlutterTts();
   Map<String, dynamic>? _word;
   Map<String, dynamic>? _queue;
   bool _loading = true;
   bool _nexting = false;
+  bool _speaking = false;
   String? _error;
+  String? _trackedLang;
+  AuthState? _auth;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _auth = context.read<AuthState>();
+      _trackedLang = _auth?.user?['target_language']?.toString();
+      _auth?.addListener(_onAuthChanged);
+      _load();
+    });
+  }
+
+  void _onAuthChanged() {
+    final lang = _auth?.user?['target_language']?.toString();
+    if (lang != _trackedLang) {
+      _trackedLang = lang;
+      if (mounted) _load();
+    }
   }
 
   @override
   void dispose() {
-    _player.dispose();
+    _auth?.removeListener(_onAuthChanged);
+    _previewPlayer.dispose();
+    _pronouncePlayer.dispose();
     super.dispose();
   }
 
@@ -54,13 +82,24 @@ class _LearnScreenState extends State<LearnScreen> {
       try {
         queue = await api.queueStatus();
       } catch (_) {}
+      if (!mounted) return;
       setState(() {
         _word = payload;
         _queue = queue ?? payload['queue'] as Map<String, dynamic>?;
       });
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        if (e.queue != null) _queue = e.queue;
+        if (next && _word != null) {
+          // keep showing current word; surface error below
+        } else if (!next) {
+          _word = null;
+        }
+      });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
       if (mounted) {
@@ -73,8 +112,86 @@ class _LearnScreenState extends State<LearnScreen> {
   }
 
   Future<void> _speakWord(String text) async {
-    await _tts.setLanguage('en-US');
-    await _tts.speak(text);
+    try {
+      await _pronouncePlayer.stop();
+      await _previewPlayer.stop();
+    } catch (_) {}
+    if (mounted) setState(() => _speaking = true);
+
+    Object? lastError;
+    try {
+      final api = context.read<ApiClient>();
+      final bytes = await api.pronounceWord(text);
+      if (!mounted) return;
+
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.speech());
+      await session.setActive(true);
+
+      await _pronouncePlayer.setReleaseMode(ap.ReleaseMode.stop);
+      await _pronouncePlayer.setVolume(1.0);
+      await _pronouncePlayer.setPlayerMode(ap.PlayerMode.mediaPlayer);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Playing pronunciation…'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+
+      Future<void> waitDone() async {
+        try {
+          await _pronouncePlayer.onPlayerComplete.first.timeout(const Duration(seconds: 20));
+        } on TimeoutException {
+          // ignore
+        }
+      }
+
+      try {
+        await _pronouncePlayer.play(
+          ap.BytesSource(Uint8List.fromList(bytes), mimeType: 'audio/wav'),
+        );
+        await waitDone();
+      } catch (bytesErr) {
+        debugPrint('BytesSource play failed: $bytesErr');
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/harmonix_pronounce.wav');
+        await file.writeAsBytes(bytes, flush: true);
+        await _pronouncePlayer.play(ap.DeviceFileSource(file.path));
+        await waitDone();
+      }
+    } catch (e, st) {
+      lastError = e;
+      debugPrint('Pocket-TTS pronounce failed: $e\n$st');
+
+      try {
+        if (!mounted) return;
+        final lang = context.read<AuthState>().user?['target_language']?.toString() ?? 'en';
+        final locale = switch (lang) {
+          'es' => 'es-ES',
+          'fr' => 'fr-FR',
+          'de' => 'de-DE',
+          'pt' => 'pt-BR',
+          'it' => 'it-IT',
+          _ => 'en-US',
+        };
+        await _tts.setLanguage(locale);
+        await _tts.setVolume(1.0);
+        await _tts.speak(text);
+        lastError = null;
+      } catch (e2) {
+        debugPrint('Device TTS fallback failed: $e2');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Pronunciation unavailable: $lastError')),
+          );
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _speaking = false);
+    }
   }
 
   Future<void> _playPreview() async {
@@ -85,12 +202,16 @@ class _LearnScreenState extends State<LearnScreen> {
     if (url == null) return;
     final resolved = api.resolveMediaUrl(url);
     try {
-      await _player.setUrl(resolved);
+      try {
+        await _pronouncePlayer.stop();
+      } catch (_) {}
+      await _previewPlayer.setUrl(resolved);
+      await _previewPlayer.setVolume(1.0);
       final offset = (audio?['preview_offset'] as num?)?.toDouble() ?? 0;
       final tsMs = (lyric?['timestamp_ms'] as num?)?.toDouble() ?? 0;
       final start = (offset + tsMs / 1000 - 2).clamp(0, 25);
-      await _player.seek(Duration(milliseconds: (start * 1000).round()));
-      await _player.play();
+      await _previewPlayer.seek(Duration(milliseconds: (start * 1000).round()));
+      await _previewPlayer.play();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -104,8 +225,7 @@ class _LearnScreenState extends State<LearnScreen> {
     final song = _word?['song'] as Map<String, dynamic>?;
     final id = song?['id']?.toString();
     if (id == null) return;
-    final root = kApiBase.replaceAll(RegExp(r'/api/?$'), '');
-    final uri = Uri.parse('$root/player/$id');
+    final uri = Uri.parse(context.read<ApiClient>().playerUrlForSongId(id));
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -127,8 +247,8 @@ class _LearnScreenState extends State<LearnScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: HarmonixColors.accent));
+    if (_loading && _word == null) {
+      return const Center(child: CircularProgressIndicator(color: HarmonixColors.brand));
     }
     if (_error != null && _word == null) {
       return Center(
@@ -141,7 +261,7 @@ class _LearnScreenState extends State<LearnScreen> {
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () => _load(),
-                style: FilledButton.styleFrom(backgroundColor: HarmonixColors.accent),
+                style: FilledButton.styleFrom(backgroundColor: HarmonixColors.brand),
                 child: const Text('Retry'),
               ),
             ],
@@ -154,27 +274,31 @@ class _LearnScreenState extends State<LearnScreen> {
     final lyric = _word?['lyric'] as Map<String, dynamic>? ?? {};
     final song = _word?['song'] as Map<String, dynamic>? ?? {};
     final ready = _queue?['ready'];
+    final ipa = word['pronunciation'] as String?;
+    final ipaLabel = ipa == null
+        ? (word['part_of_speech']?.toString() ?? '')
+        : (ipa.startsWith('/') ? ipa : '/$ipa/');
+    final colors = HarmonixColors.of(context);
 
     return RefreshIndicator(
-      color: HarmonixColors.accent,
+      color: colors.accent,
       onRefresh: () => _load(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
           Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 16,
-                backgroundColor: HarmonixColors.border,
-                child: Icon(Icons.person, size: 18, color: HarmonixColors.textMuted),
+                backgroundColor: colors.border,
+                child: Icon(Icons.person, size: 18, color: colors.textMuted),
               ),
-              Expanded(
-                child: Text(
-                  'Harmonix',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
+              const SizedBox(width: 10),
+              Text(
+                'Harmonix',
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
+              const Spacer(),
               IconButton(
                 onPressed: widget.onOpenSearch,
                 icon: const Icon(Icons.search),
@@ -184,14 +308,14 @@ class _LearnScreenState extends State<LearnScreen> {
           const SizedBox(height: 24),
           Row(
             children: [
-              Container(width: 28, height: 2, color: HarmonixColors.accent),
+              Container(width: 28, height: 2, color: colors.accent),
               const SizedBox(width: 8),
               Text('WORD OF THE DAY', style: Theme.of(context).textTheme.titleSmall),
               if (ready != null) ...[
                 const Spacer(),
                 Text(
                   '$ready ready',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: HarmonixColors.accent),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: colors.accent),
                 ),
               ],
             ],
@@ -202,27 +326,29 @@ class _LearnScreenState extends State<LearnScreen> {
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.displayLarge,
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                word['pronunciation'] != null ? '/${word['pronunciation']}/' : (word['part_of_speech'] ?? ''),
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              IconButton(
-                onPressed: word['text'] == null ? null : () => _speakWord(word['text'] as String),
-                icon: const Icon(Icons.volume_up, size: 20, color: HarmonixColors.textMuted),
-              ),
-            ],
-          ),
-          const Divider(height: 32),
+          const SizedBox(height: 10),
           Text(
             word['translation'] as String? ?? '',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (ipaLabel.isNotEmpty)
+                Text(ipaLabel, style: Theme.of(context).textTheme.bodyLarge),
+              IconButton(
+                onPressed: word['text'] == null ? null : () => _speakWord(word['text'] as String),
+                icon: Icon(
+                  _speaking ? Icons.volume_up : Icons.volume_up_outlined,
+                  size: 20,
+                  color: colors.textMuted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           _LyricCard(
             snippet: lyric['snippet'] as String? ?? '',
             highlight: word['text'] as String? ?? '',
@@ -258,8 +384,8 @@ class _LearnScreenState extends State<LearnScreen> {
           OutlinedButton(
             onPressed: _nexting ? null : () => _load(next: true),
             style: OutlinedButton.styleFrom(
-              foregroundColor: HarmonixColors.accent,
-              side: const BorderSide(color: HarmonixColors.accent),
+              foregroundColor: colors.accent,
+              side: BorderSide(color: colors.accent),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             child: Text(_nexting ? 'Finding next word…' : 'Next word'),
@@ -293,19 +419,20 @@ class _LyricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = HarmonixColors.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
-        border: const Border(
-          left: BorderSide(color: HarmonixColors.accent, width: 4),
+        border: Border(
+          left: BorderSide(color: colors.accent, width: 4),
         ),
       ),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
@@ -314,15 +441,15 @@ class _LyricCard extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.topRight,
-            child: Icon(Icons.format_quote, color: Colors.grey.shade300, size: 36),
+            child: Icon(Icons.format_quote, color: colors.border, size: 36),
           ),
           Text.rich(
-            _buildSnippet(),
-            style: const TextStyle(
+            _buildSnippet(colors),
+            style: TextStyle(
               fontSize: 18,
               fontStyle: FontStyle.italic,
               fontWeight: FontWeight.w700,
-              color: HarmonixColors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -332,10 +459,10 @@ class _LyricCard extends StatelessWidget {
                 width: 22,
                 height: 22,
                 decoration: BoxDecoration(
-                  color: HarmonixColors.accent,
+                  color: colors.accent,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Icon(Icons.music_note, size: 14, color: Colors.white),
+                child: Icon(Icons.music_note, size: 14, color: colors.onAccent),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -353,13 +480,13 @@ class _LyricCard extends StatelessWidget {
     );
   }
 
-  TextSpan _buildSnippet() {
+  TextSpan _buildSnippet(HarmonixColors colors) {
     if (charStart != null && charEnd != null && charStart! >= 0 && charEnd! <= snippet.length && charStart! < charEnd!) {
       return TextSpan(children: [
         TextSpan(text: snippet.substring(0, charStart!)),
         TextSpan(
           text: snippet.substring(charStart!, charEnd!),
-          style: const TextStyle(color: HarmonixColors.accent),
+          style: TextStyle(color: colors.accent),
         ),
         TextSpan(text: snippet.substring(charEnd!)),
       ]);
@@ -372,7 +499,7 @@ class _LyricCard extends StatelessWidget {
       TextSpan(text: '"${snippet.substring(0, idx)}'),
       TextSpan(
         text: snippet.substring(idx, idx + highlight.length),
-        style: const TextStyle(color: HarmonixColors.accent),
+        style: TextStyle(color: colors.accent),
       ),
       TextSpan(text: '${snippet.substring(idx + highlight.length)}"'),
     ]);
@@ -388,8 +515,9 @@ class _RoundAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = HarmonixColors.of(context);
     return Material(
-      color: filled ? HarmonixColors.accent : Colors.white,
+      color: filled ? colors.accent : colors.surface,
       shape: const CircleBorder(),
       elevation: filled ? 2 : 0,
       child: InkWell(
@@ -400,11 +528,11 @@ class _RoundAction extends StatelessWidget {
           height: filled ? 64 : 56,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: filled ? null : Border.all(color: HarmonixColors.textPrimary, width: 1.5),
+            border: filled ? null : Border.all(color: colors.textPrimary, width: 1.5),
           ),
           child: Icon(
             icon,
-            color: filled ? Colors.white : HarmonixColors.textPrimary,
+            color: filled ? colors.onAccent : colors.textPrimary,
             size: filled ? 32 : 24,
           ),
         ),

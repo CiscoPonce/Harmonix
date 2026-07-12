@@ -1,7 +1,7 @@
 name: harmonix_mobile
 description: Harmonix Flutter Android client — learn vocabulary through song lyrics.
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.12.2
@@ -14,9 +14,13 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   provider: ^6.1.2
   just_audio: ^0.9.42
+  audio_session: ^0.1.25
+  audioplayers: ^6.1.0
   flutter_tts: ^4.2.0
   share_plus: ^10.1.4
   url_launcher: ^6.3.1
+  path_provider: ^2.1.5
+  shared_preferences: ^2.3.3
   google_fonts: ^6.2.1
 
 dev_dependencies:

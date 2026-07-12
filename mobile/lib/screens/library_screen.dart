@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../services/api_client.dart';
 import '../theme/harmonix_theme.dart';
+import 'playlist_detail_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -53,7 +54,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            style: FilledButton.styleFrom(backgroundColor: HarmonixColors.accent),
+            style: FilledButton.styleFrom(backgroundColor: HarmonixColors.brand),
             child: const Text('Create'),
           ),
         ],
@@ -74,21 +75,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: HarmonixColors.accent));
+      return const Center(child: CircularProgressIndicator(color: HarmonixColors.brand));
     }
     return RefreshIndicator(
-      color: HarmonixColors.accent,
+      color: HarmonixColors.brand,
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           Row(
             children: [
-              Text('Library', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: HarmonixColors.textPrimary)),
+              Text('Library', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: HarmonixColors.of(context).textPrimary)),
               const Spacer(),
               IconButton(
                 onPressed: _createPlaylist,
-                icon: const Icon(Icons.add_circle, color: HarmonixColors.accent),
+                icon: Icon(Icons.add_circle, color: HarmonixColors.of(context).accent),
               ),
             ],
           ),
@@ -96,14 +97,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
           Text('PLAYLISTS', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           if (_playlists.isEmpty)
-            const Text('No playlists yet', style: TextStyle(color: HarmonixColors.textMuted)),
+            Text('No playlists yet', style: TextStyle(color: HarmonixColors.of(context).textMuted)),
           ..._playlists.map((raw) {
             final p = raw as Map<String, dynamic>;
+            final id = p['id']?.toString();
+            final name = p['name']?.toString() ?? 'Playlist';
             return Card(
               child: ListTile(
-                title: Text(p['name']?.toString() ?? 'Playlist'),
+                title: Text(name),
                 subtitle: Text('${p['song_count'] ?? 0} songs'),
                 trailing: const Icon(Icons.chevron_right),
+                onTap: id == null
+                    ? null
+                    : () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => PlaylistDetailScreen(
+                              playlistId: id,
+                              playlistName: name,
+                            ),
+                          ),
+                        );
+                      },
               ),
             );
           }),
@@ -111,7 +126,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           Text('RECENT DISCOVERIES', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           if (_recent.isEmpty)
-            const Text('No recent words', style: TextStyle(color: HarmonixColors.textMuted)),
+            Text('No recent words', style: TextStyle(color: HarmonixColors.of(context).textMuted)),
           ..._recent.map((raw) {
             final item = raw as Map<String, dynamic>;
             final word = item['word'] as Map<String, dynamic>? ?? {};

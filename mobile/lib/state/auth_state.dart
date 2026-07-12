@@ -11,8 +11,11 @@ class AuthState extends ChangeNotifier {
   String? error;
 
   bool get isAuthenticated => api.accessToken != null && user != null;
+
+  bool _blank(dynamic v) => v == null || v.toString().trim().isEmpty;
+
   bool get needsOnboarding =>
-      isAuthenticated && (user?['native_language'] == null || user?['native_language'] == '');
+      isAuthenticated && (_blank(user?['native_language']) || _blank(user?['target_language']));
 
   Future<void> bootstrap() async {
     loading = true;

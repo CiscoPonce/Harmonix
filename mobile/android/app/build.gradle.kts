@@ -4,6 +4,23 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+fun loadKeystoreProperties(): Map<String, String> {
+    val file = rootProject.file("key.properties")
+    if (!file.exists()) return emptyMap()
+    return file.readLines()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains("=") }
+        .associate { line ->
+            val idx = line.indexOf("=")
+            line.substring(0, idx).trim() to line.substring(idx + 1).trim()
+        }
+}
+
+val keystoreProperties = loadKeystoreProperties()
+val hasReleaseKeystore = keystoreProperties.isNotEmpty()
+        && keystoreProperties["storeFile"] != null
+        && file(keystoreProperties.getValue("storeFile")).exists()
+
 android {
     namespace = "com.harmonix.harmonix_mobile"
     compileSdk = flutter.compileSdkVersion
@@ -15,21 +32,32 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.harmonix.harmonix_mobile"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "com.harmonix.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            if (hasReleaseKeystore) {
+                keyAlias = keystoreProperties.getValue("keyAlias")
+                keyPassword = keystoreProperties.getValue("keyPassword")
+                storeFile = file(keystoreProperties.getValue("storeFile"))
+                storePassword = keystoreProperties.getValue("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                // Local fallback only — Play uploads require key.properties + upload-keystore.jks
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_client.dart';
 import '../state/auth_state.dart';
@@ -62,19 +63,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Text('Discover', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: HarmonixColors.textPrimary)),
+        Text('Discover', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: HarmonixColors.of(context).textPrimary)),
         const SizedBox(height: 12),
         Row(
           children: [
             Chip(
               label: Text('$streak DAYS ACTIVE'),
-              backgroundColor: HarmonixColors.accent.withValues(alpha: 0.1),
-              labelStyle: const TextStyle(color: HarmonixColors.accent, fontWeight: FontWeight.w700, fontSize: 11),
+              backgroundColor: HarmonixColors.of(context).accent.withValues(alpha: 0.1),
+              labelStyle: TextStyle(color: HarmonixColors.of(context).accent, fontWeight: FontWeight.w700, fontSize: 11),
             ),
             const SizedBox(width: 8),
             Chip(
               label: Text('$cefr'),
-              backgroundColor: HarmonixColors.border,
+              backgroundColor: HarmonixColors.of(context).border,
               labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
             ),
           ],
@@ -100,11 +101,21 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           final artist = item['artist'] is Map
               ? (item['artist'] as Map)['name']?.toString()
               : item['artist']?.toString();
+          final id = item['id']?.toString();
           return ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.music_note, color: HarmonixColors.accent),
+            leading: const Icon(Icons.music_note, color: HarmonixColors.brand),
             title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
             subtitle: Text(artist ?? ''),
+            trailing: id == null ? null : const Icon(Icons.open_in_new, size: 18),
+            onTap: id == null
+                ? null
+                : () async {
+                    final uri = Uri.parse(context.read<ApiClient>().playerUrlForSongId(id));
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
           );
         }),
       ],

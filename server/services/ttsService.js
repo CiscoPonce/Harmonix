@@ -24,10 +24,16 @@ const POCKET_LANG_MAP = {
 };
 
 /** Bump to invalidate SQLite pronunciation cache after quality/speed changes. */
-const CACHE_VERSION = 'hq-v5-leadin';
+const CACHE_VERSION = 'hq-v7-loud2';
 
 /** Playback tempo (< 1 = slower). Pitch preserved via ffmpeg atempo. */
 const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.75');
+
+/** Extra linear gain after percentile normalize. */
+const SPEECH_GAIN = Number(process.env.POCKET_TTS_GAIN || '1.25');
+
+/** Target level for the 98th-percentile sample (0–1 of full scale). */
+const SPEECH_TARGET_PEAK = Number(process.env.POCKET_TTS_TARGET_PEAK || '0.88');
 
 /** Silence before the word (seconds) — softens ffmpeg start click / bump. */
 const LEAD_SILENCE_SEC = Number(process.env.POCKET_TTS_LEAD_SILENCE || '0.5');
@@ -109,21 +115,6 @@ function normalizeStreamingWav(wavBuffer) {
   return buildCleanWav(dataPcm, sampleRate);
 }
 
-function padWavWithSilence(
-  wavBuffer,
-  sampleRate = 24000,
-  {
-    leadSeconds = LEAD_SILENCE_SEC,
-    trailSeconds = TRAIL_SILENCE_SEC,
-  } = {},
-) {
-  const clean = normalizeStreamingWav(wavBuffer);
-  const pcmData = fadeInPcm(clean.subarray(44), sampleRate, 0.025);
-  const lead = Buffer.alloc(Math.round(sampleRate * leadSeconds * 2), 0);
-  const trail = Buffer.alloc(Math.round(sampleRate * trailSeconds * 2), 0);
-  return buildCleanWav(Buffer.concat([lead, pcmData, trail]), sampleRate);
-}
-
 /** Linear fade-in to remove start click/bump from atempo. */
 function fadeInPcm(pcm, sampleRate = 24000, fadeSeconds = 0.025) {
   const fadeSamples = Math.min(
@@ -138,6 +129,61 @@ function fadeInPcm(pcm, sampleRate = 24000, fadeSeconds = 0.025) {
     out.writeInt16LE(Math.round(sample * gain), i * 2);
   }
   return out;
+}
+
+/**
+ * Percentile-based loudness boost so the spoken word is consistently audible.
+ * Uses a high percentile (not absolute peak) so one spike doesn't leave the
+ * rest of the clip quiet; soft-clamps rare peaks.
+ */
+function loudnessNormalizePcm(pcm, {
+  targetPeak = SPEECH_TARGET_PEAK,
+  gain = SPEECH_GAIN,
+  percentile = 0.98,
+} = {}) {
+  if (!Buffer.isBuffer(pcm) || pcm.length < 4) return pcm;
+
+  const absVals = [];
+  for (let i = 0; i + 1 < pcm.length; i += 2) {
+    const s = Math.abs(pcm.readInt16LE(i));
+    if (s > 80) absVals.push(s); // ignore near-silence so padding/breaths don't skew gain
+  }
+  if (absVals.length < 16) return pcm;
+  absVals.sort((a, b) => a - b);
+  const ref = absVals[Math.min(absVals.length - 1, Math.floor(absVals.length * percentile))] || 0;
+  if (ref < 32) return pcm;
+
+  const peak = Math.min(0.95, Math.max(0.5, Number(targetPeak) || 0.9));
+  const extra = Math.min(2.5, Math.max(0.5, Number(gain) || 1));
+  const scale = ((32767 * peak) / ref) * extra;
+
+  const out = Buffer.alloc(pcm.length);
+  for (let i = 0; i + 1 < pcm.length; i += 2) {
+    let v = Math.round(pcm.readInt16LE(i) * scale);
+    // Soft knee near full scale
+    if (v > 30000) v = 30000 + Math.round((v - 30000) * 0.25);
+    if (v < -30000) v = -30000 + Math.round((v + 30000) * 0.25);
+    if (v > 32767) v = 32767;
+    if (v < -32768) v = -32768;
+    out.writeInt16LE(v, i);
+  }
+  return out;
+}
+
+function padWavWithSilence(
+  wavBuffer,
+  sampleRate = 24000,
+  {
+    leadSeconds = LEAD_SILENCE_SEC,
+    trailSeconds = TRAIL_SILENCE_SEC,
+  } = {},
+) {
+  const clean = normalizeStreamingWav(wavBuffer);
+  const faded = fadeInPcm(clean.subarray(44), sampleRate, 0.025);
+  const pcmData = loudnessNormalizePcm(faded);
+  const lead = Buffer.alloc(Math.round(sampleRate * leadSeconds * 2), 0);
+  const trail = Buffer.alloc(Math.round(sampleRate * trailSeconds * 2), 0);
+  return buildCleanWav(Buffer.concat([lead, pcmData, trail]), sampleRate);
 }
 
 function cacheKey(word) {
@@ -177,7 +223,7 @@ async function slowWav(wavBuffer, tempo = SPEECH_TEMPO) {
       const proc = spawn('ffmpeg', [
         '-hide_banner', '-loglevel', 'error', '-y',
         '-i', inputPath,
-        '-filter:a', `atempo=${rate},afade=t=in:st=0:d=0.03`,
+        '-filter:a', `atempo=${rate},volume=1.4,afade=t=in:st=0:d=0.03`,
         '-ar', '24000',
         '-ac', '1',
         '-c:a', 'pcm_s16le',
@@ -267,12 +313,15 @@ module.exports = {
   POCKET_LANG_MAP,
   CACHE_VERSION,
   SPEECH_TEMPO,
+  SPEECH_GAIN,
+  SPEECH_TARGET_PEAK,
   LEAD_SILENCE_SEC,
   TRAIL_SILENCE_SEC,
   SUPPORTED_LANGUAGES,
   normalizeStreamingWav,
   padWavWithSilence,
   fadeInPcm,
+  loudnessNormalizePcm,
   ttsPromptForWord,
   slowWav,
   getPronunciationForWord,
