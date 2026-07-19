@@ -11,7 +11,23 @@ export type ConnectionState =
   | 'reconnect'
   | 'connecting'
   | 'disconnecting'
-  | 'disconnected';
+  | 'disconnected'
+  | 'provider_error';
+
+/** Backend GET /api/spotify/status allowlist (never includes tokens). */
+export type BackendSpotifyStatus =
+  | 'disconnected'
+  | 'connected'
+  | 'reconnect_required'
+  | 'provider_error';
+
+/** Fixed non-secret OAuth return query outcomes (`?spotify=`). */
+export type SpotifyCallbackOutcome = 'connected' | 'error';
+
+export interface SpotifyPlaylistListResponse {
+  playlists: Array<SpotifyPlaylistListItemDto & { track_count: number | null; artwork_url: string | null }>;
+  onward_url: string | null;
+}
 
 export type ExportOutcome = 'matched' | 'unmatched' | 'cached' | 'export_failed';
 
@@ -147,6 +163,7 @@ export function parseConnectionDto(raw: unknown): SpotifyConnectionDto {
     'connecting',
     'disconnecting',
     'disconnected',
+    'provider_error',
   ];
   if (typeof state !== 'string' || !allowed.includes(state as ConnectionState)) {
     throw new Error('invalid connection state');
@@ -155,6 +172,105 @@ export function parseConnectionDto(raw: unknown): SpotifyConnectionDto {
     state: state as ConnectionState,
     display_name: asStringOrNull(obj.display_name),
     reason: asStringOrNull(obj.reason),
+  };
+}
+
+/** Allow only backend-returned HTTPS accounts.spotify.com authorize URLs. */
+export function safeSpotifyAuthorizationUrl(url: string | null | undefined): string | null {
+  if (url == null || typeof url !== 'string' || url.trim().length === 0) {
+    return null;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'https:') {
+    return null;
+  }
+  if (parsed.hostname !== 'accounts.spotify.com') {
+    return null;
+  }
+  if (!parsed.pathname.startsWith('/authorize')) {
+    return null;
+  }
+  return parsed.toString();
+}
+
+export function parseSpotifyCallbackOutcome(
+  value: string | null | undefined
+): SpotifyCallbackOutcome | null {
+  if (value == null || typeof value !== 'string') return null;
+  if (value === 'connected') return 'connected';
+  if (value === 'error' || value === 'cancelled') return 'error';
+  return null;
+}
+
+export function mapBackendStatusToUiState(status: string): ConnectionState {
+  switch (status) {
+    case 'disconnected':
+      return 'connect';
+    case 'connected':
+      return 'connected';
+    case 'reconnect_required':
+      return 'reconnect';
+    case 'provider_error':
+      return 'provider_error';
+    default:
+      throw new Error(`invalid backend status: ${status}`);
+  }
+}
+
+export function parseSpotifyStatusResponse(raw: unknown): SpotifyConnectionDto {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('invalid status response');
+  }
+  const obj = raw as Record<string, unknown>;
+  const status = asStringOrNull(obj.status);
+  if (!status) {
+    throw new Error('invalid status response');
+  }
+  return {
+    state: mapBackendStatusToUiState(status),
+    display_name: asStringOrNull(obj.display_name),
+    reason: asStringOrNull(obj.reason),
+  };
+}
+
+export function parseSpotifyAuthStartResponse(raw: unknown): string {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('invalid authorization start response');
+  }
+  const obj = raw as Record<string, unknown>;
+  const url = safeSpotifyAuthorizationUrl(asStringOrNull(obj.authorization_url));
+  if (!url) {
+    throw new Error('authorization URL failed host validation');
+  }
+  return url;
+}
+
+export function parseSpotifyPlaylistListResponse(raw: unknown): SpotifyPlaylistListResponse {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('invalid playlist list response');
+  }
+  const obj = raw as Record<string, unknown>;
+  const list = Array.isArray(obj.playlists) ? obj.playlists : [];
+  const playlists = list.map((item) => {
+    const base = parsePlaylistListItemDto(item);
+    const row = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
+    const trackRaw = row.track_count;
+    const track_count =
+      typeof trackRaw === 'number' && Number.isFinite(trackRaw) ? trackRaw : null;
+    return {
+      ...base,
+      track_count,
+      artwork_url: asStringOrNull(row.artwork_url),
+    };
+  });
+  return {
+    playlists,
+    onward_url: safeSpotifyUrl(asStringOrNull(obj.onward_url)),
   };
 }
 
@@ -184,6 +300,12 @@ export function parsePlaylistListItemDto(raw: unknown): SpotifyPlaylistListItemD
     name,
     external_url: safeSpotifyUrl(asStringOrNull(obj.external_url)),
   };
+}
+
+/** Cap Spotify shelf cards at 20 per Spotify design guidelines. */
+export function capSpotifyPlaylistShelf<T>(items: T[], max = 20): T[] {
+  if (!Array.isArray(items)) return [];
+  return items.slice(0, max);
 }
 
 export function parsePlaylistDetailDto(raw: unknown): SpotifyPlaylistDetailDto {

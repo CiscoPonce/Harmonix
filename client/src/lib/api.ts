@@ -1,3 +1,11 @@
+import {
+  parseSpotifyAuthStartResponse,
+  parseSpotifyPlaylistListResponse,
+  parseSpotifyStatusResponse,
+  type SpotifyConnectionDto,
+  type SpotifyPlaylistListResponse,
+} from './spotifyContracts';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 let accessToken: string | null = null;
@@ -96,4 +104,54 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     console.error(`[apiFetch] Fetch error on ${endpoint}:`, error);
     throw error;
   }
+}
+
+export async function fetchSpotifyStatus(): Promise<SpotifyConnectionDto> {
+  const res = await apiFetch('/spotify/status');
+  if (!res.ok) {
+    throw new Error('Could not load Spotify connection status.');
+  }
+  const data = await parseJsonResponse<unknown>(res);
+  return parseSpotifyStatusResponse(data);
+}
+
+/** Start OAuth; returns a validated accounts.spotify.com URL for browser navigation. */
+export async function startSpotifyAuth(): Promise<string> {
+  const res = await apiFetch('/spotify/auth/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client: 'web' }),
+  });
+  if (!res.ok) {
+    throw new Error('Could not start Spotify authorization.');
+  }
+  const data = await parseJsonResponse<unknown>(res);
+  return parseSpotifyAuthStartResponse(data);
+}
+
+/** Disconnect; caller must wait for success before clearing provider UI. */
+export async function disconnectSpotify(): Promise<void> {
+  const res = await apiFetch('/spotify/connection', { method: 'DELETE' });
+  if (!res.ok) {
+    throw new Error('Could not disconnect Spotify.');
+  }
+}
+
+export async function fetchSpotifyPlaylists(): Promise<SpotifyPlaylistListResponse> {
+  const res = await apiFetch('/spotify/playlists');
+  if (!res.ok) {
+    const err = new Error('Could not load Spotify playlists.') as Error & {
+      status?: number;
+      body?: unknown;
+    };
+    err.status = res.status;
+    try {
+      err.body = await parseJsonResponse<unknown>(res);
+    } catch {
+      err.body = null;
+    }
+    throw err;
+  }
+  const data = await parseJsonResponse<unknown>(res);
+  return parseSpotifyPlaylistListResponse(data);
 }
