@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:spotify": "node --experimental-strip-types --experimental-detect-module --test src/lib/spotifyContracts.test.ts",
     "cap:sync": "npx cap sync android",
     "android:open": "npx cap open android",
     "android:sync": "npx cap sync android",

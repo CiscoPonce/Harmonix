@@ -1,0 +1,252 @@
+/**
+ * Pure Spotify / provider-aware contracts for web (Phase 12).
+ * Dependency-free — safe for Node 24 type-stripped unit tests.
+ */
+
+export type SpotifyProvider = 'spotify' | 'harmonix';
+
+export type ConnectionState =
+  | 'connect'
+  | 'connected'
+  | 'reconnect'
+  | 'connecting'
+  | 'disconnecting'
+  | 'disconnected';
+
+export type ExportOutcome = 'matched' | 'unmatched' | 'cached' | 'export_failed';
+
+export type MatchRejectReason =
+  | 'ambiguous_tie'
+  | 'weak_candidate'
+  | 'missing_artist'
+  | 'missing_title'
+  | 'invalid_uri'
+  | 'edition_conflict'
+  | 'local_track'
+  | 'unavailable'
+  | 'duration_conflict';
+
+export interface ProviderIdentity {
+  provider: SpotifyProvider;
+  provider_id: string;
+  stable_id: string;
+}
+
+export interface SpotifyConnectionDto {
+  state: ConnectionState;
+  display_name: string | null;
+  reason: string | null;
+}
+
+export interface SpotifyPlaylistListItemDto {
+  provider: SpotifyProvider;
+  provider_id: string;
+  stable_id: string;
+  name: string;
+  external_url: string | null;
+}
+
+export interface SpotifyPlaylistDetailDto {
+  provider: SpotifyProvider;
+  provider_id: string;
+  stable_id: string;
+  name: string;
+  restricted: boolean;
+  external_url: string | null;
+  tracks: Array<{ name: string; artists: string }>;
+}
+
+export interface SpotifyExportReportRowDto {
+  source_identity: string;
+  outcome: ExportOutcome;
+  reason: string | null;
+  spotify_uri: string | null;
+}
+
+export interface SpotifyExportReportDto {
+  destination_url: string | null;
+  partial_state: 'none' | 'no_create' | 'created_empty' | 'partially_added' | null;
+  rows: SpotifyExportReportRowDto[];
+}
+
+const ALLOWED_PROVIDERS = new Set<string>(['spotify', 'harmonix']);
+
+export function isSpotifyProvider(value: unknown): value is SpotifyProvider {
+  return typeof value === 'string' && ALLOWED_PROVIDERS.has(value);
+}
+
+export function providerStableId(provider: SpotifyProvider, providerId: string): string {
+  if (!isSpotifyProvider(provider)) {
+    throw new Error(`unknown provider: ${String(provider)}`);
+  }
+  if (typeof providerId !== 'string' || providerId.trim().length === 0) {
+    throw new Error('provider_id is required');
+  }
+  if (providerId.includes(':')) {
+    throw new Error('provider_id must not contain ":"');
+  }
+  return `${provider}:${providerId}`;
+}
+
+export function parseProviderStableId(stableId: string): ProviderIdentity {
+  if (typeof stableId !== 'string' || !stableId.includes(':')) {
+    throw new Error('raw-ID-only navigation is rejected; provider prefix required');
+  }
+  const idx = stableId.indexOf(':');
+  const provider = stableId.slice(0, idx);
+  const provider_id = stableId.slice(idx + 1);
+  if (!isSpotifyProvider(provider)) {
+    throw new Error(`unknown provider: ${provider}`);
+  }
+  if (!provider_id) {
+    throw new Error('provider_id is required');
+  }
+  return {
+    provider,
+    provider_id,
+    stable_id: providerStableId(provider, provider_id),
+  };
+}
+
+/** Allow only API-provided HTTPS open.spotify.com URLs. */
+export function safeSpotifyUrl(url: string | null | undefined): string | null {
+  if (url == null || typeof url !== 'string' || url.trim().length === 0) {
+    return null;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'https:') {
+    return null;
+  }
+  if (parsed.hostname !== 'open.spotify.com') {
+    return null;
+  }
+  return parsed.toString();
+}
+
+function asStringOrNull(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value !== 'string') return null;
+  return value;
+}
+
+export function parseConnectionDto(raw: unknown): SpotifyConnectionDto {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('invalid connection DTO');
+  }
+  const obj = raw as Record<string, unknown>;
+  const state = obj.state;
+  const allowed: ConnectionState[] = [
+    'connect',
+    'connected',
+    'reconnect',
+    'connecting',
+    'disconnecting',
+    'disconnected',
+  ];
+  if (typeof state !== 'string' || !allowed.includes(state as ConnectionState)) {
+    throw new Error('invalid connection state');
+  }
+  return {
+    state: state as ConnectionState,
+    display_name: asStringOrNull(obj.display_name),
+    reason: asStringOrNull(obj.reason),
+  };
+}
+
+export function parsePlaylistListItemDto(raw: unknown): SpotifyPlaylistListItemDto {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('invalid playlist list item DTO');
+  }
+  const obj = raw as Record<string, unknown>;
+  if (!isSpotifyProvider(obj.provider)) {
+    throw new Error('missing/null provider on list item');
+  }
+  const provider_id = asStringOrNull(obj.provider_id);
+  if (!provider_id) {
+    throw new Error('missing/null provider_id on list item');
+  }
+  const name = asStringOrNull(obj.name) ?? '';
+  const stable =
+    asStringOrNull(obj.stable_id) ?? providerStableId(obj.provider, provider_id);
+  const identity = parseProviderStableId(stable);
+  if (identity.provider !== obj.provider || identity.provider_id !== provider_id) {
+    throw new Error('stable_id does not match provider fields');
+  }
+  return {
+    provider: obj.provider,
+    provider_id,
+    stable_id: identity.stable_id,
+    name,
+    external_url: safeSpotifyUrl(asStringOrNull(obj.external_url)),
+  };
+}
+
+export function parsePlaylistDetailDto(raw: unknown): SpotifyPlaylistDetailDto {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('invalid playlist detail DTO');
+  }
+  const obj = raw as Record<string, unknown>;
+  if (!isSpotifyProvider(obj.provider)) {
+    throw new Error('missing/null provider on detail');
+  }
+  const provider_id = asStringOrNull(obj.provider_id);
+  if (!provider_id) {
+    throw new Error('missing/null provider_id on detail');
+  }
+  const stable =
+    asStringOrNull(obj.stable_id) ?? providerStableId(obj.provider, provider_id);
+  const tracksRaw = Array.isArray(obj.tracks) ? obj.tracks : [];
+  const tracks = tracksRaw
+    .filter((t): t is Record<string, unknown> => !!t && typeof t === 'object')
+    .map((t) => ({
+      name: asStringOrNull(t.name) ?? '',
+      artists: asStringOrNull(t.artists) ?? '',
+    }));
+  return {
+    provider: obj.provider,
+    provider_id,
+    stable_id: parseProviderStableId(stable).stable_id,
+    name: asStringOrNull(obj.name) ?? '',
+    restricted: Boolean(obj.restricted),
+    external_url: safeSpotifyUrl(asStringOrNull(obj.external_url)),
+    tracks,
+  };
+}
+
+export function parseExportReportDto(raw: unknown): SpotifyExportReportDto {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('invalid export report DTO');
+  }
+  const obj = raw as Record<string, unknown>;
+  const rowsRaw = Array.isArray(obj.rows) ? obj.rows : [];
+  const rows: SpotifyExportReportRowDto[] = rowsRaw
+    .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
+    .map((r) => {
+      const outcome = asStringOrNull(r.outcome);
+      const allowed: ExportOutcome[] = ['matched', 'unmatched', 'cached', 'export_failed'];
+      if (!outcome || !allowed.includes(outcome as ExportOutcome)) {
+        throw new Error(`unstable export outcome: ${String(r.outcome)}`);
+      }
+      return {
+        source_identity: asStringOrNull(r.source_identity) ?? '',
+        outcome: outcome as ExportOutcome,
+        reason: asStringOrNull(r.reason),
+        spotify_uri: asStringOrNull(r.spotify_uri),
+      };
+    });
+  const partial = asStringOrNull(obj.partial_state);
+  const partialAllowed = ['none', 'no_create', 'created_empty', 'partially_added'] as const;
+  return {
+    destination_url: safeSpotifyUrl(asStringOrNull(obj.destination_url)),
+    partial_state:
+      partial && (partialAllowed as readonly string[]).includes(partial)
+        ? (partial as (typeof partialAllowed)[number])
+        : null,
+    rows,
+  };
+}
