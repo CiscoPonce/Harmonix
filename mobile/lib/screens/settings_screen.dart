@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_client.dart';
+import '../spotify/spotify_contracts.dart';
 import '../state/auth_state.dart';
+import '../state/home_navigation_controller.dart';
 import '../state/theme_controller.dart';
 import '../theme/harmonix_theme.dart';
+import '../widgets/spotify_connection_card.dart';
 import 'onboarding_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -19,10 +23,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<dynamic> _badges = [];
   bool _loading = true;
 
+  String _spotifyState = 'connect';
+  String? _spotifyDisplayName;
+  String? _spotifyMessage;
+  bool _confirmDisconnect = false;
+  bool _consumedNavRecovery = false;
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_consumedNavRecovery) return;
+    _consumedNavRecovery = true;
+    final nav = context.read<HomeNavigationController>();
+    final reason = nav.consumeRecoveryReason();
+    if (reason != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _spotifyState = 'provider_error';
+          _spotifyMessage =
+              'Spotify authorization didn’t finish. You can try connecting again.';
+        });
+      });
+    }
   }
 
   Future<void> _load() async {
@@ -31,9 +60,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final stats = await api.progressStats();
       final badges = await api.badges();
+      SpotifyConnectionStatus? spotify;
+      try {
+        spotify = await api.spotifyStatus();
+      } catch (_) {
+        spotify = null;
+      }
+      if (!mounted) return;
       setState(() {
         _stats = stats;
         _badges = badges;
+        if (spotify != null) {
+          _spotifyState = spotify.state;
+          _spotifyDisplayName = spotify.displayName;
+          if (spotify.state == 'reconnect') {
+            _spotifyMessage =
+                spotify.reason == 'authorization_expired'
+                    ? 'Your Spotify connection expired. Reconnect to continue.'
+                    : (spotify.reason ??
+                        'Your Spotify connection expired. Reconnect to continue.');
+          } else if (spotify.state == 'provider_error') {
+            _spotifyMessage =
+                'Spotify is unavailable right now. Your Harmonix library is still available. Try again.';
+          }
+        }
       });
     } catch (e) {
       if (mounted) {
@@ -41,6 +91,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _connectSpotify() async {
+    final api = context.read<ApiClient>();
+    setState(() {
+      _spotifyState = 'connecting';
+      _spotifyMessage = null;
+    });
+    try {
+      final url = await api.spotifyAuthStart(client: 'android');
+      final uri = Uri.parse(url);
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && mounted) {
+        setState(() {
+          _spotifyState = 'provider_error';
+          _spotifyMessage =
+              'Could not open the Spotify authorization page. Try again.';
+        });
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _spotifyState = 'provider_error';
+        _spotifyMessage = e.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _spotifyState = 'provider_error';
+        _spotifyMessage =
+            'Spotify is unavailable right now. Your Harmonix library is still available. Try again.';
+      });
+    }
+  }
+
+  Future<void> _disconnectSpotify() async {
+    final api = context.read<ApiClient>();
+    setState(() {
+      _confirmDisconnect = false;
+      _spotifyState = 'disconnecting';
+    });
+    try {
+      await api.disconnectSpotify();
+      if (!mounted) return;
+      setState(() {
+        _spotifyState = 'connect';
+        _spotifyDisplayName = null;
+        _spotifyMessage = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _spotifyState = 'connected';
+        _spotifyMessage = 'Could not disconnect Spotify. Try again.';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not disconnect Spotify. Try again.')),
+      );
     }
   }
 
@@ -90,6 +199,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 8),
+          SpotifyConnectionCard(
+            state: _spotifyState,
+            displayName: _spotifyDisplayName,
+            message: _spotifyMessage,
+            confirmDisconnect: _confirmDisconnect,
+            onConnect: _connectSpotify,
+            onReconnect: _connectSpotify,
+            onDisconnect: () => setState(() => _confirmDisconnect = true),
+            onConfirmDisconnect: _disconnectSpotify,
+            onCancelDisconnect: () => setState(() => _confirmDisconnect = false),
+          ),
+          const SizedBox(height: 16),
           Text('APPEARANCE', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 4),
           SwitchListTile(

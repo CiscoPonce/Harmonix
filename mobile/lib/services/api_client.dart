@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import '../spotify/spotify_contracts.dart';
+
 /// API base without trailing slash. Override at build time:
 /// `flutter run --dart-define=API_BASE=https://your-domain/api`
 const String kApiBase = String.fromEnvironment(
@@ -341,5 +343,32 @@ class ApiClient {
   String playerUrlForSongId(String id) {
     final root = kApiBase.replaceAll(RegExp(r'/api/?$'), '');
     return '$root/player/$id';
+  }
+
+  /// Backend-owned Spotify status. Never includes provider tokens.
+  Future<SpotifyConnectionStatus> spotifyStatus() async {
+    final data = await request('GET', '/spotify/status');
+    return parseSpotifyStatusResponse(data);
+  }
+
+  /// Start OAuth for Android; returns validated accounts.spotify.com URL only.
+  Future<String> spotifyAuthStart({String client = 'android'}) async {
+    final data = await request(
+      'POST',
+      '/spotify/auth/start',
+      body: {'client': client},
+    );
+    return parseSpotifyAuthStartResponse(data);
+  }
+
+  /// Disconnect Spotify. Caller must wait for success before clearing UI.
+  Future<void> disconnectSpotify() async {
+    await request('DELETE', '/spotify/connection');
+  }
+
+  /// List Spotify playlists via authenticated sync. Provider credentials stay on server.
+  Future<SpotifyPlaylistListResult> spotifyPlaylists() async {
+    final data = await request('GET', '/spotify/playlists');
+    return parseSpotifyPlaylistListResponse(data);
   }
 }
