@@ -131,9 +131,12 @@ class ApiClient {
     final queue = data['queue'] is Map<String, dynamic>
         ? data['queue'] as Map<String, dynamic>
         : null;
-    final retry = (data['retryAfterSec'] as num?)?.toInt();
+    final retry = (data['retryAfterSec'] as num?)?.toInt() ??
+        (data['retry_after'] as num?)?.toInt();
     final rawError = data['error'] as String?;
-    final message = (rawError == 'daily_word_unavailable' || reason != null)
+    final message = (rawError == 'daily_word_unavailable' ||
+            (reason != null &&
+                (reason.contains('daily') || reason.contains('ai_'))))
         ? friendlyDailyWordError(
             reason: reason ?? rawError,
             retryAfterSec: retry,
