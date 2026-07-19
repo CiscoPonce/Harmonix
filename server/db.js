@@ -361,6 +361,45 @@ if (badgeCount === 0) {
   txn();
 }
 
+// Spotify OAuth one-time state transactions (D-12-01)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS spotify_oauth_transactions (
+    state_hash TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    pkce_verifier TEXT NOT NULL,
+    client_kind TEXT NOT NULL CHECK (client_kind IN ('web', 'android')),
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    consumed_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_spotify_oauth_user ON spotify_oauth_transactions(user_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_spotify_oauth_expires ON spotify_oauth_transactions(expires_at)`);
+
+// Encrypted Spotify tokens at rest (D-12-11)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_spotify_tokens (
+    user_id TEXT PRIMARY KEY,
+    access_ciphertext TEXT NOT NULL,
+    access_iv TEXT NOT NULL,
+    access_tag TEXT NOT NULL,
+    access_key_version TEXT NOT NULL,
+    refresh_ciphertext TEXT NOT NULL,
+    refresh_iv TEXT NOT NULL,
+    refresh_tag TEXT NOT NULL,
+    refresh_key_version TEXT NOT NULL,
+    scopes TEXT NOT NULL,
+    spotify_user_id TEXT,
+    spotify_display_name TEXT,
+    authorized_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_user_spotify_tokens_expires ON user_spotify_tokens(expires_at)`);
+
 const { ensureCanonicalKeys } = require('./services/canonicalKeyService');
 ensureCanonicalKeys(db);
 
