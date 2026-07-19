@@ -308,6 +308,73 @@ export function capSpotifyPlaylistShelf<T>(items: T[], max = 20): T[] {
   return items.slice(0, max);
 }
 
+export type SpotifyListErrorKind =
+  | 'disconnected'
+  | 'reconnect'
+  | 'offline'
+  | 'rate_limited'
+  | 'provider_error';
+
+export interface SpotifyListErrorView {
+  kind: SpotifyListErrorKind;
+  message: string;
+  retryAfterSeconds: number | null;
+}
+
+/** Map provider list failures to safe, copywritten recovery states. */
+export function mapSpotifyListError(input: {
+  status?: number;
+  body?: unknown;
+  offline?: boolean;
+}): SpotifyListErrorView {
+  if (input.offline || input.status === 0) {
+    return {
+      kind: 'offline',
+      message: 'You’re offline. Reconnect to sync Spotify playlists or export music.',
+      retryAfterSeconds: null,
+    };
+  }
+
+  const body =
+    input.body && typeof input.body === 'object'
+      ? (input.body as Record<string, unknown>)
+      : {};
+  const error = typeof body.error === 'string' ? body.error : null;
+  const retryRaw = body.retry_after;
+  const retryAfterSeconds =
+    typeof retryRaw === 'number' && Number.isFinite(retryRaw) ? retryRaw : null;
+
+  if (input.status === 409 && error === 'spotify_disconnected') {
+    return {
+      kind: 'disconnected',
+      message: 'Connect Spotify from Settings to see your playlists.',
+      retryAfterSeconds: null,
+    };
+  }
+  if (input.status === 409 && error === 'reconnect_required') {
+    return {
+      kind: 'reconnect',
+      message: 'Your Spotify connection expired. Reconnect to continue.',
+      retryAfterSeconds: null,
+    };
+  }
+  if (input.status === 429 || error === 'spotify_rate_limited') {
+    const duration =
+      retryAfterSeconds != null ? `${retryAfterSeconds}` : 'a moment';
+    return {
+      kind: 'rate_limited',
+      message: `Spotify needs a moment. Try again in ${duration}.`,
+      retryAfterSeconds,
+    };
+  }
+  return {
+    kind: 'provider_error',
+    message:
+      'Spotify is unavailable right now. Your Harmonix library is still available. Try again.',
+    retryAfterSeconds: null,
+  };
+}
+
 export function parsePlaylistDetailDto(raw: unknown): SpotifyPlaylistDetailDto {
   if (!raw || typeof raw !== 'object') {
     throw new Error('invalid playlist detail DTO');
