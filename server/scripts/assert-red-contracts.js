@@ -2,8 +2,8 @@
 /**
  * Controlled RED gate: run only the explicit Mocha files, require a non-zero
  * exit, and require the named intended-behavior sentinel in the output.
- * Syntax, fixture-load, timeout, and unrelated module-resolution failures
- * are rejected as invalid RED results.
+ * Syntax, fixture-load, timeout, import/module-resolution, and unrelated
+ * failures are rejected as invalid RED results.
  */
 const { spawnSync } = require('child_process');
 const path = require('path');
@@ -23,6 +23,20 @@ if (files.length === 0) {
 }
 
 const serverRoot = path.resolve(__dirname, '..');
+
+// Only the explicit Mocha files — never a directory glob or npm test suite.
+for (const file of files) {
+  if (file.includes('*') || file.endsWith('/')) {
+    console.error(`assert-red-contracts: refusing glob/directory argument: ${file}`);
+    process.exit(2);
+  }
+  const abs = path.resolve(serverRoot, file);
+  if (!abs.startsWith(serverRoot + path.sep)) {
+    console.error(`assert-red-contracts: file outside server root: ${file}`);
+    process.exit(2);
+  }
+}
+
 const result = spawnSync(
   process.execPath,
   [require.resolve('mocha/bin/mocha.js'), ...files],
@@ -51,12 +65,14 @@ if (result.status === null) {
   fail('mocha exited abnormally (signal or crash)');
 }
 
-// Hard-reject syntax / timeout / fixture-style failures (not intended RED).
+// Hard-reject syntax / timeout / fixture / loader failures (not intended RED).
 const hardInvalidPatterns = [
   /SyntaxError/,
   /Timeout of \d+ms exceeded/,
   /Error: timeout of \d+ms exceeded/i,
   /fixture.*(missing|failed|load)/i,
+  /ERR_MODULE_NOT_FOUND/,
+  /Unexpected token/,
 ];
 
 for (const pattern of hardInvalidPatterns) {
@@ -84,6 +100,14 @@ for (const file of files) {
   if (output.includes(`Cannot find module '${abs}'`) || output.includes(`Cannot find module '${file}'`)) {
     fail(`test file could not be loaded: ${file}`);
   }
+}
+
+// Cross-sentinel pollution: MATCH run must not depend on EXPORT sentinel and vice versa.
+if (sentinel === 'NOT_IMPLEMENTED_SPOTIFY_MATCH' && /NOT_IMPLEMENTED_SPOTIFY_EXPORT/.test(output) && !output.includes(sentinel)) {
+  fail('MATCH gate observed EXPORT sentinel without MATCH sentinel');
+}
+if (sentinel === 'NOT_IMPLEMENTED_SPOTIFY_EXPORT' && /NOT_IMPLEMENTED_SPOTIFY_MATCH/.test(output) && !/export/i.test(files.join(' '))) {
+  fail('EXPORT gate must not require MATCH sentinel from non-export files');
 }
 
 console.log(`assert-red-contracts: OK controlled RED for ${sentinel} (${files.join(', ')})`);

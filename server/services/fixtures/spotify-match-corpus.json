@@ -1,0 +1,640 @@
+{
+  "version": 1,
+  "description": "Labeled Spotify match corpus for D-12-13 validation-first ranking. Precision is measured only among accepted matches; rejections are tracked separately.",
+  "precision_floor": 0.9,
+  "cases": [
+    {
+      "id": "es-diacritics-accept",
+      "language": "es",
+      "category": "diacritics",
+      "market": "ES",
+      "source": {
+        "identity": "harmonix:song-despacito",
+        "title": "Despacito",
+        "artist": "Luis Fonsi",
+        "duration_ms": 228000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-despacito",
+          "uri": "spotify:track:6habFhsOp2NvshLv26DqMb",
+          "name": "Despacito",
+          "artists": ["Luis Fonsi", "Daddy Yankee"],
+          "duration_ms": 228093,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 82,
+          "isrc": "USUM71703861"
+        },
+        {
+          "id": "spotify-despacito-remix",
+          "uri": "spotify:track:despacito-remix",
+          "name": "Despacito - Remix",
+          "artists": ["Luis Fonsi", "Daddy Yankee", "Justin Bieber"],
+          "duration_ms": 230413,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 90,
+          "isrc": "USUM71703825"
+        }
+      ],
+      "expected": { "outcome": "accept", "spotify_id": "spotify-despacito" }
+    },
+    {
+      "id": "fr-featured-equiv-accept",
+      "language": "fr",
+      "category": "featured_artist",
+      "market": "FR",
+      "source": {
+        "identity": "harmonix:song-je-te-laisse",
+        "title": "Je te laisse",
+        "artist": "Slimane feat. Vitaa",
+        "duration_ms": 210000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-je-te-laisse",
+          "uri": "spotify:track:je-te-laisse",
+          "name": "Je te laisse",
+          "artists": ["Slimane", "Vitaa"],
+          "duration_ms": 210120,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 55,
+          "isrc": null
+        },
+        {
+          "id": "spotify-je-te-laisse-live",
+          "uri": "spotify:track:je-te-laisse-live",
+          "name": "Je te laisse - Live",
+          "artists": ["Slimane", "Vitaa"],
+          "duration_ms": 215000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 40,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "accept", "spotify_id": "spotify-je-te-laisse" }
+    },
+    {
+      "id": "pt-diacritics-accept",
+      "language": "pt",
+      "category": "diacritics",
+      "market": "BR",
+      "source": {
+        "identity": "harmonix:song-titi",
+        "title": "Tití Me Preguntó",
+        "artist": "Bad Bunny",
+        "duration_ms": 243000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-titi",
+          "uri": "spotify:track:titi",
+          "name": "Tití Me Preguntó",
+          "artists": ["Bad Bunny"],
+          "duration_ms": 243929,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 88,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "accept", "spotify_id": "spotify-titi" }
+    },
+    {
+      "id": "en-isrc-accept",
+      "language": "en",
+      "category": "isrc",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-hello",
+        "title": "Hello",
+        "artist": "Adele",
+        "duration_ms": 295000,
+        "isrc": "GBBKS1500214"
+      },
+      "candidates": [
+        {
+          "id": "spotify-hello-adele",
+          "uri": "spotify:track:hello-adele",
+          "name": "Hello",
+          "artists": ["Adele"],
+          "duration_ms": 295502,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 79,
+          "isrc": "GBBKS1500214"
+        },
+        {
+          "id": "spotify-hello-other",
+          "uri": "spotify:track:hello-other",
+          "name": "Hello",
+          "artists": ["Other Artist"],
+          "duration_ms": 200000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 95,
+          "isrc": "XXOTHER000001"
+        }
+      ],
+      "expected": { "outcome": "accept", "spotify_id": "spotify-hello-adele" }
+    },
+    {
+      "id": "en-relinked-accept",
+      "language": "en",
+      "category": "relinked",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-relink",
+        "title": "Midnight City",
+        "artist": "M83",
+        "duration_ms": 243000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-midnight-relinked",
+          "uri": "spotify:track:midnight-relinked",
+          "name": "Midnight City",
+          "artists": ["M83"],
+          "duration_ms": 243000,
+          "is_local": false,
+          "is_playable": true,
+          "linked_from": { "id": "spotify-midnight-orig", "uri": "spotify:track:midnight-orig" },
+          "popularity": 70,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "accept", "spotify_id": "spotify-midnight-relinked" }
+    },
+    {
+      "id": "en-live-reject",
+      "language": "en",
+      "category": "edition_live",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-studio-only",
+        "title": "Fix You",
+        "artist": "Coldplay",
+        "duration_ms": 295000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-fix-you-live",
+          "uri": "spotify:track:fix-you-live",
+          "name": "Fix You - Live",
+          "artists": ["Coldplay"],
+          "duration_ms": 310000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 60,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "reject", "reason": "edition_conflict" }
+    },
+    {
+      "id": "en-remaster-reject",
+      "language": "en",
+      "category": "edition_remaster",
+      "market": "GB",
+      "source": {
+        "identity": "harmonix:song-original",
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "duration_ms": 354000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-bohemian-remaster",
+          "uri": "spotify:track:bohemian-remaster",
+          "name": "Bohemian Rhapsody - Remastered 2011",
+          "artists": ["Queen"],
+          "duration_ms": 354320,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 85,
+          "isrc": null
+        },
+        {
+          "id": "spotify-bohemian-acoustic",
+          "uri": "spotify:track:bohemian-acoustic",
+          "name": "Bohemian Rhapsody - Acoustic",
+          "artists": ["Queen"],
+          "duration_ms": 340000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 40,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "reject", "reason": "edition_conflict" }
+    },
+    {
+      "id": "en-remix-reject",
+      "language": "en",
+      "category": "edition_remix",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-blinding",
+        "title": "Blinding Lights",
+        "artist": "The Weeknd",
+        "duration_ms": 200040,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-blinding-remix",
+          "uri": "spotify:track:blinding-remix",
+          "name": "Blinding Lights - Remix",
+          "artists": ["The Weeknd", "Chromatics"],
+          "duration_ms": 220000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 75,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "reject", "reason": "edition_conflict" }
+    },
+    {
+      "id": "en-explicit-conflict-reject",
+      "language": "en",
+      "category": "clean_explicit",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-clean",
+        "title": "Lose Yourself",
+        "artist": "Eminem",
+        "duration_ms": 326000,
+        "isrc": null,
+        "explicit": false
+      },
+      "candidates": [
+        {
+          "id": "spotify-lose-explicit",
+          "uri": "spotify:track:lose-explicit",
+          "name": "Lose Yourself",
+          "artists": ["Eminem"],
+          "duration_ms": 326466,
+          "is_local": false,
+          "is_playable": true,
+          "explicit": true,
+          "popularity": 90,
+          "isrc": null
+        },
+        {
+          "id": "spotify-lose-clean",
+          "uri": "spotify:track:lose-clean",
+          "name": "Lose Yourself",
+          "artists": ["Eminem"],
+          "duration_ms": 326466,
+          "is_local": false,
+          "is_playable": true,
+          "explicit": false,
+          "popularity": 70,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "accept", "spotify_id": "spotify-lose-clean" }
+    },
+    {
+      "id": "en-same-title-ambiguity-reject",
+      "language": "en",
+      "category": "same_title_ambiguity",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-hurt",
+        "title": "Hurt",
+        "artist": "Johnny Cash",
+        "duration_ms": 218000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-hurt-cash",
+          "uri": "spotify:track:hurt-cash",
+          "name": "Hurt",
+          "artists": ["Johnny Cash"],
+          "duration_ms": 218000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 70,
+          "isrc": null
+        },
+        {
+          "id": "spotify-hurt-nin",
+          "uri": "spotify:track:hurt-nin",
+          "name": "Hurt",
+          "artists": ["Nine Inch Nails"],
+          "duration_ms": 373000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 95,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "accept", "spotify_id": "spotify-hurt-cash" }
+    },
+    {
+      "id": "en-tie-reject-no-popularity",
+      "language": "en",
+      "category": "ambiguity_tie",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-tie",
+        "title": "Stay",
+        "artist": "Artist A",
+        "duration_ms": 200000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-stay-a",
+          "uri": "spotify:track:stay-a",
+          "name": "Stay",
+          "artists": ["Artist A"],
+          "duration_ms": 200000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 10,
+          "isrc": null
+        },
+        {
+          "id": "spotify-stay-b",
+          "uri": "spotify:track:stay-b",
+          "name": "Stay",
+          "artists": ["Artist A"],
+          "duration_ms": 200000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 99,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "reject", "reason": "ambiguous_tie" }
+    },
+    {
+      "id": "en-weak-candidate-reject",
+      "language": "en",
+      "category": "weak_candidate",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-weak",
+        "title": "Yellow",
+        "artist": "Coldplay",
+        "duration_ms": 266000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-yellow-unrelated",
+          "uri": "spotify:track:yellow-unrelated",
+          "name": "Yellow Submarine",
+          "artists": ["The Beatles"],
+          "duration_ms": 158000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 99,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "reject", "reason": "weak_candidate" }
+    },
+    {
+      "id": "en-missing-artist-reject",
+      "language": "en",
+      "category": "missing_artist",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-no-artist",
+        "title": "Imagine",
+        "artist": "",
+        "duration_ms": 183000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-imagine",
+          "uri": "spotify:track:imagine",
+          "name": "Imagine",
+          "artists": ["John Lennon"],
+          "duration_ms": 183000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 80,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "reject", "reason": "missing_artist" }
+    },
+    {
+      "id": "en-missing-title-reject",
+      "language": "en",
+      "category": "missing_title",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-no-title",
+        "title": "",
+        "artist": "Radiohead",
+        "duration_ms": 237000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-creep",
+          "uri": "spotify:track:creep",
+          "name": "Creep",
+          "artists": ["Radiohead"],
+          "duration_ms": 238640,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 80,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "reject", "reason": "missing_title" }
+    },
+    {
+      "id": "en-invalid-uri-reject",
+      "language": "en",
+      "category": "invalid_uri",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-bad-uri",
+        "title": "Royals",
+        "artist": "Lorde",
+        "duration_ms": 190000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-royals-bad",
+          "uri": "https://open.spotify.com/track/royals",
+          "name": "Royals",
+          "artists": ["Lorde"],
+          "duration_ms": 190185,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 80,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "reject", "reason": "invalid_uri" }
+    },
+    {
+      "id": "en-local-reject",
+      "language": "en",
+      "category": "local",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-local",
+        "title": "Local File Song",
+        "artist": "Local Artist",
+        "duration_ms": 180000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-local",
+          "uri": "spotify:track:local",
+          "name": "Local File Song",
+          "artists": ["Local Artist"],
+          "duration_ms": 180000,
+          "is_local": true,
+          "is_playable": true,
+          "popularity": 0,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "reject", "reason": "local_track" }
+    },
+    {
+      "id": "en-unavailable-reject",
+      "language": "en",
+      "category": "unavailable",
+      "market": "DE",
+      "source": {
+        "identity": "harmonix:song-unavail",
+        "title": "Market Blocked",
+        "artist": "Some Band",
+        "duration_ms": 200000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-unavail",
+          "uri": "spotify:track:unavail",
+          "name": "Market Blocked",
+          "artists": ["Some Band"],
+          "duration_ms": 200000,
+          "is_local": false,
+          "is_playable": false,
+          "popularity": 50,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "reject", "reason": "unavailable" }
+    },
+    {
+      "id": "en-duration-conflict-reject",
+      "language": "en",
+      "category": "duration_conflict",
+      "market": "US",
+      "source": {
+        "identity": "harmonix:song-duration",
+        "title": "Clocks",
+        "artist": "Coldplay",
+        "duration_ms": 307000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-clocks-short",
+          "uri": "spotify:track:clocks-short",
+          "name": "Clocks",
+          "artists": ["Coldplay"],
+          "duration_ms": 120000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 90,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "reject", "reason": "duration_conflict" }
+    },
+    {
+      "id": "ja-multilingual-accept",
+      "language": "ja",
+      "category": "multilingual",
+      "market": "JP",
+      "source": {
+        "identity": "harmonix:song-lemon",
+        "title": "レモン",
+        "artist": "米津玄師",
+        "duration_ms": 255000,
+        "isrc": null
+      },
+      "candidates": [
+        {
+          "id": "spotify-lemon",
+          "uri": "spotify:track:lemon-jp",
+          "name": "レモン",
+          "artists": ["米津玄師"],
+          "duration_ms": 255493,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 72,
+          "isrc": null
+        },
+        {
+          "id": "spotify-lemon-cover",
+          "uri": "spotify:track:lemon-cover",
+          "name": "Lemon",
+          "artists": ["Cover Band"],
+          "duration_ms": 250000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 99,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "accept", "spotify_id": "spotify-lemon" }
+    },
+    {
+      "id": "de-null-item-reject",
+      "language": "de",
+      "category": "null_item",
+      "market": "DE",
+      "source": {
+        "identity": "harmonix:song-null",
+        "title": "99 Luftballons",
+        "artist": "Nena",
+        "duration_ms": 232000,
+        "isrc": null
+      },
+      "candidates": [
+        null,
+        {
+          "id": "spotify-luftballons",
+          "uri": "spotify:track:luftballons",
+          "name": "99 Luftballons",
+          "artists": ["Nena"],
+          "duration_ms": 232000,
+          "is_local": false,
+          "is_playable": true,
+          "popularity": 70,
+          "isrc": null
+        }
+      ],
+      "expected": { "outcome": "accept", "spotify_id": "spotify-luftballons" }
+    }
+  ]
+}
