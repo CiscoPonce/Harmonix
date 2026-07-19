@@ -43,6 +43,36 @@ Context: [phases/11-word-phonics-tts/11-CONTEXT.md](./phases/11-word-phonics-tts
 
 ---
 
+## Phase 12 — Spotify API Integration
+
+**Status:** Planned  
+**Milestone:** v1.5 — Spotify Integration  
+**Strategy:** Implement OAuth 2.0 PKCE flow, playlist management, and export functionality.
+
+Context: [phases/12-spotify-api-integration/12-CONTEXT.md](./phases/12-spotify-api-integration/12-CONTEXT.md)
+
+| Plan | Name | Status |
+|------|------|--------|
+| 12-01 | Spotify Developer App Setup & Environment Configuration | Pending |
+| 12-02 | Backend OAuth Service & Token Storage | Pending |
+| 12-03 | Playlist Fetch & Display Endpoints | Pending |
+| 12-04 | Export Functionality (Match + Create Playlist) | Pending |
+| 12-05 | Web Frontend Integration (Settings + Library UI) | Pending |
+| 12-06 | Flutter Mobile Integration | Pending |
+| 12-07 | Testing, Documentation, and Release | Pending |
+
+**End state:** Users can connect Spotify accounts, view their Spotify playlists in Harmonix, and export Harmonix playlists to Spotify with intelligent song matching.
+
+**Key Features:**
+- OAuth 2.0 with PKCE for secure authentication
+- Encrypted token storage with auto-refresh
+- View user's Spotify playlists in Library
+- Export Harmonix playlists to Spotify (>90% match accuracy target)
+- Rate limiting and caching for API efficiency
+- Match report showing successful and unmatched tracks
+
+---
+
 ## Phase 9.5 — Background Word Queue Service
 
 **Status:** Complete  
