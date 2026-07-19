@@ -242,3 +242,26 @@ describe('parseSpotifyPlaylistListResponse', () => {
     assert.equal(items.onward_url, null);
   });
 });
+
+describe('capSpotifyPlaylistShelf', () => {
+  it('caps Spotify shelves at 20 items', async () => {
+    const { capSpotifyPlaylistShelf } = await import('./spotifyContracts.ts');
+    const many = Array.from({ length: 25 }, (_, i) => ({ id: i }));
+    assert.equal(capSpotifyPlaylistShelf(many).length, 20);
+    assert.equal(capSpotifyPlaylistShelf(many, 20)[19].id, 19);
+  });
+});
+
+describe('mapSpotifyListError', () => {
+  it('maps disconnected, rate-limit, offline, and reconnect errors to safe copy', async () => {
+    const { mapSpotifyListError } = await import('./spotifyContracts.ts');
+    assert.equal(mapSpotifyListError({ status: 409, body: { error: 'spotify_disconnected' } }).kind, 'disconnected');
+    assert.equal(mapSpotifyListError({ status: 409, body: { error: 'reconnect_required' } }).kind, 'reconnect');
+    assert.match(
+      mapSpotifyListError({ status: 429, body: { error: 'spotify_rate_limited', retry_after: 30 } }).message,
+      /moment|30/
+    );
+    assert.equal(mapSpotifyListError({ status: 0, offline: true }).kind, 'offline');
+    assert.equal(mapSpotifyListError({ status: 503 }).kind, 'provider_error');
+  });
+});
