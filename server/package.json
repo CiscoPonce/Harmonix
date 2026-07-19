@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "NODE_ENV=test mocha 'constants/**/*.test.js' 'services/**/*.test.js' 'routes/**/*.test.js' 'utils/**/*.test.js' '*.test.js' --ignore 'services/spotifyService.test.js' --ignore 'routes/spotify.test.js' --ignore 'services/spotifyPlaylistList.test.js' --ignore 'routes/spotifyPlaylistList.test.js' --ignore 'services/spotifyPlaylistDetail.test.js' --ignore 'routes/spotifyPlaylistDetail.test.js' --ignore 'services/spotifyExportService.test.js' --ignore 'routes/spotifyExport.test.js' --ignore 'services/spotifyMatchService.test.js' --ignore 'services/spotifyMatchCorpus.test.js'"
+    "test": "NODE_ENV=test mocha 'constants/**/*.test.js' 'services/**/*.test.js' 'routes/**/*.test.js' 'utils/**/*.test.js' '*.test.js' --ignore 'services/spotifyPlaylistDetail.test.js' --ignore 'routes/spotifyPlaylistDetail.test.js' --ignore 'services/spotifyExportService.test.js' --ignore 'routes/spotifyExport.test.js' --ignore 'services/spotifyMatchService.test.js' --ignore 'services/spotifyMatchCorpus.test.js'"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -1,3 +1,8 @@
-```
 .planning/
-```
+
+# Environment secrets — never commit real .env files
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example

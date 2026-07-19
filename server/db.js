@@ -400,6 +400,30 @@ db.exec(`
 `);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_user_spotify_tokens_expires ON user_spotify_tokens(expires_at)`);
 
+// Normalized current-user Spotify playlist snapshot (D-12-08 / Phase 12-04)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_spotify_playlists (
+    user_id TEXT NOT NULL,
+    spotify_playlist_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    external_url TEXT,
+    artwork_url TEXT,
+    track_count INTEGER,
+    is_owner INTEGER NOT NULL DEFAULT 0,
+    is_collaborative INTEGER NOT NULL DEFAULT 0,
+    is_restricted INTEGER NOT NULL DEFAULT 0,
+    detail_access TEXT NOT NULL CHECK (detail_access IN ('full', 'restricted')),
+    snapshot_id TEXT,
+    synced_at TEXT NOT NULL,
+    revalidated_at TEXT,
+    expires_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, spotify_playlist_id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_user_spotify_playlists_user ON user_spotify_playlists(user_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_user_spotify_playlists_expires ON user_spotify_playlists(expires_at)`);
+
 const { ensureCanonicalKeys } = require('./services/canonicalKeyService');
 ensureCanonicalKeys(db);
 
