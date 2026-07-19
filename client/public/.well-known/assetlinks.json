@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.harmonix.app",
+      "sha256_cert_fingerprints": [
+        "1A:4C:E1:D1:8A:59:8A:54:AA:7A:78:6C:20:E4:51:B8:55:F2:38:21:91:D9:3A:BB:E6:38:C0:EB:1B:DC:44:A2"
+      ]
+    }
+  }
+]
