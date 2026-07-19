@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  mapBackendStatusToUiState,
   parseConnectionDto,
   parseExportReportDto,
   parsePlaylistDetailDto,
   parsePlaylistListItemDto,
+  parseSpotifyAuthStartResponse,
+  parseSpotifyCallbackOutcome,
+  parseSpotifyPlaylistListResponse,
+  parseSpotifyStatusResponse,
   parseProviderStableId,
   providerStableId,
+  safeSpotifyAuthorizationUrl,
   safeSpotifyUrl,
 } from './spotifyContracts.ts';
 
@@ -118,5 +124,121 @@ describe('DTO parsers', () => {
     });
     assert.equal(report.partial_state, 'partially_added');
     assert.equal(report.rows[0].reason, 'ambiguous_tie');
+  });
+});
+
+describe('safeSpotifyAuthorizationUrl', () => {
+  it('accepts HTTPS accounts.spotify.com authorization URLs', () => {
+    const url =
+      'https://accounts.spotify.com/authorize?client_id=abc&response_type=code&redirect_uri=https%3A%2F%2Fexample.test%2Fcallback';
+    assert.equal(safeSpotifyAuthorizationUrl(url), url);
+  });
+
+  it('rejects non-Spotify authorization hosts and unsafe schemes', () => {
+    assert.equal(safeSpotifyAuthorizationUrl('https://evil.example/authorize'), null);
+    assert.equal(safeSpotifyAuthorizationUrl('http://accounts.spotify.com/authorize'), null);
+    assert.equal(
+      safeSpotifyAuthorizationUrl('https://accounts.spotify.com.evil.example/authorize'),
+      null
+    );
+    assert.equal(safeSpotifyAuthorizationUrl('javascript:alert(1)'), null);
+    assert.equal(safeSpotifyAuthorizationUrl(null), null);
+  });
+});
+
+describe('parseSpotifyCallbackOutcome', () => {
+  it('allowlists fixed non-secret callback outcomes', () => {
+    assert.equal(parseSpotifyCallbackOutcome('connected'), 'connected');
+    assert.equal(parseSpotifyCallbackOutcome('error'), 'error');
+    assert.equal(parseSpotifyCallbackOutcome('cancelled'), 'error');
+  });
+
+  it('rejects secrets and unknown query values', () => {
+    assert.equal(parseSpotifyCallbackOutcome('AQDxcode'), null);
+    assert.equal(parseSpotifyCallbackOutcome('access_token'), null);
+    assert.equal(parseSpotifyCallbackOutcome(null), null);
+    assert.equal(parseSpotifyCallbackOutcome(undefined), null);
+  });
+});
+
+describe('mapBackendStatusToUiState', () => {
+  it('maps backend allowlist statuses onto Settings card UI states', () => {
+    assert.equal(mapBackendStatusToUiState('disconnected'), 'connect');
+    assert.equal(mapBackendStatusToUiState('connected'), 'connected');
+    assert.equal(mapBackendStatusToUiState('reconnect_required'), 'reconnect');
+    assert.equal(mapBackendStatusToUiState('provider_error'), 'provider_error');
+  });
+});
+
+describe('parseSpotifyStatusResponse', () => {
+  it('parses safe status fields without requiring tokens', () => {
+    const dto = parseSpotifyStatusResponse({
+      status: 'connected',
+      display_name: 'Listener',
+      reason: null,
+    });
+    assert.equal(dto.state, 'connected');
+    assert.equal(dto.display_name, 'Listener');
+  });
+
+  it('maps disconnected backend status to connect UI state', () => {
+    const dto = parseSpotifyStatusResponse({
+      status: 'disconnected',
+      display_name: null,
+      reason: null,
+    });
+    assert.equal(dto.state, 'connect');
+  });
+});
+
+describe('parseSpotifyAuthStartResponse', () => {
+  it('returns a validated accounts.spotify.com authorization URL', () => {
+    const url =
+      'https://accounts.spotify.com/authorize?client_id=x&response_type=code&redirect_uri=y';
+    assert.equal(
+      parseSpotifyAuthStartResponse({ authorization_url: url }),
+      url
+    );
+  });
+
+  it('rejects caller destinations that are not Spotify authorize hosts', () => {
+    assert.throws(
+      () =>
+        parseSpotifyAuthStartResponse({
+          authorization_url: 'https://evil.example/oauth',
+        }),
+      /authorization/
+    );
+  });
+});
+
+describe('parseSpotifyPlaylistListResponse', () => {
+  it('parses provider-aware list items and preserves stable IDs', () => {
+    const items = parseSpotifyPlaylistListResponse({
+      playlists: [
+        {
+          provider: 'spotify',
+          provider_id: 'pl1',
+          name: 'Hits',
+          external_url: 'https://open.spotify.com/playlist/pl1',
+          track_count: 4,
+          artwork_url: null,
+          onward_url: 'https://open.spotify.com/',
+        },
+      ],
+      onward_url: 'https://open.spotify.com/',
+    });
+    assert.equal(items.playlists.length, 1);
+    assert.equal(items.playlists[0].stable_id, 'spotify:pl1');
+    assert.equal(items.playlists[0].track_count, 4);
+    assert.equal(items.onward_url, 'https://open.spotify.com/');
+  });
+
+  it('strips unsafe onward URLs', () => {
+    const items = parseSpotifyPlaylistListResponse({
+      playlists: [],
+      onward_url: 'javascript:alert(1)',
+    });
+    assert.equal(items.onward_url, null);
   });
 });
