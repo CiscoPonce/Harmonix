@@ -145,7 +145,12 @@ function SettingsContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F4F7F5] text-[#121612] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
-      <AppHeader userEmail={user.email} onLogout={logout} homeHref="/dashboard" />
+      <AppHeader
+        userEmail={user.email}
+        onLogout={logout}
+        homeHref="/dashboard"
+        showSettingsLink={false}
+      />
 
       <main className="mx-auto flex w-full max-w-[800px] flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
         <header>

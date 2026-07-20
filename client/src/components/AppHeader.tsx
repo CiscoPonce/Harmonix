@@ -1,6 +1,7 @@
 'use client';
 
-import { LogOut } from 'lucide-react';
+import Link from 'next/link';
+import { LogOut, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { HarmonixWordmark } from '@/components/HarmonixWordmark';
 import { LanguageBadge } from '@/components/LanguageBadge';
@@ -10,12 +11,14 @@ interface AppHeaderProps {
   userEmail?: string;
   onLogout?: () => void;
   homeHref?: string;
+  showSettingsLink?: boolean;
 }
 
 export function AppHeader({
   userEmail,
   onLogout,
   homeHref = '/dashboard',
+  showSettingsLink = true,
 }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/90 backdrop-blur-xl dark:border-zinc-900 dark:bg-black/90">
@@ -35,6 +38,19 @@ export function AppHeader({
               </span>
               <span className="max-w-[12rem] truncate text-xs font-bold">{userEmail}</span>
             </div>
+          ) : null}
+          {showSettingsLink ? (
+            <Link
+              href="/settings"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900 sm:h-8 sm:w-auto sm:gap-1.5 sm:px-3"
+              title="Settings"
+              aria-label="Settings"
+            >
+              <Settings className="h-4 w-4" />
+              <span className="hidden text-[10px] font-bold uppercase tracking-widest sm:inline">
+                Settings
+              </span>
+            </Link>
           ) : null}
           {onLogout ? (
             <Button
