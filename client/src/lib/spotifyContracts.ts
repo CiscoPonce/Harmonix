@@ -627,3 +627,105 @@ export function parseExportReportDto(raw: unknown): SpotifyExportReportDto {
     rows,
   };
 }
+
+export type ExportJobStage =
+  | 'matching'
+  | 'creating'
+  | 'adding'
+  | 'completed'
+  | 'partial'
+  | 'failed';
+
+export interface SpotifyExportJobDto {
+  id: string;
+  source_playlist_id: string;
+  stage: ExportJobStage;
+  current_count: number;
+  total_count: number;
+  matched_count: number;
+  unmatched_count: number;
+  exported_count: number;
+  failed_count: number;
+  destination_provider_id: string | null;
+  destination_url: string | null;
+  safe_reason: string | null;
+  partial_state: SpotifyExportReportDto['partial_state'];
+  report: SpotifyExportReportDto | null;
+}
+
+const EXPORT_STAGES = new Set<string>([
+  'matching',
+  'creating',
+  'adding',
+  'completed',
+  'partial',
+  'failed',
+]);
+
+function asNumber(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+export function parseExportJobDto(raw: unknown): SpotifyExportJobDto {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('invalid export job DTO');
+  }
+  const obj = raw as Record<string, unknown>;
+  const id = asStringOrNull(obj.id);
+  const sourceId = asStringOrNull(obj.source_playlist_id);
+  const stage = asStringOrNull(obj.stage);
+  if (!id || !sourceId || !stage || !EXPORT_STAGES.has(stage)) {
+    throw new Error('invalid export job identity/stage');
+  }
+  const report = obj.report != null ? parseExportReportDto(obj.report) : null;
+  const partial = asStringOrNull(obj.partial_state);
+  const partialAllowed = ['none', 'no_create', 'created_empty', 'partially_added'] as const;
+  return {
+    id,
+    source_playlist_id: sourceId,
+    stage: stage as ExportJobStage,
+    current_count: asNumber(obj.current_count),
+    total_count: asNumber(obj.total_count),
+    matched_count: asNumber(obj.matched_count),
+    unmatched_count: asNumber(obj.unmatched_count),
+    exported_count: asNumber(obj.exported_count),
+    failed_count: asNumber(obj.failed_count),
+    destination_provider_id: asStringOrNull(obj.destination_provider_id),
+    destination_url: safeSpotifyUrl(asStringOrNull(obj.destination_url)),
+    safe_reason: asStringOrNull(obj.safe_reason),
+    partial_state:
+      partial && (partialAllowed as readonly string[]).includes(partial)
+        ? (partial as (typeof partialAllowed)[number])
+        : report?.partial_state ?? null,
+    report,
+  };
+}
+
+export function exportProgressLabel(job: SpotifyExportJobDto): string {
+  switch (job.stage) {
+    case 'matching':
+      return `Matching tracks (${job.current_count} of ${job.total_count})`;
+    case 'creating':
+      return 'Creating private Spotify playlist…';
+    case 'adding':
+      return `Adding matched tracks (${job.exported_count} of ${job.matched_count})`;
+    case 'completed':
+      return 'Export complete';
+    case 'partial':
+      return `Exported ${job.exported_count} of ${job.matched_count} matched tracks`;
+    case 'failed':
+      if (job.safe_reason === 'zero_matches') {
+        return 'No tracks were confidently matched. Review the unmatched tracks and try again later.';
+      }
+      if (job.partial_state === 'no_create') {
+        return 'The export couldn’t be completed. No new playlist was created. Try again.';
+      }
+      return 'The export couldn’t be completed. Try again.';
+    default:
+      return 'Export in progress…';
+  }
+}
+
+export function isExportJobActive(stage: ExportJobStage): boolean {
+  return stage === 'matching' || stage === 'creating' || stage === 'adding';
+}

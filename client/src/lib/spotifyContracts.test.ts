@@ -149,6 +149,35 @@ describe('DTO parsers', () => {
     assert.equal(report.partial_state, 'partially_added');
     assert.equal(report.rows[0].reason, 'ambiguous_tie');
   });
+
+  it('parses export job status with ownership fields and progress counts', async () => {
+    const { parseExportJobDto, isExportJobActive, exportProgressLabel } = await import(
+      './spotifyContracts.ts'
+    );
+    const job = parseExportJobDto({
+      id: 'job-1',
+      source_playlist_id: 'pl-1',
+      stage: 'adding',
+      current_count: 50,
+      total_count: 120,
+      matched_count: 100,
+      unmatched_count: 20,
+      exported_count: 50,
+      failed_count: 0,
+      destination_provider_id: 'dest',
+      destination_url: 'https://open.spotify.com/playlist/dest',
+      safe_reason: null,
+      partial_state: 'partially_added',
+      report: {
+        destination_url: 'https://open.spotify.com/playlist/dest',
+        partial_state: 'partially_added',
+        rows: [],
+      },
+    });
+    assert.equal(job.id, 'job-1');
+    assert.equal(isExportJobActive(job.stage), true);
+    assert.match(exportProgressLabel(job), /Adding matched tracks/);
+  });
 });
 
 describe('safeSpotifyAuthorizationUrl', () => {

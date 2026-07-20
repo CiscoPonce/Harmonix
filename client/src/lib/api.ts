@@ -1,9 +1,11 @@
 import {
+  parseExportJobDto,
   parsePlaylistDetailDto,
   parseSpotifyAuthStartResponse,
   parseSpotifyPlaylistListResponse,
   parseSpotifyStatusResponse,
   type SpotifyConnectionDto,
+  type SpotifyExportJobDto,
   type SpotifyPlaylistDetailDto,
   type SpotifyPlaylistListResponse,
 } from './spotifyContracts';
@@ -177,4 +179,58 @@ export async function fetchSpotifyPlaylistDetail(
   }
   const data = await parseJsonResponse<unknown>(res);
   return parsePlaylistDetailDto(data);
+}
+
+export async function startSpotifyExport(
+  sourcePlaylistId: string,
+  idempotencyKey?: string
+): Promise<SpotifyExportJobDto> {
+  const res = await apiFetch('/spotify/exports', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      source_playlist_id: sourcePlaylistId,
+      ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
+    }),
+  });
+  if (!res.ok) {
+    const err = new Error('Could not start Spotify export.') as Error & {
+      status?: number;
+      body?: unknown;
+    };
+    err.status = res.status;
+    try {
+      err.body = await parseJsonResponse<unknown>(res);
+    } catch {
+      err.body = null;
+    }
+    throw err;
+  }
+  const data = await parseJsonResponse<unknown>(res);
+  return parseExportJobDto(data);
+}
+
+export async function fetchLatestSpotifyExport(
+  sourcePlaylistId: string
+): Promise<SpotifyExportJobDto | null> {
+  const res = await apiFetch(
+    `/spotify/exports/latest?source_playlist_id=${encodeURIComponent(sourcePlaylistId)}`
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error('Could not load export status.');
+  }
+  const data = await parseJsonResponse<unknown>(res);
+  return parseExportJobDto(data);
+}
+
+export async function fetchSpotifyExportJob(jobId: string): Promise<SpotifyExportJobDto> {
+  const res = await apiFetch(`/spotify/exports/${encodeURIComponent(jobId)}`);
+  if (!res.ok) {
+    const err = new Error('Could not load export job.') as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
+  const data = await parseJsonResponse<unknown>(res);
+  return parseExportJobDto(data);
 }
