@@ -3,18 +3,22 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: mobile-dual-frontend
 status: in_progress
-last_updated: "2026-07-11T20:00:00.000Z"
+stopped_at: Phase 12.5 planned — resume popup OAuth + Library connect UX this afternoon
+last_updated: "2026-07-20T06:50:00.000Z"
 progress:
-  total_phases: 12
-  completed_phases: 10
-  total_plans: 28
-  completed_plans: 23
-  percent: 82
+  total_phases: 1
+  completed_phases: 1
+  total_plans: 11
+  completed_plans: 11
 ---
 
 # Project State — Harmonix
 
 ## Current Focus
+
+**Phase 12 — Spotify API Integration:** code complete (12-01–12-10). Pending: 12-11 human gates + operator `SPOTIFY_CLIENT_ID` on VPS.
+
+**Phase 12.5 — Spotify Connect UX (planned):** popup OAuth, Library inline Connect, onboarding prompt. Context: [12.5-CONTEXT.md](./phases/12.5-spotify-connect-ux/12.5-CONTEXT.md). Resume with `/gsd:plan-phase 12.5` this afternoon.
 
 **Phase 10 — Option C in progress.** Flutter Android MVP lives in `mobile/` (light + dark-green Learn UI). Capacitor remains the temporary bridge APK until Flutter public launch (D-10-04).
 
@@ -36,6 +40,27 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 
 - [x] Plan 11-01: Backend TTS service + `/pronounce` + cache
 - [x] Plan 11-02: Frontend pronunciation button (replayable)
+
+## Phase 12 Progress
+
+- [x] Plan 12-01: Resolve blocking Spotify callback/account/secret/policy facts
+- [x] Plan 12-02: Backend Wave 0 ABI, OAuth/crypto foundation, adversarial contracts
+- [x] Plan 12-03: Client/matching Wave 0 tests and labeled corpus
+- [x] Plan 12-04: Backend OAuth/status/list foundation and API journey
+- [x] Plan 12-05: Web Settings linking and provider-separated Library
+- [x] Plan 12-06: Android linking, verified return, and Library parity
+- [x] Plan 12-07: Provider-aware playlist detail on web and Android
+- [x] Plan 12-08: Validation-first matching and web export report
+- [x] Plan 12-09: Android export and resilience matrix
+- [x] Plan 12-10: Automated release matrix and operations runbook
+- [ ] Plan 12-11: Sandbox/device/UI/policy/quota release gates
+
+## Phase 12.5 Progress
+
+- [ ] Plan 12.5-01: Web popup OAuth + callback postMessage (redirect fallback)
+- [ ] Plan 12.5-02: Library inline Connect Spotify (shared auth hook)
+- [ ] Plan 12.5-03: Optional onboarding connect prompt (web)
+- [ ] Plan 12.5-04: Operator runbook + popup/Library tests
 
 ## Mobile design
 
@@ -73,3 +98,48 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 
 - [x] Plan 9.5-01: Validated word queue backend
 - [x] Plan 9.5-02: Queue status UI on DailyWordCard
+
+## Session
+
+**Last session:** 2026-07-20T06:50:00.000Z
+**Stopped at:** Phase 12.5 planned — resume popup OAuth + Library connect UX this afternoon
+**Resume file:** .planning/phases/12.5-spotify-connect-ux/12.5-CONTEXT.md
+
+## Performance Metrics
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 12 P02 | 6min | 3 tasks | 15 files |
+| Phase 12 P03 | 4min | 3 tasks | 15 files |
+| Phase 12 P04 | 6 min | 2 tasks | 11 files |
+| Phase 12 P05 | 5min | 2 tasks | 7 files |
+| Phase 12 P06 | 7min | 3 tasks | 16 files |
+| Phase 12 P07 | 6min | 3 tasks | 14 files |
+| Phase 12 P08 | 6min | 3 tasks | 16 files |
+| Phase 12 P09 | 4min | 2 tasks | 12 files |
+| Phase 12 P10 | 8min | 2 tasks | 3 files |
+
+## Decisions
+
+- [Phase 12]: OAuth state stored as SHA-256 only; client kinds web|android with fixed env destinations
+- [Phase 12]: Controlled-RED Spotify slice tests excluded from npm test until owning implementation plans
+- [Phase 12]: Precision gate uses accepted-match precision (>0.90), not overall accuracy inflated by rejections
+- [Phase 12]: Flutter RED uses explicit Args/factory hooks with per-slice sentinels until 12-06/07/09
+- [Phase 12]: Web Spotify strategy is pure DTO contracts + Node 24 test:spotify; no new test package
+- [Phase ?]: Public Spotify callback mounted separately; status never returns tokens — D-12-01/D-12-04 backend-owned PKCE with fixed client-kind destinations
+- [Phase ?]: Playlist list uses complete-sync upsert/prune with 7-day metadata TTL — Preserve prior rows on partial/provider failure; match-cache policy alignment
+- [Phase 12]: Web Spotify success lands on /playlists?spotify=connected; errors recover on /settings with allowlisted outcomes
+- [Phase 12]: Library fetches Harmonix/Spotify/Recent independently; Spotify failures never clear Harmonix content
+- [Phase 12]: Disconnect clears provider UI only after DELETE /api/spotify/connection acknowledgement
+- [Phase ?]: Development-only App Links on ngrok host; release association blocked until production domain + release cert
+- [Phase ?]: Android Spotify OAuth via Settings card + url_launcher; provider tokens never stored on device
+- [Phase 12]: Library Open Settings recovery only; Spotify cards open provider-aware in-app detail (12-07)
+- [Phase 12]: Restricted Spotify detail trusts user_spotify_playlists only when fresh; stale rows revalidate via full /me/playlists sync
+- [Phase 12]: Playlist detail Open in Spotify uses only API-provided HTTPS open.spotify.com URLs after client validation
+- [Phase 12]: Duration hard-reject only when title+artist identify the work; else weak_candidate
+- [Phase 12]: Export match→create→add inline with 202 + latest/by-id restore; dialog does not own job identity
+- [Phase 12]: Disconnect clears user export jobs and match evidence for that user's playlist songs
+- [Phase 12]: Flutter export job identity restored via authenticated latest/by-id; sheet state is not the store
+- [Phase 12]: No-AI boundary proven by injected spy, AI-host fetch rejection, and match/export source import scan
+- [Phase ?]: nyquist_compliant remains false until full npm test and repo lint are green; Spotify surface documented as RC substitute
+- [Phase ?]: Spotify ops runbook pins Development Mode ≠ Extended Quota public release and February 2026 endpoints
