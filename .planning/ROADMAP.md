@@ -43,33 +43,82 @@ Context: [phases/11-word-phonics-tts/11-CONTEXT.md](./phases/11-word-phonics-tts
 
 ---
 
-## Phase 12 — Spotify API Integration
+## Phase 12: Spotify API Integration
 
-**Status:** Planned  
+**Goal:** As a signed-in Harmonix learner, I want to connect my Spotify account from Settings and view and export playlists on web and Android, so that I can use my Spotify music inside Harmonix across both platforms.
+**Mode:** mvp
+**Status:** In Progress  
 **Milestone:** v1.5 — Spotify Integration  
 **Strategy:** Implement OAuth 2.0 PKCE flow, playlist management, and export functionality.
+**Plans:** 10/11 plans executed
+
+- [x] 12-01-PLAN.md
+- [x] 12-02-PLAN.md
+- [x] 12-03-PLAN.md
+- [x] 12-04-PLAN.md
+- [x] 12-05-PLAN.md
+- [x] 12-06-PLAN.md
+- [x] 12-07-PLAN.md
+- [x] 12-08-PLAN.md
+- [x] 12-09-PLAN.md
+- [x] 12-10-PLAN.md
+- [ ] 12-11-PLAN.md
 
 Context: [phases/12-spotify-api-integration/12-CONTEXT.md](./phases/12-spotify-api-integration/12-CONTEXT.md)
 
 | Plan | Name | Status |
 |------|------|--------|
-| 12-01 | Spotify Developer App Setup & Environment Configuration | Pending |
-| 12-02 | Backend OAuth Service & Token Storage | Pending |
-| 12-03 | Playlist Fetch & Display Endpoints | Pending |
-| 12-04 | Export Functionality (Match + Create Playlist) | Pending |
-| 12-05 | Web Frontend Integration (Settings + Library UI) | Pending |
-| 12-06 | Flutter Mobile Integration | Pending |
-| 12-07 | Testing, Documentation, and Release | Pending |
+| 12-01 | Blocking Spotify account, callback, secret, cache-policy, and quota facts | Complete |
+| 12-02 | Wave 0 backend ABI, adversarial contracts, OAuth state, and token crypto | Complete |
+| 12-03 | Wave 0 matching corpus, Flutter contracts, and dependency-free web tests | Complete |
+| 12-04 | Backend OAuth/status/list foundation and API user journey | Complete |
+| 12-05 | Web Settings OAuth → provider-separated Library consumer | Complete |
+| 12-06 | Android Settings OAuth → verified App Link → Library parity | Complete |
+| 12-07 | Web and Android in-app playlist detail with restricted-list handling | Complete |
+| 12-08 | Validation-first matching and web export match report | Complete |
+| 12-09 | Android export parity and cross-platform resilience/cleanup | Complete |
+| 12-10 | Automated release matrix and Spotify operations runbook | Complete |
+| 12-11 | Sandbox/device, UI/accessibility, policy/branding, and quota gates | Pending |
 
 **End state:** Users can connect Spotify accounts, view their Spotify playlists in Harmonix, and export Harmonix playlists to Spotify with intelligent song matching.
 
 **Key Features:**
+
 - OAuth 2.0 with PKCE for secure authentication
 - Encrypted token storage with auto-refresh
 - View user's Spotify playlists in Library
 - Export Harmonix playlists to Spotify (>90% match accuracy target)
 - Rate limiting and caching for API efficiency
 - Match report showing successful and unmatched tracks
+
+---
+
+## Phase 12.5 — Spotify Connect UX (one-click OAuth)
+
+**Goal:** As a Harmonix learner, I want to connect Spotify in one click from Library (popup OAuth when possible), so that linking feels as easy as other modern apps — without Developer Dashboard steps or a Settings-only detour.
+
+**Mode:** mvp  
+**Status:** Planned  
+**Milestone:** v1.5 — Spotify Integration (UX polish)  
+**Depends on:** Phase 12 backend OAuth (complete); operator Client ID on VPS (pending)
+
+Context: [phases/12.5-spotify-connect-ux/12.5-CONTEXT.md](./phases/12.5-spotify-connect-ux/12.5-CONTEXT.md)
+
+| Plan | Name | Status |
+|------|------|--------|
+| 12.5-01 | Web popup OAuth + callback `postMessage` (redirect fallback) | Pending |
+| 12.5-02 | Library inline **Connect Spotify** (shared auth hook) | Pending |
+| 12.5-03 | Optional onboarding connect prompt (web) | Pending |
+| 12.5-04 | Operator runbook + popup/Library tests | Pending |
+
+**End state:** Learners connect from Library or Settings via OAuth 2.0 popup (or redirect fallback); operators follow a documented one-time Dashboard + VPS checklist invisible to users.
+
+**Key UX changes:**
+
+- Popup window for Spotify login/consent; Harmonix tab stays open
+- **Connect Spotify** on Library empty/disconnected states — not only “Open Settings”
+- Settings card unchanged for disconnect / reconnect / status
+- No tokens or OAuth secrets exposed to the browser beyond validated auth start URL
 
 ---
 
