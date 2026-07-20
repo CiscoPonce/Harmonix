@@ -912,6 +912,29 @@ function createSpotifyClient(deps = {}) {
       deleteTokens.run(userId);
       deleteAllOAuth.run(userId);
       deletePlaylists.run(userId);
+      // D-12-05 / D-12-12: clear Spotify match evidence for this user's playlist songs
+      // and delete user-owned export jobs.
+      try {
+        const { clearSpotifyMatchEvidence } = require('./spotifyMatchService');
+        const songIds = db
+          .prepare(
+            `SELECT DISTINCT ps.song_id
+             FROM playlist_songs ps
+             INNER JOIN playlists p ON p.id = ps.playlist_id
+             WHERE p.user_id = ?`
+          )
+          .all(userId);
+        for (const row of songIds) {
+          clearSpotifyMatchEvidence(row.song_id);
+        }
+      } catch {
+        // Matcher may be absent in early foundation slices.
+      }
+      try {
+        db.prepare('DELETE FROM spotify_export_jobs WHERE user_id = ?').run(userId);
+      } catch {
+        // Export jobs table is created by the export plan.
+      }
     });
     txn();
     return { status: 'disconnected' };

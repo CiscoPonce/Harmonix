@@ -202,6 +202,35 @@ db.exec(`
  )
 `);
 
+// D-12-12: policy-bounded Spotify match evidence on song_cache (ttl=7d; market-keyed).
+{
+  const songCacheCols = db.prepare('PRAGMA table_info(song_cache)').all().map((c) => c.name);
+  const spotifyMatchCols = [
+    ['spotify_source_identity', 'TEXT'],
+    ['spotify_market', 'TEXT'],
+    ['spotify_uri', 'TEXT'],
+    ['spotify_track_id', 'TEXT'],
+    ['spotify_matched_title', 'TEXT'],
+    ['spotify_matched_artists', 'TEXT'],
+    ['spotify_matched_isrc', 'TEXT'],
+    ['spotify_matched_duration_ms', 'INTEGER'],
+    ['spotify_match_score', 'REAL'],
+    ['spotify_match_reason', 'TEXT'],
+    ['spotify_matched_at', 'TEXT'],
+    ['spotify_expires_at', 'TEXT'],
+    ['spotify_match_key_version', 'TEXT'],
+  ];
+  for (const [name, type] of spotifyMatchCols) {
+    if (!songCacheCols.includes(name)) {
+      db.exec(`ALTER TABLE song_cache ADD COLUMN ${name} ${type}`);
+    }
+  }
+}
+db.exec(
+  `CREATE INDEX IF NOT EXISTS idx_song_cache_spotify_identity_market
+   ON song_cache(spotify_source_identity, spotify_market)`
+);
+
 // Song-level lyrics snapshot taken at extraction time. Used by the alignment
 // verifier in /api/vocab to faithfully re-offset cached mappings against the
 // SAME line split the karaoke player renders (LRCLib historically returns

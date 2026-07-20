@@ -108,12 +108,35 @@ describe('spotify match corpus evaluation', () => {
     // Precision among accepts = correct accepts / (correct accepts + false positives)
     const precisionDenom = acceptedCorrect + falsePositives;
     const precision = precisionDenom === 0 ? 0 : acceptedCorrect / precisionDenom;
+    const rejectionCoverage = rejectionExpected === 0 ? 1 : rejectionCorrect / rejectionExpected;
+
+    // Deterministic metrics for the labeled corpus gate (D-12-13).
+    // eslint-disable-next-line no-console
+    console.log(
+      `[spotify-match-corpus] accepted=${acceptedCorrect}/${acceptedExpected} ` +
+        `precision=${precision.toFixed(3)} falsePositives=${falsePositives} ` +
+        `rejectionCoverage=${rejectionCoverage.toFixed(3)} (${rejectionCorrect}/${rejectionExpected})`
+    );
+
     expect(
       precision,
       `accepted-match precision ${precision} must be > 0.90 (falsePositives=${falsePositives})`
     ).to.be.above(0.9);
 
-    const rejectionCoverage = rejectionExpected === 0 ? 1 : rejectionCorrect / rejectionExpected;
     expect(rejectionCoverage, 'rejection coverage recorded separately').to.be.a('number');
+
+    // Every corpus case must return the labeled ID or rejection reason deterministically.
+    for (const c of corpus.cases) {
+      const result = matcher.selectMatch(c.source, c.candidates.filter(Boolean), {
+        market: c.market,
+      });
+      if (c.expected.outcome === 'accept') {
+        expect(result.outcome, c.id).to.equal('accept');
+        expect(result.spotify_id, c.id).to.equal(c.expected.spotify_id);
+      } else {
+        expect(result.outcome, c.id).to.equal('reject');
+        expect(result.reason, c.id).to.equal(c.expected.reason);
+      }
+    }
   });
 });

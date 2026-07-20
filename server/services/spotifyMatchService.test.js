@@ -1,4 +1,5 @@
 const { expect } = require('chai');
+const db = require('../db');
 
 const SENTINEL = 'NOT_IMPLEMENTED_SPOTIFY_MATCH';
 
@@ -23,7 +24,26 @@ describe('spotifyMatchService contracts', () => {
     ) {
       expect.fail(`${SENTINEL}: rankCandidates/selectMatch missing`);
     }
-    expect.fail(`${SENTINEL}: pure ranking helpers not green yet`);
+    const source = { title: 'Hello', artist: 'Adele', duration_ms: 295000 };
+    const candidates = [
+      {
+        id: 'spotify-hello',
+        uri: 'spotify:track:hello',
+        name: 'Hello',
+        artists: ['Adele'],
+        duration_ms: 295000,
+        is_local: false,
+        is_playable: true,
+        popularity: 1,
+      },
+    ];
+    const ranked = matcher.rankCandidates(source, candidates, { market: 'US' });
+    expect(ranked).to.be.an('array').with.lengthOf(1);
+    expect(ranked[0].id).to.equal('spotify-hello');
+    expect(ranked[0]).to.not.have.property('popularity');
+    const selected = matcher.selectMatch(source, candidates, { market: 'US' });
+    expect(selected.outcome).to.equal('accept');
+    expect(selected.spotify_id).to.equal('spotify-hello');
   });
 
   it('matches diacritics and featured-artist equivalents without AI', () => {
@@ -262,5 +282,116 @@ describe('spotifyMatchService contracts', () => {
     }));
     const ranked = matcher.rankCandidates(source, candidates, { market: 'US' });
     expect(ranked).to.have.lengthOf.at.most(10);
+  });
+
+  it('reuses same-market unexpired cache and revalidates across US→GB / GB→US markets (D-12-12)', async () => {
+    const matcher = loadMatcher();
+    if (!matcher || typeof matcher.resolveSpotifyMatch !== 'function') {
+      expect.fail(`${SENTINEL}: resolveSpotifyMatch cache path missing`);
+    }
+
+    const songId = 'match-cache-song-1';
+    db.prepare('DELETE FROM song_cache WHERE song_id = ?').run(songId);
+    db.prepare(
+      `INSERT INTO song_cache (song_id, track_json, cached_at) VALUES (?, '{}', CURRENT_TIMESTAMP)`
+    ).run(songId);
+
+    const source = {
+      song_id: songId,
+      identity: `harmonix:${songId}`,
+      title: 'Midnight City',
+      artist: 'M83',
+      duration_ms: 243000,
+    };
+
+    let searchCalls = 0;
+    let trackCalls = [];
+    const client = {
+      searchTracks: async () => {
+        searchCalls += 1;
+        return [
+          {
+            id: 'track-us',
+            uri: 'spotify:track:track-us',
+            name: 'Midnight City',
+            artists: [{ name: 'M83' }],
+            duration_ms: 243000,
+            is_local: false,
+            is_playable: true,
+            external_ids: {},
+          },
+        ];
+      },
+      spotifyRequest: async (_userId, path) => {
+        trackCalls.push(path);
+        if (String(path).includes('market=GB')) {
+          return {
+            id: 'track-gb-relink',
+            uri: 'spotify:track:track-gb-relink',
+            name: 'Midnight City',
+            artists: [{ name: 'M83' }],
+            duration_ms: 243000,
+            is_local: false,
+            is_playable: true,
+            linked_from: { id: 'track-us', uri: 'spotify:track:track-us' },
+            external_ids: {},
+          };
+        }
+        if (String(path).includes('market=US')) {
+          return {
+            id: 'track-us',
+            uri: 'spotify:track:track-us',
+            name: 'Midnight City',
+            artists: [{ name: 'M83' }],
+            duration_ms: 243000,
+            is_local: false,
+            is_playable: true,
+            external_ids: {},
+          };
+        }
+        throw new Error(`unexpected path ${path}`);
+      },
+    };
+
+    const first = await matcher.resolveSpotifyMatch('user-a', source, {
+      market: 'US',
+      spotifyClient: client,
+      now: () => new Date('2026-07-20T12:00:00.000Z'),
+    });
+    expect(first.outcome).to.equal('accept');
+    expect(first.spotify_uri).to.equal('spotify:track:track-us');
+    expect(searchCalls).to.equal(1);
+
+    const cached = await matcher.resolveSpotifyMatch('user-a', source, {
+      market: 'US',
+      spotifyClient: client,
+      now: () => new Date('2026-07-21T12:00:00.000Z'),
+    });
+    expect(cached.from_cache).to.equal(true);
+    expect(cached.spotify_uri).to.equal('spotify:track:track-us');
+    expect(searchCalls).to.equal(1);
+
+    const gb = await matcher.resolveSpotifyMatch('user-a', source, {
+      market: 'GB',
+      spotifyClient: client,
+      now: () => new Date('2026-07-21T12:00:00.000Z'),
+    });
+    expect(gb.outcome).to.equal('accept');
+    expect(gb.revalidated).to.equal(true);
+    expect(gb.spotify_uri).to.equal('spotify:track:track-gb-relink');
+    expect(trackCalls.some((p) => String(p).includes('market=GB'))).to.equal(true);
+    expect(searchCalls).to.equal(1);
+
+    const backUs = await matcher.resolveSpotifyMatch('user-a', source, {
+      market: 'US',
+      spotifyClient: client,
+      now: () => new Date('2026-07-21T13:00:00.000Z'),
+    });
+    expect(backUs.outcome).to.equal('accept');
+    expect(backUs.spotify_uri).to.equal('spotify:track:track-us');
+
+    matcher.clearSpotifyMatchEvidence(songId);
+    const cleared = matcher.readCachedEvidence(songId);
+    expect(cleared.spotify_uri).to.equal(null);
   });
 });
