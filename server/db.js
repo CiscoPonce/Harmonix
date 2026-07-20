@@ -453,6 +453,41 @@ db.exec(`
 db.exec(`CREATE INDEX IF NOT EXISTS idx_user_spotify_playlists_user ON user_spotify_playlists(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_user_spotify_playlists_expires ON user_spotify_playlists(expires_at)`);
 
+// D-12-13 / Phase 12-08: user-owned Harmonix→Spotify export jobs with durable reports
+db.exec(`
+  CREATE TABLE IF NOT EXISTS spotify_export_jobs (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    source_playlist_id TEXT NOT NULL,
+    idempotency_key TEXT,
+    stage TEXT NOT NULL,
+    current_count INTEGER NOT NULL DEFAULT 0,
+    total_count INTEGER NOT NULL DEFAULT 0,
+    matched_count INTEGER NOT NULL DEFAULT 0,
+    unmatched_count INTEGER NOT NULL DEFAULT 0,
+    exported_count INTEGER NOT NULL DEFAULT 0,
+    failed_count INTEGER NOT NULL DEFAULT 0,
+    destination_provider_id TEXT,
+    destination_url TEXT,
+    report_json TEXT,
+    safe_reason TEXT,
+    partial_state TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+db.exec(
+  `CREATE INDEX IF NOT EXISTS idx_spotify_export_jobs_user_source
+   ON spotify_export_jobs(user_id, source_playlist_id, created_at DESC)`
+);
+db.exec(
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_spotify_export_jobs_idempotency
+   ON spotify_export_jobs(user_id, source_playlist_id, idempotency_key)
+   WHERE idempotency_key IS NOT NULL AND deleted_at IS NULL`
+);
+
 const { ensureCanonicalKeys } = require('./services/canonicalKeyService');
 ensureCanonicalKeys(db);
 

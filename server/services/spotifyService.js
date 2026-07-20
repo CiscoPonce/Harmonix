@@ -986,6 +986,7 @@ module.exports = {
   startAuthorization: (...args) => defaultClient.startAuthorization(...args),
   completeAuthorization: (...args) => defaultClient.completeAuthorization(...args),
   disconnectUser: (...args) => defaultClient.disconnectUser(...args),
+  safeSpotifyExternalUrl,
   SEARCH_LIMIT,
   ADD_BATCH_MAX,
   PLAYLIST_DETAIL_DISPLAY_CAP,

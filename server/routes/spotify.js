@@ -1,5 +1,6 @@
 const express = require('express');
 const spotifyService = require('../services/spotifyService');
+const spotifyExportService = require('../services/spotifyExportService');
 const oauth = require('../services/spotifyOAuthService');
 const db = require('../db');
 
@@ -133,6 +134,61 @@ protectedRouter.get('/playlists/:id', async (req, res) => {
       return res.status(404).json({ error: 'Playlist not found' });
     }
     safeLog('GET /api/spotify/playlists/:id', err);
+    mapError(err, res);
+  }
+});
+
+protectedRouter.post('/exports', async (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const sourcePlaylistId = req.body && req.body.source_playlist_id;
+  if (!sourcePlaylistId || typeof sourcePlaylistId !== 'string') {
+    return res.status(400).json({ error: 'invalid_request', reason: 'source_playlist_id required' });
+  }
+  try {
+    const job = await spotifyExportService.startExport(userId, sourcePlaylistId, {
+      idempotency_key: req.body.idempotency_key,
+      market: req.body.market,
+    });
+    res.status(202).json(job);
+  } catch (err) {
+    if (err && err.code === 'not_found') {
+      return res.status(404).json({ error: 'Playlist not found' });
+    }
+    if (err && err.code === 'invalid_request') {
+      return res.status(400).json({ error: 'invalid_request', reason: err.message });
+    }
+    safeLog('POST /api/spotify/exports', err);
+    mapError(err, res);
+  }
+});
+
+protectedRouter.get('/exports/latest', (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const sourcePlaylistId = req.query && req.query.source_playlist_id;
+  if (!sourcePlaylistId || typeof sourcePlaylistId !== 'string') {
+    return res.status(400).json({ error: 'invalid_request', reason: 'source_playlist_id required' });
+  }
+  try {
+    const job = spotifyExportService.getLatestExportJob(userId, sourcePlaylistId);
+    if (!job) return res.status(404).json({ error: 'Export not found' });
+    res.json(job);
+  } catch (err) {
+    safeLog('GET /api/spotify/exports/latest', err);
+    mapError(err, res);
+  }
+});
+
+protectedRouter.get('/exports/:id', (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  try {
+    const job = spotifyExportService.getExportJob(userId, req.params.id);
+    if (!job) return res.status(404).json({ error: 'Export not found' });
+    res.json(job);
+  } catch (err) {
+    safeLog('GET /api/spotify/exports/:id', err);
     mapError(err, res);
   }
 });
