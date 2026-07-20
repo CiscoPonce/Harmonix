@@ -250,8 +250,64 @@ describe('spotify export route contracts', () => {
       const byIdCross = mockRes();
       await byIdH({ user: { id: 'export-user-b' }, params: { id: created.body.id } }, byIdCross);
       expect(byIdCross.statusCode).to.equal(404);
+
+      // Not-found for unknown job id (same status as cross-user — non-disclosing).
+      const missing = mockRes();
+      await byIdH({ user: { id: 'export-user-a' }, params: { id: 'missing-job' } }, missing);
+      expect(missing.statusCode).to.equal(404);
+      expect(missing.body.error).to.equal('Export not found');
+      expect(JSON.stringify(missing.body)).to.equal(JSON.stringify(byIdCross.body));
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it('disconnect removes export jobs so latest/by-id cannot restore stale reports', async () => {
+    const disconnect = findHandler(protectedRouter, 'delete', '/connection');
+    const latest = findHandler(protectedRouter, 'get', '/exports/latest');
+    const byId = findHandler(protectedRouter, 'get', '/exports/:id');
+    expect(disconnect && latest && byId).to.exist;
+
+    seedOwnedPlaylist('export-user-a', 'export-pl-disc');
+    seedTokens('export-user-a');
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO spotify_export_jobs (
+         id, user_id, source_playlist_id, stage, current_count, total_count,
+         matched_count, unmatched_count, exported_count, failed_count,
+         created_at, updated_at
+       ) VALUES (?, ?, ?, 'completed', 1, 1, 1, 0, 1, 0, ?, ?)`
+    ).run('job-disc', 'export-user-a', 'export-pl-disc', now, now);
+
+    const before = mockRes();
+    await latest(
+      {
+        user: { id: 'export-user-a' },
+        query: { source_playlist_id: 'export-pl-disc' },
+      },
+      before
+    );
+    expect(before.statusCode).to.equal(200);
+
+    const disc = mockRes();
+    await disconnect({ user: { id: 'export-user-a' } }, disc);
+    expect(disc.body).to.deep.equal({ status: 'disconnected' });
+
+    const afterLatest = mockRes();
+    await latest(
+      {
+        user: { id: 'export-user-a' },
+        query: { source_playlist_id: 'export-pl-disc' },
+      },
+      afterLatest
+    );
+    expect(afterLatest.statusCode).to.equal(404);
+
+    const afterById = mockRes();
+    await byId({ user: { id: 'export-user-a' }, params: { id: 'job-disc' } }, afterById);
+    expect(afterById.statusCode).to.equal(404);
+    expect(
+      db.prepare('SELECT * FROM spotify_export_jobs WHERE id = ?').get('job-disc')
+    ).to.equal(undefined);
   });
 });

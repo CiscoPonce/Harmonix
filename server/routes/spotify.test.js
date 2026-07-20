@@ -283,6 +283,54 @@ describe('spotify routes foundation contracts', () => {
       new Date(Date.now() + 86400000).toISOString()
     );
 
+    // Seed user-owned Harmonix playlist match evidence + export jobs for both users.
+    db.prepare('INSERT OR REPLACE INTO playlists (id, user_id, name) VALUES (?, ?, ?)').run(
+      'hx-pl-a',
+      'sp-route-a',
+      'A Mix'
+    );
+    db.prepare('INSERT OR REPLACE INTO playlists (id, user_id, name) VALUES (?, ?, ?)').run(
+      'hx-pl-b',
+      'sp-route-b',
+      'B Mix'
+    );
+    db.prepare('DELETE FROM song_cache WHERE song_id IN (?, ?)').run('song-a', 'song-b');
+    db.prepare(
+      `INSERT INTO song_cache (
+         song_id, track_json, cached_at, spotify_uri, spotify_track_id, spotify_market
+       ) VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?, ?)`
+    ).run('song-a', JSON.stringify({ title: 'A' }), 'spotify:track:a', 'a', 'US');
+    db.prepare(
+      `INSERT INTO song_cache (
+         song_id, track_json, cached_at, spotify_uri, spotify_track_id, spotify_market
+       ) VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?, ?)`
+    ).run('song-b', JSON.stringify({ title: 'B' }), 'spotify:track:b', 'b', 'US');
+    db.prepare(
+      'INSERT OR REPLACE INTO playlist_songs (id, playlist_id, song_id) VALUES (?, ?, ?)'
+    ).run('entry-a', 'hx-pl-a', 'song-a');
+    db.prepare(
+      'INSERT OR REPLACE INTO playlist_songs (id, playlist_id, song_id) VALUES (?, ?, ?)'
+    ).run('entry-b', 'hx-pl-b', 'song-b');
+    db.prepare('DELETE FROM spotify_export_jobs WHERE user_id IN (?, ?)').run(
+      'sp-route-a',
+      'sp-route-b'
+    );
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO spotify_export_jobs (
+         id, user_id, source_playlist_id, stage, current_count, total_count,
+         matched_count, unmatched_count, exported_count, failed_count,
+         created_at, updated_at
+       ) VALUES (?, ?, ?, 'completed', 1, 1, 1, 0, 1, 0, ?, ?)`
+    ).run('job-a', 'sp-route-a', 'hx-pl-a', now, now);
+    db.prepare(
+      `INSERT INTO spotify_export_jobs (
+         id, user_id, source_playlist_id, stage, current_count, total_count,
+         matched_count, unmatched_count, exported_count, failed_count,
+         created_at, updated_at
+       ) VALUES (?, ?, ?, 'completed', 1, 1, 1, 0, 1, 0, ?, ?)`
+    ).run('job-b', 'sp-route-b', 'hx-pl-b', now, now);
+
     const res1 = mockRes();
     await disconnect({ user: { id: 'sp-route-a' } }, res1);
     expect(res1.body).to.deep.equal({ status: 'disconnected' });
@@ -298,8 +346,17 @@ describe('spotify routes foundation contracts', () => {
     expect(
       db.prepare('SELECT * FROM user_spotify_playlists WHERE user_id = ?').get('sp-route-a')
     ).to.equal(undefined);
+    expect(
+      db.prepare('SELECT * FROM spotify_export_jobs WHERE user_id = ?').get('sp-route-a')
+    ).to.equal(undefined);
+    const clearedMatch = db.prepare('SELECT spotify_uri FROM song_cache WHERE song_id = ?').get(
+      'song-a'
+    );
+    expect(clearedMatch.spotify_uri).to.equal(null);
+    // Harmonix playlist rows themselves remain (local content).
+    expect(db.prepare('SELECT * FROM playlists WHERE id = ?').get('hx-pl-a')).to.exist;
 
-    // Cross-user residue must remain
+    // Cross-user residue must remain (same Spotify playlist provider ID).
     expect(db.prepare('SELECT * FROM user_spotify_tokens WHERE user_id = ?').get('sp-route-b')).to
       .exist;
     expect(
@@ -307,6 +364,13 @@ describe('spotify routes foundation contracts', () => {
         .prepare('SELECT * FROM user_spotify_playlists WHERE user_id = ? AND spotify_playlist_id = ?')
         .get('sp-route-b', 'pl-shared')
     ).to.exist;
+    expect(
+      db.prepare('SELECT * FROM spotify_export_jobs WHERE user_id = ?').get('sp-route-b')
+    ).to.exist;
+    const otherMatch = db.prepare('SELECT spotify_uri FROM song_cache WHERE song_id = ?').get(
+      'song-b'
+    );
+    expect(otherMatch.spotify_uri).to.equal('spotify:track:b');
   });
 
   it('rejects SQL metacharacter playlist/export IDs via parameterized ownership checks', async () => {

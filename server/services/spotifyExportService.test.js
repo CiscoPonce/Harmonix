@@ -335,12 +335,54 @@ describe('spotify export service contracts', () => {
     if (!svc || typeof svc.exportPlaylist !== 'function') {
       expect.fail(`${SENTINEL}: no-AI export boundary missing`);
     }
+    const aiPayloads = [];
+    const aiService = {
+      complete(payload) {
+        aiCalled = true;
+        aiPayloads.push({ method: 'complete', payload });
+        return Promise.resolve({});
+      },
+      chat(payload) {
+        aiCalled = true;
+        aiPayloads.push({ method: 'chat', payload });
+        return Promise.resolve({});
+      },
+      generate(payload) {
+        aiCalled = true;
+        aiPayloads.push({ method: 'generate', payload });
+        return Promise.resolve({});
+      },
+    };
+    const { createSpotifyClient } = require('./spotifyService');
+    const spotifyClient = createSpotifyClient({
+      fetch: (...args) => fetchImpl(...args),
+      now: () => new Date(clock.getTime()),
+      sleep: async () => {},
+    });
+    svc = createSpotifyExportService({
+      spotifyClient,
+      now: () => new Date(clock.getTime()),
+      aiProbe: { called: () => aiCalled },
+      aiService,
+    });
+
     seedTokens('export-svc-a');
     seedPlaylist('export-svc-a', 'pl-ai', [
       { song_id: 'ai1', track: { title: 'Hello', artist: 'Adele', duration_ms: 295000 } },
     ]);
+    const fetchHosts = [];
     fetchImpl = async (url, opts = {}) => {
       const u = String(url);
+      try {
+        fetchHosts.push(new URL(u).host);
+      } catch {
+        fetchHosts.push(u);
+      }
+      if (/openai\.com|api\.nvidia\.com|integrate\.api\.nvidia\.com|nim\.|anthropic\.com/i.test(u)) {
+        aiCalled = true;
+        aiPayloads.push({ method: 'fetch', payload: u });
+        throw new Error(`AI host contacted during Spotify export: ${u}`);
+      }
       if (u.includes('/search')) {
         return jsonResponse(200, {
           tracks: {
@@ -368,8 +410,18 @@ describe('spotify export service contracts', () => {
       if (u.includes('/items')) return jsonResponse(201, {});
       throw new Error(u);
     };
-    await svc.exportPlaylist('export-svc-a', 'pl-ai', { force: true });
+    const result = await svc.exportPlaylist('export-svc-a', 'pl-ai', { force: true });
+    expect(result.stage).to.equal('completed');
     expect(aiCalled).to.equal(false);
+    expect(aiPayloads).to.deep.equal([]);
+    expect(aiService.complete.length).to.equal(1); // arity check — never invoked
+    // Architecture boundary: Spotify modules must not require AI SDKs.
+    const exportSrc = require('fs').readFileSync(require.resolve('./spotifyExportService'), 'utf8');
+    const matchSrc = require('fs').readFileSync(require.resolve('./spotifyMatchService'), 'utf8');
+    for (const src of [exportSrc, matchSrc]) {
+      expect(src).to.not.match(/openai|nvidia|@anthropic|pocket-tts|daily-word/i);
+    }
+    expect(fetchHosts.every((h) => !/openai|nvidia|anthropic/i.test(h))).to.equal(true);
   });
 
   it('chunks add-item mutations at most 100 URIs', async () => {

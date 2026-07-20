@@ -318,3 +318,88 @@ describe('mapSpotifyListError', () => {
     assert.equal(mapSpotifyListError({ status: 503 }).kind, 'provider_error');
   });
 });
+
+describe('export reason-to-copy matrix (D-12-13 / D-12-15)', () => {
+  it('maps zero-match, no_create, partial, and progress stages to distinct stable copy', async () => {
+    const { exportProgressLabel, parseExportJobDto } = await import('./spotifyContracts.ts');
+
+    const zero = parseExportJobDto({
+      id: 'z',
+      source_playlist_id: 'pl',
+      stage: 'failed',
+      current_count: 2,
+      total_count: 2,
+      matched_count: 0,
+      unmatched_count: 2,
+      exported_count: 0,
+      failed_count: 0,
+      destination_provider_id: null,
+      destination_url: null,
+      safe_reason: 'zero_matches',
+      partial_state: 'no_create',
+      report: { destination_url: null, partial_state: 'no_create', rows: [] },
+    });
+    assert.match(exportProgressLabel(zero), /No tracks were confidently matched/);
+
+    const noCreate = parseExportJobDto({
+      id: 'n',
+      source_playlist_id: 'pl',
+      stage: 'failed',
+      current_count: 1,
+      total_count: 1,
+      matched_count: 1,
+      unmatched_count: 0,
+      exported_count: 0,
+      failed_count: 0,
+      destination_provider_id: null,
+      destination_url: null,
+      safe_reason: null,
+      partial_state: 'no_create',
+      report: { destination_url: null, partial_state: 'no_create', rows: [] },
+    });
+    assert.match(exportProgressLabel(noCreate), /No new playlist was created/);
+
+    const partial = parseExportJobDto({
+      id: 'p',
+      source_playlist_id: 'pl',
+      stage: 'partial',
+      current_count: 2,
+      total_count: 3,
+      matched_count: 2,
+      unmatched_count: 1,
+      exported_count: 1,
+      failed_count: 0,
+      destination_provider_id: 'd',
+      destination_url: 'https://open.spotify.com/playlist/d',
+      safe_reason: 'rate_limited',
+      partial_state: 'partially_added',
+      report: {
+        destination_url: 'https://open.spotify.com/playlist/d',
+        partial_state: 'partially_added',
+        rows: [],
+      },
+    });
+    assert.match(exportProgressLabel(partial), /Exported 1 of 2 matched tracks/);
+
+    const matching = parseExportJobDto({
+      id: 'm',
+      source_playlist_id: 'pl',
+      stage: 'matching',
+      current_count: 1,
+      total_count: 4,
+      matched_count: 0,
+      unmatched_count: 0,
+      exported_count: 0,
+      failed_count: 0,
+      destination_provider_id: null,
+      destination_url: null,
+      safe_reason: null,
+      partial_state: null,
+      report: null,
+    });
+    assert.match(exportProgressLabel(matching), /Matching tracks \(1 of 4\)/);
+
+    assert.notEqual(exportProgressLabel(zero), exportProgressLabel(noCreate));
+    assert.notEqual(exportProgressLabel(partial), exportProgressLabel(matching));
+  });
+});

@@ -79,6 +79,8 @@ function createSpotifyExportService(deps = {}) {
   const matcher = deps.matchService || matchService;
   const nowFn = deps.now || (() => new Date());
   const aiProbe = deps.aiProbe || null;
+  // Optional inject for negative integration tests. Export must never call it.
+  void deps.aiService;
 
   function assertNoAi(label) {
     if (aiProbe && typeof aiProbe.called === 'function' && aiProbe.called()) {

@@ -128,6 +128,27 @@ void main() {
     expect(find.text('Connect Spotify'), findsNothing);
   });
 
+  testWidgets('preserves Harmonix content under offline and expired Spotify read failures',
+      (tester) async {
+    for (final error in [
+      'You’re offline. Reconnect to sync Spotify playlists or export music.',
+      'Your Spotify connection expired. Reconnect to continue.',
+    ]) {
+      final list = buildSpotifyLibraryList(
+        SpotifyLibraryListArgs(
+          harmonixPlaylists: [collisionHarmonix],
+          spotifyPlaylists: const [],
+          recentDiscoveries: const [],
+          spotifyError: error,
+        ),
+      );
+      expect(list, isNotNull);
+      await tester.pumpWidget(_harness(list!));
+      expect(find.text('Harmonix List'), findsOneWidget);
+      expect(find.textContaining(error.substring(0, 20)), findsOneWidget);
+    }
+  });
+
   testWidgets('caps Spotify cards at 20 and exposes onward Open in Spotify link', (tester) async {
     final many = List.generate(
       25,
