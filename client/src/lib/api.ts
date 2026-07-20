@@ -1,8 +1,10 @@
 import {
+  parsePlaylistDetailDto,
   parseSpotifyAuthStartResponse,
   parseSpotifyPlaylistListResponse,
   parseSpotifyStatusResponse,
   type SpotifyConnectionDto,
+  type SpotifyPlaylistDetailDto,
   type SpotifyPlaylistListResponse,
 } from './spotifyContracts';
 
@@ -154,4 +156,25 @@ export async function fetchSpotifyPlaylists(): Promise<SpotifyPlaylistListRespon
   }
   const data = await parseJsonResponse<unknown>(res);
   return parseSpotifyPlaylistListResponse(data);
+}
+
+export async function fetchSpotifyPlaylistDetail(
+  providerId: string
+): Promise<SpotifyPlaylistDetailDto> {
+  const res = await apiFetch(`/spotify/playlists/${encodeURIComponent(providerId)}`);
+  if (!res.ok) {
+    const err = new Error('Could not load Spotify playlist.') as Error & {
+      status?: number;
+      body?: unknown;
+    };
+    err.status = res.status;
+    try {
+      err.body = await parseJsonResponse<unknown>(res);
+    } catch {
+      err.body = null;
+    }
+    throw err;
+  }
+  const data = await parseJsonResponse<unknown>(res);
+  return parsePlaylistDetailDto(data);
 }

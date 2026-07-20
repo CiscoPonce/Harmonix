@@ -62,14 +62,39 @@ export interface SpotifyPlaylistListItemDto {
   external_url: string | null;
 }
 
+export type SpotifyDetailState =
+  | 'normal'
+  | 'empty'
+  | 'restricted'
+  | 'offline'
+  | 'rate_limited'
+  | 'reconnect'
+  | 'error'
+  | 'removed';
+
+export type SpotifyTrackAvailability = 'available' | 'unavailable' | 'local' | 'null';
+
+export interface SpotifyPlaylistDetailItemDto {
+  position: number;
+  title: string;
+  artists: string;
+  duration_ms: number | null;
+  availability: SpotifyTrackAvailability;
+  reason: string | null;
+}
+
 export interface SpotifyPlaylistDetailDto {
   provider: SpotifyProvider;
   provider_id: string;
   stable_id: string;
   name: string;
   restricted: boolean;
+  detail_state: SpotifyDetailState;
   external_url: string | null;
+  artwork_url: string | null;
+  track_count: number | null;
   tracks: Array<{ name: string; artists: string }>;
+  items: SpotifyPlaylistDetailItemDto[];
 }
 
 export interface SpotifyExportReportRowDto {
@@ -375,6 +400,30 @@ export function mapSpotifyListError(input: {
   };
 }
 
+const DETAIL_STATES = new Set<string>([
+  'normal',
+  'empty',
+  'restricted',
+  'offline',
+  'rate_limited',
+  'reconnect',
+  'error',
+  'removed',
+]);
+
+const TRACK_AVAILABILITY = new Set<string>([
+  'available',
+  'unavailable',
+  'local',
+  'null',
+]);
+
+/** Cap Spotify detail rows at 20 per Spotify design guidelines. */
+export function capSpotifyDetailItems<T>(items: T[], max = 20): T[] {
+  if (!Array.isArray(items)) return [];
+  return items.slice(0, max);
+}
+
 export function parsePlaylistDetailDto(raw: unknown): SpotifyPlaylistDetailDto {
   if (!raw || typeof raw !== 'object') {
     throw new Error('invalid playlist detail DTO');
@@ -383,27 +432,166 @@ export function parsePlaylistDetailDto(raw: unknown): SpotifyPlaylistDetailDto {
   if (!isSpotifyProvider(obj.provider)) {
     throw new Error('missing/null provider on detail');
   }
+  if (obj.provider !== 'spotify') {
+    throw new Error('playlist detail provider must be spotify');
+  }
   const provider_id = asStringOrNull(obj.provider_id);
   if (!provider_id) {
     throw new Error('missing/null provider_id on detail');
   }
   const stable =
     asStringOrNull(obj.stable_id) ?? providerStableId(obj.provider, provider_id);
+  const restricted = Boolean(obj.restricted) || obj.detail_state === 'restricted';
+
+  const itemsRaw = Array.isArray(obj.items) ? obj.items : null;
+  let items: SpotifyPlaylistDetailItemDto[] = [];
+  if (itemsRaw) {
+    items = itemsRaw
+      .filter((t): t is Record<string, unknown> => !!t && typeof t === 'object')
+      .map((t, index) => {
+        const availabilityRaw = asStringOrNull(t.availability) ?? 'available';
+        const availability = TRACK_AVAILABILITY.has(availabilityRaw)
+          ? (availabilityRaw as SpotifyTrackAvailability)
+          : 'unavailable';
+        const title =
+          asStringOrNull(t.title) ?? asStringOrNull(t.name) ?? '';
+        const durationRaw = t.duration_ms;
+        return {
+          position:
+            typeof t.position === 'number' && Number.isFinite(t.position)
+              ? t.position
+              : index,
+          title,
+          artists: asStringOrNull(t.artists) ?? '',
+          duration_ms:
+            typeof durationRaw === 'number' && Number.isFinite(durationRaw)
+              ? durationRaw
+              : null,
+          availability,
+          reason: asStringOrNull(t.reason),
+        };
+      });
+  }
+
   const tracksRaw = Array.isArray(obj.tracks) ? obj.tracks : [];
-  const tracks = tracksRaw
+  const tracksFromApi = tracksRaw
     .filter((t): t is Record<string, unknown> => !!t && typeof t === 'object')
     .map((t) => ({
       name: asStringOrNull(t.name) ?? '',
       artists: asStringOrNull(t.artists) ?? '',
     }));
+
+  if (items.length === 0 && tracksFromApi.length > 0) {
+    items = tracksFromApi.map((t, index) => ({
+      position: index,
+      title: t.name,
+      artists: t.artists,
+      duration_ms: null,
+      availability: 'available' as const,
+      reason: null,
+    }));
+  }
+
+  items = capSpotifyDetailItems(items);
+  const tracks =
+    tracksFromApi.length > 0
+      ? capSpotifyDetailItems(tracksFromApi)
+      : items.map((i) => ({ name: i.title, artists: i.artists }));
+
+  const stateRaw = asStringOrNull(obj.detail_state);
+  let detail_state: SpotifyDetailState;
+  if (stateRaw && DETAIL_STATES.has(stateRaw)) {
+    detail_state = stateRaw as SpotifyDetailState;
+  } else if (restricted) {
+    detail_state = 'restricted';
+  } else if (items.length === 0) {
+    detail_state = 'empty';
+  } else {
+    detail_state = 'normal';
+  }
+
+  const trackCountRaw = obj.track_count;
   return {
     provider: obj.provider,
     provider_id,
     stable_id: parseProviderStableId(stable).stable_id,
     name: asStringOrNull(obj.name) ?? '',
-    restricted: Boolean(obj.restricted),
+    restricted,
+    detail_state,
     external_url: safeSpotifyUrl(asStringOrNull(obj.external_url)),
+    artwork_url: asStringOrNull(obj.artwork_url),
+    track_count:
+      typeof trackCountRaw === 'number' && Number.isFinite(trackCountRaw)
+        ? trackCountRaw
+        : null,
     tracks,
+    items,
+  };
+}
+
+export type SpotifyDetailErrorKind =
+  | 'offline'
+  | 'rate_limited'
+  | 'reconnect'
+  | 'removed'
+  | 'provider_error';
+
+export interface SpotifyDetailErrorView {
+  kind: SpotifyDetailErrorKind;
+  message: string;
+  retryAfterSeconds: number | null;
+}
+
+/** Map provider detail failures to safe, copywritten recovery states. */
+export function mapSpotifyDetailError(input: {
+  status?: number;
+  body?: unknown;
+  offline?: boolean;
+}): SpotifyDetailErrorView {
+  if (input.offline || input.status === 0) {
+    return {
+      kind: 'offline',
+      message: 'You’re offline. Reconnect to sync Spotify playlists or export music.',
+      retryAfterSeconds: null,
+    };
+  }
+  if (input.status === 404) {
+    return {
+      kind: 'removed',
+      message: 'This playlist is no longer available.',
+      retryAfterSeconds: null,
+    };
+  }
+  const body =
+    input.body && typeof input.body === 'object'
+      ? (input.body as Record<string, unknown>)
+      : {};
+  const error = typeof body.error === 'string' ? body.error : null;
+  const retryRaw = body.retry_after;
+  const retryAfterSeconds =
+    typeof retryRaw === 'number' && Number.isFinite(retryRaw) ? retryRaw : null;
+
+  if (input.status === 409 && (error === 'reconnect_required' || error === 'spotify_disconnected')) {
+    return {
+      kind: 'reconnect',
+      message: 'Your Spotify connection expired. Reconnect to continue.',
+      retryAfterSeconds: null,
+    };
+  }
+  if (input.status === 429 || error === 'spotify_rate_limited') {
+    const duration =
+      retryAfterSeconds != null ? `${retryAfterSeconds}` : 'a moment';
+    return {
+      kind: 'rate_limited',
+      message: `Spotify needs a moment. Try again in ${duration}.`,
+      retryAfterSeconds,
+    };
+  }
+  return {
+    kind: 'provider_error',
+    message:
+      'Spotify is unavailable right now. Your Harmonix library is still available. Try again.',
+    retryAfterSeconds: null,
   };
 }
 

@@ -106,7 +106,31 @@ describe('DTO parsers', () => {
       tracks: [{ name: 'T', artists: 'A' }],
     });
     assert.equal(detail.restricted, true);
+    assert.equal(detail.detail_state, 'restricted');
     assert.equal(detail.external_url, null);
+  });
+
+  it('caps detail items at 20 and preserves availability rows', () => {
+    const items = Array.from({ length: 25 }, (_, i) => ({
+      position: i,
+      title: `T${i}`,
+      artists: 'A',
+      duration_ms: 1000,
+      availability: i === 1 ? 'null' : 'available',
+      reason: i === 1 ? 'null_track' : null,
+    }));
+    const detail = parsePlaylistDetailDto({
+      provider: 'spotify',
+      provider_id: 'long',
+      name: 'Long',
+      detail_state: 'normal',
+      external_url: 'https://open.spotify.com/playlist/long',
+      items,
+    });
+    assert.equal(detail.items.length, 20);
+    assert.equal(detail.items[0].title, 'T0');
+    assert.equal(detail.items[1].availability, 'null');
+    assert.equal(detail.items[19].title, 'T19');
   });
 
   it('parses export reports with stable reason codes and partial states', () => {
