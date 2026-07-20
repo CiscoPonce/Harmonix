@@ -48,25 +48,18 @@ function DetailSkeleton() {
   );
 }
 
-export default function ProviderPlaylistDetailPage() {
+export default function SpotifyPlaylistDetailPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
-  const provider = typeof params.provider === 'string' ? params.provider : '';
   const rawId = typeof params.id === 'string' ? params.id : '';
   const providerId = rawId ? decodeURIComponent(rawId) : '';
 
   const [detail, setDetail] = useState<SpotifyPlaylistDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<SpotifyDetailErrorView | null>(null);
-  const [providerRejected, setProviderRejected] = useState(false);
 
   const load = useCallback(async () => {
-    if (provider !== 'spotify') {
-      setProviderRejected(true);
-      setLoading(false);
-      return;
-    }
     if (!providerId || providerId.includes(':')) {
       setError({
         kind: 'removed',
@@ -111,7 +104,7 @@ export default function ProviderPlaylistDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [provider, providerId]);
+  }, [providerId]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -126,7 +119,7 @@ export default function ProviderPlaylistDetailPage() {
     return () => window.clearTimeout(timer);
   }, [user, authLoading, router, load]);
 
-  if (authLoading || (loading && !detail && !error && !providerRejected)) {
+  if (authLoading || (loading && !detail && !error)) {
     return (
       <div className="flex min-h-screen flex-col bg-[#F4F7F5] text-[#121612] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
         <nav className="sticky top-0 z-10 flex items-center justify-between border-b border-[#D7E0DA] bg-[#F4F7F5]/90 px-6 py-4 backdrop-blur-xl dark:border-[#2A3530] dark:bg-[#0C1210]/90">
@@ -146,21 +139,6 @@ export default function ProviderPlaylistDetailPage() {
   }
 
   if (!user) return null;
-
-  if (providerRejected) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F4F7F5] px-4 text-[#121612] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
-        <div className="max-w-md space-y-4 text-center">
-          <p className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400">
-            Unknown playlist provider. Only Spotify playlists are supported on this route.
-          </p>
-          <Button variant="secondary" onClick={() => router.push('/playlists')}>
-            Back to Library
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   const openUrl = detail ? safeSpotifyUrl(detail.external_url) : null;
   const openLabel = detail
