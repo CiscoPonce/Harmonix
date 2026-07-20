@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_client.dart';
 import '../spotify/spotify_contracts.dart';
@@ -205,22 +204,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   void _openPlaylist(ProviderPlaylist playlist) {
-    if (playlist.provider == 'harmonix') {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => PlaylistDetailScreen(
-            playlistId: playlist.providerId,
-            playlistName: playlist.name,
-          ),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PlaylistDetailScreen(
+          provider: playlist.provider,
+          providerId: playlist.providerId,
+          playlistName: playlist.name,
         ),
-      );
-      return;
-    }
-    // Spotify in-app detail lands in 12-07; open safe external URL when present.
-    final url = safeSpotifyUrl(playlist.externalUrl);
-    if (url != null) {
-      launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    }
+      ),
+    );
   }
 
   void _openSettings() {

@@ -374,4 +374,13 @@ class ApiClient {
     final data = await request('GET', '/spotify/playlists');
     return parseSpotifyPlaylistListResponse(data);
   }
+
+  /// Provider-aware Spotify playlist detail. Never treats ID as a Harmonix playlist.
+  Future<SpotifyPlaylistDetail> spotifyPlaylistDetail(String providerId) async {
+    final data = await request(
+      'GET',
+      '/spotify/playlists/${Uri.encodeComponent(providerId)}',
+    );
+    return parsePlaylistDetailDto(data);
+  }
 }

@@ -212,3 +212,142 @@ List<T> capSpotifyPlaylistShelf<T>(List<T> items, {int max = 20}) {
   if (items.length <= max) return items;
   return items.sublist(0, max);
 }
+
+class SpotifyPlaylistDetailItem {
+  const SpotifyPlaylistDetailItem({
+    required this.position,
+    required this.title,
+    required this.artists,
+    this.durationMs,
+    this.availability = 'available',
+    this.reason,
+  });
+
+  final int position;
+  final String title;
+  final String artists;
+  final int? durationMs;
+  final String availability;
+  final String? reason;
+
+  bool get isAvailable => availability == 'available';
+}
+
+class SpotifyPlaylistDetail {
+  const SpotifyPlaylistDetail({
+    required this.provider,
+    required this.providerId,
+    required this.stableId,
+    required this.name,
+    required this.restricted,
+    required this.detailState,
+    this.externalUrl,
+    this.artworkUrl,
+    this.trackCount,
+    this.items = const [],
+  });
+
+  final String provider;
+  final String providerId;
+  final String stableId;
+  final String name;
+  final bool restricted;
+  final String detailState;
+  final String? externalUrl;
+  final String? artworkUrl;
+  final int? trackCount;
+  final List<SpotifyPlaylistDetailItem> items;
+}
+
+SpotifyPlaylistDetail parsePlaylistDetailDto(Map<String, dynamic> raw) {
+  final provider = raw['provider']?.toString() ?? '';
+  if (provider != 'spotify') {
+    throw ArgumentError('playlist detail provider must be spotify');
+  }
+  final providerId = raw['provider_id']?.toString();
+  if (providerId == null || providerId.isEmpty) {
+    throw ArgumentError('missing/null provider_id on detail');
+  }
+  final restricted =
+      raw['restricted'] == true || raw['detail_state']?.toString() == 'restricted';
+  final itemsRaw = raw['items'];
+  final tracksRaw = raw['tracks'];
+  final items = <SpotifyPlaylistDetailItem>[];
+
+  if (itemsRaw is List) {
+    for (var i = 0; i < itemsRaw.length; i++) {
+      final item = itemsRaw[i];
+      if (item is! Map) continue;
+      final map = Map<String, dynamic>.from(item);
+      final title =
+          map['title']?.toString() ?? map['name']?.toString() ?? '';
+      final durationRaw = map['duration_ms'];
+      items.add(
+        SpotifyPlaylistDetailItem(
+          position: (map['position'] as num?)?.toInt() ?? i,
+          title: title,
+          artists: map['artists']?.toString() ?? '',
+          durationMs: durationRaw is num ? durationRaw.toInt() : null,
+          availability: map['availability']?.toString() ?? 'available',
+          reason: map['reason']?.toString(),
+        ),
+      );
+    }
+  } else if (tracksRaw is List) {
+    for (var i = 0; i < tracksRaw.length; i++) {
+      final item = tracksRaw[i];
+      if (item is! Map) continue;
+      final map = Map<String, dynamic>.from(item);
+      items.add(
+        SpotifyPlaylistDetailItem(
+          position: i,
+          title: map['name']?.toString() ?? '',
+          artists: map['artists']?.toString() ?? '',
+        ),
+      );
+    }
+  }
+
+  final capped = capSpotifyPlaylistShelf(items);
+  final detailState = raw['detail_state']?.toString() ??
+      (restricted
+          ? 'restricted'
+          : capped.isEmpty
+              ? 'empty'
+              : 'normal');
+  final trackRaw = raw['track_count'];
+
+  return SpotifyPlaylistDetail(
+    provider: provider,
+    providerId: providerId,
+    stableId: raw['stable_id']?.toString() ?? 'spotify:$providerId',
+    name: raw['name']?.toString() ?? '',
+    restricted: restricted,
+    detailState: detailState,
+    externalUrl: safeSpotifyUrl(raw['external_url'] as String?),
+    artworkUrl: raw['artwork_url'] as String?,
+    trackCount: trackRaw is num ? trackRaw.toInt() : null,
+    items: capped,
+  );
+}
+
+SpotifyListErrorView mapSpotifyDetailError({
+  int? status,
+  Map<String, dynamic>? body,
+  bool offline = false,
+}) {
+  if (offline || status == 0) {
+    return const SpotifyListErrorView(
+      kind: 'offline',
+      message:
+          'You’re offline. Reconnect to sync Spotify playlists or export music.',
+    );
+  }
+  if (status == 404) {
+    return const SpotifyListErrorView(
+      kind: 'removed',
+      message: 'This playlist is no longer available.',
+    );
+  }
+  return mapSpotifyListError(status: status, body: body, offline: offline);
+}
