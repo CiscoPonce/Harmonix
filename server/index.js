@@ -14,6 +14,7 @@ const playlistsRouter = require('./routes/playlists');
 const badgesRouter = require('./routes/badges');
 const userRouter = require('./routes/user');
 const audioRouter = require('./routes/audio');
+const { protectedRouter: spotifyProtectedRouter, callbackRouter: spotifyCallbackRouter } = require('./routes/spotify');
 const deezer = require('./services/deezerService');
 require('dotenv').config();
 const ttsDaemon = require('./services/ttsDaemon');
@@ -300,6 +301,10 @@ app.use('/api/daily-word', authenticateToken, dailyWordRouter);
 app.use('/api/playlists', authenticateToken, playlistsRouter);
 app.use('/api/badges', authenticateToken, badgesRouter);
 app.use('/api/user', authenticateToken, userRouter);
+
+// Spotify — public callback must mount before authenticated /api/spotify routes
+app.use('/api/spotify/oauth', spotifyCallbackRouter);
+app.use('/api/spotify', authenticateToken, spotifyProtectedRouter);
 
 // --- Frontend Proxy ---
 const { createProxyMiddleware } = require('http-proxy-middleware');

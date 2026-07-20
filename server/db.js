@@ -202,6 +202,35 @@ db.exec(`
  )
 `);
 
+// D-12-12: policy-bounded Spotify match evidence on song_cache (ttl=7d; market-keyed).
+{
+  const songCacheCols = db.prepare('PRAGMA table_info(song_cache)').all().map((c) => c.name);
+  const spotifyMatchCols = [
+    ['spotify_source_identity', 'TEXT'],
+    ['spotify_market', 'TEXT'],
+    ['spotify_uri', 'TEXT'],
+    ['spotify_track_id', 'TEXT'],
+    ['spotify_matched_title', 'TEXT'],
+    ['spotify_matched_artists', 'TEXT'],
+    ['spotify_matched_isrc', 'TEXT'],
+    ['spotify_matched_duration_ms', 'INTEGER'],
+    ['spotify_match_score', 'REAL'],
+    ['spotify_match_reason', 'TEXT'],
+    ['spotify_matched_at', 'TEXT'],
+    ['spotify_expires_at', 'TEXT'],
+    ['spotify_match_key_version', 'TEXT'],
+  ];
+  for (const [name, type] of spotifyMatchCols) {
+    if (!songCacheCols.includes(name)) {
+      db.exec(`ALTER TABLE song_cache ADD COLUMN ${name} ${type}`);
+    }
+  }
+}
+db.exec(
+  `CREATE INDEX IF NOT EXISTS idx_song_cache_spotify_identity_market
+   ON song_cache(spotify_source_identity, spotify_market)`
+);
+
 // Song-level lyrics snapshot taken at extraction time. Used by the alignment
 // verifier in /api/vocab to faithfully re-offset cached mappings against the
 // SAME line split the karaoke player renders (LRCLib historically returns
@@ -360,6 +389,104 @@ if (badgeCount === 0) {
   });
   txn();
 }
+
+// Spotify OAuth one-time state transactions (D-12-01)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS spotify_oauth_transactions (
+    state_hash TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    pkce_verifier TEXT NOT NULL,
+    client_kind TEXT NOT NULL CHECK (client_kind IN ('web', 'android')),
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    consumed_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_spotify_oauth_user ON spotify_oauth_transactions(user_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_spotify_oauth_expires ON spotify_oauth_transactions(expires_at)`);
+
+// Encrypted Spotify tokens at rest (D-12-11)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_spotify_tokens (
+    user_id TEXT PRIMARY KEY,
+    access_ciphertext TEXT NOT NULL,
+    access_iv TEXT NOT NULL,
+    access_tag TEXT NOT NULL,
+    access_key_version TEXT NOT NULL,
+    refresh_ciphertext TEXT NOT NULL,
+    refresh_iv TEXT NOT NULL,
+    refresh_tag TEXT NOT NULL,
+    refresh_key_version TEXT NOT NULL,
+    scopes TEXT NOT NULL,
+    spotify_user_id TEXT,
+    spotify_display_name TEXT,
+    authorized_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_user_spotify_tokens_expires ON user_spotify_tokens(expires_at)`);
+
+// Normalized current-user Spotify playlist snapshot (D-12-08 / Phase 12-04)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_spotify_playlists (
+    user_id TEXT NOT NULL,
+    spotify_playlist_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    external_url TEXT,
+    artwork_url TEXT,
+    track_count INTEGER,
+    is_owner INTEGER NOT NULL DEFAULT 0,
+    is_collaborative INTEGER NOT NULL DEFAULT 0,
+    is_restricted INTEGER NOT NULL DEFAULT 0,
+    detail_access TEXT NOT NULL CHECK (detail_access IN ('full', 'restricted')),
+    snapshot_id TEXT,
+    synced_at TEXT NOT NULL,
+    revalidated_at TEXT,
+    expires_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, spotify_playlist_id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_user_spotify_playlists_user ON user_spotify_playlists(user_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_user_spotify_playlists_expires ON user_spotify_playlists(expires_at)`);
+
+// D-12-13 / Phase 12-08: user-owned Harmonix→Spotify export jobs with durable reports
+db.exec(`
+  CREATE TABLE IF NOT EXISTS spotify_export_jobs (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    source_playlist_id TEXT NOT NULL,
+    idempotency_key TEXT,
+    stage TEXT NOT NULL,
+    current_count INTEGER NOT NULL DEFAULT 0,
+    total_count INTEGER NOT NULL DEFAULT 0,
+    matched_count INTEGER NOT NULL DEFAULT 0,
+    unmatched_count INTEGER NOT NULL DEFAULT 0,
+    exported_count INTEGER NOT NULL DEFAULT 0,
+    failed_count INTEGER NOT NULL DEFAULT 0,
+    destination_provider_id TEXT,
+    destination_url TEXT,
+    report_json TEXT,
+    safe_reason TEXT,
+    partial_state TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+db.exec(
+  `CREATE INDEX IF NOT EXISTS idx_spotify_export_jobs_user_source
+   ON spotify_export_jobs(user_id, source_playlist_id, created_at DESC)`
+);
+db.exec(
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_spotify_export_jobs_idempotency
+   ON spotify_export_jobs(user_id, source_playlist_id, idempotency_key)
+   WHERE idempotency_key IS NOT NULL AND deleted_at IS NULL`
+);
 
 const { ensureCanonicalKeys } = require('./services/canonicalKeyService');
 ensureCanonicalKeys(db);

@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import '../spotify/spotify_contracts.dart';
+
 /// API base without trailing slash. Override at build time:
 /// `flutter run --dart-define=API_BASE=https://your-domain/api`
 const String kApiBase = String.fromEnvironment(
@@ -129,9 +131,12 @@ class ApiClient {
     final queue = data['queue'] is Map<String, dynamic>
         ? data['queue'] as Map<String, dynamic>
         : null;
-    final retry = (data['retryAfterSec'] as num?)?.toInt();
+    final retry = (data['retryAfterSec'] as num?)?.toInt() ??
+        (data['retry_after'] as num?)?.toInt();
     final rawError = data['error'] as String?;
-    final message = (rawError == 'daily_word_unavailable' || reason != null)
+    final message = (rawError == 'daily_word_unavailable' ||
+            (reason != null &&
+                (reason.contains('daily') || reason.contains('ai_'))))
         ? friendlyDailyWordError(
             reason: reason ?? rawError,
             retryAfterSec: retry,
@@ -341,5 +346,78 @@ class ApiClient {
   String playerUrlForSongId(String id) {
     final root = kApiBase.replaceAll(RegExp(r'/api/?$'), '');
     return '$root/player/$id';
+  }
+
+  /// Backend-owned Spotify status. Never includes provider tokens.
+  Future<SpotifyConnectionStatus> spotifyStatus() async {
+    final data = await request('GET', '/spotify/status');
+    return parseSpotifyStatusResponse(data);
+  }
+
+  /// Start OAuth for Android; returns validated accounts.spotify.com URL only.
+  Future<String> spotifyAuthStart({String client = 'android'}) async {
+    final data = await request(
+      'POST',
+      '/spotify/auth/start',
+      body: {'client': client},
+    );
+    return parseSpotifyAuthStartResponse(data);
+  }
+
+  /// Disconnect Spotify. Caller must wait for success before clearing UI.
+  Future<void> disconnectSpotify() async {
+    await request('DELETE', '/spotify/connection');
+  }
+
+  /// List Spotify playlists via authenticated sync. Provider credentials stay on server.
+  Future<SpotifyPlaylistListResult> spotifyPlaylists() async {
+    final data = await request('GET', '/spotify/playlists');
+    return parseSpotifyPlaylistListResponse(data);
+  }
+
+  /// Provider-aware Spotify playlist detail. Never treats ID as a Harmonix playlist.
+  Future<SpotifyPlaylistDetail> spotifyPlaylistDetail(String providerId) async {
+    final data = await request(
+      'GET',
+      '/spotify/playlists/${Uri.encodeComponent(providerId)}',
+    );
+    return parsePlaylistDetailDto(data);
+  }
+
+  /// Start a user-owned Spotify export job. Returns 202 job DTO (may already be terminal).
+  Future<SpotifyExportJob> startSpotifyExport(
+    String playlistId, {
+    String? idempotencyKey,
+  }) async {
+    final body = <String, dynamic>{
+      'source_playlist_id': playlistId,
+      'idempotency_key': ?idempotencyKey,
+    };
+    final data = await request('POST', '/spotify/exports', body: body);
+    return parseExportJobDto(data);
+  }
+
+  /// Latest export for a Harmonix source playlist, or null when none exists.
+  Future<SpotifyExportJob?> latestSpotifyExport(String playlistId) async {
+    try {
+      final data = await request(
+        'GET',
+        '/spotify/exports/latest',
+        query: {'source_playlist_id': playlistId},
+      );
+      return parseExportJobDto(data);
+    } on ApiException catch (e) {
+      if (e.status == 404) return null;
+      rethrow;
+    }
+  }
+
+  /// Poll a user-owned export job by ID (ownership enforced server-side).
+  Future<SpotifyExportJob> spotifyExportStatus(String jobId) async {
+    final data = await request(
+      'GET',
+      '/spotify/exports/${Uri.encodeComponent(jobId)}',
+    );
+    return parseExportJobDto(data);
   }
 }
