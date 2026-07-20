@@ -351,3 +351,210 @@ SpotifyListErrorView mapSpotifyDetailError({
   }
   return mapSpotifyListError(status: status, body: body, offline: offline);
 }
+
+// --- Export job contracts (D-12-13) ---
+
+typedef ExportJobStage = String;
+typedef ExportOutcome = String;
+typedef ExportPartialState = String;
+
+const kExportJobStages = {
+  'matching',
+  'creating',
+  'adding',
+  'completed',
+  'partial',
+  'failed',
+};
+
+const kExportOutcomes = {'matched', 'unmatched', 'cached', 'export_failed'};
+
+const kExportPartialStates = {
+  'none',
+  'no_create',
+  'created_empty',
+  'partially_added',
+};
+
+class SpotifyExportReportRow {
+  const SpotifyExportReportRow({
+    required this.sourceIdentity,
+    required this.outcome,
+    this.reason,
+    this.spotifyUri,
+  });
+
+  final String sourceIdentity;
+  final ExportOutcome outcome;
+  final String? reason;
+  final String? spotifyUri;
+}
+
+class SpotifyExportReport {
+  const SpotifyExportReport({
+    required this.rows,
+    this.destinationUrl,
+    this.partialState,
+  });
+
+  final List<SpotifyExportReportRow> rows;
+  final String? destinationUrl;
+  final ExportPartialState? partialState;
+}
+
+class SpotifyExportJob {
+  const SpotifyExportJob({
+    required this.id,
+    required this.sourcePlaylistId,
+    required this.stage,
+    required this.currentCount,
+    required this.totalCount,
+    required this.matchedCount,
+    required this.unmatchedCount,
+    required this.exportedCount,
+    required this.failedCount,
+    this.destinationProviderId,
+    this.destinationUrl,
+    this.safeReason,
+    this.partialState,
+    this.report,
+  });
+
+  final String id;
+  final String sourcePlaylistId;
+  final ExportJobStage stage;
+  final int currentCount;
+  final int totalCount;
+  final int matchedCount;
+  final int unmatchedCount;
+  final int exportedCount;
+  final int failedCount;
+  final String? destinationProviderId;
+  final String? destinationUrl;
+  final String? safeReason;
+  final ExportPartialState? partialState;
+  final SpotifyExportReport? report;
+
+  bool get isActive => isExportJobActive(stage);
+}
+
+bool isExportJobActive(ExportJobStage stage) =>
+    stage == 'matching' || stage == 'creating' || stage == 'adding';
+
+int _asInt(dynamic value, [int fallback = 0]) {
+  if (value is num && value.isFinite) return value.toInt();
+  return fallback;
+}
+
+SpotifyExportReport parseExportReportDto(Map<String, dynamic> raw) {
+  final rowsRaw = raw['rows'];
+  final rows = <SpotifyExportReportRow>[];
+  if (rowsRaw is List) {
+    for (final item in rowsRaw) {
+      if (item is! Map) continue;
+      final map = Map<String, dynamic>.from(item);
+      final outcome = map['outcome']?.toString();
+      if (outcome == null || !kExportOutcomes.contains(outcome)) {
+        throw ArgumentError('unstable export outcome: $outcome');
+      }
+      rows.add(
+        SpotifyExportReportRow(
+          sourceIdentity: map['source_identity']?.toString() ?? '',
+          outcome: outcome,
+          reason: map['reason']?.toString(),
+          spotifyUri: map['spotify_uri']?.toString(),
+        ),
+      );
+    }
+  }
+  final partial = raw['partial_state']?.toString();
+  return SpotifyExportReport(
+    destinationUrl: safeSpotifyUrl(raw['destination_url'] as String?),
+    partialState:
+        partial != null && kExportPartialStates.contains(partial) ? partial : null,
+    rows: rows,
+  );
+}
+
+SpotifyExportJob parseExportJobDto(Map<String, dynamic> raw) {
+  final id = raw['id']?.toString();
+  final sourceId = raw['source_playlist_id']?.toString();
+  final stage = raw['stage']?.toString();
+  if (id == null ||
+      id.isEmpty ||
+      sourceId == null ||
+      sourceId.isEmpty ||
+      stage == null ||
+      !kExportJobStages.contains(stage)) {
+    throw ArgumentError('invalid export job identity/stage');
+  }
+  final reportRaw = raw['report'];
+  final report = reportRaw is Map
+      ? parseExportReportDto(Map<String, dynamic>.from(reportRaw))
+      : null;
+  final partial = raw['partial_state']?.toString();
+  return SpotifyExportJob(
+    id: id,
+    sourcePlaylistId: sourceId,
+    stage: stage,
+    currentCount: _asInt(raw['current_count']),
+    totalCount: _asInt(raw['total_count']),
+    matchedCount: _asInt(raw['matched_count']),
+    unmatchedCount: _asInt(raw['unmatched_count']),
+    exportedCount: _asInt(raw['exported_count']),
+    failedCount: _asInt(raw['failed_count']),
+    destinationProviderId: raw['destination_provider_id']?.toString(),
+    destinationUrl: safeSpotifyUrl(raw['destination_url'] as String?),
+    safeReason: raw['safe_reason']?.toString(),
+    partialState: partial != null && kExportPartialStates.contains(partial)
+        ? partial
+        : report?.partialState,
+    report: report,
+  );
+}
+
+String exportProgressLabel(SpotifyExportJob job) {
+  switch (job.stage) {
+    case 'matching':
+      return 'Matching tracks (${job.currentCount} of ${job.totalCount})';
+    case 'creating':
+      return 'Creating private Spotify playlist…';
+    case 'adding':
+      return 'Adding matched tracks (${job.exportedCount} of ${job.matchedCount})';
+    case 'completed':
+      return 'Export complete';
+    case 'partial':
+      return 'Exported ${job.exportedCount} of ${job.matchedCount} matched tracks';
+    case 'failed':
+      if (job.safeReason == 'zero_matches') {
+        return 'No tracks were confidently matched. Review the unmatched tracks and try again later.';
+      }
+      if (job.partialState == 'no_create') {
+        return 'The export couldn’t be completed. No new playlist was created. Try again.';
+      }
+      return 'The export couldn’t be completed. Try again.';
+    default:
+      return 'Export in progress…';
+  }
+}
+
+String mapExportErrorMessage({
+  int? status,
+  String? reason,
+  bool offline = false,
+  int? retryAfterSec,
+}) {
+  if (offline) {
+    return 'You’re offline. Reconnect to sync Spotify playlists or export music.';
+  }
+  if (status == 409 ||
+      reason == 'reconnect_required' ||
+      reason == 'spotify_reconnect_required') {
+    return 'Reconnect Spotify in Settings to export.';
+  }
+  if (status == 429 || reason == 'spotify_rate_limited') {
+    final wait = retryAfterSec != null ? '$retryAfterSec' : 'a moment';
+    return 'Spotify rate limit reached. Try again in $wait seconds.';
+  }
+  return 'The export couldn’t be completed. No new playlist was created. Try again.';
+}

@@ -383,4 +383,41 @@ class ApiClient {
     );
     return parsePlaylistDetailDto(data);
   }
+
+  /// Start a user-owned Spotify export job. Returns 202 job DTO (may already be terminal).
+  Future<SpotifyExportJob> startSpotifyExport(
+    String playlistId, {
+    String? idempotencyKey,
+  }) async {
+    final body = <String, dynamic>{
+      'source_playlist_id': playlistId,
+      'idempotency_key': ?idempotencyKey,
+    };
+    final data = await request('POST', '/spotify/exports', body: body);
+    return parseExportJobDto(data);
+  }
+
+  /// Latest export for a Harmonix source playlist, or null when none exists.
+  Future<SpotifyExportJob?> latestSpotifyExport(String playlistId) async {
+    try {
+      final data = await request(
+        'GET',
+        '/spotify/exports/latest',
+        query: {'source_playlist_id': playlistId},
+      );
+      return parseExportJobDto(data);
+    } on ApiException catch (e) {
+      if (e.status == 404) return null;
+      rethrow;
+    }
+  }
+
+  /// Poll a user-owned export job by ID (ownership enforced server-side).
+  Future<SpotifyExportJob> spotifyExportStatus(String jobId) async {
+    final data = await request(
+      'GET',
+      '/spotify/exports/${Uri.encodeComponent(jobId)}',
+    );
+    return parseExportJobDto(data);
+  }
 }

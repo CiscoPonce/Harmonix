@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/api_client.dart';
 import '../spotify/spotify_contracts.dart';
 import '../theme/harmonix_theme.dart';
+import '../widgets/spotify_export_sheet.dart';
+import '../widgets/spotify_match_report.dart';
 
 class PlaylistDetailScreen extends StatefulWidget {
   const PlaylistDetailScreen({
@@ -17,6 +20,10 @@ class PlaylistDetailScreen extends StatefulWidget {
     this.playlistName = '',
     this.previewDetail,
     this.onOpenInSpotify,
+    this.previewConnectionState,
+    this.previewExportJob,
+    this.previewLocalPlaylist,
+    this.skipExportRestore = false,
   });
 
   /// `harmonix` or `spotify` — required so equal raw IDs never collide.
@@ -27,6 +34,18 @@ class PlaylistDetailScreen extends StatefulWidget {
   /// Test/preview injection — skips network fetch when non-null (Spotify only).
   final SpotifyPlaylistDetail? previewDetail;
   final VoidCallback? onOpenInSpotify;
+
+  /// Test injection for Harmonix export eligibility.
+  final String? previewConnectionState;
+
+  /// Test injection — seed a restored export job without network.
+  final SpotifyExportJob? previewExportJob;
+
+  /// Test injection — Harmonix playlist payload without network.
+  final Map<String, dynamic>? previewLocalPlaylist;
+
+  /// When true, skip latest/by-id network restore (tests use [previewExportJob]).
+  final bool skipExportRestore;
 
   @override
   State<PlaylistDetailScreen> createState() => _PlaylistDetailScreenState();
@@ -39,17 +58,48 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   String? _error;
   String? _errorKind;
 
+  String _connectionState = 'connect';
+  SpotifyExportJob? _exportJob;
+  bool _exportBusy = false;
+  String? _exportError;
+  Timer? _pollTimer;
+  bool _sheetOpen = false;
+
   bool get _isSpotify => widget.provider == 'spotify';
 
   @override
   void initState() {
     super.initState();
+    if (widget.previewConnectionState != null) {
+      _connectionState = widget.previewConnectionState!;
+    }
+    if (widget.previewExportJob != null) {
+      _exportJob = widget.previewExportJob;
+      if (_exportJob!.isActive) {
+        _exportBusy = true;
+      }
+    }
     if (widget.previewDetail != null) {
       _spotifyDetail = widget.previewDetail;
       _loading = false;
+    } else if (widget.previewLocalPlaylist != null) {
+      _localPlaylist = widget.previewLocalPlaylist;
+      _loading = false;
+      if (!widget.skipExportRestore && widget.previewExportJob == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!mounted) return;
+          await _restoreExportJob(context.read<ApiClient>());
+        });
+      }
     } else {
       _load();
     }
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -66,8 +116,23 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         setState(() => _spotifyDetail = detail);
       } else {
         final data = await api.getPlaylist(widget.providerId);
+        SpotifyConnectionStatus status =
+            const SpotifyConnectionStatus(state: 'connect');
+        try {
+          status = await api.spotifyStatus();
+        } catch (_) {
+          // Detail remains usable without connection status.
+        }
         if (!mounted) return;
-        setState(() => _localPlaylist = data);
+        setState(() {
+          _localPlaylist = data;
+          if (widget.previewConnectionState == null) {
+            _connectionState = status.state;
+          }
+        });
+        if (!widget.skipExportRestore) {
+          await _restoreExportJob(api);
+        }
       }
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -96,6 +161,87 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// Backend job identity is durable — restore via latest then by-id.
+  Future<void> _restoreExportJob(ApiClient api) async {
+    try {
+      final latest = await api.latestSpotifyExport(widget.providerId);
+      if (!mounted || latest == null) return;
+      final fresh = await api.spotifyExportStatus(latest.id);
+      if (!mounted) return;
+      setState(() {
+        _exportJob = fresh;
+        if (fresh.isActive) {
+          _exportBusy = true;
+        }
+      });
+      if (fresh.isActive) {
+        _startPolling(fresh.id);
+      }
+    } catch (_) {
+      // Non-blocking — detail remains usable without export restore.
+    }
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  void _startPolling(String jobId) {
+    _stopPolling();
+    var ticks = 0;
+    _pollTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) async {
+      ticks += 1;
+      if (ticks > 120) {
+        _stopPolling();
+        if (mounted) {
+          setState(() {
+            _exportBusy = false;
+            _exportError = 'Could not refresh export status. Try again.';
+          });
+        }
+        return;
+      }
+      if (!mounted) return;
+      try {
+        final api = context.read<ApiClient>();
+        final next = await api.spotifyExportStatus(jobId);
+        if (!mounted) return;
+        setState(() => _exportJob = next);
+        if (!next.isActive) {
+          _stopPolling();
+          setState(() {
+            _exportBusy = false;
+            _sheetOpen = false;
+          });
+          if (Navigator.of(context).canPop() && _sheetOpen) {
+            // Sheet host pops itself on confirm completion; ensure closed.
+          }
+        }
+      } on ApiException catch (e) {
+        _stopPolling();
+        if (!mounted) return;
+        setState(() {
+          _exportBusy = false;
+          _exportError = mapExportErrorMessage(
+            status: e.status,
+            reason: e.reason,
+            retryAfterSec: e.retryAfterSec,
+          );
+        });
+      } catch (e) {
+        final offline = e.toString().contains('SocketException') ||
+            e.toString().contains('Failed host lookup');
+        _stopPolling();
+        if (!mounted) return;
+        setState(() {
+          _exportBusy = false;
+          _exportError = mapExportErrorMessage(offline: offline);
+        });
+      }
+    });
   }
 
   Map<String, dynamic> _trackFromSong(Map<String, dynamic> song) {
@@ -129,6 +275,128 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     final m = totalSec ~/ 60;
     final s = totalSec % 60;
     return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  int get _songCount {
+    final songs = (_localPlaylist?['songs'] as List?) ?? const [];
+    return songs.length;
+  }
+
+  bool get _canShowExportChrome => !_isSpotify;
+
+  bool get _exportEligible {
+    if (_isSpotify) return false;
+    if (_songCount <= 0) return false;
+    if (_connectionState != 'connected') return false;
+    if (_exportBusy) return false;
+    return true;
+  }
+
+  Future<void> _openExportSheet() async {
+    if (!_exportEligible && !_exportBusy) {
+      if (_connectionState == 'reconnect' ||
+          _connectionState == 'provider_error') {
+        setState(() {
+          _exportError = 'Reconnect Spotify in Settings to export.';
+        });
+      } else if (_connectionState != 'connected') {
+        setState(() {
+          _exportError = 'Connect Spotify in Settings to export.';
+        });
+      }
+      return;
+    }
+    setState(() {
+      _exportError = null;
+      _sheetOpen = true;
+    });
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setLocal) {
+            return SpotifyExportSheet(
+              playlistName: widget.playlistName.isNotEmpty
+                  ? widget.playlistName
+                  : (_localPlaylist?['name']?.toString() ?? 'Playlist'),
+              songCount: _songCount,
+              job: _exportJob != null && _exportJob!.isActive
+                  ? _exportJob
+                  : null,
+              busy: _exportBusy,
+              errorMessage: _exportError,
+              onCancel: () {
+                if (_exportBusy) return;
+                Navigator.of(ctx).pop();
+              },
+              onConfirm: () async {
+                await _startExport(onProgress: () {
+                  if (ctx.mounted) setLocal(() {});
+                  if (mounted) setState(() {});
+                });
+                if (ctx.mounted &&
+                    (_exportJob == null || !_exportJob!.isActive)) {
+                  Navigator.of(ctx).pop();
+                }
+              },
+            );
+          },
+        );
+      },
+    );
+
+    if (mounted) {
+      setState(() => _sheetOpen = false);
+    }
+  }
+
+  Future<void> _startExport({VoidCallback? onProgress}) async {
+    if (_exportBusy) return;
+    setState(() {
+      _exportBusy = true;
+      _exportError = null;
+    });
+    onProgress?.call();
+    try {
+      final api = context.read<ApiClient>();
+      final started = await api.startSpotifyExport(
+        widget.providerId,
+        idempotencyKey:
+            'android-${widget.providerId}-${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (!mounted) return;
+      setState(() => _exportJob = started);
+      onProgress?.call();
+      if (started.isActive) {
+        _startPolling(started.id);
+      } else {
+        setState(() => _exportBusy = false);
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _exportBusy = false;
+        _exportError = mapExportErrorMessage(
+          status: e.status,
+          reason: e.reason,
+          retryAfterSec: e.retryAfterSec,
+        );
+      });
+      onProgress?.call();
+      rethrow;
+    } catch (e) {
+      final offline = e.toString().contains('SocketException') ||
+          e.toString().contains('Failed host lookup');
+      if (!mounted) return;
+      setState(() {
+        _exportBusy = false;
+        _exportError = mapExportErrorMessage(offline: offline);
+      });
+      onProgress?.call();
+      rethrow;
+    }
   }
 
   @override
@@ -405,6 +673,100 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     );
   }
 
+  Widget _buildExportChrome(HarmonixColors colors) {
+    if (!_canShowExportChrome) return const SizedBox.shrink();
+
+    final needsReconnect =
+        _connectionState == 'reconnect' || _connectionState == 'provider_error';
+    final connected = _connectionState == 'connected';
+    final empty = _songCount == 0;
+
+    Widget action;
+    if (empty) {
+      action = Text(
+        'Add songs before exporting to Spotify.',
+        style: TextStyle(color: colors.textMuted, fontSize: 13),
+      );
+    } else if (needsReconnect) {
+      action = FilledButton(
+        onPressed: () => Navigator.of(context).pop(),
+        style: FilledButton.styleFrom(
+          backgroundColor: HarmonixColors.brand,
+          minimumSize: const Size(44, 44),
+        ),
+        child: const Text('Reconnect Spotify'),
+      );
+    } else if (!connected) {
+      action = OutlinedButton(
+        onPressed: () => Navigator.of(context).pop(),
+        style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
+        child: const Text('Connect Spotify'),
+      );
+    } else {
+      action = FilledButton(
+        onPressed: _exportEligible ? _openExportSheet : null,
+        style: FilledButton.styleFrom(
+          backgroundColor: HarmonixColors.brand,
+          minimumSize: const Size(44, 44),
+        ),
+        child: const Text('Export to Spotify'),
+      );
+    }
+
+    final showReport =
+        _exportJob != null && !_exportJob!.isActive;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(alignment: Alignment.centerLeft, child: action),
+        if (_exportError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _exportError!,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.error,
+              fontSize: 13,
+            ),
+          ),
+        ],
+        if (_exportBusy && _exportJob != null && _exportJob!.isActive) ...[
+          const SizedBox(height: 12),
+          Text(
+            exportProgressLabel(_exportJob!),
+            style: const TextStyle(
+              color: HarmonixColors.brand,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 6),
+          LinearProgressIndicator(
+            value: _exportJob!.totalCount <= 0
+                ? null
+                : ((_exportJob!.stage == 'adding'
+                            ? _exportJob!.exportedCount
+                            : _exportJob!.currentCount) /
+                        _exportJob!.totalCount)
+                    .clamp(0.0, 1.0),
+            color: HarmonixColors.brand,
+            backgroundColor: colors.border,
+            minHeight: 8,
+          ),
+        ],
+        if (showReport) ...[
+          const SizedBox(height: 16),
+          SpotifyMatchReport(
+            job: _exportJob!,
+            onFinish: () => setState(() => _exportJob = null),
+            onOpenInSpotify: widget.onOpenInSpotify,
+          ),
+        ],
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
   Widget _buildHarmonixBody(BuildContext context, HarmonixColors colors) {
     final songs = (_localPlaylist?['songs'] as List?) ?? const [];
 
@@ -419,6 +781,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 12),
+          _buildExportChrome(colors),
           if (songs.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 40),
