@@ -16,6 +16,8 @@ const ADD_BATCH_MAX = 100;
 const PLAYLIST_PAGE_LIMIT = 50;
 const MAX_PLAYLIST_PAGES = 40;
 const PLAYLIST_METADATA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const PLAYLIST_ITEMS_PAGE_LIMIT = 50;
+const PLAYLIST_DETAIL_DISPLAY_CAP = 20;
 
 const DEFAULT_SCOPES = [
   'playlist-read-private',
@@ -121,10 +123,20 @@ const selectPlaylists = db.prepare(`
   ORDER BY name COLLATE NOCASE ASC
 `);
 
+const selectPlaylistByUserAndId = db.prepare(`
+  SELECT * FROM user_spotify_playlists
+  WHERE user_id = ? AND spotify_playlist_id = ?
+`);
+
 const deleteMissingPlaylists = db.prepare(`
   DELETE FROM user_spotify_playlists
   WHERE user_id = ?
     AND spotify_playlist_id NOT IN (SELECT value FROM json_each(?))
+`);
+
+const deletePlaylistByUserAndId = db.prepare(`
+  DELETE FROM user_spotify_playlists
+  WHERE user_id = ? AND spotify_playlist_id = ?
 `);
 
 function providerError(code, message, extra = {}) {
@@ -170,8 +182,109 @@ function safeSpotifyExternalUrl(url) {
   }
 }
 
+function validateSpotifyPlaylistId(id) {
+  if (typeof id !== 'string') return null;
+  const trimmed = id.trim();
+  if (!trimmed || trimmed.length > 128) return null;
+  if (trimmed.includes(':')) return null;
+  if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) return null;
+  return trimmed;
+}
+
 function stablePlaylistId(providerId) {
   return `spotify:${providerId}`;
+}
+
+function formatArtists(artists) {
+  if (!Array.isArray(artists)) return '';
+  return artists
+    .map((a) => (a && typeof a.name === 'string' ? a.name : ''))
+    .filter(Boolean)
+    .join(', ');
+}
+
+function normalizePlaylistTrackItem(entry, position) {
+  const track = entry && typeof entry === 'object' ? entry.track : null;
+  if (track == null) {
+    return {
+      position,
+      title: '',
+      name: '',
+      artists: '',
+      duration_ms: null,
+      availability: 'null',
+      reason: 'null_track',
+    };
+  }
+  const title = typeof track.name === 'string' ? track.name : '';
+  const artists = formatArtists(track.artists);
+  const duration =
+    typeof track.duration_ms === 'number' && Number.isFinite(track.duration_ms)
+      ? track.duration_ms
+      : null;
+
+  if (track.is_local) {
+    return {
+      position,
+      title,
+      name: title,
+      artists,
+      duration_ms: duration,
+      availability: 'local',
+      reason: 'local_track',
+    };
+  }
+
+  const restrictedReason =
+    track.restrictions && typeof track.restrictions.reason === 'string'
+      ? track.restrictions.reason
+      : null;
+  if (track.is_playable === false || restrictedReason) {
+    return {
+      position,
+      title,
+      name: title,
+      artists,
+      duration_ms: duration,
+      availability: 'unavailable',
+      reason: restrictedReason || 'unavailable',
+    };
+  }
+
+  return {
+    position,
+    title,
+    name: title,
+    artists,
+    duration_ms: duration,
+    availability: 'available',
+    reason: null,
+  };
+}
+
+function detailDtoFromNormalized(meta, { detailState, items }) {
+  const capped = Array.isArray(items) ? items.slice(0, PLAYLIST_DETAIL_DISPLAY_CAP) : [];
+  const restricted = detailState === 'restricted';
+  return {
+    provider: 'spotify',
+    provider_id: meta.provider_id,
+    stable_id: meta.stable_id || stablePlaylistId(meta.provider_id),
+    name: meta.name || '',
+    artwork_url: meta.artwork_url ?? null,
+    track_count: meta.track_count ?? null,
+    is_owner: Boolean(meta.is_owner),
+    is_collaborative: Boolean(meta.is_collaborative),
+    is_restricted: restricted || Boolean(meta.is_restricted),
+    detail_access: restricted ? 'restricted' : meta.detail_access || 'full',
+    restricted,
+    detail_state: detailState,
+    external_url: safeSpotifyExternalUrl(meta.external_url),
+    items: capped,
+    tracks: capped.map((item) => ({
+      name: item.title || item.name || '',
+      artists: item.artists || '',
+    })),
+  };
 }
 
 function parseRetryAfterSeconds(header) {
@@ -576,6 +689,135 @@ function createSpotifyClient(deps = {}) {
     return selectPlaylists.all(userId).map(playlistRowToDto);
   }
 
+  async function requestPlaylistPath(userId, path) {
+    try {
+      const data = await spotifyRequest(userId, path);
+      return { ok: true, status: 200, data };
+    } catch (err) {
+      if (err && err.code === 'provider_error' && (err.status === 403 || err.status === 404)) {
+        return { ok: false, status: err.status, data: null };
+      }
+      throw err;
+    }
+  }
+
+  async function loadUserScopedPlaylistMetadata(userId, playlistId) {
+    let row = selectPlaylistByUserAndId.get(userId, playlistId);
+    if (!row) {
+      throw providerError('not_found', 'Playlist not found');
+    }
+
+    const now = nowFn();
+    if (new Date(row.expires_at).getTime() <= now.getTime()) {
+      // Stale — revalidate via complete /me/playlists sync; never serve stale fields.
+      await syncUserPlaylists(userId);
+      row = selectPlaylistByUserAndId.get(userId, playlistId);
+      if (!row) {
+        throw providerError('not_found', 'Playlist not found');
+      }
+    }
+
+    return {
+      provider: 'spotify',
+      provider_id: row.spotify_playlist_id,
+      stable_id: stablePlaylistId(row.spotify_playlist_id),
+      name: row.name,
+      external_url: row.external_url,
+      artwork_url: row.artwork_url,
+      track_count: row.track_count,
+      is_owner: Boolean(row.is_owner),
+      is_collaborative: Boolean(row.is_collaborative),
+      is_restricted: Boolean(row.is_restricted),
+      detail_access: row.detail_access,
+      snapshot_id: row.snapshot_id,
+    };
+  }
+
+  async function getPlaylistItems(userId, playlistId) {
+    const id = validateSpotifyPlaylistId(playlistId);
+    if (!id) {
+      throw providerError('invalid_request', 'Invalid Spotify playlist id');
+    }
+    const result = await requestPlaylistPath(
+      userId,
+      `/playlists/${encodeURIComponent(id)}/items?limit=${PLAYLIST_ITEMS_PAGE_LIMIT}&offset=0`
+    );
+    if (!result.ok) {
+      return result;
+    }
+    const rawItems = Array.isArray(result.data?.items) ? result.data.items : [];
+    const items = rawItems.map((entry, index) => normalizePlaylistTrackItem(entry, index));
+    return { ok: true, status: 200, items };
+  }
+
+  async function getPlaylistDetail(userId, playlistId) {
+    const id = validateSpotifyPlaylistId(playlistId);
+    if (!id) {
+      throw providerError('invalid_request', 'Invalid Spotify playlist id');
+    }
+
+    const tokenRow = selectTokens.get(userId);
+    if (!tokenRow) {
+      throw providerError('spotify_disconnected', 'Spotify is not connected');
+    }
+    const status = rowToStatus(tokenRow, nowFn());
+    if (status.status === 'reconnect_required') {
+      throw providerError('reconnect_required', 'Spotify authorization expired', {
+        reason: status.reason,
+      });
+    }
+
+    const spotifyUserId = tokenRow.spotify_user_id || null;
+    const metaResult = await requestPlaylistPath(
+      userId,
+      `/playlists/${encodeURIComponent(id)}`
+    );
+
+    if (metaResult.status === 404) {
+      // Remove obsolete same-user cache row when Spotify reports removed.
+      deletePlaylistByUserAndId.run(userId, id);
+      throw providerError('not_found', 'Playlist not found');
+    }
+
+    let meta = null;
+    if (metaResult.ok) {
+      meta = normalizePlaylistItem(metaResult.data, spotifyUserId);
+      if (!meta) {
+        throw providerError('not_found', 'Playlist not found');
+      }
+    } else if (metaResult.status === 403) {
+      // Followed/restricted playlists may deny playlist GET; use user-scoped cache only.
+      meta = await loadUserScopedPlaylistMetadata(userId, id);
+      return detailDtoFromNormalized(meta, { detailState: 'restricted', items: [] });
+    } else {
+      throw providerError('provider_error', 'Spotify playlist metadata unavailable');
+    }
+
+    const itemsResult = await getPlaylistItems(userId, id);
+    if (!itemsResult.ok && itemsResult.status === 403) {
+      // Prefer live header metadata; ensure membership exists for restricted disclosure.
+      const scoped = selectPlaylistByUserAndId.get(userId, id);
+      if (!scoped && meta.detail_access === 'restricted') {
+        // Live metadata without membership record — still OK when GET /playlists/{id} succeeded.
+        // Restricted item detail requires either live meta or user-scoped row; live meta is enough.
+      }
+      return detailDtoFromNormalized(meta, { detailState: 'restricted', items: [] });
+    }
+    if (!itemsResult.ok && itemsResult.status === 404) {
+      deletePlaylistByUserAndId.run(userId, id);
+      throw providerError('not_found', 'Playlist not found');
+    }
+    if (!itemsResult.ok) {
+      throw providerError('provider_error', 'Spotify playlist items unavailable');
+    }
+
+    const detailState = itemsResult.items.length === 0 ? 'empty' : 'normal';
+    return detailDtoFromNormalized(meta, {
+      detailState,
+      items: itemsResult.items,
+    });
+  }
+
   async function startAuthorization(userId, clientKind) {
     const clientId = requireClientId();
     const redirectUri = requireRedirectUri();
@@ -685,14 +927,19 @@ function createSpotifyClient(deps = {}) {
     listCurrentUserPlaylists,
     syncUserPlaylists,
     listStoredPlaylists,
+    getPlaylistItems,
+    getPlaylistDetail,
     startAuthorization,
     completeAuthorization,
     disconnectUser,
     persistTokenRow,
     normalizePlaylistItem,
+    normalizePlaylistTrackItem,
     safeSpotifyExternalUrl,
+    validateSpotifyPlaylistId,
     SEARCH_LIMIT,
     ADD_BATCH_MAX,
+    PLAYLIST_DETAIL_DISPLAY_CAP,
     PRE_EXPIRY_MS,
     SIX_MONTHS_MS,
   };
@@ -711,9 +958,12 @@ module.exports = {
   listCurrentUserPlaylists: (...args) => defaultClient.listCurrentUserPlaylists(...args),
   syncUserPlaylists: (...args) => defaultClient.syncUserPlaylists(...args),
   listStoredPlaylists: (...args) => defaultClient.listStoredPlaylists(...args),
+  getPlaylistItems: (...args) => defaultClient.getPlaylistItems(...args),
+  getPlaylistDetail: (...args) => defaultClient.getPlaylistDetail(...args),
   startAuthorization: (...args) => defaultClient.startAuthorization(...args),
   completeAuthorization: (...args) => defaultClient.completeAuthorization(...args),
   disconnectUser: (...args) => defaultClient.disconnectUser(...args),
   SEARCH_LIMIT,
   ADD_BATCH_MAX,
+  PLAYLIST_DETAIL_DISPLAY_CAP,
 };

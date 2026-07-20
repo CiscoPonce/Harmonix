@@ -115,27 +115,26 @@ protectedRouter.get('/playlists', async (req, res) => {
   }
 });
 
-protectedRouter.get('/playlists/:id', (req, res) => {
+protectedRouter.get('/playlists/:id', async (req, res) => {
   const userId = requireUser(req, res);
   if (!userId) return;
   const id = req.params.id;
-  // Parameterized ownership check — rejects SQL metacharacter injection via bind params.
-  const ownedLocal = db
-    .prepare('SELECT id FROM playlists WHERE id = ? AND user_id = ?')
-    .get(id, userId);
-  if (ownedLocal) {
+  // Namespace guard: Harmonix local playlist IDs must never be treated as Spotify IDs.
+  const localHit = db.prepare('SELECT id FROM playlists WHERE id = ?').get(id);
+  if (localHit) {
     return res.status(404).json({ error: 'Playlist not found' });
   }
-  const spotifyRow = db
-    .prepare(
-      'SELECT spotify_playlist_id FROM user_spotify_playlists WHERE user_id = ? AND spotify_playlist_id = ?'
-    )
-    .get(userId, id);
-  if (!spotifyRow) {
-    return res.status(404).json({ error: 'Playlist not found' });
+  try {
+    const detail = await spotifyService.getPlaylistDetail(userId, id);
+    res.json(detail);
+  } catch (err) {
+    if (err && (err.code === 'not_found' || err.code === 'invalid_request')) {
+      // Non-disclosing — invalid IDs and missing/cross-user rows look the same.
+      return res.status(404).json({ error: 'Playlist not found' });
+    }
+    safeLog('GET /api/spotify/playlists/:id', err);
+    mapError(err, res);
   }
-  // Detail payload is owned by plan 12-07; ownership boundary returns non-disclosing 404 above.
-  return res.status(404).json({ error: 'Playlist not found' });
 });
 
 callbackRouter.get('/callback', async (req, res) => {
