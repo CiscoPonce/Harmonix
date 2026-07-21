@@ -482,21 +482,33 @@ function createSpotifyClient(deps = {}) {
 
   const refreshLocks = new Map();
   const admissionCounts = new Map();
+  /** FIFO waiters so Hear-it / token / search serialize instead of 429. */
+  const admissionWaiters = new Map();
+
+  function wakeAdmissionWaiter(userId) {
+    const q = admissionWaiters.get(userId);
+    if (!q || q.length === 0) return;
+    const next = q.shift();
+    if (q.length === 0) admissionWaiters.delete(userId);
+    next();
+  }
 
   async function withAdmission(userId, fn) {
-    const active = admissionCounts.get(userId) || 0;
-    if (active >= MAX_CONCURRENT_PER_USER) {
-      throw providerError('spotify_rate_limited', 'Per-user Spotify admission limit reached', {
-        retryable: true,
+    while ((admissionCounts.get(userId) || 0) >= MAX_CONCURRENT_PER_USER) {
+      await new Promise((resolve) => {
+        const q = admissionWaiters.get(userId) || [];
+        q.push(resolve);
+        admissionWaiters.set(userId, q);
       });
     }
-    admissionCounts.set(userId, active + 1);
+    admissionCounts.set(userId, (admissionCounts.get(userId) || 0) + 1);
     try {
       return await fn();
     } finally {
       const next = (admissionCounts.get(userId) || 1) - 1;
       if (next <= 0) admissionCounts.delete(userId);
       else admissionCounts.set(userId, next);
+      wakeAdmissionWaiter(userId);
     }
   }
 
@@ -614,18 +626,8 @@ function createSpotifyClient(deps = {}) {
    * Refresh tokens never leave the server.
    */
   async function issuePlayerAccess(userId) {
-    const row = selectTokens.get(userId);
-    if (!row) {
-      throw providerError('spotify_disconnected', 'Spotify is not connected');
-    }
-    const missing = missingPlaybackScopes(row.scopes);
-    if (missing.length > 0) {
-      throw providerError(
-        'reconnect_required',
-        'Spotify reconnect required for in-app playback',
-        { reason: 'missing_playback_scope' }
-      );
-    }
+    const scopeErr = assertPlaybackScopesReady(userId);
+    if (scopeErr) throw scopeErr;
 
     const accessToken = await getValidAccessToken(userId);
     const fresh = selectTokens.get(userId);
@@ -637,6 +639,23 @@ function createSpotifyClient(deps = {}) {
       expires_in: expiresIn,
       token_type: 'Bearer',
     };
+  }
+
+  /** @returns {Error|null} provider error if scopes/connection block playback */
+  function assertPlaybackScopesReady(userId) {
+    const row = selectTokens.get(userId);
+    if (!row) {
+      return providerError('spotify_disconnected', 'Spotify is not connected');
+    }
+    const missing = missingPlaybackScopes(row.scopes);
+    if (missing.length > 0) {
+      return providerError(
+        'reconnect_required',
+        'Spotify reconnect required for in-app playback',
+        { reason: 'missing_playback_scope' }
+      );
+    }
+    return null;
   }
 
   async function spotifyRequest(userId, path, options = {}) {
@@ -1029,6 +1048,7 @@ function createSpotifyClient(deps = {}) {
     getValidAccessToken,
     refreshAccessToken,
     issuePlayerAccess,
+    assertPlaybackScopesReady,
     spotifyRequest,
     searchTracks,
     assertAddBatchSize,
@@ -1061,6 +1081,7 @@ module.exports = {
   getValidAccessToken: (...args) => defaultClient.getValidAccessToken(...args),
   refreshAccessToken: (...args) => defaultClient.refreshAccessToken(...args),
   issuePlayerAccess: (...args) => defaultClient.issuePlayerAccess(...args),
+  assertPlaybackScopesReady: (...args) => defaultClient.assertPlaybackScopesReady(...args),
   spotifyRequest: (...args) => defaultClient.spotifyRequest(...args),
   searchTracks: (...args) => defaultClient.searchTracks(...args),
   assertAddBatchSize: (...args) => defaultClient.assertAddBatchSize(...args),

@@ -54,11 +54,9 @@ async function resolvePlayableSpotifyTrack(userId, source) {
   }
 
   // Ensure playback scopes before searching (same gate as player token).
-  try {
-    await spotifyService.issuePlayerAccess(userId);
-  } catch (err) {
-    throw err;
-  }
+  // Scope check only — avoid issuePlayerAccess here (races player/token + admission).
+  const scopeGate = spotifyService.assertPlaybackScopesReady(userId);
+  if (scopeGate) throw scopeGate;
 
   const title = String(source.title || '').trim();
   const artist = String(source.artist || '').trim();

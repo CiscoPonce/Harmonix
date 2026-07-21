@@ -227,15 +227,18 @@ describe('spotifyService foundation contracts', () => {
     expect(sleepCalls).to.deep.equal([3000, 3000]);
     expect(calls).to.equal(3);
 
-    // Per-user admission: second concurrent call is rejected while first holds the slot.
+    // Per-user admission: second concurrent call waits, then runs (serialized).
     let release;
     const gate = new Promise((resolve) => {
       release = resolve;
     });
     let inFlight = 0;
+    let maxInFlight = 0;
     fetchImpl = async () => {
       inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
       await gate;
+      inFlight -= 1;
       return {
         ok: true,
         status: 200,
@@ -245,15 +248,12 @@ describe('spotifyService foundation contracts', () => {
     };
     const first = client.spotifyRequest('svc-user-a', '/me');
     await new Promise((r) => setTimeout(r, 5));
-    try {
-      await client.spotifyRequest('svc-user-a', '/me');
-      expect.fail('expected admission rejection');
-    } catch (err) {
-      expect(err.code).to.equal('spotify_rate_limited');
-    }
+    const secondPromise = client.spotifyRequest('svc-user-a', '/me');
+    await new Promise((r) => setTimeout(r, 5));
+    expect(maxInFlight).to.equal(1);
     release();
-    await first;
-    expect(inFlight).to.equal(1);
+    await Promise.all([first, secondPromise]);
+    expect(maxInFlight).to.equal(1);
   });
 
   it('never searches more than ten tracks and never adds more than 100 uris per request', async () => {

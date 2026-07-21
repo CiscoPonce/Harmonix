@@ -274,16 +274,26 @@ export async function resolveSpotifyPlay(input: {
   duration_ms?: number | null;
   song_id?: string | null;
 }): Promise<SpotifyResolvePlayDto> {
-  const res = await apiFetch('/spotify/resolve-play', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      title: input.title,
-      artist: input.artist,
-      ...(input.duration_ms != null ? { duration_ms: input.duration_ms } : {}),
-      ...(input.song_id != null ? { song_id: input.song_id } : {}),
-    }),
+  const body = JSON.stringify({
+    title: input.title,
+    artist: input.artist,
+    ...(input.duration_ms != null ? { duration_ms: input.duration_ms } : {}),
+    ...(input.song_id != null ? { song_id: input.song_id } : {}),
   });
+
+  const attempt = async () =>
+    apiFetch('/spotify/resolve-play', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+
+  let res = await attempt();
+  // Brief retry if admission/rate limit races another Spotify call.
+  if (res.status === 429) {
+    await new Promise((r) => setTimeout(r, 400));
+    res = await attempt();
+  }
   if (!res.ok) {
     const err = new Error('Could not resolve Spotify track.') as Error & {
       status?: number;
