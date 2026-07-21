@@ -1,7 +1,7 @@
 # Harmonix
 
 <!-- x-release-please-start-version -->
-**Version:** 0.0.1 (v0.01)
+**Version:** 0.0.2 (v0.01)
 <!-- x-release-please-end -->
 
 Learn Words Through Music. AI-first language learning through real music lyrics. Validated vocabulary extraction + spaced repetition tied to actual songs.
