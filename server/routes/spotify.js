@@ -71,6 +71,22 @@ protectedRouter.get('/status', (req, res) => {
   }
 });
 
+/**
+ * Short-lived Spotify access token for Web Playback SDK.
+ * Refresh tokens stay encrypted server-side.
+ */
+protectedRouter.get('/player/token', async (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  try {
+    const token = await spotifyService.issuePlayerAccess(userId);
+    res.json(token);
+  } catch (err) {
+    safeLog('GET /api/spotify/player/token', err);
+    mapError(err, res);
+  }
+});
+
 protectedRouter.post('/auth/start', async (req, res) => {
   const userId = requireUser(req, res);
   if (!userId) return;

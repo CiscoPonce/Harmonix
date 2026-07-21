@@ -79,6 +79,8 @@ export interface SpotifyPlaylistDetailItemDto {
   title: string;
   artists: string;
   duration_ms: number | null;
+  uri: string | null;
+  album_name: string | null;
   availability: SpotifyTrackAvailability;
   reason: string | null;
 }
@@ -456,6 +458,9 @@ export function parsePlaylistDetailDto(raw: unknown): SpotifyPlaylistDetailDto {
         const title =
           asStringOrNull(t.title) ?? asStringOrNull(t.name) ?? '';
         const durationRaw = t.duration_ms;
+        const uriRaw = asStringOrNull(t.uri);
+        const uri =
+          uriRaw && /^spotify:track:[A-Za-z0-9._-]+$/.test(uriRaw) ? uriRaw : null;
         return {
           position:
             typeof t.position === 'number' && Number.isFinite(t.position)
@@ -467,6 +472,8 @@ export function parsePlaylistDetailDto(raw: unknown): SpotifyPlaylistDetailDto {
             typeof durationRaw === 'number' && Number.isFinite(durationRaw)
               ? durationRaw
               : null,
+          uri,
+          album_name: asStringOrNull(t.album_name),
           availability,
           reason: asStringOrNull(t.reason),
         };
@@ -487,6 +494,8 @@ export function parsePlaylistDetailDto(raw: unknown): SpotifyPlaylistDetailDto {
       title: t.name,
       artists: t.artists,
       duration_ms: null,
+      uri: null,
+      album_name: null,
       availability: 'available' as const,
       reason: null,
     }));

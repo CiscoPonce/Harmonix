@@ -234,3 +234,51 @@ export async function fetchSpotifyExportJob(jobId: string): Promise<SpotifyExpor
   const data = await parseJsonResponse<unknown>(res);
   return parseExportJobDto(data);
 }
+
+export interface SpotifyPlayerTokenDto {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+}
+
+export async function fetchSpotifyPlayerToken(): Promise<SpotifyPlayerTokenDto> {
+  const res = await apiFetch('/spotify/player/token');
+  if (!res.ok) {
+    const err = new Error('Could not get Spotify player token.') as Error & {
+      status?: number;
+      body?: unknown;
+    };
+    err.status = res.status;
+    try {
+      err.body = await parseJsonResponse<unknown>(res);
+    } catch {
+      err.body = null;
+    }
+    throw err;
+  }
+  return parseJsonResponse<SpotifyPlayerTokenDto>(res);
+}
+
+/** Lyrics via LRCLib (Spotify Web API does not expose lyrics). */
+export async function fetchLyrics(params: {
+  artist_name: string;
+  track_name: string;
+  album_name?: string | null;
+  duration?: number | null;
+}): Promise<{ syncedLyrics: string | null }> {
+  const q = new URLSearchParams();
+  q.set('artist_name', params.artist_name);
+  q.set('track_name', params.track_name);
+  if (params.album_name) q.set('album_name', params.album_name);
+  if (params.duration != null && Number.isFinite(params.duration)) {
+    q.set('duration', String(Math.round(params.duration)));
+  }
+  const res = await apiFetch(`/lyrics?${q.toString()}`);
+  if (res.status === 404) {
+    return { syncedLyrics: null };
+  }
+  if (!res.ok) {
+    throw new Error('Could not load lyrics.');
+  }
+  return parseJsonResponse<{ syncedLyrics: string | null }>(res);
+}

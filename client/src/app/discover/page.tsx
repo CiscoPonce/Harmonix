@@ -82,8 +82,8 @@ export default function DiscoverPage() {
 
   if (isLoading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F7F8F6]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0B4D2E]" aria-label="Loading" />
+      <div className="flex min-h-screen items-center justify-center bg-[#F7F8F6] dark:bg-[#0C1210]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#0B4D2E] dark:text-[#3DCF7A]" aria-label="Loading" />
       </div>
     );
   }
@@ -125,16 +125,18 @@ export default function DiscoverPage() {
       {/* Search results */}
       {(searching || results.length > 0) && (
         <section className="mt-8 space-y-3" aria-label="Search results">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-[#7A8A80]">Results</h2>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
+            Results
+          </h2>
           {searching ? (
-            <Loader2 className="h-6 w-6 animate-spin text-[#0B4D2E]" />
+            <Loader2 className="h-6 w-6 animate-spin text-[#0B4D2E] dark:text-[#3DCF7A]" />
           ) : (
-            <ul className="divide-y divide-[#E4EBE6] overflow-hidden rounded-2xl border border-[#E4EBE6] bg-white">
+            <ul className="divide-y divide-[#E4EBE6] overflow-hidden rounded-2xl border border-[#E4EBE6] bg-white dark:divide-[#2A3530] dark:border-[#2A3530] dark:bg-[#171E1B]">
               {results.slice(0, 8).map((track) => (
                 <li key={track.id}>
                   <Link
                     href={`/player/${track.id}`}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-[#F7F8F6]"
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-[#F7F8F6] dark:hover:bg-[#1A2420]"
                   >
                     {track.album?.cover_medium ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -163,14 +165,16 @@ export default function DiscoverPage() {
       <section className="mt-10">
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
               Global echo
             </p>
-            <h2 className="font-display text-2xl font-bold text-[#0C1210]">Trending Top 5</h2>
+            <h2 className="font-display text-2xl font-bold text-[#0C1210] dark:text-[#F2F5F3]">
+              Trending Top 5
+            </h2>
           </div>
           <Link
             href="/dashboard"
-            className="text-xs font-bold uppercase tracking-widest text-[#0B4D2E] hover:underline"
+            className="text-xs font-bold uppercase tracking-widest text-[#0B4D2E] hover:underline dark:text-[#3DCF7A]"
           >
             View charts →
           </Link>
@@ -191,33 +195,47 @@ export default function DiscoverPage() {
             </div>
           </Link>
 
-          <div className="rounded-2xl border border-[#E4EBE6] bg-[#F0F3F1] p-5">
+          <div className="rounded-2xl border border-[#E4EBE6] bg-[#F0F3F1] p-5 dark:border-[#2A3530] dark:bg-[#171E1B]">
             <div className="flex items-start justify-between">
-              <span className="font-display text-4xl font-bold text-[#C5D0C9]">02</span>
-              <TrendingUp className="h-4 w-4 text-[#0B4D2E]" />
+              <span className="font-display text-4xl font-bold text-[#C5D0C9] dark:text-[#2A3530]">
+                02
+              </span>
+              <TrendingUp className="h-4 w-4 text-[#0B4D2E] dark:text-[#3DCF7A]" />
             </div>
             <h3 className="mt-6 text-lg font-bold">Library playlists</h3>
-            <p className="text-sm text-[#5C6B62]">Harmonix + Spotify collections</p>
-            <Link href="/playlists" className="mt-4 inline-block text-sm font-bold text-[#0B4D2E]">
+            <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+              Harmonix + Spotify collections
+            </p>
+            <Link
+              href="/playlists"
+              className="mt-4 inline-block text-sm font-bold text-[#0B4D2E] dark:text-[#3DCF7A]"
+            >
               Open Library →
             </Link>
           </div>
 
-          <div className="rounded-2xl border border-[#E4EBE6] bg-[#F0F3F1] p-5">
+          <div className="rounded-2xl border border-[#E4EBE6] bg-[#F0F3F1] p-5 dark:border-[#2A3530] dark:bg-[#171E1B]">
             <div className="flex items-start justify-between">
-              <span className="font-display text-4xl font-bold text-[#C5D0C9]">03</span>
-              <TrendingUp className="h-4 w-4 text-[#0B4D2E]" />
+              <span className="font-display text-4xl font-bold text-[#C5D0C9] dark:text-[#2A3530]">
+                03
+              </span>
+              <TrendingUp className="h-4 w-4 text-[#0B4D2E] dark:text-[#3DCF7A]" />
             </div>
             <h3 className="mt-6 text-lg font-bold">SRS Review</h3>
-            <p className="text-sm text-[#5C6B62]">Spaced repetition for lasting vocab</p>
-            <Link href="/review" className="mt-4 inline-block text-sm font-bold text-[#0B4D2E]">
+            <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+              Spaced repetition for lasting vocab
+            </p>
+            <Link
+              href="/review"
+              className="mt-4 inline-block text-sm font-bold text-[#0B4D2E] dark:text-[#3DCF7A]"
+            >
               Start review →
             </Link>
           </div>
 
           <Link
             href="/settings"
-            className="flex items-center gap-4 rounded-2xl border border-[#E4EBE6] bg-white p-4 lg:col-span-2"
+            className="flex items-center gap-4 rounded-2xl border border-[#E4EBE6] bg-white p-4 dark:border-[#2A3530] dark:bg-[#171E1B] lg:col-span-2"
           >
             <span className="font-display text-2xl font-bold text-[#C5D0C9]">04</span>
             <div className="min-w-0 flex-1">
@@ -242,13 +260,13 @@ export default function DiscoverPage() {
 
       {/* Personal Resonance */}
       <section className="mt-12">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80]">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
           Personal resonance
         </p>
         <h2 className="font-display text-xl font-bold">Songs similar to your recent words</h2>
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {recent.length === 0 ? (
-            <p className="col-span-full text-sm text-[#5C6B62]">
+            <p className="col-span-full text-sm text-[#5C6B62] dark:text-[#9AABA0]">
               Discover a Word of the Day to seed your resonance shelf.
             </p>
           ) : (
@@ -258,9 +276,9 @@ export default function DiscoverPage() {
                 href={item.song?.id ? `/player/${item.song.id}` : '/dashboard'}
                 className="group"
               >
-                <div className="aspect-square overflow-hidden rounded-2xl bg-[#E8F5EE] transition group-hover:ring-2 group-hover:ring-[#0B4D2E]">
+                <div className="aspect-square overflow-hidden rounded-2xl bg-[#E8F5EE] transition group-hover:ring-2 group-hover:ring-[#0B4D2E] dark:bg-[#0B4D2E]/35 dark:group-hover:ring-[#3DCF7A]">
                   <div className="flex h-full items-center justify-center p-4 text-center">
-                    <span className="font-display text-2xl font-bold text-[#0B4D2E]">
+                    <span className="font-display text-2xl font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">
                       {item.word.text}
                     </span>
                   </div>
@@ -268,10 +286,10 @@ export default function DiscoverPage() {
                 <p className="mt-2 truncate text-sm font-bold">
                   {item.song?.title || item.word.translation || item.word.text}
                 </p>
-                <p className="truncate text-xs text-[#5C6B62]">
+                <p className="truncate text-xs text-[#5C6B62] dark:text-[#9AABA0]">
                   {item.song?.artist || 'Daily Word'}
                 </p>
-                <span className="mt-1 inline-block rounded-full bg-[#E8F5EE] px-2 py-0.5 text-[10px] font-bold text-[#0B4D2E]">
+                <span className="mt-1 inline-block rounded-full bg-[#E8F5EE] px-2 py-0.5 text-[10px] font-bold text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
                   {90 - i * 3}% MATCH
                 </span>
               </Link>

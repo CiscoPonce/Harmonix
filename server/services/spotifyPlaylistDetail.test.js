@@ -175,9 +175,13 @@ describe('spotify playlist detail service contracts', () => {
     expect(detail.items).to.have.length(4);
     expect(detail.items[0].title).to.equal('Track One');
     expect(detail.items[0].availability).to.equal('available');
+    expect(detail.items[0].uri).to.equal('spotify:track:t1');
     expect(detail.items[1].availability).to.equal('null');
+    expect(detail.items[1].uri).to.equal(null);
     expect(detail.items[2].availability).to.equal('local');
+    expect(detail.items[2].uri).to.equal(null);
     expect(detail.items[3].availability).to.equal('unavailable');
+    expect(detail.items[3].uri).to.equal('spotify:track:t4');
     expect(detail.items.map((i) => i.position)).to.deep.equal([0, 1, 2, 3]);
   });
 

@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { Loader2, Music2 } from 'lucide-react';
+import { Loader2, Music2, Pause, Play } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
-import { fetchSpotifyPlaylistDetail } from '@/lib/api';
+import { useSpotifyInAppPlayer } from '@/components/SpotifyInAppPlayer';
+import { fetchLyrics, fetchSpotifyPlaylistDetail } from '@/lib/api';
 import {
   mapSpotifyDetailError,
   parseProviderStableId,
@@ -15,6 +16,7 @@ import {
   safeSpotifyUrl,
   type SpotifyDetailErrorView,
   type SpotifyPlaylistDetailDto,
+  type SpotifyPlaylistDetailItemDto,
 } from '@/lib/spotifyContracts';
 
 function formatDuration(ms: number | null): string | null {
@@ -48,6 +50,14 @@ function DetailSkeleton() {
   );
 }
 
+function parseSyncedLyrics(raw: string | null): string[] {
+  if (!raw || !raw.trim()) return [];
+  return raw
+    .split('\n')
+    .map((line) => line.replace(/^\[[^\]]*\]\s*/, '').trim())
+    .filter(Boolean);
+}
+
 export default function SpotifyPlaylistDetailPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
@@ -58,6 +68,13 @@ export default function SpotifyPlaylistDetailPage() {
   const [detail, setDetail] = useState<SpotifyPlaylistDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<SpotifyDetailErrorView | null>(null);
+
+  const [lyricsItem, setLyricsItem] = useState<SpotifyPlaylistDetailItemDto | null>(null);
+  const [lyricsLines, setLyricsLines] = useState<string[] | null>(null);
+  const [lyricsLoading, setLyricsLoading] = useState(false);
+  const [lyricsError, setLyricsError] = useState<string | null>(null);
+
+  const player = useSpotifyInAppPlayer();
 
   const load = useCallback(async () => {
     if (!providerId || providerId.includes(':')) {
@@ -70,7 +87,6 @@ export default function SpotifyPlaylistDetailPage() {
       return;
     }
 
-    // Stable identity must remain provider-aware — never treat as Harmonix local ID.
     try {
       parseProviderStableId(providerStableId('spotify', providerId));
     } catch {
@@ -112,12 +128,40 @@ export default function SpotifyPlaylistDetailPage() {
       router.push('/login');
       return;
     }
-    // Defer so load()'s setState is not synchronous inside the effect body.
     const timer = window.setTimeout(() => {
       void load();
     }, 0);
     return () => window.clearTimeout(timer);
   }, [user, authLoading, router, load]);
+
+  const openLyrics = useCallback(async (item: SpotifyPlaylistDetailItemDto) => {
+    setLyricsItem(item);
+    setLyricsLines(null);
+    setLyricsError(null);
+    setLyricsLoading(true);
+    try {
+      const firstArtist = (item.artists || '').split(',')[0]?.trim() || item.artists;
+      const result = await fetchLyrics({
+        artist_name: firstArtist,
+        track_name: item.title,
+        album_name: item.album_name,
+        duration:
+          item.duration_ms != null ? Math.round(item.duration_ms / 1000) : null,
+      });
+      const lines = parseSyncedLyrics(result.syncedLyrics);
+      if (lines.length === 0) {
+        setLyricsError(
+          'No lyrics found for this track (via LRCLib). Spotify does not provide lyrics to third-party apps.'
+        );
+      } else {
+        setLyricsLines(lines);
+      }
+    } catch {
+      setLyricsError('Could not load lyrics right now.');
+    } finally {
+      setLyricsLoading(false);
+    }
+  }, []);
 
   if (authLoading || (loading && !detail && !error)) {
     return (
@@ -231,6 +275,34 @@ export default function SpotifyPlaylistDetailPage() {
               </div>
             </header>
 
+            {!detail.restricted && detail.items.length > 0 ? (
+              <div
+                className="mb-4 rounded-xl border border-[#D7E0DA] bg-white px-4 py-3 text-sm dark:border-[#2A3530] dark:bg-[#171E1B]"
+                role="status"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  {player.isBusy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : null}
+                  <p className="text-[#5C6B62] dark:text-[#9AABA0]">
+                    {player.message ||
+                      'Spotify Premium required for in-app play. Press play on a track. Lyrics come from LRCLib (not Spotify).'}
+                  </p>
+                  {player.ui === 'reconnect' ? (
+                    <Link
+                      href="/settings"
+                      className="font-bold text-[#0B6B3A] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
+                    >
+                      Open Settings
+                    </Link>
+                  ) : null}
+                </div>
+                <p className="mt-1 text-xs text-[#5C6B62] dark:text-[#9AABA0]">
+                  Content from Spotify · Harmonix does not host Spotify audio.
+                </p>
+              </div>
+            ) : null}
+
             {detail.restricted || detail.detail_state === 'restricted' ? (
               <div
                 className="mb-6 space-y-3 rounded-xl border border-[#D7E0DA] bg-white p-4 dark:border-[#2A3530] dark:bg-[#171E1B]"
@@ -277,6 +349,12 @@ export default function SpotifyPlaylistDetailPage() {
                 {detail.items.map((item) => {
                   const unavailable = item.availability !== 'available';
                   const duration = formatDuration(item.duration_ms);
+                  const canPlay = !unavailable && Boolean(item.uri);
+                  const isActive =
+                    item.uri &&
+                    player.activeUri === item.uri &&
+                    (player.ui === 'playing' || player.ui === 'paused');
+                  const Icon = isActive && player.ui === 'playing' ? Pause : Play;
                   return (
                     <li
                       key={`${item.position}-${item.title}`}
@@ -285,9 +363,21 @@ export default function SpotifyPlaylistDetailPage() {
                       }`}
                       data-unavailable={unavailable ? 'true' : undefined}
                     >
-                      <span className="w-6 shrink-0 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                        {item.position + 1}
-                      </span>
+                      <button
+                        type="button"
+                        disabled={!canPlay || player.isBusy}
+                        aria-label={
+                          isActive && player.ui === 'playing'
+                            ? `Pause ${item.title}`
+                            : `Play ${item.title || 'track'}`
+                        }
+                        onClick={() => {
+                          if (item.uri) void player.playTrack(item.uri);
+                        }}
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0B4D2E] text-white transition hover:bg-[#0B6B3A] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Icon className="h-4 w-4" aria-hidden />
+                      </button>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-base font-bold">
                           {unavailable && !item.title
@@ -300,6 +390,15 @@ export default function SpotifyPlaylistDetailPage() {
                             : item.artists || (unavailable ? 'Unavailable on Spotify' : '')}
                         </p>
                       </div>
+                      {!unavailable && item.title ? (
+                        <button
+                          type="button"
+                          className="shrink-0 text-sm font-bold text-[#0B6B3A] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
+                          onClick={() => void openLyrics(item)}
+                        >
+                          Lyrics
+                        </button>
+                      ) : null}
                       {duration ? (
                         <span className="shrink-0 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
                           {duration}
@@ -309,6 +408,50 @@ export default function SpotifyPlaylistDetailPage() {
                   );
                 })}
               </ol>
+            ) : null}
+
+            {lyricsItem ? (
+              <section
+                className="mt-6 rounded-xl border border-[#D7E0DA] bg-white p-5 dark:border-[#2A3530] dark:bg-[#171E1B]"
+                aria-label="Lyrics"
+              >
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-lg font-bold">{lyricsItem.title}</h3>
+                    <p className="truncate text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+                      {lyricsItem.artists}
+                    </p>
+                    <p className="mt-1 text-xs text-[#5C6B62] dark:text-[#9AABA0]">
+                      Lyrics via LRCLib · not provided by Spotify API
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="shrink-0 text-sm font-bold text-[#5C6B62] underline-offset-4 hover:underline dark:text-[#9AABA0]"
+                    onClick={() => {
+                      setLyricsItem(null);
+                      setLyricsLines(null);
+                      setLyricsError(null);
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+                {lyricsLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-[#5C6B62]">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    Loading lyrics…
+                  </div>
+                ) : null}
+                {lyricsError ? <p className="text-sm">{lyricsError}</p> : null}
+                {lyricsLines && lyricsLines.length > 0 ? (
+                  <div className="max-h-80 space-y-2 overflow-y-auto text-base leading-relaxed">
+                    {lyricsLines.map((line, i) => (
+                      <p key={`${i}-${line.slice(0, 24)}`}>{line}</p>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
             ) : null}
 
             {!detail.restricted && detail.items.length > 0 && openUrl ? (

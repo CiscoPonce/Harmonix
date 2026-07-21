@@ -77,17 +77,26 @@ Record Premium owner identity and the five-user allowlist outside the repo (ops 
 
 ---
 
-## 3. Scopes (D-12-14)
+## 3. Scopes (D-12-14 + Phase 12.6 playback)
 
-Request only:
+Request:
 
 ```text
 playlist-read-private
 playlist-read-collaborative
 playlist-modify-private
+streaming
+user-read-email
+user-read-private
 ```
 
-Do **not** request playback, history, library, or `playlist-modify-public`. Exports create **private** playlists only.
+`streaming` + profile scopes enable **Web Playback SDK** in-app play (Spotify Premium required for the listener). After changing `SPOTIFY_SCOPES`, users must **Reconnect** in Settings so the new consent is granted.
+
+Do **not** request listening history, library save, or `playlist-modify-public`. Exports create **private** playlists only.
+
+### Lyrics
+
+Spotify Web API **does not** expose lyrics. Harmonix loads synced lyrics from **LRCLib** using track title/artist (and album/duration when available) from Spotify metadata. Unofficial Spotify lyrics scrapers are out of scope and non-compliant.
 
 ---
 
@@ -101,6 +110,10 @@ Do **not** request playback, history, library, or `playlist-modify-public`. Expo
 | Create private playlist | `POST /me/playlists` | Inside `POST /api/spotify/exports` |
 | Add items | `POST /playlists/{id}/items` | Export mutation (batches ≤ **100**) |
 | Search tracks | `GET /search?type=track&limit≤10` | Matching only |
+| Web Playback token (Harmonix) | — | `GET /api/spotify/player/token` (short-lived access; refresh stays server-side) |
+| Start playback | `PUT /me/player/play` | Browser Web Playback SDK after device ready |
+
+**Lyrics:** not available from Spotify Web API — use LRCLib via `GET /api/lyrics`.
 
 **Forbidden legacy paths:** `/users/{id}/playlists`, `/playlists/{id}/tracks`.
 

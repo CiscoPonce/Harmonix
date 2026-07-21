@@ -152,10 +152,10 @@ function SettingsContent() {
     >
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <header>
-          <h1 className="font-display text-3xl font-bold italic tracking-tight text-[#0B4D2E] sm:text-4xl">
+          <h1 className="font-display text-3xl font-bold italic tracking-tight text-[#0B4D2E] dark:text-[#3DCF7A] sm:text-4xl">
             Account Settings
           </h1>
-          <p className="mt-1 text-sm text-[#5C6B62]">
+          <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
             Refine your resonance and track your linguistic growth.
           </p>
         </header>
@@ -164,26 +164,26 @@ function SettingsContent() {
           <div className="space-y-6">
             <section
               aria-label="Profile"
-              className="rounded-2xl border border-[#E4EBE6] border-l-4 border-l-[#0B4D2E] bg-white p-5 sm:p-6"
+              className="rounded-2xl border border-[#E4EBE6] border-l-4 border-l-[#0B4D2E] bg-white p-5 dark:border-[#2A3530] dark:border-l-[#3DCF7A] dark:bg-[#171E1B] sm:p-6"
             >
               <div className="flex items-start gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#E8F5EE] text-xl font-bold text-[#0B4D2E]">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#E8F5EE] text-xl font-bold text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
                   {(user.email || '?').slice(0, 1).toUpperCase()}
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-lg font-bold">{user.email}</p>
-                  <p className="mt-1 text-sm text-[#5C6B62]">
+                  <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
                     Capturing the rhythm of the world, one word at a time.
                   </p>
                   {(user.target_language || user.native_language) && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {user.native_language ? (
-                        <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E]">
+                        <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
                           {user.native_language}
                         </span>
                       ) : null}
                       {user.target_language ? (
-                        <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E]">
+                        <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
                           {user.target_language}
                         </span>
                       ) : null}
@@ -209,24 +209,26 @@ function SettingsContent() {
           <div className="space-y-6">
             <section
               aria-label="Appearance"
-              className="rounded-2xl border border-[#E4EBE6] bg-white p-5"
+              className="rounded-2xl border border-[#E4EBE6] bg-white p-5 dark:border-[#2A3530] dark:bg-[#171E1B]"
             >
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80]">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
                 Appearance
               </p>
               <div className="mt-4 flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-base font-bold">Dark Resonance</h2>
-                  <p className="text-sm text-[#5C6B62]">Switch between light and dark themes.</p>
+                  <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+                    Switch between light and dark themes.
+                  </p>
                 </div>
                 <ThemeToggle />
               </div>
             </section>
 
-            <section className="rounded-2xl border border-[#E4EBE6] bg-white p-5">
+            <section className="rounded-2xl border border-[#E4EBE6] bg-white p-5 dark:border-[#2A3530] dark:bg-[#171E1B]">
               <Link
                 href="/playlists"
-                className="text-base font-bold text-[#0B4D2E] underline-offset-4 hover:underline"
+                className="text-base font-bold text-[#0B4D2E] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
               >
                 Open Library →
               </Link>

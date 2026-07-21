@@ -23,7 +23,13 @@ const DEFAULT_SCOPES = [
   'playlist-read-private',
   'playlist-read-collaborative',
   'playlist-modify-private',
+  // Web Playback SDK (Premium) — Phase 12.6
+  'streaming',
+  'user-read-email',
+  'user-read-private',
 ].join(' ');
+
+const PLAYBACK_REQUIRED_SCOPES = ['streaming', 'user-read-email', 'user-read-private'];
 
 const upsertTokensPreserveAuth = db.prepare(`
   INSERT INTO user_spotify_tokens (
@@ -203,6 +209,26 @@ function formatArtists(artists) {
     .join(', ');
 }
 
+function trackUriFromTrack(track) {
+  if (!track || typeof track !== 'object') return null;
+  if (typeof track.uri === 'string' && /^spotify:track:[A-Za-z0-9._-]+$/.test(track.uri)) {
+    return track.uri;
+  }
+  if (typeof track.id === 'string' && /^[A-Za-z0-9]+$/.test(track.id)) {
+    return `spotify:track:${track.id}`;
+  }
+  return null;
+}
+
+function albumNameFromTrack(track) {
+  if (!track || typeof track !== 'object') return null;
+  const album = track.album;
+  if (album && typeof album === 'object' && typeof album.name === 'string' && album.name.trim()) {
+    return album.name.trim();
+  }
+  return null;
+}
+
 function normalizePlaylistTrackItem(entry, position) {
   const track = entry && typeof entry === 'object' ? entry.track : null;
   if (track == null) {
@@ -212,6 +238,8 @@ function normalizePlaylistTrackItem(entry, position) {
       name: '',
       artists: '',
       duration_ms: null,
+      uri: null,
+      album_name: null,
       availability: 'null',
       reason: 'null_track',
     };
@@ -222,6 +250,8 @@ function normalizePlaylistTrackItem(entry, position) {
     typeof track.duration_ms === 'number' && Number.isFinite(track.duration_ms)
       ? track.duration_ms
       : null;
+  const uri = trackUriFromTrack(track);
+  const album_name = albumNameFromTrack(track);
 
   if (track.is_local) {
     return {
@@ -230,6 +260,8 @@ function normalizePlaylistTrackItem(entry, position) {
       name: title,
       artists,
       duration_ms: duration,
+      uri: null,
+      album_name,
       availability: 'local',
       reason: 'local_track',
     };
@@ -246,6 +278,8 @@ function normalizePlaylistTrackItem(entry, position) {
       name: title,
       artists,
       duration_ms: duration,
+      uri,
+      album_name,
       availability: 'unavailable',
       reason: restrictedReason || 'unavailable',
     };
@@ -257,9 +291,21 @@ function normalizePlaylistTrackItem(entry, position) {
     name: title,
     artists,
     duration_ms: duration,
+    uri,
+    album_name,
     availability: 'available',
     reason: null,
   };
+}
+
+function parseScopeSet(scopes) {
+  if (!scopes || typeof scopes !== 'string') return new Set();
+  return new Set(scopes.trim().split(/[\s,]+/).filter(Boolean));
+}
+
+function missingPlaybackScopes(grantedScopes) {
+  const granted = parseScopeSet(grantedScopes);
+  return PLAYBACK_REQUIRED_SCOPES.filter((s) => !granted.has(s));
 }
 
 function detailDtoFromNormalized(meta, { detailState, items }) {
@@ -553,6 +599,36 @@ function createSpotifyClient(deps = {}) {
       refreshLocks.set(userId, pending);
     }
     return refreshLocks.get(userId);
+  }
+
+  /**
+   * Short-lived access token for Spotify Web Playback SDK (browser).
+   * Refresh tokens never leave the server.
+   */
+  async function issuePlayerAccess(userId) {
+    const row = selectTokens.get(userId);
+    if (!row) {
+      throw providerError('spotify_disconnected', 'Spotify is not connected');
+    }
+    const missing = missingPlaybackScopes(row.scopes);
+    if (missing.length > 0) {
+      throw providerError(
+        'reconnect_required',
+        'Spotify reconnect required for in-app playback',
+        { reason: 'missing_playback_scope' }
+      );
+    }
+
+    const accessToken = await getValidAccessToken(userId);
+    const fresh = selectTokens.get(userId);
+    const expiresAtMs = fresh ? new Date(fresh.expires_at).getTime() : Date.now() + 3600_000;
+    const expiresIn = Math.max(30, Math.floor((expiresAtMs - nowFn().getTime()) / 1000));
+
+    return {
+      access_token: accessToken,
+      expires_in: expiresIn,
+      token_type: 'Bearer',
+    };
   }
 
   async function spotifyRequest(userId, path, options = {}) {
@@ -944,6 +1020,7 @@ function createSpotifyClient(deps = {}) {
     getConnectionStatus,
     getValidAccessToken,
     refreshAccessToken,
+    issuePlayerAccess,
     spotifyRequest,
     searchTracks,
     assertAddBatchSize,
@@ -975,6 +1052,7 @@ module.exports = {
   getConnectionStatus: (...args) => defaultClient.getConnectionStatus(...args),
   getValidAccessToken: (...args) => defaultClient.getValidAccessToken(...args),
   refreshAccessToken: (...args) => defaultClient.refreshAccessToken(...args),
+  issuePlayerAccess: (...args) => defaultClient.issuePlayerAccess(...args),
   spotifyRequest: (...args) => defaultClient.spotifyRequest(...args),
   searchTracks: (...args) => defaultClient.searchTracks(...args),
   assertAddBatchSize: (...args) => defaultClient.assertAddBatchSize(...args),
@@ -987,6 +1065,8 @@ module.exports = {
   completeAuthorization: (...args) => defaultClient.completeAuthorization(...args),
   disconnectUser: (...args) => defaultClient.disconnectUser(...args),
   safeSpotifyExternalUrl,
+  missingPlaybackScopes,
+  PLAYBACK_REQUIRED_SCOPES,
   SEARCH_LIMIT,
   ADD_BATCH_MAX,
   PLAYLIST_DETAIL_DISPLAY_CAP,
