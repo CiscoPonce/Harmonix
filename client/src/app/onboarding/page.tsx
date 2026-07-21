@@ -5,15 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-
-const LANGUAGES = [
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'fr', label: 'French' },
-  { value: 'de', label: 'German' },
-  { value: 'pt', label: 'Portuguese' },
-  { value: 'it', label: 'Italian' },
-];
+import { LANGUAGES } from '@/lib/languages';
 
 const GENRES = ['Any', 'Pop', 'Rock', 'Hip-Hop', 'Reggaeton'];
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];

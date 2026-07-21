@@ -8,11 +8,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { AppShell } from '@/components/AppShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { SpotifyConnectionCard } from '@/components/SpotifyConnectionCard';
+import { Button } from '@/components/ui/Button';
 import {
+  apiFetch,
   disconnectSpotify,
   fetchSpotifyStatus,
   startSpotifyAuth,
 } from '@/lib/api';
+import { LANGUAGES, languageLabel } from '@/lib/languages';
 import {
   parseSpotifyCallbackOutcome,
   type ConnectionState,
@@ -23,8 +26,11 @@ const ERROR_COPY =
 const PROVIDER_ERROR_COPY =
   'Spotify is unavailable right now. Your Harmonix library is still available. Try again.';
 
+const selectClassName =
+  'mt-1.5 flex h-10 w-full rounded-lg border border-[#E4EBE6] bg-[#F7F8F6] px-3 text-sm text-[#0C1210] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B4D2E]/40 dark:border-[#2A3530] dark:bg-[#121A17] dark:text-[#F2F5F3] dark:focus-visible:ring-[#3DCF7A]/40';
+
 function SettingsContent() {
-  const { user, isLoading: authLoading, logout } = useAuth();
+  const { user, isLoading: authLoading, logout, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackOutcome = parseSpotifyCallbackOutcome(searchParams.get('spotify'));
@@ -40,6 +46,22 @@ function SettingsContent() {
   const [mutationBusy, setMutationBusy] = useState(false);
   const [statusTick, setStatusTick] = useState(0);
   const [copiedUri, setCopiedUri] = useState(false);
+
+  const [nativeLanguage, setNativeLanguage] = useState('');
+  const [targetLanguage, setTargetLanguage] = useState('');
+  const [langSaving, setLangSaving] = useState(false);
+  const [langError, setLangError] = useState<string | null>(null);
+  const [langSaved, setLangSaved] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    setNativeLanguage(user.native_language || '');
+    setTargetLanguage(user.target_language || '');
+  }, [user]);
+
+  const languagesDirty =
+    nativeLanguage !== (user?.native_language || '') ||
+    targetLanguage !== (user?.target_language || '');
 
   // Fixed allowlisted return only — never read code/state/tokens from the URL.
   useEffect(() => {
@@ -140,6 +162,43 @@ function SettingsContent() {
     }
   };
 
+  const handleSaveLanguages = async () => {
+    if (langSaving) return;
+    if (!nativeLanguage || !targetLanguage) {
+      setLangError('Select both your home language and the language you are learning.');
+      return;
+    }
+    if (nativeLanguage === targetLanguage) {
+      setLangError('Home and learning languages must be different.');
+      return;
+    }
+
+    setLangSaving(true);
+    setLangError(null);
+    setLangSaved(false);
+    try {
+      const res = await apiFetch('/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          native_language: nativeLanguage,
+          target_language: targetLanguage,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Could not save languages');
+      }
+      await refreshUser();
+      setLangSaved(true);
+      window.setTimeout(() => setLangSaved(false), 2500);
+    } catch (err) {
+      setLangError(err instanceof Error ? err.message : 'Could not save languages');
+    } finally {
+      setLangSaving(false);
+    }
+  };
+
   if (authLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F4F7F5] text-[#121612] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
@@ -184,17 +243,118 @@ function SettingsContent() {
                     <div className="mt-3 flex flex-wrap gap-2">
                       {user.native_language ? (
                         <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                          {user.native_language}
+                          Home · {languageLabel(user.native_language)}
                         </span>
                       ) : null}
                       {user.target_language ? (
                         <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                          {user.target_language}
+                          Learning · {languageLabel(user.target_language)}
                         </span>
                       ) : null}
                     </div>
                   )}
                 </div>
+              </div>
+            </section>
+
+            <section
+              aria-label="Languages"
+              className="rounded-2xl border border-[#E4EBE6] border-l-4 border-l-[#0B4D2E] bg-white p-5 dark:border-[#2A3530] dark:border-l-[#3DCF7A] dark:bg-[#171E1B] sm:p-6"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
+                Languages
+              </p>
+              <h2 className="mt-1 text-base font-bold">What are you learning?</h2>
+              <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+                Changing your learning language refreshes daily words for that language.
+              </p>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="settings-native-language" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+                    Home language
+                  </label>
+                  <select
+                    id="settings-native-language"
+                    value={nativeLanguage}
+                    onChange={(e) => {
+                      setNativeLanguage(e.target.value);
+                      setLangError(null);
+                      setLangSaved(false);
+                    }}
+                    className={selectClassName}
+                  >
+                    <option value="">Select language</option>
+                    {LANGUAGES.map((l) => (
+                      <option key={l.value} value={l.value}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="settings-target-language" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+                    Learning language
+                  </label>
+                  <select
+                    id="settings-target-language"
+                    value={targetLanguage}
+                    onChange={(e) => {
+                      setTargetLanguage(e.target.value);
+                      setLangError(null);
+                      setLangSaved(false);
+                    }}
+                    className={selectClassName}
+                  >
+                    <option value="">Select language</option>
+                    {LANGUAGES.map((l) => (
+                      <option key={l.value} value={l.value}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {langError && (
+                <p className="mt-3 text-sm text-red-600 dark:text-red-400">{langError}</p>
+              )}
+              {langSaved && !langError && (
+                <p className="mt-3 text-sm font-medium text-[#0B4D2E] dark:text-[#3DCF7A]">
+                  Languages saved. Open Discover for a new word.
+                </p>
+              )}
+
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => void handleSaveLanguages()}
+                  disabled={langSaving || !languagesDirty}
+                >
+                  {langSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    'Save languages'
+                  )}
+                </Button>
+                {languagesDirty && (
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-[#5C6B62] underline-offset-4 hover:underline dark:text-[#9AABA0]"
+                    onClick={() => {
+                      setNativeLanguage(user.native_language || '');
+                      setTargetLanguage(user.target_language || '');
+                      setLangError(null);
+                      setLangSaved(false);
+                    }}
+                  >
+                    Reset
+                  </button>
+                )}
               </div>
             </section>
 
