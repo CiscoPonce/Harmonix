@@ -76,6 +76,11 @@ export default function SpotifyPlaylistDetailPage() {
 
   const player = useSpotifyInAppPlayer();
 
+  useEffect(() => {
+    void player.warmup();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const load = useCallback(async () => {
     if (!providerId || providerId.includes(':')) {
       setError({
@@ -372,7 +377,10 @@ export default function SpotifyPlaylistDetailPage() {
                             : `Play ${item.title || 'track'}`
                         }
                         onClick={() => {
-                          if (item.uri) void player.playTrack(item.uri);
+                          if (item.uri) {
+                            player.unlockAudio();
+                            void player.playTrack(item.uri);
+                          }
                         }}
                         className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0B4D2E] text-white transition hover:bg-[#0B6B3A] disabled:cursor-not-allowed disabled:opacity-40"
                       >

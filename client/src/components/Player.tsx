@@ -93,6 +93,8 @@ const Player: React.FC<PlayerProps> = ({
         const status = await fetchSpotifyStatus();
         if (cancelled) return;
         if (status.state === 'connected' && status.playback_scopes_ok !== false) {
+          await spotifyPlayer.warmup();
+          if (cancelled) return;
           const resolved = await resolveSpotifyPlay({
             title: track.title,
             artist: track.artist,
@@ -115,6 +117,7 @@ const Player: React.FC<PlayerProps> = ({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track.artist, track.duration, track.id, track.title]);
 
   // Poll Spotify position while playing.
@@ -163,6 +166,7 @@ const Player: React.FC<PlayerProps> = ({
 
   const togglePlay = async () => {
     if (audioSource === 'pending') return;
+    spotifyPlayer.unlockAudio();
 
     if (audioSource === 'spotify' && spotifyUri) {
       if (isPlaying) {
