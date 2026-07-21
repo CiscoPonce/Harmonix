@@ -454,6 +454,11 @@ function LibraryContent() {
               </button>
             ) : null}
           </div>
+          {spotifyConnected && spotifyShelf.length > 0 ? (
+            <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+              Open a playlist, then press ▶ on a track to play (Spotify Premium).
+            </p>
+          ) : null}
 
           {spotifyLoading ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-hidden>

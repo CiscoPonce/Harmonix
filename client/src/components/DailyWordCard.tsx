@@ -363,11 +363,26 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
             <span className="text-zinc-400 dark:text-zinc-600 truncate">· stocking</span>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={() => loadDailyWord(false)} disabled={refreshing} className="shrink-0 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest gap-2 whitespace-nowrap">
-          {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-          {readyCount > 0 ? "Next word" : "New word"}
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => loadDailyWord(false)}
+            disabled={refreshing}
+            className="gap-2 whitespace-nowrap text-[10px] font-bold uppercase tracking-wide sm:tracking-widest"
+          >
+            {refreshing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+            {readyCount > 0 ? "Next word" : "New word"}
+          </Button>
+        </div>
       </div>
+      <p className="border-b border-zinc-100 px-4 py-2 text-[11px] text-zinc-500 dark:border-zinc-900 dark:text-zinc-400 sm:px-6">
+        Request a new word as many times as you like — no daily limit.
+      </p>
 
       <div className="p-5 sm:p-8 md:p-10">
         <div className="daily-word-flip-scene">

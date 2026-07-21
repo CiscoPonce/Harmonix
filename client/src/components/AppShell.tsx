@@ -154,12 +154,14 @@ export function AppShell({
               >
                 <Bell className="h-5 w-5" />
               </button>
-              <div
+              <Link
+                href="/settings"
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0B4D2E] text-white dark:bg-[#3DCF7A] dark:text-[#0C1210]"
-                title={userEmail || 'Account'}
+                title={userEmail || 'Account settings'}
+                aria-label="Account settings"
               >
                 <User className="h-5 w-5" aria-hidden />
-              </div>
+              </Link>
               {onLogout ? (
                 <button
                   type="button"

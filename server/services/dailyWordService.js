@@ -13,7 +13,9 @@ const wordQueue = require("./wordQueueService");
 const deezer = require("./deezerService");
 const lrcLib = require("./lrcLibService");
 
-const FORCE_COOLDOWN_MS = process.env.FORCE_COOLDOWN_MS ? parseInt(process.env.FORCE_COOLDOWN_MS, 10) : 90_000;
+const FORCE_COOLDOWN_MS = process.env.FORCE_COOLDOWN_MS
+  ? parseInt(process.env.FORCE_COOLDOWN_MS, 10)
+  : 0; // Unlimited refresh by default; set FORCE_COOLDOWN_MS to throttle if needed.
 const BATCH_AI_ATTEMPTS = 3;
 const REFILL_BATCH_ROUNDS = 5;
 const QUEUE_BATCH_SIZE = 5;
@@ -698,7 +700,8 @@ function getDailyWordStats(userId) {
   return {
     streak_days: computeDailyWordStreak(userId),
     total_words: totalWords,
-    daily_goal: 1,
+    // Soft progress target only — users may request unlimited new words.
+    daily_goal: 10,
     today_words: todayWords,
     today_goal_met: todayWords >= 1,
   };

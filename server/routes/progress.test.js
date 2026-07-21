@@ -36,7 +36,7 @@ describe('Progress API Routes', () => {
  await handler(req, res);
  expect(res.body).to.have.property('streak_days');
  expect(res.body).to.have.property('total_words');
- expect(res.body.daily_goal).to.equal(1);
+ expect(res.body.daily_goal).to.equal(10);
  expect(res.body.today_words).to.equal(0);
  expect(res.body.today_goal_met).to.equal(false);
  });

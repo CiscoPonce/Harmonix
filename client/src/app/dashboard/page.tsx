@@ -281,9 +281,10 @@ export default function DashboardPage() {
                 </div>
                 <div className="mt-auto space-y-1">
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-                    <span>Today&apos;s word</span>
+                    <span>Words today</span>
                     <span>
-                      {stats.today_words}/{stats.daily_goal}
+                      {stats.today_words}
+                      {stats.daily_goal ? ` (goal ${stats.daily_goal})` : ''}
                     </span>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E4EBE6] dark:bg-[#2A3530]">

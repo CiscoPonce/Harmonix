@@ -286,7 +286,7 @@ export default function SpotifyPlaylistDetailPage() {
                   ) : null}
                   <p className="text-[#5C6B62] dark:text-[#9AABA0]">
                     {player.message ||
-                      'Spotify Premium required for in-app play. Press play on a track. Lyrics come from LRCLib (not Spotify).'}
+                      'Press ▶ on a track to play in Harmonix (Spotify Premium). Lyrics use LRCLib, not Spotify.'}
                   </p>
                   {player.ui === 'reconnect' ? (
                     <Link
