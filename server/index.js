@@ -306,6 +306,13 @@ app.use('/api/user', authenticateToken, userRouter);
 app.use('/api/spotify/oauth', spotifyCallbackRouter);
 app.use('/api/spotify', authenticateToken, spotifyProtectedRouter);
 
+// Spotify short redirect alias (Dashboard-friendly)
+// Spotify Dashboard often fails with long paths; /callback aliases the OAuth handler.
+app.get("/callback", (req, res) => {
+  const q = new URLSearchParams(req.query).toString();
+  res.redirect(302, `/api/spotify/oauth/callback${q ? `?${q}` : ""}`);
+});
+
 // --- Frontend Proxy ---
 const { createProxyMiddleware } = require('http-proxy-middleware');
 app.use('/', createProxyMiddleware({
