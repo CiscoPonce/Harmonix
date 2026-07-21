@@ -166,11 +166,18 @@ function findWordOccurrence(word, syncedLyrics, plainLyrics = null, options = {}
   if (!line) return null;
 
   const in_preview = duration != null ? isTimestampInPreview(line.time, duration) : null;
+  const nextLine = parsed[chosen.line_index + 1];
+  // Real sung-line length from next LRC stamp (fallback ~4s).
+  const line_end_ms =
+    nextLine && Number.isFinite(nextLine.time) && nextLine.time > line.time
+      ? nextLine.time
+      : line.time + 4000;
 
   return {
     snippet: line.text,
     timestamp: formatTimestamp(line.time),
     timestamp_ms: line.time,
+    line_end_ms,
     line_index: chosen.line_index,
     char_start: chosen.char_start,
     char_end: chosen.char_end,

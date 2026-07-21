@@ -77,6 +77,7 @@ describe("Daily Word Service", () => {
     expect(hit.snippet).to.contain("etoile");
     expect(hit.timestamp).to.equal("0:12");
     expect(hit.line_index).to.equal(0);
+    expect(hit.line_end_ms).to.equal(18000);
   });
 
   it("caches and retrieves daily words per user/date", () => {

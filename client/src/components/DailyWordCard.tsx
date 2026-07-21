@@ -37,6 +37,7 @@ interface DailyWordPayload {
     snippet: string;
     timestamp: string;
     timestamp_ms: number;
+    line_end_ms?: number | null;
     line_index: number;
     char_start: number;
     char_end: number;
@@ -228,6 +229,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
 
     const win = computeDeezerHearWindow({
       timestamp_ms: data.lyric.timestamp_ms,
+      line_end_ms: data.lyric.line_end_ms,
       snippet: data.lyric.snippet,
       char_start: data.lyric.char_start,
       char_end: data.lyric.char_end,
@@ -336,6 +338,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       });
       const clip = computeSpotifyHearClip({
         timestamp_ms: data.lyric.timestamp_ms,
+        line_end_ms: data.lyric.line_end_ms,
         snippet: data.lyric.snippet,
         char_start: data.lyric.char_start,
         char_end: data.lyric.char_end,
