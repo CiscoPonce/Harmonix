@@ -48,9 +48,10 @@ export function computeDeezerHearWindow(input: {
   preview_len?: number;
 }): DeezerHearWindow {
   const PREVIEW_LEN = input.preview_len ?? 30;
-  const LEAD_IN = 0.85;
-  const PLAY_AFTER = 2.4;
-  const MIN_CLIP = 2.6;
+  // ~1.5s before the word + ~5.5s after ≈ 7s of context
+  const LEAD_IN = 1.5;
+  const PLAY_AFTER = 5.5;
+  const MIN_CLIP = 5;
 
   const wordSongTimeSec = estimateWordSongTimeSec(input);
   const offset = Number(input.preview_offset) || 0;
@@ -66,18 +67,18 @@ export function computeDeezerHearWindow(input: {
     return { seekTo, stopAt, inWindow: true, relative, wordSongTimeSec };
   }
 
-  // Outside the Deezer cut — play the edge of the preview closest to the lyric.
+  // Outside the Deezer cut — play a longer edge closest to the lyric.
   if (relative < 0.35) {
     return {
       seekTo: 0,
-      stopAt: Math.min(7, PREVIEW_LEN),
+      stopAt: Math.min(12, PREVIEW_LEN),
       inWindow: false,
       relative,
       wordSongTimeSec,
     };
   }
   return {
-    seekTo: Math.max(0, PREVIEW_LEN - 7),
+    seekTo: Math.max(0, PREVIEW_LEN - 12),
     stopAt: PREVIEW_LEN,
     inWindow: false,
     relative,
@@ -92,8 +93,8 @@ export function computeSpotifyHearClip(input: {
   char_start: number;
   char_end: number;
 }): { positionMs: number; stopAfterMs: number; wordSongTimeSec: number } {
-  const LEAD_IN_MS = 900;
-  const PLAY_AFTER_MS = 2400;
+  const LEAD_IN_MS = 1500;
+  const PLAY_AFTER_MS = 5500;
   const wordSongTimeSec = estimateWordSongTimeSec(input);
   const wordMs = Math.round(wordSongTimeSec * 1000);
   return {

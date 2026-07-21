@@ -49,7 +49,7 @@ describe('hearItTiming', () => {
       preview_offset: 30,
     });
     assert.equal(win.inWindow, false);
-    assert.ok(win.seekTo >= 20);
+    assert.ok(win.seekTo >= 15);
     assert.equal(win.stopAt, 30);
   });
 
@@ -62,8 +62,8 @@ describe('hearItTiming', () => {
     });
     const wordMs = Math.round(clip.wordSongTimeSec * 1000);
     assert.ok(clip.positionMs < wordMs);
-    assert.ok(clip.positionMs >= wordMs - 1200);
-    assert.ok(clip.stopAfterMs > 2000 && clip.stopAfterMs < 5000);
+    assert.ok(clip.positionMs >= wordMs - 2000);
+    assert.ok(clip.stopAfterMs >= 6000 && clip.stopAfterMs <= 8000);
   });
 
   it('formats preview window labels', () => {
