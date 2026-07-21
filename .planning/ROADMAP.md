@@ -28,7 +28,7 @@
 
 ## Phase 11 — Word Phonics TTS Integration
 
-**Status:** Planned  
+**Status:** Complete  
 **Milestone:** v1.4 — Phonics Integration  
 **Strategy:** Run Pocket-TTS HTTP server to dynamically generate and cache phonetic pronunciation audio for target words.
 
@@ -36,8 +36,8 @@ Context: [phases/11-word-phonics-tts/11-CONTEXT.md](./phases/11-word-phonics-tts
 
 | Plan | Name | Status |
 |------|------|--------|
-| 11-01 | Backend TTS Service + API Endpoint | Pending |
-| 11-02 | Frontend Pronunciation Button | Pending |
+| 11-01 | Backend TTS Service + API Endpoint | Complete |
+| 11-02 | Frontend Pronunciation Button | Complete |
 
 **End state:** Pocket-TTS running as a backend utility serving phonetic audio to Next.js and Flutter clients with SQLite caching.
 
@@ -47,14 +47,14 @@ Context: [phases/11-word-phonics-tts/11-CONTEXT.md](./phases/11-word-phonics-tts
 
 **Goal:** As a signed-in Harmonix learner, I want to connect my Spotify account from Settings and view and export playlists on web and Android, so that I can use my Spotify music inside Harmonix across both platforms.
 **Mode:** mvp
-**Status:** Code complete — live Connect gate open (12-11 partial)  
+**Status:** Code complete — Connect live on VPS (12-11 partial for formal smoke / Extended Quota)  
 **Milestone:** v1.5 — Spotify Integration  
 **Strategy:** Implement OAuth 2.0 PKCE flow, playlist management, and export functionality.
-**Plans:** 10/11 complete; 12-11 partial (operator Dashboard redirect + human smoke)
+**Plans:** 10/11 complete; 12-11 partial
 
 **Deployed:** GitHub `main` + VPS (`SPOTIFY_CLIENT_ID` set).  
-**Live blocker:** Spotify Dashboard Redirect URI must exactly equal  
-`https://moral-sparrow-nationally.ngrok-free.app/api/spotify/oauth/callback`
+**Live Redirect URI:**  
+`https://moral-sparrow-nationally.ngrok-free.app/callback`
 
 - [x] 12-01-PLAN.md
 - [x] 12-02-PLAN.md
@@ -66,7 +66,7 @@ Context: [phases/11-word-phonics-tts/11-CONTEXT.md](./phases/11-word-phonics-tts
 - [x] 12-08-PLAN.md
 - [x] 12-09-PLAN.md
 - [x] 12-10-PLAN.md
-- [~] 12-11-PLAN.md — automated evidence done; live sandbox/UI gates open
+- [~] 12-11-PLAN.md — Connect live; formal sandbox/UI/policy smoke + Extended Quota open
 
 Context: [phases/12-spotify-api-integration/12-CONTEXT.md](./phases/12-spotify-api-integration/12-CONTEXT.md)  
 Status detail: [phases/12-spotify-api-integration/12-11-SUMMARY.md](./phases/12-spotify-api-integration/12-11-SUMMARY.md)
@@ -83,7 +83,7 @@ Status detail: [phases/12-spotify-api-integration/12-11-SUMMARY.md](./phases/12-
 | 12-08 | Validation-first matching and web export match report | Complete |
 | 12-09 | Android export parity and cross-platform resilience/cleanup | Complete |
 | 12-10 | Automated release matrix and Spotify operations runbook | Complete |
-| 12-11 | Sandbox/device, UI/accessibility, policy/branding, and quota gates | Partial — Dashboard redirect URI + human smoke remaining |
+| 12-11 | Sandbox/device, UI/accessibility, policy/branding, and quota gates | Partial — formal smoke / Extended Quota remaining |
 
 **End state:** Users can connect Spotify accounts, view their Spotify playlists in Harmonix, and export Harmonix playlists to Spotify with intelligent song matching.
 
@@ -156,7 +156,7 @@ Context: [phases/12.5-spotify-connect-ux/12.5-CONTEXT.md](./phases/12.5-spotify-
 **Goal:** As a signed-in Harmonix learner with Spotify connected (Premium), I want to play tracks from a Spotify playlist inside Harmonix playlist detail, so that I can listen without leaving the app — with Open in Spotify as fallback.
 
 **Mode:** mvp  
-**Status:** Planned  
+**Status:** Web MVP complete (2026-07-21); Android + formal validation open  
 **Milestone:** v1.5 — Spotify Integration (playback)  
 **Depends on:** Phase 12 playlist detail + live Connect (12-11); Phase 12.5 optional in parallel
 
@@ -164,13 +164,20 @@ Context: [phases/12.6-spotify-in-app-playback/12.6-CONTEXT.md](./phases/12.6-spo
 
 | Plan | Name | Status |
 |------|------|--------|
-| 12.6-01 | Research SDK/scopes/Premium rules + update COVERAGE | Pending |
-| 12.6-02 | Backend short-lived player token + scope reconnect | Pending |
-| 12.6-03 | Web Spotify detail player (Web Playback SDK) | Pending |
+| 12.6-01 | Research SDK/scopes/Premium rules + update COVERAGE | Complete |
+| 12.6-02 | Backend short-lived player token + scope reconnect + resolve-play | Complete |
+| 12.6-03 | Web Spotify detail player (Web Playback SDK) + Hear-it / full-player Spotify-first | Complete (web MVP) |
 | 12.6-04 | Android parity (if feasible) | Pending |
-| 12.6-05 | Validation matrix + ops runbook | Pending |
+| 12.6-05 | Validation matrix + ops runbook | Partial |
 
-**End state:** Premium users can play/pause Spotify tracks on in-app playlist detail; non-Premium / SDK failures keep honest recovery + Open in Spotify; Harmonix-native audio remains Deezer 30s previews.
+**Shipped on web (beyond original playlist-detail-only scope):**
+
+- Playlist detail in-app play/pause via Web Playback SDK (Premium)
+- `GET /api/spotify/player/token`, playback scopes, reconnect when scopes missing
+- Daily Word Hear-it + Harmonix full player: Spotify-first, Deezer 30s fallback
+- Line-anchored ~12s Hear-it clips; admission queue for concurrent Spotify API calls
+
+**End state (remaining):** Android parity if feasible; formal validation matrix; keep Open in Spotify fallback honest for Free / blocked SDK.
 
 **Key constraints:**
 
@@ -217,6 +224,7 @@ Context: [phases/12.6-spotify-in-app-playback/12.6-CONTEXT.md](./phases/12.6-spo
 
 ## Completed phases
 
+- **Phase 11:** Word Phonics TTS (Pocket-TTS + web pronunciation)
 - **Phase 9.5:** Background word queue (instant daily words)
 - **Phase 9:** Badges, playlists, onboarding, SRS review
 - **Phase 8:** Harmonix rebrand & landing page

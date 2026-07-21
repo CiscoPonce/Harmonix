@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: mobile-dual-frontend
 status: in_progress
-stopped_at: Phase 13 web shell shipped — continue pixel polish; Spotify Connect still needs Dashboard URI
-last_updated: "2026-07-21T21:30:00.000Z"
+stopped_at: Phase 12.6 web MVP shipped; Android playback + Phase 12.5 popup UX remain
+last_updated: "2026-07-21T22:35:00.000Z"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -16,9 +16,11 @@ progress:
 
 ## Current Focus
 
+**Phase 12.6 — Spotify In-App Playback (web MVP done):** Web Playback SDK on Spotify playlist detail; Daily Word / full player prefer Spotify Premium with Deezer 30s fallback. Android playback still open.
+
 **Phase 13 — Web Design System (in progress):** AppShell + Discover shipped; Learn/Library/Settings adopt shell. Designs in `.planning/phases/13-web-design-system/design/`.
 
-**Phase 12 — Spotify API Integration:** **code complete** (12-01–12-10) on GitHub `main` + VPS.
+**Phase 12 — Spotify API Integration:** **code complete** (12-01–12-10). Live Connect working on VPS (Premium user verified 2026-07-21).
 
 | Item | Status |
 |------|--------|
@@ -26,25 +28,27 @@ progress:
 | Automated Spotify tests | Green |
 | VPS deploy + `/settings` live | Done |
 | `SPOTIFY_CLIENT_ID` on VPS | Done |
-| Spotify Dashboard Redirect URI match | **Open** — `redirect_uri: Not matching configuration` |
-| 12-11 live sandbox / UI / policy gates | **Open** |
-| Phase 12.5 popup / Library Connect UX | Planned (after Connect works) |
-| Phase 12.6 Spotify in-app playback | Planned (after Connect + Premium path) |
+| Spotify Dashboard Redirect URI | **Done** — short URI `…/callback` (alias → OAuth handler) |
+| 12-11 formal sandbox / UI / policy gates | Partial — human smoke informal; Extended Quota still open |
+| Phase 12.5 popup / Library Connect UX | Planned |
+| Phase 12.6 web in-app playback | **Done (MVP)** |
+| Phase 12.6 Android parity | Open |
+| Phase 12.6 formal validation matrix | Partial |
 
 **Required Redirect URI (exact):**  
-`https://moral-sparrow-nationally.ngrok-free.app/api/spotify/oauth/callback`
+`https://moral-sparrow-nationally.ngrok-free.app/callback`
 
 Detail: [12-11-SUMMARY.md](./phases/12-spotify-api-integration/12-11-SUMMARY.md)
 
 **Phase 12.5 — Spotify Connect UX (planned):** popup OAuth, Library inline Connect, onboarding prompt.  
 Context: [12.5-CONTEXT.md](./phases/12.5-spotify-connect-ux/12.5-CONTEXT.md).
 
-**Phase 12.6 — Spotify In-App Playback (planned):** Web Playback SDK on Spotify playlist detail for Premium users; Open in Spotify fallback.  
+**Phase 12.6 — Spotify In-App Playback:** Web MVP shipped 2026-07-21 (beyond original playlist-detail-only scope: also Hear-it + full player Spotify-first / Deezer fallback).  
 Context: [12.6-CONTEXT.md](./phases/12.6-spotify-in-app-playback/12.6-CONTEXT.md).
 
 **Phase 10 — Option C in progress.** Flutter Android MVP lives in `mobile/` (light + dark-green Learn UI). Capacitor remains the temporary bridge APK until Flutter public launch (D-10-04).
 
-**Phase 11 — Word Phonics TTS** implemented on backend + web DailyWordCard (HQ Pocket-TTS, SQLite cache, replayable speaker).
+**Phase 11 — Word Phonics TTS** implemented on backend + web DailyWordCard (HQ Pocket-TTS, SQLite cache, replayable speaker). ROADMAP aligned Complete.
 
 Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke gate) is complete — see `docs/LANGUAGE-RELIABILITY.md`.
 
@@ -75,7 +79,7 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 - [x] Plan 12-08: Validation-first matching and web export report
 - [x] Plan 12-09: Android export and resilience matrix
 - [x] Plan 12-10: Automated release matrix and operations runbook
-- [~] Plan 12-11: Sandbox/device/UI/policy/quota — **partial** (Client ID on VPS; Dashboard redirect URI + smoke remaining)
+- [~] Plan 12-11: Sandbox/device/UI/policy/quota — **partial** (Connect live; formal smoke / Extended Quota remaining)
 
 ## Phase 12.5 Progress
 
@@ -86,11 +90,11 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 
 ## Phase 12.6 Progress
 
-- [ ] Plan 12.6-01: Research SDK/scopes/Premium + update COVERAGE
-- [ ] Plan 12.6-02: Backend short-lived player token + scope reconnect
-- [ ] Plan 12.6-03: Web Spotify detail player (Web Playback SDK)
+- [x] Plan 12.6-01: Research SDK/scopes/Premium + update COVERAGE
+- [x] Plan 12.6-02: Backend short-lived player token + scope reconnect + `resolve-play`
+- [x] Plan 12.6-03: Web Spotify detail player (Web Playback SDK) + Daily Word / full-player Spotify-first with Deezer fallback
 - [ ] Plan 12.6-04: Android parity (if feasible)
-- [ ] Plan 12.6-05: Validation matrix + ops runbook
+- [~] Plan 12.6-05: Validation matrix + ops runbook — docs updated; formal gate incomplete
 
 ## Mobile design
 
@@ -123,6 +127,7 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 - **D-10-07:** Start without custom domain — ngrok HTTPS OK for debug APK (10-00A).
 - **D-10-08:** Settings tab hosts Stats & Achievements as primary view.
 - **D-10-09:** Language reliability before Flutter feature work (Track A → Track B).
+- **D-12.6-12 (2026-07-21):** Daily Word / Harmonix full player use **Spotify-first** when connected Premium; **Deezer 30s preview remains** for disconnected / Free / SDK failure (extends D-12.6-01).
 
 ## Phase 9.5 (complete)
 
@@ -131,8 +136,8 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 
 ## Session
 
-**Last session:** 2026-07-21T20:50:00.000Z
-**Stopped at:** Phase 12.6 planned (in-app Spotify playback); Phase 12 still blocked on Dashboard redirect URI
+**Last session:** 2026-07-21T22:35:00.000Z
+**Stopped at:** Phase 12.6 web MVP + Hear-it timing shipped; next = 12.6 Android / 12.5 Connect UX / 13-04 polish
 **Resume file:** .planning/phases/12.6-spotify-in-app-playback/12.6-CONTEXT.md
 **Default branch:** `main` only
 
@@ -174,5 +179,7 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 - [Phase 12]: No-AI boundary proven by injected spy, AI-host fetch rejection, and match/export source import scan
 - [Phase 12]: nyquist_compliant remains false until full npm test and repo lint are green; Spotify surface documented as RC substitute
 - [Phase 12]: Spotify ops runbook pins Development Mode ≠ Extended Quota public release and February 2026 endpoints
-- [Phase 12]: VPS uses long OAuth callback path; `/callback` alias present for Dashboard convenience (2026-07-21)
+- [Phase 12]: Live OAuth redirect URI is short `/callback` (proxied to `/api/spotify/oauth/callback`) — 2026-07-21
 - [Phase 12]: Repo consolidated to single `main` branch (2026-07-21)
+- [Phase 12.6]: Web Playback SDK + `GET /api/spotify/player/token` + `POST /api/spotify/resolve-play`; per-user Spotify admission queues instead of rejecting
+- [Phase 12.6]: Hear-it / full player Spotify-first with Deezer fallback; line-anchored ~12s clips
