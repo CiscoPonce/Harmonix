@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { AppHeader } from '@/components/AppHeader';
+import { AppShell } from '@/components/AppShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { SpotifyConnectionCard } from '@/components/SpotifyConnectionCard';
 import {
@@ -144,81 +144,97 @@ function SettingsContent() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F4F7F5] text-[#121612] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
-      <AppHeader
-        userEmail={user.email}
-        onLogout={logout}
-        homeHref="/dashboard"
-        showSettingsLink={false}
-      />
-
-      <main className="mx-auto flex w-full max-w-[800px] flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
+    <AppShell
+      userEmail={user.email}
+      onLogout={logout}
+      pageTitle="Account Settings"
+      searchPlaceholder="Search terminology..."
+    >
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <header>
-          <h1 className="text-[32px] font-bold leading-tight tracking-tight">Settings</h1>
-          <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-            Manage your account and connected services.
+          <h1 className="font-display text-3xl font-bold italic tracking-tight text-[#0B4D2E] sm:text-4xl">
+            Account Settings
+          </h1>
+          <p className="mt-1 text-sm text-[#5C6B62]">
+            Refine your resonance and track your linguistic growth.
           </p>
         </header>
 
-        <section
-          aria-label="Profile"
-          className="rounded-xl border border-[#D7E0DA] bg-white p-4 dark:border-[#2A3530] dark:bg-[#171E1B] sm:p-5"
-        >
-          <p className="text-xs font-bold uppercase tracking-widest text-[#5C6B62] dark:text-[#9AABA0]">
-            Profile
-          </p>
-          <p className="mt-2 truncate text-base font-bold">{user.email}</p>
-          {(user.target_language || user.native_language) && (
-            <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-              {[user.native_language, user.target_language].filter(Boolean).join(' → ')}
-            </p>
-          )}
-        </section>
+        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+          <div className="space-y-6">
+            <section
+              aria-label="Profile"
+              className="rounded-2xl border border-[#E4EBE6] border-l-4 border-l-[#0B4D2E] bg-white p-5 sm:p-6"
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#E8F5EE] text-xl font-bold text-[#0B4D2E]">
+                  {(user.email || '?').slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-bold">{user.email}</p>
+                  <p className="mt-1 text-sm text-[#5C6B62]">
+                    Capturing the rhythm of the world, one word at a time.
+                  </p>
+                  {(user.target_language || user.native_language) && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {user.native_language ? (
+                        <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E]">
+                          {user.native_language}
+                        </span>
+                      ) : null}
+                      {user.target_language ? (
+                        <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E]">
+                          {user.target_language}
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
 
-        <SpotifyConnectionCard
-          state={cardState}
-          displayName={displayName}
-          message={recoveryMessage}
-          onConnect={handleConnect}
-          onReconnect={handleConnect}
-          onDisconnect={() => setConfirmDisconnect(true)}
-          confirmDisconnect={confirmDisconnect}
-          onConfirmDisconnect={handleDisconnectConfirm}
-          onCancelDisconnect={() => setConfirmDisconnect(false)}
-        />
-
-        <section
-          aria-label="Appearance"
-          className="rounded-xl border border-[#D7E0DA] bg-white p-4 dark:border-[#2A3530] dark:bg-[#171E1B] sm:p-5"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-base font-bold">Appearance</h2>
-              <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                Switch between light and dark themes.
-              </p>
-            </div>
-            <ThemeToggle />
+            <SpotifyConnectionCard
+              state={cardState}
+              displayName={displayName}
+              message={recoveryMessage}
+              onConnect={handleConnect}
+              onReconnect={handleConnect}
+              onDisconnect={() => setConfirmDisconnect(true)}
+              confirmDisconnect={confirmDisconnect}
+              onConfirmDisconnect={handleDisconnectConfirm}
+              onCancelDisconnect={() => setConfirmDisconnect(false)}
+            />
           </div>
-        </section>
 
-        <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Link
-            href="/playlists"
-            className="text-base font-bold text-[#0B6B3A] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6B3A] dark:text-[#3DCF7A]"
-          >
-            Open Library
-          </Link>
-          <button
-            type="button"
-            onClick={() => logout()}
-            className="h-10 rounded-md border border-[#D7E0DA] bg-white px-4 text-base font-bold text-[#121612] hover:bg-[#F4F7F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6B3A] dark:border-[#2A3530] dark:bg-[#171E1B] dark:text-[#F2F5F3] dark:hover:bg-[#0C1210]"
-          >
-            Log out
-          </button>
-        </section>
-      </main>
-    </div>
+          <div className="space-y-6">
+            <section
+              aria-label="Appearance"
+              className="rounded-2xl border border-[#E4EBE6] bg-white p-5"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80]">
+                Appearance
+              </p>
+              <div className="mt-4 flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-bold">Dark Resonance</h2>
+                  <p className="text-sm text-[#5C6B62]">Switch between light and dark themes.</p>
+                </div>
+                <ThemeToggle />
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-[#E4EBE6] bg-white p-5">
+              <Link
+                href="/playlists"
+                className="text-base font-bold text-[#0B4D2E] underline-offset-4 hover:underline"
+              >
+                Open Library →
+              </Link>
+            </section>
+          </div>
+        </div>
+      </div>
+    </AppShell>
   );
 }
 

@@ -99,6 +99,29 @@ Status detail: [phases/12-spotify-api-integration/12-11-SUMMARY.md](./phases/12-
 
 ---
 
+## Phase 13 — Web Design System (Linguistic Resonance)
+
+**Goal:** As a Harmonix learner on web, I want the app to match the Linguistic Resonance designer screens (sidebar shell, Discover, Library, Learn, Settings), so the product feels premium and consistent.
+
+**Mode:** mvp  
+**Status:** In Progress  
+**Milestone:** v1.6 — Web Design System  
+**Depends on:** Phase 12 Settings/Library routes
+
+Context: [phases/13-web-design-system/13-CONTEXT.md](./phases/13-web-design-system/13-CONTEXT.md)  
+Designs: [phases/13-web-design-system/design/](./phases/13-web-design-system/design/)
+
+| Plan | Name | Status |
+|------|------|--------|
+| 13-01 | AppShell + design tokens + fonts | Complete (2026-07-21) |
+| 13-02 | Discover page | Complete (MVP) |
+| 13-03 | Library / Learn / Settings shell adoption | Complete (MVP) |
+| 13-04 | Pixel polish (WOTD card, player bar, stats) | Pending |
+
+**End state:** Authenticated web app uses forest-green sidebar navigation matching designer comps; Discover is the post-login home.
+
+---
+
 ## Phase 12.5 — Spotify Connect UX (one-click OAuth)
 
 **Goal:** As a Harmonix learner, I want to connect Spotify in one click from Library (popup OAuth when possible), so that linking feels as easy as other modern apps — without Developer Dashboard steps or a Settings-only detour.

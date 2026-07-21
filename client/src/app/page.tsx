@@ -28,11 +28,11 @@ export default function LandingPage() {
   useEffect(() => {
     if (isLoading) return;
     if (nativeApp) {
-      router.replace(user ? '/dashboard' : '/login');
+      router.replace(user ? '/discover' : '/login');
       return;
     }
     if (user) {
-      router.push('/dashboard');
+      router.push('/discover');
     }
   }, [user, isLoading, router, nativeApp]);
 

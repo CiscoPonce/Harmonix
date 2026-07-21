@@ -5,19 +5,30 @@
   --color-zinc-400: #a1a1aa;
   --color-zinc-800: #27272a;
   --color-zinc-900: #18181b;
+  --color-hx-forest: #0b4d2e;
+  --color-hx-mint: #e8f5ee;
+  --color-hx-canvas: #f7f8f6;
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
 }
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #000000;
-  --brand-gradient: linear-gradient(135deg, #FF6B6B, #C06C84, #6C5B7B, #355C7D);
+  --background: #f7f8f6;
+  --foreground: #0c1210;
+  --hx-forest: #0b4d2e;
+  --hx-mint: #e8f5ee;
+  --brand-gradient: linear-gradient(135deg, #0b4d2e, #1a7a4a, #3dcf7a);
 }
 
 .dark {
-  --background: #000000;
-  --foreground: #ffffff;
+  --background: #0c1210;
+  --foreground: #f2f5f3;
+}
+
+.font-display {
+  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
 }
 
 html {

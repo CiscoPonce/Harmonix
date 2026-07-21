@@ -11,7 +11,7 @@ import { BadgeUnlockToast } from '@/components/BadgeUnlockToast';
 import { DashboardMatureCards } from '@/components/DashboardMatureCards';
 import { Trophy, Clock } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import { AppHeader } from '@/components/AppHeader';
+import { AppShell } from '@/components/AppShell';
 import { HarmonixWordmark } from '@/components/HarmonixWordmark';
 
 /** Daily promo, Achievements, and Playlists cards — enable when ready for launch. */
@@ -153,10 +153,10 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black text-zinc-900 dark:text-white">
+      <div className="flex min-h-screen items-center justify-center bg-[#F7F8F6] text-[#0C1210]">
         <div className="flex flex-col items-center gap-3">
           <HarmonixWordmark href={null} showTagline />
-          <p className="text-sm font-medium uppercase tracking-widest text-zinc-500 animate-pulse">Loading</p>
+          <p className="text-sm font-medium uppercase tracking-widest text-[#7A8A80] animate-pulse">Loading</p>
         </div>
       </div>
     );
@@ -165,35 +165,40 @@ export default function DashboardPage() {
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black text-zinc-900 dark:text-white font-sans selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black overflow-x-hidden">
+    <AppShell
+      userEmail={user.email}
+      onLogout={logout}
+      searchPlaceholder="Search for tracks, lyrics, or definitions..."
+    >
       <BadgeUnlockToast badge={unlockedBadge} onDismiss={() => setUnlockedBadge(null)} />
 
-      <AppHeader userEmail={user.email} onLogout={logout} homeHref="/dashboard" />
-
-      <main className="flex-1 flex flex-col items-center px-4 py-6 sm:px-6 sm:py-8 md:py-12 max-w-5xl mx-auto w-full min-w-0">
+      <div className="mx-auto flex w-full max-w-5xl flex-col items-center">
+        <p className="mb-2 self-start text-[10px] font-bold uppercase tracking-[0.2em] text-[#7A8A80]">
+          Word of the day
+        </p>
         <div ref={dailyWordRef} className="w-full max-w-3xl flex justify-center">
           <DailyWordCard onWordChange={refreshDashboardData} />
         </div>
 
-        <section className="w-full mt-16 space-y-4">
+        <section className="mt-12 w-full space-y-4">
           <div className="text-center space-y-2">
-            <h3 className="text-sm font-black uppercase tracking-[0.3em] text-zinc-600">Or explore</h3>
-            <p className="text-zinc-500 text-sm">Search any song to extract more vocabulary.</p>
+            <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-[#5C6B62]">Or explore</h3>
+            <p className="text-sm text-[#7A8A80]">Search any song to extract more vocabulary.</p>
           </div>
           <SongSearch />
         </section>
 
         <ReviewCountBadge />
 
-        {/* Features Grid */}
-        <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 w-full mt-16 sm:mt-24 min-w-0">
-          {/* Recent daily words card */}
-          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-5 sm:p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px] min-w-0 overflow-hidden">
-            <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors shrink-0">
-              <Clock className="w-6 h-6" />
+        <div className="mt-16 grid w-full min-w-0 gap-4 sm:mt-20 sm:grid-cols-2 sm:gap-6">
+          <div className="group flex min-h-[250px] min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E4EBE6] bg-white p-5 sm:p-8">
+            <div className="mb-6 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E8F5EE] text-[#0B4D2E]">
+              <Clock className="h-6 w-6" />
             </div>
-            <h3 className="font-black uppercase sm:italic tracking-tight text-xl mb-1 shrink-0 pl-0.5">Recent</h3>
-            <p className="text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-500 mb-3 shrink-0">Words you discovered · last 7 days</p>
+            <h3 className="mb-1 shrink-0 font-display text-xl font-bold italic tracking-tight">Recent</h3>
+            <p className="mb-3 shrink-0 text-[10px] font-bold uppercase tracking-widest text-[#7A8A80]">
+              Words you discovered · last 7 days
+            </p>
             {loadingData ? (
               <div className="space-y-3 animate-pulse flex-1">
                 <div className="h-10 bg-zinc-900 rounded w-full"></div>
@@ -207,30 +212,28 @@ export default function DashboardPage() {
                   <Link
                     key={entry.id ?? `${entry.date}-${entry.word.text}`}
                     href={entry.song?.id ? `/player/${entry.song.id}` : '#'}
-                    className="block p-3 rounded-lg border border-zinc-200 dark:border-zinc-900 bg-zinc-50 dark:bg-black/40 hover:border-zinc-300 dark:hover:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900/20 transition-all group/item"
+                    className="group/item block rounded-lg border border-[#E4EBE6] bg-[#F7F8F6] p-3 transition-all hover:border-[#0B4D2E]/30 hover:bg-[#E8F5EE]"
                   >
-                    <div className="flex justify-between items-center gap-2">
+                    <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-black text-zinc-900 dark:text-white truncate uppercase tracking-wide">
+                        <p className="truncate text-xs font-bold uppercase tracking-wide text-[#0C1210]">
                           {entry.word.text}
                         </p>
-                        <p className="text-[11px] text-zinc-500 line-clamp-2 normal-case leading-snug">
+                        <p className="line-clamp-2 text-[11px] leading-snug text-[#5C6B62]">
                           {entry.word.translation || entry.song?.title || 'Discovered word'}
                         </p>
                         {entry.song && (
-                          <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                          <p className="mt-0.5 truncate text-[10px] text-[#7A8A80]">
                             {entry.song.title} · {entry.song.artist}
                           </p>
                         )}
                       </div>
                       <div className="shrink-0 text-right">
-                        <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                        <span className="block text-[10px] font-bold uppercase tracking-widest text-[#7A8A80]">
                           {formatDailyWordDate(entry.date)}
                         </span>
                         {timeLabel && (
-                          <span className="block text-[10px] text-zinc-400 mt-0.5">
-                            {timeLabel}
-                          </span>
+                          <span className="mt-0.5 block text-[10px] text-[#9AABA0]">{timeLabel}</span>
                         )}
                       </div>
                     </div>
@@ -245,12 +248,11 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Stats card */}
-          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950 p-5 sm:p-8 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 group flex flex-col min-h-[250px] min-w-0 overflow-hidden">
-            <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-6 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors shrink-0">
-              <Trophy className="w-6 h-6" />
+          <div className="group flex min-h-[250px] min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E4EBE6] bg-white p-5 sm:p-8">
+            <div className="mb-6 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E8F5EE] text-[#0B4D2E]">
+              <Trophy className="h-6 w-6" />
             </div>
-            <h3 className="font-black uppercase sm:italic tracking-tight text-xl mb-2 shrink-0 pl-0.5">Stats</h3>
+            <h3 className="mb-2 shrink-0 font-display text-xl font-bold italic tracking-tight">Stats</h3>
             {loadingData ? (
               <div className="space-y-4 animate-pulse flex-1">
                 <div className="h-4 bg-zinc-900 rounded w-2/3"></div>
@@ -260,26 +262,30 @@ export default function DashboardPage() {
             ) : stats ? (
               <div className="space-y-4 flex-1 flex flex-col justify-between">
                 <div className="space-y-3">
-                  <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
-                    <span className="text-zinc-500">Streak</span>
-                    <span className="text-zinc-900 dark:text-white flex items-center gap-1">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest">
+                    <span className="text-[#7A8A80]">Streak</span>
+                    <span className="flex items-center gap-1 text-[#0C1210]">
                       {stats.streak_days} {stats.streak_days > 0 ? '🔥' : '❄️'}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
-                    <span className="text-zinc-500">Words learned</span>
-                    <span className="text-zinc-900 dark:text-white">{stats.total_words}</span>
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest">
+                    <span className="text-[#7A8A80]">Words learned</span>
+                    <span className="text-[#0C1210]">{stats.total_words}</span>
                   </div>
                 </div>
-                <div className="space-y-1 mt-auto">
-                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                <div className="mt-auto space-y-1">
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-[#7A8A80]">
                     <span>Today&apos;s word</span>
-                    <span>{stats.today_words}/{stats.daily_goal}</span>
+                    <span>
+                      {stats.today_words}/{stats.daily_goal}
+                    </span>
                   </div>
-                  <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-500 ${stats.today_goal_met ? 'bg-green-500' : 'bg-zinc-500'}`}
-                      style={{ width: `${Math.min(100, (stats.today_words / stats.daily_goal) * 100)}%` }}
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E4EBE6]">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${stats.today_goal_met ? 'bg-[#0B4D2E]' : 'bg-[#7A8A80]'}`}
+                      style={{
+                        width: `${Math.min(100, (stats.today_words / stats.daily_goal) * 100)}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -297,12 +303,7 @@ export default function DashboardPage() {
             />
           )}
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="p-12 text-center border-t border-zinc-200 dark:border-zinc-900">
-        <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-800 uppercase tracking-[0.3em]">Harmonix &copy; 2026</p>
-      </footer>
-    </div>
+      </div>
+    </AppShell>
   );
 }

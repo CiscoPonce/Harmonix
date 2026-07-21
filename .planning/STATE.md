@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: mobile-dual-frontend
 status: in_progress
-stopped_at: Phase 12 code complete on main+VPS — close 12-11 via Dashboard redirect URI + Connect smoke
-last_updated: "2026-07-21T20:50:00.000Z"
+stopped_at: Phase 13 web shell shipped — continue pixel polish; Spotify Connect still needs Dashboard URI
+last_updated: "2026-07-21T21:30:00.000Z"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -15,6 +15,8 @@ progress:
 # Project State — Harmonix
 
 ## Current Focus
+
+**Phase 13 — Web Design System (in progress):** AppShell + Discover shipped; Learn/Library/Settings adopt shell. Designs in `.planning/phases/13-web-design-system/design/`.
 
 **Phase 12 — Spotify API Integration:** **code complete** (12-01–12-10) on GitHub `main` + VPS.
 

@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('[Auth] Login successful');
       setAccessToken(data.accessToken);
       setUser(data.user);
-      router.push('/dashboard');
+      router.push('/discover');
     } else {
       const errorData = await parseJsonResponse<{ error?: string }>(res).catch(() => ({
         error: 'Login failed',

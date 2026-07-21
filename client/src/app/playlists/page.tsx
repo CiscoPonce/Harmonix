@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { UndoDeleteToast } from '@/components/UndoDeleteToast';
+import { AppShell } from '@/components/AppShell';
 import {
   apiFetch,
   fetchSpotifyPlaylists,
@@ -76,7 +77,7 @@ function PlaylistCardSkeleton() {
 }
 
 function LibraryContent() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, logout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackOutcome = parseSpotifyCallbackOutcome(searchParams.get('spotify'));
@@ -282,35 +283,55 @@ function LibraryContent() {
     recent.length === 0;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F4F7F5] text-[#121612] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
-      <nav className="sticky top-0 z-10 flex items-center justify-between border-b border-[#D7E0DA] bg-[#F4F7F5]/90 px-4 py-4 backdrop-blur-xl dark:border-[#2A3530] dark:bg-[#0C1210]/90 sm:px-6">
-        <Link
-          href="/dashboard"
-          className="text-sm text-[#5C6B62] underline-offset-4 hover:underline dark:text-[#9AABA0]"
-        >
-          &larr; Back
-        </Link>
-        <h1 className="text-lg font-bold tracking-tight">Library</h1>
+    <AppShell
+      userEmail={user?.email}
+      onLogout={logout}
+      pageTitle="Library"
+      searchPlaceholder="Search your collection"
+      showBottomPlayer={Boolean(recent[0]?.song)}
+      nowPlaying={
+        recent[0]?.song
+          ? { title: recent[0].song.title, artist: recent[0].song.artist }
+          : null
+      }
+      headerExtra={
         <Link
           href="/settings"
-          className="text-sm font-bold text-[#0B6B3A] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
+          className="hidden rounded-full bg-[#0B4D2E] px-4 py-2 text-xs font-bold text-white hover:bg-[#093F25] sm:inline-flex"
         >
-          Settings
+          Connect to Spotify
         </Link>
-      </nav>
-
-      <main
-        className="mx-auto flex w-full max-w-[1120px] flex-1 flex-col gap-8 px-4 py-8 sm:px-6 sm:py-10"
+      }
+    >
+      <div
+        className="mx-auto flex w-full max-w-[1120px] flex-col gap-8"
         aria-busy={harmonixLoading || spotifyLoading || recentLoading}
       >
         {successBanner ? (
           <p
             role="status"
-            className="rounded-lg border border-[#0B6B3A]/30 bg-white px-4 py-3 text-sm font-bold text-[#0B6B3A] dark:border-[#3DCF7A]/40 dark:bg-[#171E1B] dark:text-[#3DCF7A]"
+            className="rounded-lg border border-[#0B4D2E]/30 bg-white px-4 py-3 text-sm font-bold text-[#0B4D2E]"
           >
             Spotify connected. Loading your playlists.
           </p>
         ) : null}
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80]">
+              Personal collection
+            </p>
+            <p className="mt-1 max-w-xl font-display text-xl font-bold italic text-[#0C1210] sm:text-2xl">
+              Your resonance library brings together language and lyric in perfect harmony.
+            </p>
+          </div>
+          <Link
+            href="/settings"
+            className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#0B4D2E] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#093F25]"
+          >
+            Connect to Spotify
+          </Link>
+        </div>
 
         {/* Create action */}
         <div className="flex w-full max-w-[800px] gap-2">
@@ -604,7 +625,7 @@ function LibraryContent() {
             </ul>
           )}
         </section>
-      </main>
+      </div>
 
       {deletedPlaylist && (
         <UndoDeleteToast
@@ -616,7 +637,7 @@ function LibraryContent() {
           }}
         />
       )}
-    </div>
+    </AppShell>
   );
 }
 

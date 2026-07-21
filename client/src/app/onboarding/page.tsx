@@ -53,7 +53,7 @@ export default function OnboardingPage() {
       });
       if (!res.ok) throw new Error('Failed to save preferences');
       await refreshUser();
-      router.push('/dashboard');
+      router.push('/discover');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setSaving(false);
@@ -88,7 +88,7 @@ export default function OnboardingPage() {
         throw new Error(data.error || 'Failed to save preferences');
       }
       await refreshUser();
-      router.push('/dashboard');
+      router.push('/discover');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setSaving(false);
