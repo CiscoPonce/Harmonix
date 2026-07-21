@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "./ui/Button";
@@ -64,6 +64,7 @@ function highlightWord(snippet: string, start: number, end: number) {
 
 export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const { user } = useAuth();
+  const router = useRouter();
   const [data, setData] = useState<DailyWordPayload | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -361,7 +362,12 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     );
   }
 
-  const playerHref = "/player/" + data.song.id;
+  const playerHref = "/player/" + encodeURIComponent(String(data.song.id));
+  const openFullPlayer = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    router.push(playerHref);
+  };
   const readyCount = queueStatus?.ready ?? data.queue?.ready ?? 0;
   const showHeavyOverlay = refreshing && (queueStatus?.ready ?? 0) === 0;
   const homeLanguage = (user?.native_language || "en").toUpperCase();
@@ -494,7 +500,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
                 Tap to flip back
               </p>
 
-              <div className="space-y-4 min-w-0 flex-1 flex flex-col justify-center pointer-events-none">
+              <div className="space-y-4 min-w-0 flex-1 flex flex-col justify-center">
                 <div className="flex items-start gap-2 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-600 dark:text-zinc-500 min-w-0">
                   <Music2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                   <span className="line-clamp-2 break-words">Found in {data.song.title} · {data.song.artist}</span>
@@ -504,27 +510,31 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
                 </blockquote>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-600">At {data.lyric.timestamp}</p>
               </div>
-
-              <div className="flex flex-wrap gap-3 pt-2" onClick={(e) => e.stopPropagation()}>
-                <Button
-                  type="button"
-                  onClick={() => void togglePlay()}
-                  disabled={refreshing || !data.audio.preview_url}
-                  className="gap-2 uppercase tracking-widest text-[10px] font-bold"
-                >
-                  {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  Hear it in the song
-                </Button>
-                <Link
-                  href={playerHref}
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-zinc-800 bg-black px-4 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-zinc-900"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  Open full player
-                </Link>
-              </div>
             </div>
           </div>
+        </div>
+
+        {/* Outside the 3D flip — links/buttons inside rotateY often fail hit-testing */}
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Button
+            type="button"
+            onClick={() => void togglePlay()}
+            disabled={refreshing || !data.audio.preview_url}
+            className="gap-2 uppercase tracking-widest text-[10px] font-bold"
+          >
+            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            Hear it in the song
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={openFullPlayer}
+            disabled={refreshing || !data.song.id}
+            className="gap-2 uppercase tracking-widest text-[10px] font-bold"
+          >
+            <BookOpen className="w-4 h-4" />
+            Open full player
+          </Button>
         </div>
       </div>
 

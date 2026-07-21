@@ -2,10 +2,11 @@
 
 export const dynamic = 'force-dynamic';
 
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Player from '@/components/Player';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, parseJsonResponse } from '@/lib/api';
 import { MappedVocabItem } from '@/components/LyricList';
 
 interface TrackMetadata {
@@ -27,7 +28,8 @@ export interface VocabItem {
 
 export default function PlayerPage() {
   const params = useParams();
-  const id = params.id as string;
+  const rawId = typeof params.id === 'string' ? params.id : '';
+  const id = rawId ? decodeURIComponent(rawId) : '';
   const [track, setTrack] = useState<TrackMetadata | null>(null);
   const [lrcString, setLrcString] = useState<string | null>(null);
   const [mappedVocab, setMappedVocab] = useState<MappedVocabItem[]>([]);
@@ -37,65 +39,79 @@ export default function PlayerPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setLoading(false);
+      setError('Missing track id');
+      return;
+    }
+
+    let active = true;
 
     async function fetchData() {
       try {
         setLoading(true);
-        const trackRes = await apiFetch(`/tracks/${id}`);
-        if (!trackRes.ok) throw new Error('Track not found');
-        const trackData = await trackRes.json();
+        setError(null);
+        const trackRes = await apiFetch(`/tracks/${encodeURIComponent(id)}`);
+        if (!trackRes.ok) {
+          const body = await trackRes.json().catch(() => ({}));
+          throw new Error(
+            (body && typeof body.error === 'string' && body.error) ||
+              `Track not found (${trackRes.status})`
+          );
+        }
+        const trackData = await parseJsonResponse<TrackMetadata>(trackRes);
+        if (!active) return;
         setTrack(trackData);
 
         const lyricsRes = await apiFetch(
           `/lyrics?artist_name=${encodeURIComponent(trackData.artist)}&track_name=${encodeURIComponent(trackData.title)}&duration=${trackData.duration}`
         );
         if (lyricsRes.ok) {
-          const lyricsData = await lyricsRes.json();
-          setLrcString(lyricsData.syncedLyrics);
-        } else {
-          console.warn('Lyrics not found for this track');
+          const lyricsData = await parseJsonResponse<{ syncedLyrics?: string }>(lyricsRes);
+          if (active) setLrcString(lyricsData.syncedLyrics ?? null);
         }
 
-        // Fetch vocabulary. Prefer the byte-stable synced_lyrics snapshot from
-        // the response so that aligned word highlights point to identical bytes.
-        const vocabRes = await apiFetch(`/vocab/${id}`);
+        const vocabRes = await apiFetch(`/vocab/${encodeURIComponent(id)}`);
         if (vocabRes.ok) {
-          const vocabData = await vocabRes.json();
-          setMappedVocab(vocabData.mapped);
-          setUnmappedVocab(vocabData.unmapped);
+          const vocabData = await parseJsonResponse<{
+            mapped?: MappedVocabItem[];
+            unmapped?: VocabItem[];
+            synced_lyrics?: string;
+          }>(vocabRes);
+          if (!active) return;
+          setMappedVocab(vocabData.mapped || []);
+          setUnmappedVocab(vocabData.unmapped || []);
           if (vocabData.synced_lyrics) {
             setLrcString(vocabData.synced_lyrics);
           }
         }
 
-        // Fetch user profile for CEFR level
         const userRes = await apiFetch('/auth/me');
         if (userRes.ok) {
-          const userData = await userRes.json();
-          if (userData.cefr_level) {
+          const userData = await parseJsonResponse<{ cefr_level?: string }>(userRes);
+          if (active && userData.cefr_level) {
             setCefrLevel(userData.cefr_level);
           }
         }
-
       } catch (err) {
         console.error('Fetch error:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        if (active) {
+          setError(err instanceof Error ? err.message : 'Unknown error');
+          setTrack(null);
+        }
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
 
-    fetchData();
+    void fetchData();
+    return () => {
+      active = false;
+    };
   }, [id]);
 
   const handleCefrChange = async (newLevel: string) => {
     setCefrLevel(newLevel);
-    // Future: Persistence to backend
-    // await apiFetch('/user/profile', { 
-    //   method: 'PUT', 
-    //   body: JSON.stringify({ cefr_level: newLevel }) 
-    // });
   };
 
   if (loading) {
@@ -112,28 +128,40 @@ export default function PlayerPage() {
       <div className="h-screen bg-black flex flex-col items-center justify-center text-white p-6 text-center">
         <h2 className="text-2xl font-black uppercase italic mb-2">Error</h2>
         <p className="text-zinc-500 max-w-xs">{error}</p>
-        <button 
-          onClick={() => window.location.reload()}
-          className="mt-8 px-6 py-2 border border-white text-xs font-bold uppercase hover:bg-white hover:text-black transition-colors"
-        >
-          Try Again
-        </button>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 border border-white text-xs font-bold uppercase hover:bg-white hover:text-black transition-colors"
+          >
+            Try Again
+          </button>
+          <Link
+            href="/dashboard"
+            className="px-6 py-2 border border-zinc-600 text-xs font-bold uppercase text-zinc-300 hover:border-white hover:text-white transition-colors"
+          >
+            Back to Learn
+          </Link>
+        </div>
       </div>
     );
   }
 
   if (!track) {
     return (
-      <div className="h-screen bg-black flex items-center justify-center text-white uppercase font-black italic">
-        Track Not Found
+      <div className="h-screen bg-black flex flex-col items-center justify-center text-white gap-4 uppercase font-black italic">
+        <p>Track Not Found</p>
+        <Link href="/dashboard" className="text-xs font-bold tracking-widest text-zinc-400 hover:text-white not-italic">
+          Back to Learn
+        </Link>
       </div>
     );
   }
 
   return (
-    <Player 
-      track={track} 
-      lrcString={lrcString} 
+    <Player
+      track={track}
+      lrcString={lrcString}
       mappedVocab={mappedVocab}
       unmappedVocab={unmappedVocab}
       cefrLevel={cefrLevel}
