@@ -34,6 +34,7 @@ interface DailyWordPayload {
     line_index: number;
     char_start: number;
     char_end: number;
+    in_preview?: boolean | null;
   };
   song: {
     id: string;
@@ -45,6 +46,7 @@ interface DailyWordPayload {
     preview_url: string;
     duration_seconds: number;
     preview_offset: number;
+    preview_end?: number;
   };
   queue?: QueueStatus;
 }
@@ -77,6 +79,14 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const pronunciationAudioRef = useRef<HTMLAudioElement | null>(null);
+  const hearStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearHearStopTimer = useCallback(() => {
+    if (hearStopTimerRef.current) {
+      clearTimeout(hearStopTimerRef.current);
+      hearStopTimerRef.current = null;
+    }
+  }, []);
 
   const fetchQueueStatus = useCallback(async () => {
     try {
@@ -182,16 +192,37 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const togglePlay = async () => {
     const audio = audioRef.current;
     if (!audio || !data) return;
+    clearHearStopTimer();
     if (isPlaying) {
       audio.pause();
       setIsPlaying(false);
       return;
     }
 
-    // Preview file is only ~30s; t=0 is already at preview_offset in the full song.
+    // Deezer preview is a 30s cut: for songs >60s it is full-song [30s, 60s].
+    // audio.currentTime=0 is already at preview_offset in the full track.
+    const PREVIEW_LEN = 30;
+    const LEAD_IN = 1.25;
+    const PLAY_AFTER = 5.5;
+    const offset = data.audio.preview_offset || 0;
     const songTimeSec = data.lyric.timestamp_ms / 1000;
-    const startInPreview = songTimeSec - (data.audio.preview_offset || 0) - 2;
-    const seekTo = Math.max(0, Math.min(28, startInPreview));
+    const relative = songTimeSec - offset;
+    const inWindow = relative >= 0.25 && relative <= PREVIEW_LEN - 1;
+
+    let seekTo: number;
+    let stopAt: number;
+    if (inWindow) {
+      seekTo = Math.max(0, Math.min(PREVIEW_LEN - 2, relative - LEAD_IN));
+      stopAt = Math.min(PREVIEW_LEN, Math.max(seekTo + 3.5, relative + PLAY_AFTER));
+    } else {
+      // Lyric line is outside the preview cut — play the start of the available clip.
+      seekTo = 0;
+      stopAt = Math.min(PREVIEW_LEN, 8);
+      setRefreshError(
+        `Deezer preview is ~${formatPreviewWindow(offset)}; this line is at ${data.lyric.timestamp}. Playing the available clip.`
+      );
+      window.setTimeout(() => setRefreshError(null), 5000);
+    }
 
     try {
       if (audio.readyState < 1) {
@@ -213,10 +244,33 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           audio.addEventListener('error', onErr, { once: true });
         });
       }
+
       audio.currentTime = seekTo;
+      if (Math.abs(audio.currentTime - seekTo) > 0.35) {
+        await new Promise<void>((resolve) => {
+          const done = () => {
+            audio.removeEventListener('seeked', done);
+            resolve();
+          };
+          audio.addEventListener('seeked', done, { once: true });
+          window.setTimeout(done, 400);
+        });
+      }
+
       await audio.play();
       setIsPlaying(true);
-      setRefreshError(null);
+      if (inWindow) setRefreshError(null);
+
+      const playMs = Math.max(1500, (stopAt - seekTo) * 1000);
+      hearStopTimerRef.current = setTimeout(() => {
+        try {
+          audio.pause();
+        } catch {
+          /* ignore */
+        }
+        setIsPlaying(false);
+        hearStopTimerRef.current = null;
+      }, playMs);
     } catch (err) {
       console.error('Playback failed:', err);
       setRefreshError('Audio preview unavailable. Try Open full player.');
@@ -225,9 +279,29 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   };
 
   useEffect(() => {
+    return () => clearHearStopTimer();
+  }, [clearHearStopTimer]);
+
+  useEffect(() => {
+    clearHearStopTimer();
+    const audio = audioRef.current;
+    if (audio) {
+      try {
+        audio.pause();
+      } catch {
+        /* ignore */
+      }
+    }
+    setIsPlaying(false);
+  }, [data?.word?.text, data?.song?.id, clearHearStopTimer]);
+
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const onEnded = () => setIsPlaying(false);
+    const onEnded = () => {
+      clearHearStopTimer();
+      setIsPlaying(false);
+    };
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     audio.addEventListener('ended', onEnded);
@@ -238,7 +312,14 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       audio.removeEventListener('play', onPlay);
       audio.removeEventListener('pause', onPause);
     };
-  }, [data]);
+  }, [data, clearHearStopTimer]);
+
+  function formatPreviewWindow(offsetSec: number) {
+    const start = Math.floor(offsetSec);
+    const end = start + 30;
+    const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    return `${fmt(start)}–${fmt(end)}`;
+  }
 
   // Reset pronunciation playback when the daily word changes.
   useEffect(() => {

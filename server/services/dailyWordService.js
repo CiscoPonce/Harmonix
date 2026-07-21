@@ -101,6 +101,19 @@ function previewOffset(duration) {
   return 0;
 }
 
+/** Deezer 30s clip maps to [offset, offset+30) in the full track. */
+function previewWindow(duration) {
+  const offset = previewOffset(duration);
+  return { offset, end: offset + 30, length: 30 };
+}
+
+function isTimestampInPreview(timestampMs, duration) {
+  const { offset, end } = previewWindow(duration);
+  const t = Number(timestampMs) / 1000;
+  // Keep a little margin so lead-in/out still fit in the clip.
+  return t >= offset + 0.5 && t <= end - 1.5;
+}
+
 function parseLyricLines(lrc) {
   if (!lrc) return [];
   return lrc
@@ -112,7 +125,7 @@ function parseLyricLines(lrc) {
     .filter(Boolean);
 }
 
-function findWordOccurrence(word, syncedLyrics, plainLyrics = null) {
+function findWordOccurrence(word, syncedLyrics, plainLyrics = null, options = {}) {
   const parsed = validation.parseLrc(syncedLyrics);
   if (!parsed.length) return null;
 
@@ -139,17 +152,29 @@ function findWordOccurrence(word, syncedLyrics, plainLyrics = null) {
 
   if (!occurrences.length) return null;
 
-  const hit = occurrences[0];
-  const line = parsed[hit.line_index];
+  const duration = typeof options.duration === "number" ? options.duration : null;
+  let chosen = occurrences[0];
+  if (duration != null) {
+    const inPreview = occurrences.find((hit) => {
+      const line = parsed[hit.line_index];
+      return line && isTimestampInPreview(line.time, duration);
+    });
+    if (inPreview) chosen = inPreview;
+  }
+
+  const line = parsed[chosen.line_index];
   if (!line) return null;
+
+  const in_preview = duration != null ? isTimestampInPreview(line.time, duration) : null;
 
   return {
     snippet: line.text,
     timestamp: formatTimestamp(line.time),
     timestamp_ms: line.time,
-    line_index: hit.line_index,
-    char_start: hit.char_start,
-    char_end: hit.char_end,
+    line_index: chosen.line_index,
+    char_start: chosen.char_start,
+    char_end: chosen.char_end,
+    in_preview,
   };
 }
 
@@ -180,6 +205,10 @@ async function searchDeezerTrack(artist, title, fetchImpl = fetch) {
 function buildPayload(date, suggestion, track, lyricsData, occurrence, langCode = "es") {
   const duration = track.duration;
   const offset = previewOffset(duration);
+  const inPreview =
+    typeof occurrence.in_preview === "boolean"
+      ? occurrence.in_preview
+      : isTimestampInPreview(occurrence.timestamp_ms, duration);
   return {
     date,
     cached: false,
@@ -192,7 +221,10 @@ function buildPayload(date, suggestion, track, lyricsData, occurrence, langCode 
       difficulty: suggestion.difficulty || "medium",
       cefr_level: suggestion.cefr_level || null,
     },
-    lyric: occurrence,
+    lyric: {
+      ...occurrence,
+      in_preview: inPreview,
+    },
     song: {
       id: String(track.id),
       title: track.title,
@@ -203,6 +235,7 @@ function buildPayload(date, suggestion, track, lyricsData, occurrence, langCode 
       preview_url: deezer.previewProxyPath(String(track.id)),
       duration_seconds: duration,
       preview_offset: offset,
+      preview_end: offset + 30,
     },
   };
 }
@@ -274,21 +307,55 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
         return { error: "lyrics_wrong_language" };
       }
 
-      const picked = pickWordFromLyricsHeuristic(plain, user.difficulty || "medium", avoidWords, langCode);
-      if (!picked) {
+      const duration = track.duration;
+      const { offset: previewStart, end: previewEnd } = previewWindow(duration);
+      const parsedLines = validation.parseLrc(lyricsData.syncedLyrics);
+
+      // Prefer a word whose lyric line sits inside Deezer's 30s preview cut.
+      let picked = null;
+      let occurrence = null;
+      const candidates = [];
+      const firstPick = pickWordFromLyricsHeuristic(plain, user.difficulty || "medium", avoidWords, langCode);
+      if (firstPick) candidates.push(firstPick);
+
+      // Also consider other heuristic candidates from preview-window lines only.
+      const previewPlain = parsedLines
+        .filter((line) => isTimestampInPreview(line.time, duration))
+        .map((line) => line.text)
+        .join("\n");
+      if (previewPlain.trim()) {
+        const previewPick = pickWordFromLyricsHeuristic(
+          previewPlain,
+          user.difficulty || "medium",
+          avoidWords,
+          langCode
+        );
+        if (previewPick && (!firstPick || previewPick.word.toLowerCase() !== firstPick.word.toLowerCase())) {
+          candidates.unshift(previewPick); // prefer preview-window word
+        }
+      }
+
+      for (const candidate of candidates) {
+        if (!wordMatchesTargetLanguage(candidate.word, langCode)) continue;
+        const occ = findWordOccurrence(candidate.word, lyricsData.syncedLyrics, plain, {
+          duration,
+        });
+        if (!occ) continue;
+        picked = candidate;
+        occurrence = occ;
+        if (occ.in_preview) break;
+      }
+
+      if (!picked || !occurrence) {
         console.warn(`daily word reject: no_suitable_word ${label}`);
         return { error: "no_suitable_word" };
       }
 
-      if (!wordMatchesTargetLanguage(picked.word, langCode)) {
-        console.warn(`daily word reject: wrong_language ${label} (${picked.word} not ${langCode})`);
-        return { error: "wrong_language" };
-      }
-
-      const occurrence = findWordOccurrence(picked.word, lyricsData.syncedLyrics, plain);
-      if (!occurrence) {
-        console.warn(`daily word reject: word_not_in_lyrics ${label} (${picked.word})`);
-        return { error: "word_not_in_lyrics" };
+      if (!occurrence.in_preview) {
+        console.warn(
+          `daily word warn: lyric outside preview window ${label} ` +
+            `(t=${occurrence.timestamp} window=${formatTimestamp(previewStart * 1000)}-${formatTimestamp(previewEnd * 1000)})`
+        );
       }
 
       return {
@@ -332,7 +399,8 @@ async function tryValidateSuggestion(suggestion, date, fetchImpl = fetch) {
     const occurrence = findWordOccurrence(
       suggestion.target_word,
       lyricsData.syncedLyrics,
-      lyricsData.plainLyrics || null
+      lyricsData.plainLyrics || null,
+      { duration: track.duration }
     );
     if (!occurrence) return { error: "word_not_in_lyrics" };
 
@@ -1124,6 +1192,8 @@ module.exports = {
   todayDate,
   formatTimestamp,
   previewOffset,
+  previewWindow,
+  isTimestampInPreview,
   findWordOccurrence,
   fetchLyrics,
   searchDeezerTrack,

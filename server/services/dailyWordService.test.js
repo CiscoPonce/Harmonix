@@ -58,6 +58,18 @@ describe("Daily Word Service", () => {
     expect(previewOffset(25)).to.equal(0);
   });
 
+  it("prefers word occurrences inside the Deezer preview window", () => {
+    const { isTimestampInPreview } = require("./dailyWordService");
+    expect(isTimestampInPreview(45000, 180)).to.equal(true); // 0:45 in [30,60]
+    expect(isTimestampInPreview(10000, 180)).to.equal(false); // 0:10 outside
+    const lrc =
+      "[00:10.00] Early word forever\n[00:45.00] Later word forever in chorus";
+    const hit = findWordOccurrence("forever", lrc, null, { duration: 180 });
+    expect(hit).to.not.be.null;
+    expect(hit.timestamp).to.equal("0:45");
+    expect(hit.in_preview).to.equal(true);
+  });
+
   it("finds a word occurrence in synced lyrics", () => {
     const lrc = "[00:12.00] Tu es mon etoile dans la nuit\n[00:18.00] Brille pour moi";
     const hit = findWordOccurrence("etoile", lrc);

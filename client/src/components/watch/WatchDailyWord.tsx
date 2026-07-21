@@ -85,14 +85,29 @@ export function WatchDailyWord() {
       setIsPlaying(false);
       return;
     }
-    const songTimeSec = data.lyric.timestamp_ms / 1000;
-    const startInPreview = songTimeSec - (data.audio.preview_offset || 0) - 2;
-    const seekTo = Math.max(0, Math.min(28, startInPreview));
+    const PREVIEW_LEN = 30;
+    const offset = data.audio.preview_offset || 0;
+    const relative = data.lyric.timestamp_ms / 1000 - offset;
+    const inWindow = relative >= 0.25 && relative <= PREVIEW_LEN - 1;
+    const seekTo = inWindow
+      ? Math.max(0, Math.min(PREVIEW_LEN - 2, relative - 1.25))
+      : 0;
+    const stopAt = inWindow
+      ? Math.min(PREVIEW_LEN, Math.max(seekTo + 3.5, relative + 5.5))
+      : 8;
     try {
       if (audio.readyState < 1) audio.load();
       audio.currentTime = seekTo;
       await audio.play();
       setIsPlaying(true);
+      window.setTimeout(() => {
+        try {
+          audio.pause();
+        } catch {
+          /* ignore */
+        }
+        setIsPlaying(false);
+      }, Math.max(1500, (stopAt - seekTo) * 1000));
     } catch {
       setIsPlaying(false);
     }
