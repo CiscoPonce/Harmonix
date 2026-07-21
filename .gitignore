@@ -1,5 +1,9 @@
 .planning/
 
+# IDE
+.idea/
+.vscode/
+
 # Environment secrets — never commit real .env files
 .env
 .env.*
