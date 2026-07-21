@@ -544,4 +544,6 @@ module.exports = {
   parseCachePolicy,
   mapSpotifyTrack,
   isValidTrackUri,
+  normText,
+  titleBase,
 };

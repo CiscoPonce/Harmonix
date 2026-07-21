@@ -55,6 +55,8 @@ export interface SpotifyConnectionDto {
   /** Exact OAuth redirect URI Harmonix sends — must match Dashboard. */
   redirect_uri?: string | null;
   client_id_prefix?: string | null;
+  /** True when connected scopes include Web Playback (streaming + playback state). */
+  playback_scopes_ok?: boolean;
 }
 
 export interface SpotifyPlaylistListItemDto {
@@ -267,6 +269,7 @@ export function parseSpotifyStatusResponse(raw: unknown): SpotifyConnectionDto {
     reason: asStringOrNull(obj.reason),
     redirect_uri: asStringOrNull(obj.redirect_uri),
     client_id_prefix: asStringOrNull(obj.client_id_prefix),
+    playback_scopes_ok: obj.playback_scopes_ok === true,
   };
 }
 

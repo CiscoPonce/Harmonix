@@ -8,16 +8,28 @@ interface LyricLine {
 
 interface SyncEngineProps {
   lrcString: string | null;
-  audioRef: RefObject<HTMLAudioElement | null>;
-  offset?: number; // In seconds
+  audioRef?: RefObject<HTMLAudioElement | null>;
+  /** Absolute song position in ms (Spotify full-track path). When set, preferred over audioRef. */
+  getSongTimeMs?: () => number | null;
+  /** When using getSongTimeMs, whether lyrics should advance. */
+  externalPlaying?: boolean;
+  /** Override seek (e.g. Spotify seek). Receives absolute lyric time in seconds. */
+  onSeekSongSeconds?: (songTimeSeconds: number) => void;
+  offset?: number; // In seconds (Deezer preview window start in full song)
   latencyCompensationMs?: number;
+  /** Max relative audio seek window for Deezer preview (seconds). Ignored for Spotify path. */
+  maxAudioSeconds?: number;
 }
 
 export function useSyncEngine({
   lrcString,
   audioRef,
+  getSongTimeMs,
+  externalPlaying = false,
+  onSeekSongSeconds,
   offset = 0,
-  latencyCompensationMs = -150
+  latencyCompensationMs = -150,
+  maxAudioSeconds = 30,
 }: SyncEngineProps) {
   const [currentLineIndex, setCurrentLineIndex] = useState(-1);
   const [lines, setLines] = useState<LyricLine[]>([]);
@@ -41,9 +53,6 @@ export function useSyncEngine({
     try {
       lyric.setLyric(lrcString);
       lyricRef.current = lyric;
-      // If the Lyric API already updated `lines` synchronously via setLyric,
-      // mirror that into React state. This is the textbook "sync React state
-      // from an external system" pattern, which the React docs permit.
       /* eslint-disable react-hooks/set-state-in-effect */
       if (Array.isArray(lyric.lines) && lyric.lines.length > 0) {
         setLines(lyric.lines.map((l) => ({ time: l.time, text: l.text })));
@@ -61,12 +70,26 @@ export function useSyncEngine({
 
   useEffect(() => {
     const animate = () => {
-      const audio = audioRef.current;
       const lyric = lyricRef.current;
+      if (!lyric) {
+        requestRef.current = requestAnimationFrame(animate);
+        return;
+      }
 
-      if (audio && lyric && !audio.paused) {
-        const adjustedTimeMs = (audio.currentTime * 1000) + (offset * 1000) + latencyCompensationMs;
-        lyric.play(adjustedTimeMs);
+      if (getSongTimeMs) {
+        if (externalPlaying) {
+          const ms = getSongTimeMs();
+          if (ms != null) {
+            lyric.play(ms + latencyCompensationMs);
+          }
+        }
+      } else {
+        const audio = audioRef?.current;
+        if (audio && !audio.paused) {
+          const adjustedTimeMs =
+            audio.currentTime * 1000 + offset * 1000 + latencyCompensationMs;
+          lyric.play(adjustedTimeMs);
+        }
       }
       requestRef.current = requestAnimationFrame(animate);
     };
@@ -78,23 +101,29 @@ export function useSyncEngine({
         cancelAnimationFrame(requestRef.current);
       }
     };
-  }, [audioRef, offset, latencyCompensationMs]);
+  }, [audioRef, getSongTimeMs, externalPlaying, offset, latencyCompensationMs]);
 
   const seekTo = (targetLyricTimeSeconds: number) => {
-    const audio = audioRef.current;
     const lyric = lyricRef.current;
+
+    if (onSeekSongSeconds) {
+      onSeekSongSeconds(targetLyricTimeSeconds);
+      if (lyric) {
+        lyric.play(targetLyricTimeSeconds * 1000 + latencyCompensationMs);
+      }
+      return;
+    }
+
+    const audio = audioRef?.current;
     if (!audio || !lyric) return;
 
-    // targetAudioTime = targetLyricTime - offset
     const targetAudioTime = targetLyricTimeSeconds - offset;
-    
-    // Clamp between 0 and 30 seconds (snippet duration)
-    const clampedTargetAudioTime = Math.max(0, Math.min(30, targetAudioTime));
-    
+    const clampedTargetAudioTime = Math.max(0, Math.min(maxAudioSeconds, targetAudioTime));
+
     audio.currentTime = clampedTargetAudioTime;
-    
-    // Sync the parser state immediately
-    const adjustedTimeMs = (clampedTargetAudioTime * 1000) + (offset * 1000) + latencyCompensationMs;
+
+    const adjustedTimeMs =
+      clampedTargetAudioTime * 1000 + offset * 1000 + latencyCompensationMs;
     lyric.play(adjustedTimeMs);
   };
 

@@ -259,6 +259,51 @@ export async function fetchSpotifyPlayerToken(): Promise<SpotifyPlayerTokenDto> 
   return parseJsonResponse<SpotifyPlayerTokenDto>(res);
 }
 
+export interface SpotifyResolvePlayDto {
+  provider: 'spotify';
+  uri: string;
+  title: string;
+  artists: string;
+  match: 'strict' | 'loose' | 'fallback' | string;
+}
+
+/** Resolve a Spotify track URI for in-app play (caller falls back to Deezer on failure). */
+export async function resolveSpotifyPlay(input: {
+  title: string;
+  artist: string;
+  duration_ms?: number | null;
+  song_id?: string | null;
+}): Promise<SpotifyResolvePlayDto> {
+  const res = await apiFetch('/spotify/resolve-play', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: input.title,
+      artist: input.artist,
+      ...(input.duration_ms != null ? { duration_ms: input.duration_ms } : {}),
+      ...(input.song_id != null ? { song_id: input.song_id } : {}),
+    }),
+  });
+  if (!res.ok) {
+    const err = new Error('Could not resolve Spotify track.') as Error & {
+      status?: number;
+      body?: unknown;
+    };
+    err.status = res.status;
+    try {
+      err.body = await parseJsonResponse<unknown>(res);
+    } catch {
+      err.body = null;
+    }
+    throw err;
+  }
+  const data = await parseJsonResponse<SpotifyResolvePlayDto>(res);
+  if (!data?.uri || !/^spotify:track:[A-Za-z0-9._-]+$/.test(data.uri)) {
+    throw new Error('Invalid Spotify URI from resolve-play');
+  }
+  return data;
+}
+
 /** Lyrics via LRCLib (Spotify Web API does not expose lyrics). */
 export async function fetchLyrics(params: {
   artist_name: string;

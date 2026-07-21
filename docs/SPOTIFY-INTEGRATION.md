@@ -111,6 +111,7 @@ Spotify Web API **does not** expose lyrics. Harmonix loads synced lyrics from **
 | Add items | `POST /playlists/{id}/items` | Export mutation (batches ≤ **100**) |
 | Search tracks | `GET /search?type=track&limit≤10` | Matching only |
 | Web Playback token (Harmonix) | — | `GET /api/spotify/player/token` (short-lived access; refresh stays server-side) |
+| Resolve playable track URI | Search + match | `POST /api/spotify/resolve-play` `{ title, artist, song_id? }` → Spotify URI (clients fall back to Deezer preview if disconnected / Free / error) |
 | Start playback | `PUT /me/player/play` | Browser Web Playback SDK after device ready |
 
 **Lyrics:** not available from Spotify Web API — use LRCLib via `GET /api/lyrics`.

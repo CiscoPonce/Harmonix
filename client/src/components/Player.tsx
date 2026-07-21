@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useSyncEngine } from '../hooks/useSyncEngine';
 import LyricList, { MappedVocabItem } from './LyricList';
@@ -9,6 +9,8 @@ import { Button } from './ui/Button';
 import { CefrSelector } from './CefrSelector';
 import { VocabPopover } from './VocabPopover';
 import { VocabItem } from '@/app/player/[id]/page';
+import { fetchSpotifyStatus, resolveSpotifyPlay } from '@/lib/api';
+import { useSpotifyInAppPlayer } from '@/components/SpotifyInAppPlayer';
 
 interface TrackMetadata {
   id: number;
@@ -38,29 +40,152 @@ const Player: React.FC<PlayerProps> = ({
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
   const [showSidebar, setShowSidebar] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
-  
+  const [audioSource, setAudioSource] = useState<'spotify' | 'deezer' | 'pending'>('pending');
+  const [spotifyUri, setSpotifyUri] = useState<string | null>(null);
+  const [songTimeSec, setSongTimeSec] = useState(0);
+  const [spotifyDurationMs, setSpotifyDurationMs] = useState<number | null>(null);
+  const spotifyPlayer = useSpotifyInAppPlayer();
+  const songTimeRef = useRef(0);
+
+  const getSongTimeMs = useCallback(() => {
+    if (audioSource !== 'spotify') return null;
+    return Math.round(songTimeRef.current * 1000);
+  }, [audioSource]);
+
+  const onSeekSongSeconds = useCallback(
+    (songTimeSeconds: number) => {
+      if (audioSource !== 'spotify' || !spotifyUri) return;
+      void (async () => {
+        try {
+          await spotifyPlayer.seekMs(Math.max(0, songTimeSeconds * 1000));
+          songTimeRef.current = songTimeSeconds;
+          setSongTimeSec(songTimeSeconds);
+          if (!isPlaying) {
+            const ok = await spotifyPlayer.playTrack(spotifyUri, {
+              positionMs: Math.max(0, songTimeSeconds * 1000),
+            });
+            if (ok) setIsPlaying(true);
+          }
+        } catch {
+          setAudioError('Could not seek on Spotify.');
+        }
+      })();
+    },
+    [audioSource, isPlaying, spotifyPlayer, spotifyUri]
+  );
+
   const { currentLineIndex, lines, seekTo } = useSyncEngine({
     lrcString,
     audioRef,
-    offset: track.preview_offset,
+    offset: audioSource === 'spotify' ? 0 : track.preview_offset,
+    getSongTimeMs: audioSource === 'spotify' ? getSongTimeMs : undefined,
+    externalPlaying: audioSource === 'spotify' && isPlaying,
+    onSeekSongSeconds: audioSource === 'spotify' ? onSeekSongSeconds : undefined,
   });
+
+  // Prefer Spotify when connected; otherwise Deezer 30s preview.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await fetchSpotifyStatus();
+        if (cancelled) return;
+        if (status.state === 'connected' && status.playback_scopes_ok !== false) {
+          const resolved = await resolveSpotifyPlay({
+            title: track.title,
+            artist: track.artist,
+            song_id: String(track.id),
+            duration_ms: track.duration > 0 ? Math.round(track.duration * 1000) : null,
+          });
+          if (cancelled) return;
+          setSpotifyUri(resolved.uri);
+          setAudioSource('spotify');
+          return;
+        }
+      } catch {
+        /* Deezer fallback */
+      }
+      if (!cancelled) {
+        setSpotifyUri(null);
+        setAudioSource('deezer');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [track.artist, track.duration, track.id, track.title]);
+
+  // Poll Spotify position while playing.
+  useEffect(() => {
+    if (audioSource !== 'spotify' || !isPlaying) return;
+    let alive = true;
+    const tick = async () => {
+      const snap = await spotifyPlayer.getPlaybackSnapshot();
+      if (!alive || !snap) return;
+      const sec = snap.position / 1000;
+      songTimeRef.current = sec;
+      setSongTimeSec(sec);
+      if (snap.duration > 0) setSpotifyDurationMs(snap.duration);
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 250);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, [audioSource, isPlaying, spotifyPlayer]);
+
+  useEffect(() => {
+    if (audioSource === 'spotify' && spotifyPlayer.ui === 'playing') {
+      setIsPlaying(true);
+    }
+    if (
+      audioSource === 'spotify' &&
+      (spotifyPlayer.ui === 'paused' || spotifyPlayer.ui === 'ready')
+    ) {
+      setIsPlaying(false);
+    }
+  }, [audioSource, spotifyPlayer.ui]);
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || audioSource === 'spotify') return;
 
     const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
+      setSongTimeSec(audio.currentTime);
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     return () => audio.removeEventListener('timeupdate', handleTimeUpdate);
-  }, []);
+  }, [audioSource]);
 
   const togglePlay = async () => {
+    if (audioSource === 'pending') return;
+
+    if (audioSource === 'spotify' && spotifyUri) {
+      if (isPlaying) {
+        await spotifyPlayer.pausePlayback();
+        setIsPlaying(false);
+        return;
+      }
+      setAudioError(null);
+      const ok = await spotifyPlayer.playTrack(spotifyUri, {
+        positionMs: Math.round(songTimeRef.current * 1000),
+      });
+      if (ok) {
+        setIsPlaying(true);
+        return;
+      }
+      // Premium / reconnect / resolve failure → Deezer fallback.
+      setAudioSource('deezer');
+      setAudioError(
+        spotifyPlayer.message ||
+          'Spotify playback unavailable. Using Deezer 30s preview.'
+      );
+    }
+
     const audio = audioRef.current;
     if (!audio) return;
     if (isPlaying) {
@@ -98,6 +223,10 @@ const Player: React.FC<PlayerProps> = ({
 
   const handleLineClick = (timeSeconds: number) => {
     seekTo(timeSeconds);
+    if (audioSource === 'spotify') {
+      setIsPlaying(true);
+      return;
+    }
     if (audioRef.current) {
       audioRef.current.play().catch(err => {
         console.error("Playback failed during line click:", err);
@@ -106,6 +235,20 @@ const Player: React.FC<PlayerProps> = ({
       });
       setIsPlaying(true);
     }
+  };
+
+  const progressDurationSec =
+    audioSource === 'spotify'
+      ? Math.max(1, (spotifyDurationMs ?? track.duration * 1000) / 1000 || 180)
+      : 30;
+  const progressCurrent =
+    audioSource === 'spotify' ? songTimeSec : songTimeSec;
+
+  const formatClock = (sec: number) => {
+    const s = Math.max(0, Math.floor(sec));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m}:${r.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -122,7 +265,10 @@ const Player: React.FC<PlayerProps> = ({
           </Link>
           <div className="min-w-0 flex-1">
             <h1 className="text-xl md:text-2xl font-black tracking-tighter truncate uppercase italic">{track.title}</h1>
-            <p className="text-zinc-500 font-medium tracking-widest text-xs uppercase mt-1">{track.artist}</p>
+            <p className="text-zinc-500 font-medium tracking-widest text-xs uppercase mt-1">
+              {track.artist}
+              {audioSource === 'spotify' ? ' · Spotify' : audioSource === 'deezer' ? ' · Preview' : ''}
+            </p>
           </div>
         </div>
         
@@ -215,18 +361,27 @@ const Player: React.FC<PlayerProps> = ({
 
       {/* Controls */}
       <div className="p-8 border-t border-zinc-900 bg-black/80 backdrop-blur-2xl relative z-20">
-        <audio 
-          ref={audioRef} 
-          src={track.preview} 
-          preload="metadata"
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onEnded={() => setIsPlaying(false)}
-          onError={(e) => {
-            console.error("Audio preview load failed:", e);
-            setAudioError("Audio preview unavailable in your region. You can still study the lyrics.");
-          }}
-        />
+        {track.preview && (
+          <audio 
+            ref={audioRef} 
+            src={track.preview} 
+            preload="metadata"
+            onPlay={() => {
+              if (audioSource !== 'spotify') setIsPlaying(true);
+            }}
+            onPause={() => {
+              if (audioSource !== 'spotify') setIsPlaying(false);
+            }}
+            onEnded={() => {
+              if (audioSource !== 'spotify') setIsPlaying(false);
+            }}
+            onError={(e) => {
+              if (audioSource === 'spotify') return;
+              console.error("Audio preview load failed:", e);
+              setAudioError("Audio preview unavailable in your region. You can still study the lyrics.");
+            }}
+          />
+        )}
         
         <div className="flex justify-center items-center gap-10">
           <Button 
@@ -234,6 +389,13 @@ const Player: React.FC<PlayerProps> = ({
             size="icon" 
             className="text-zinc-500 hover:text-white transition-colors"
             onClick={() => {
+              if (audioSource === 'spotify' && spotifyUri) {
+                songTimeRef.current = 0;
+                setSongTimeSec(0);
+                void spotifyPlayer.playTrack(spotifyUri, { positionMs: 0 });
+                setIsPlaying(true);
+                return;
+              }
               if (audioRef.current) audioRef.current.currentTime = 0;
             }}
           >
@@ -244,7 +406,8 @@ const Player: React.FC<PlayerProps> = ({
             variant="primary" 
             size="icon" 
             className="w-20 h-20 rounded-full bg-white text-black hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]"
-            onClick={togglePlay}
+            onClick={() => void togglePlay()}
+            disabled={audioSource === 'pending'}
           >
             {isPlaying ? (
               <Pause className="w-8 h-8 fill-current" />
@@ -271,17 +434,23 @@ const Player: React.FC<PlayerProps> = ({
           </div>
         )}
 
+        {spotifyPlayer.message && audioSource === 'spotify' && (
+          <p className="max-w-xl mx-auto mt-3 text-center text-[10px] text-zinc-500 uppercase tracking-widest">
+            {spotifyPlayer.message}
+          </p>
+        )}
+
         {/* Progress bar */}
         <div className="mt-8 max-w-xl mx-auto flex flex-col gap-2">
           <div className="h-1 bg-zinc-900 rounded-full overflow-hidden">
              <div 
                className="h-full bg-white transition-all duration-100 ease-linear shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
-               style={{ width: `${(currentTime / 30) * 100}%` }}
+               style={{ width: `${Math.min(100, (progressCurrent / progressDurationSec) * 100)}%` }}
              />
           </div>
           <div className="flex justify-between text-[10px] font-bold tracking-tighter text-zinc-600 uppercase">
-            <span>0:{Math.floor(currentTime).toString().padStart(2, '0')}</span>
-            <span>0:30</span>
+            <span>{formatClock(progressCurrent)}</span>
+            <span>{audioSource === 'spotify' ? formatClock(progressDurationSec) : '0:30'}</span>
           </div>
         </div>
       </div>

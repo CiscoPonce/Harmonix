@@ -1,6 +1,7 @@
 const express = require('express');
 const spotifyService = require('../services/spotifyService');
 const spotifyExportService = require('../services/spotifyExportService');
+const { resolvePlayableSpotifyTrack } = require('../services/spotifyPlayResolve');
 const oauth = require('../services/spotifyOAuthService');
 const db = require('../db');
 
@@ -51,6 +52,9 @@ function mapError(err, res) {
   if (code === 'invalid_request') {
     return res.status(400).json({ error: 'invalid_request', reason: err.message });
   }
+  if (code === 'not_found') {
+    return res.status(404).json({ error: 'not_found', reason: err.message || 'not_found' });
+  }
   return res.status(502).json({ error: 'provider_error', reason: 'provider_error' });
 }
 
@@ -69,6 +73,18 @@ protectedRouter.get('/status', (req, res) => {
     } catch {
       redirect_uri = null;
     }
+    let playback_scopes_ok = false;
+    if (status.status === 'connected') {
+      try {
+        const row = db
+          .prepare('SELECT scopes FROM user_spotify_tokens WHERE user_id = ?')
+          .get(userId);
+        playback_scopes_ok =
+          Boolean(row) && spotifyService.missingPlaybackScopes(row.scopes).length === 0;
+      } catch {
+        playback_scopes_ok = false;
+      }
+    }
     res.json({
       status: status.status,
       display_name: status.display_name,
@@ -77,6 +93,7 @@ protectedRouter.get('/status', (req, res) => {
       client_id_prefix: process.env.SPOTIFY_CLIENT_ID
         ? String(process.env.SPOTIFY_CLIENT_ID).trim().slice(0, 8)
         : null,
+      playback_scopes_ok,
     });
   } catch (err) {
     safeLog('GET /api/spotify/status', err);
@@ -96,6 +113,28 @@ protectedRouter.get('/player/token', async (req, res) => {
     res.json(token);
   } catch (err) {
     safeLog('GET /api/spotify/player/token', err);
+    mapError(err, res);
+  }
+});
+
+/**
+ * Resolve a playable Spotify track URI from Harmonix song metadata.
+ * Used when Spotify is preferred; clients fall back to Deezer if this fails.
+ */
+protectedRouter.post('/resolve-play', async (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  try {
+    const result = await resolvePlayableSpotifyTrack(userId, {
+      title: body.title,
+      artist: body.artist,
+      duration_ms: body.duration_ms,
+      song_id: body.song_id,
+    });
+    res.json(result);
+  } catch (err) {
+    safeLog('POST /api/spotify/resolve-play', err);
     mapError(err, res);
   }
 });

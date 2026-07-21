@@ -22,7 +22,11 @@ interface SpotifyPlayerInstance {
   addListener: (event: string, cb: (payload: unknown) => void) => void;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
-  getCurrentState: () => Promise<{ paused: boolean } | null>;
+  getCurrentState: () => Promise<{
+    paused: boolean;
+    position?: number;
+    duration?: number;
+  } | null>;
 }
 
 export type SpotifyPlayerUiState =
@@ -66,7 +70,12 @@ function loadSpotifySdk(): Promise<void> {
   });
 }
 
-async function playUriOnDevice(accessToken: string, deviceId: string, uri: string) {
+async function playUriOnDevice(
+  accessToken: string,
+  deviceId: string,
+  uri: string,
+  positionMs?: number
+) {
   // Activate Harmonix as the playback device first (avoids "no active device").
   const transfer = await fetch('https://api.spotify.com/v1/me/player', {
     method: 'PUT',
@@ -92,6 +101,11 @@ async function playUriOnDevice(accessToken: string, deviceId: string, uri: strin
   // Brief settle so Spotify registers the SDK device before play.
   await new Promise((r) => setTimeout(r, 400));
 
+  const payload: { uris: string[]; position_ms?: number } = { uris: [uri] };
+  if (typeof positionMs === 'number' && Number.isFinite(positionMs) && positionMs >= 0) {
+    payload.position_ms = Math.floor(positionMs);
+  }
+
   const res = await fetch(
     `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`,
     {
@@ -100,7 +114,7 @@ async function playUriOnDevice(accessToken: string, deviceId: string, uri: strin
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ uris: [uri] }),
+      body: JSON.stringify(payload),
     }
   );
   if (res.status === 204 || res.ok) return;
@@ -124,14 +138,46 @@ async function playUriOnDevice(accessToken: string, deviceId: string, uri: strin
   throw new Error(`playback_failed_${res.status}`);
 }
 
+async function seekOnDevice(accessToken: string, deviceId: string, positionMs: number) {
+  const res = await fetch(
+    `https://api.spotify.com/v1/me/player/seek?position_ms=${Math.floor(positionMs)}&device_id=${encodeURIComponent(deviceId)}`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+  if (res.status === 204 || res.ok) return;
+  if (res.status === 401) {
+    const err = new Error('reconnect') as Error & { code?: string };
+    err.code = 'reconnect';
+    throw err;
+  }
+  throw new Error(`seek_failed_${res.status}`);
+}
+
+export type PlayTrackOptions = {
+  /** Absolute song position to start at (ms). */
+  positionMs?: number;
+  /** Auto-pause after this many ms of playback (Hear-it clips). */
+  stopAfterMs?: number;
+};
+
 export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void }) {
   const onReconnectNeeded = options?.onReconnectNeeded;
   const playerRef = useRef<SpotifyPlayerInstance | null>(null);
   const deviceIdRef = useRef<string | null>(null);
   const tokenRef = useRef<string | null>(null);
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [ui, setUi] = useState<SpotifyPlayerUiState>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [activeUri, setActiveUri] = useState<string | null>(null);
+
+  const clearStopTimer = useCallback(() => {
+    if (stopTimerRef.current) {
+      clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = null;
+    }
+  }, []);
 
   const refreshToken = useCallback(async (): Promise<string> => {
     try {
@@ -227,7 +273,7 @@ export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void
       player.addListener('account_error', () => {
         setUi('premium_required');
         setMessage(
-          'In-app Spotify playback needs Spotify Premium. Free accounts can still use Open in Spotify.'
+          'In-app Spotify playback needs Spotify Premium. Using Deezer preview when available.'
         );
         reject(new Error('premium'));
       });
@@ -250,6 +296,7 @@ export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void
 
   useEffect(() => {
     return () => {
+      clearStopTimer();
       try {
         playerRef.current?.disconnect();
       } catch {
@@ -258,23 +305,76 @@ export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void
       playerRef.current = null;
       deviceIdRef.current = null;
     };
+  }, [clearStopTimer]);
+
+  const pausePlayback = useCallback(async () => {
+    clearStopTimer();
+    try {
+      await playerRef.current?.pause();
+      setUi('paused');
+    } catch {
+      /* ignore */
+    }
+  }, [clearStopTimer]);
+
+  const getPlaybackSnapshot = useCallback(async (): Promise<{
+    position: number;
+    duration: number;
+    paused: boolean;
+  } | null> => {
+    try {
+      const state = await playerRef.current?.getCurrentState();
+      if (!state || typeof state !== 'object') return null;
+      return {
+        position: typeof state.position === 'number' ? state.position : 0,
+        duration: typeof state.duration === 'number' ? state.duration : 0,
+        paused: Boolean(state.paused),
+      };
+    } catch {
+      return null;
+    }
   }, []);
 
+  const getPositionMs = useCallback(async (): Promise<number | null> => {
+    const snap = await getPlaybackSnapshot();
+    return snap ? snap.position : null;
+  }, [getPlaybackSnapshot]);
+
+  const seekMs = useCallback(
+    async (positionMs: number) => {
+      await ensurePlayer();
+      const deviceId = deviceIdRef.current;
+      const token = tokenRef.current || (await refreshToken());
+      if (!deviceId || !token) throw new Error('player_not_ready');
+      await seekOnDevice(token, deviceId, positionMs);
+    },
+    [ensurePlayer, refreshToken]
+  );
+
   const playTrack = useCallback(
-    async (uri: string) => {
-      if (!uri) return;
+    async (uri: string, opts?: PlayTrackOptions): Promise<boolean> => {
+      if (!uri) return false;
+      clearStopTimer();
       try {
-        if (activeUri === uri && playerRef.current) {
+        const positionMs = opts?.positionMs;
+        const wantsClip = typeof opts?.stopAfterMs === 'number' && opts.stopAfterMs > 0;
+
+        if (
+          activeUri === uri &&
+          playerRef.current &&
+          positionMs == null &&
+          !wantsClip
+        ) {
           const state = await playerRef.current.getCurrentState();
           if (state && !state.paused) {
             await playerRef.current.pause();
             setUi('paused');
-            return;
+            return true;
           }
           if (state && state.paused) {
             await playerRef.current.resume();
             setUi('playing');
-            return;
+            return true;
           }
         }
 
@@ -284,13 +384,21 @@ export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void
         if (!deviceId || !token) {
           setUi('error');
           setMessage('Spotify player is not ready yet.');
-          return;
+          return false;
         }
 
         setActiveUri(uri);
-        await playUriOnDevice(token, deviceId, uri);
+        await playUriOnDevice(token, deviceId, uri, positionMs);
         setUi('playing');
         setMessage(null);
+
+        if (wantsClip && opts?.stopAfterMs) {
+          stopTimerRef.current = setTimeout(() => {
+            void pausePlayback();
+            stopTimerRef.current = null;
+          }, opts.stopAfterMs);
+        }
+        return true;
       } catch (err) {
         const code =
           err && typeof err === 'object' && 'code' in err
@@ -299,33 +407,39 @@ export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void
         if (code === 'premium_required' || (err instanceof Error && err.message === 'premium')) {
           setUi('premium_required');
           setMessage(
-            'In-app Spotify playback needs Spotify Premium. Free accounts can still use Open in Spotify.'
+            'In-app Spotify playback needs Spotify Premium. Using Deezer preview when available.'
           );
-          return;
+          return false;
         }
         if (code === 'reconnect') {
           setUi('reconnect');
           setMessage(
             'Reconnect Spotify in Settings to enable in-app playback (streaming permission).'
           );
-          return;
+          return false;
         }
         setUi((prev) => (prev === 'reconnect' ? prev : 'error'));
         setMessage((prev) =>
           prev?.includes('Reconnect')
             ? prev
-            : 'Could not play this track. Try Open in Spotify, or reconnect Spotify in Settings.'
+            : 'Could not play this track. Falling back to Deezer preview when available.'
         );
+        return false;
       }
     },
-    [activeUri, ensurePlayer, refreshToken]
+    [activeUri, clearStopTimer, ensurePlayer, pausePlayback, refreshToken]
   );
 
   return {
     playTrack,
+    pausePlayback,
+    seekMs,
+    getPositionMs,
+    getPlaybackSnapshot,
     activeUri,
     ui,
     message,
     isBusy: ui === 'loading_sdk',
+    isPlaying: ui === 'playing',
   };
 }

@@ -2,8 +2,9 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, fetchSpotifyStatus, resolveSpotifyPlay } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useSpotifyInAppPlayer } from "@/components/SpotifyInAppPlayer";
 import { Button } from "./ui/Button";
 import { BookOpen, Loader2, Music2, Play, Pause, RefreshCw, Sparkles, RotateCw, Volume2 } from "lucide-react";
 
@@ -64,6 +65,13 @@ function highlightWord(snippet: string, start: number, end: number) {
   );
 }
 
+function formatPreviewWindow(offsetSec: number) {
+  const start = Math.floor(offsetSec);
+  const end = start + 30;
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  return `${fmt(start)}–${fmt(end)}`;
+}
+
 export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const { user } = useAuth();
   const router = useRouter();
@@ -80,6 +88,8 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const pronunciationAudioRef = useRef<HTMLAudioElement | null>(null);
   const hearStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioProviderRef = useRef<'spotify' | 'deezer' | null>(null);
+  const spotifyPlayer = useSpotifyInAppPlayer();
 
   const clearHearStopTimer = useCallback(() => {
     if (hearStopTimerRef.current) {
@@ -189,15 +199,10 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     return () => timers.forEach(clearTimeout);
   }, [refreshing]);
 
-  const togglePlay = async () => {
+  const playDeezerClip = useCallback(async () => {
     const audio = audioRef.current;
-    if (!audio || !data) return;
+    if (!audio || !data) return false;
     clearHearStopTimer();
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-      return;
-    }
 
     // Deezer preview is a 30s cut: for songs >60s it is full-song [30s, 60s].
     // audio.currentTime=0 is already at preview_offset in the full track.
@@ -215,7 +220,6 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       seekTo = Math.max(0, Math.min(PREVIEW_LEN - 2, relative - LEAD_IN));
       stopAt = Math.min(PREVIEW_LEN, Math.max(seekTo + 3.5, relative + PLAY_AFTER));
     } else {
-      // Lyric line is outside the preview cut — play the start of the available clip.
       seekTo = 0;
       stopAt = Math.min(PREVIEW_LEN, 8);
       setRefreshError(
@@ -258,6 +262,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       }
 
       await audio.play();
+      audioProviderRef.current = 'deezer';
       setIsPlaying(true);
       if (inWindow) setRefreshError(null);
 
@@ -271,8 +276,75 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         setIsPlaying(false);
         hearStopTimerRef.current = null;
       }, playMs);
+      return true;
     } catch (err) {
       console.error('Playback failed:', err);
+      return false;
+    }
+  }, [clearHearStopTimer, data]);
+
+  const togglePlay = async () => {
+    if (!data) return;
+    clearHearStopTimer();
+
+    if (isPlaying) {
+      if (audioProviderRef.current === 'spotify') {
+        await spotifyPlayer.pausePlayback();
+      } else {
+        try {
+          audioRef.current?.pause();
+        } catch {
+          /* ignore */
+        }
+      }
+      setIsPlaying(false);
+      return;
+    }
+
+    // Spotify-first for connected Premium; Deezer for everyone else / fallback.
+    try {
+      const status = await fetchSpotifyStatus();
+      if (status.state === 'connected' && status.playback_scopes_ok !== false) {
+        const resolved = await resolveSpotifyPlay({
+          title: data.song.title,
+          artist: data.song.artist,
+          song_id: data.song.id,
+          duration_ms:
+            data.audio.duration_seconds > 0
+              ? Math.round(data.audio.duration_seconds * 1000)
+              : null,
+        });
+        const LEAD_IN_MS = 1250;
+        const PLAY_AFTER_MS = 5500;
+        const positionMs = Math.max(0, data.lyric.timestamp_ms - LEAD_IN_MS);
+        const stopAfterMs = LEAD_IN_MS + PLAY_AFTER_MS;
+        const ok = await spotifyPlayer.playTrack(resolved.uri, {
+          positionMs,
+          stopAfterMs,
+        });
+        if (ok) {
+          audioProviderRef.current = 'spotify';
+          setIsPlaying(true);
+          setRefreshError(null);
+          return;
+        }
+      }
+    } catch {
+      /* fall through to Deezer */
+    }
+
+    if (!data.audio.preview_url) {
+      setRefreshError(
+        spotifyPlayer.ui === 'premium_required'
+          ? 'Spotify Premium required for full playback. No Deezer preview available.'
+          : 'Audio unavailable. Connect Spotify Premium in Settings, or try Open full player.'
+      );
+      setIsPlaying(false);
+      return;
+    }
+
+    const deezerOk = await playDeezerClip();
+    if (!deezerOk) {
       setRefreshError('Audio preview unavailable. Try Open full player.');
       setIsPlaying(false);
     }
@@ -283,7 +355,14 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   }, [clearHearStopTimer]);
 
   useEffect(() => {
+    if (audioProviderRef.current !== 'spotify') return;
+    if (spotifyPlayer.ui === 'playing') setIsPlaying(true);
+    if (spotifyPlayer.ui === 'paused' || spotifyPlayer.ui === 'ready') setIsPlaying(false);
+  }, [spotifyPlayer.ui]);
+
+  useEffect(() => {
     clearHearStopTimer();
+    void spotifyPlayer.pausePlayback();
     const audio = audioRef.current;
     if (audio) {
       try {
@@ -292,7 +371,10 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         /* ignore */
       }
     }
+    audioProviderRef.current = null;
     setIsPlaying(false);
+    // Only reset when the daily word identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.word?.text, data?.song?.id, clearHearStopTimer]);
 
   useEffect(() => {
@@ -302,8 +384,12 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       clearHearStopTimer();
       setIsPlaying(false);
     };
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
+    const onPlay = () => {
+      if (audioProviderRef.current !== 'spotify') setIsPlaying(true);
+    };
+    const onPause = () => {
+      if (audioProviderRef.current !== 'spotify') setIsPlaying(false);
+    };
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
@@ -313,13 +399,6 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       audio.removeEventListener('pause', onPause);
     };
   }, [data, clearHearStopTimer]);
-
-  function formatPreviewWindow(offsetSec: number) {
-    const start = Math.floor(offsetSec);
-    const end = start + 30;
-    const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-    return `${fmt(start)}–${fmt(end)}`;
-  }
 
   // Reset pronunciation playback when the daily word changes.
   useEffect(() => {
@@ -600,7 +679,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           <Button
             type="button"
             onClick={() => void togglePlay()}
-            disabled={refreshing || !data.audio.preview_url}
+            disabled={refreshing || (!data.audio.preview_url && !data.song.title)}
             className="gap-2 uppercase tracking-widest text-[10px] font-bold"
           >
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
