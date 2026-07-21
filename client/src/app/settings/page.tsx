@@ -33,10 +33,13 @@ function SettingsContent() {
   const [state, setState] = useState<ConnectionState>('connect');
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [redirectUri, setRedirectUri] = useState<string | null>(null);
+  const [clientIdPrefix, setClientIdPrefix] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [mutationBusy, setMutationBusy] = useState(false);
   const [statusTick, setStatusTick] = useState(0);
+  const [copiedUri, setCopiedUri] = useState(false);
 
   // Fixed allowlisted return only — never read code/state/tokens from the URL.
   useEffect(() => {
@@ -71,6 +74,8 @@ function SettingsContent() {
         if (!active) return;
         setState(dto.state);
         setDisplayName(dto.display_name);
+        setRedirectUri(dto.redirect_uri ?? null);
+        setClientIdPrefix(dto.client_id_prefix ?? null);
         if (dto.state === 'reconnect') {
           setMessage('Your Spotify connection expired. Reconnect to continue.');
         } else if (dto.state === 'provider_error') {
@@ -204,6 +209,41 @@ function SettingsContent() {
               onConfirmDisconnect={handleDisconnectConfirm}
               onCancelDisconnect={() => setConfirmDisconnect(false)}
             />
+
+            {redirectUri ? (
+              <section
+                aria-label="Spotify Dashboard setup"
+                className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 dark:border-amber-400/30 dark:bg-amber-400/10"
+              >
+                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-800 dark:text-amber-300">
+                  Spotify Dashboard — Redirect URI
+                </p>
+                <p className="mt-2 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+                  If you see <code className="text-xs">redirect_uri: Not matching configuration</code>,
+                  open the app with Client ID starting{' '}
+                  <strong>{clientIdPrefix || '56e75581'}</strong>, add this URI exactly, then click{' '}
+                  <strong>Add</strong> and <strong>Save</strong> at the bottom of Settings.
+                </p>
+                <code className="mt-3 block break-all rounded-lg bg-white px-3 py-2 text-xs text-[#0C1210] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
+                  {redirectUri}
+                </code>
+                <button
+                  type="button"
+                  className="mt-3 text-sm font-bold text-[#0B4D2E] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(redirectUri);
+                      setCopiedUri(true);
+                      window.setTimeout(() => setCopiedUri(false), 2000);
+                    } catch {
+                      /* ignore */
+                    }
+                  }}
+                >
+                  {copiedUri ? 'Copied' : 'Copy Redirect URI'}
+                </button>
+              </section>
+            ) : null}
           </div>
 
           <div className="space-y-6">

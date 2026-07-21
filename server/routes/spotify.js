@@ -60,10 +60,23 @@ protectedRouter.get('/status', (req, res) => {
   try {
     const status = spotifyService.getConnectionStatus(userId);
     // Safe allowlist — never include tokens or secrets.
+    // redirect_uri is public (must match Dashboard) — helps operators copy exact value.
+    let redirect_uri = null;
+    try {
+      redirect_uri = process.env.SPOTIFY_REDIRECT_URI
+        ? String(process.env.SPOTIFY_REDIRECT_URI).trim()
+        : null;
+    } catch {
+      redirect_uri = null;
+    }
     res.json({
       status: status.status,
       display_name: status.display_name,
       reason: status.reason,
+      redirect_uri,
+      client_id_prefix: process.env.SPOTIFY_CLIENT_ID
+        ? String(process.env.SPOTIFY_CLIENT_ID).trim().slice(0, 8)
+        : null,
     });
   } catch (err) {
     safeLog('GET /api/spotify/status', err);

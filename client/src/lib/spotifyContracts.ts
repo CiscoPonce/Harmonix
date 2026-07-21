@@ -52,6 +52,9 @@ export interface SpotifyConnectionDto {
   state: ConnectionState;
   display_name: string | null;
   reason: string | null;
+  /** Exact OAuth redirect URI Harmonix sends — must match Dashboard. */
+  redirect_uri?: string | null;
+  client_id_prefix?: string | null;
 }
 
 export interface SpotifyPlaylistListItemDto {
@@ -262,6 +265,8 @@ export function parseSpotifyStatusResponse(raw: unknown): SpotifyConnectionDto {
     state: mapBackendStatusToUiState(status),
     display_name: asStringOrNull(obj.display_name),
     reason: asStringOrNull(obj.reason),
+    redirect_uri: asStringOrNull(obj.redirect_uri),
+    client_id_prefix: asStringOrNull(obj.client_id_prefix),
   };
 }
 
