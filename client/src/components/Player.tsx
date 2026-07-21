@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSyncEngine } from '../hooks/useSyncEngine';
 import LyricList, { MappedVocabItem } from './LyricList';
-import { Play, Pause, SkipBack, SkipForward, BookOpen, Settings, X, ArrowLeft } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, BookOpen, X, ArrowLeft } from 'lucide-react';
 import { Button } from './ui/Button';
 import { CefrSelector } from './CefrSelector';
 import { VocabPopover } from './VocabPopover';
