@@ -46,14 +46,27 @@ function loadSpotifySdk(): Promise<void> {
   if (window.Spotify) return Promise.resolve();
 
   return new Promise((resolve, reject) => {
+    const finish = (err?: Error) => {
+      clearTimeout(timer);
+      if (err) reject(err);
+      else resolve();
+    };
+    const timer = window.setTimeout(() => {
+      finish(new Error('spotify_sdk_timeout'));
+    }, 10000);
+
     const existing = document.querySelector<HTMLScriptElement>(
       'script[data-spotify-web-playback]'
     );
     if (existing) {
+      if (window.Spotify) {
+        finish();
+        return;
+      }
       const prev = window.onSpotifyWebPlaybackSDKReady;
       window.onSpotifyWebPlaybackSDKReady = () => {
         prev?.();
-        resolve();
+        finish();
       };
       return;
     }
@@ -65,9 +78,9 @@ function loadSpotifySdk(): Promise<void> {
     const prev = window.onSpotifyWebPlaybackSDKReady;
     window.onSpotifyWebPlaybackSDKReady = () => {
       prev?.();
-      resolve();
+      finish();
     };
-    script.onerror = () => reject(new Error('Failed to load Spotify Web Playback SDK'));
+    script.onerror = () => finish(new Error('Failed to load Spotify Web Playback SDK'));
     document.body.appendChild(script);
   });
 }
@@ -259,6 +272,18 @@ export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void
       }
 
       await new Promise<void>((resolve, reject) => {
+        let settled = false;
+        const done = (err?: Error) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(readyTimer);
+          if (err) reject(err);
+          else resolve();
+        };
+        const readyTimer = window.setTimeout(() => {
+          done(new Error('spotify_ready_timeout'));
+        }, 8000);
+
         const player = new window.Spotify!.Player({
           name: 'Harmonix',
           getOAuthToken: (cb) => {
@@ -275,14 +300,14 @@ export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void
               ? String((payload as { device_id: string }).device_id)
               : '';
           if (!id) {
-            reject(new Error('no device_id'));
+            done(new Error('no device_id'));
             return;
           }
           deviceIdRef.current = id;
           playerRef.current = player;
           setUi('ready');
           setMessage(null);
-          resolve();
+          done();
         });
 
         player.addListener('not_ready', () => {
@@ -294,14 +319,14 @@ export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void
         player.addListener('initialization_error', () => {
           setUi('error');
           setMessage('Could not initialize Spotify player.');
-          reject(new Error('init'));
+          done(new Error('init'));
         });
 
         player.addListener('authentication_error', () => {
           setUi('reconnect');
           setMessage('Spotify authentication failed. Reconnect in Settings.');
           onReconnectNeeded?.();
-          reject(new Error('auth'));
+          done(new Error('auth'));
         });
 
         player.addListener('account_error', () => {
@@ -309,7 +334,7 @@ export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void
           setMessage(
             'In-app Spotify playback needs Spotify Premium. Using Deezer preview when available.'
           );
-          reject(new Error('premium'));
+          done(new Error('premium'));
         });
 
         player.addListener('autoplay_failed', () => {
@@ -331,16 +356,26 @@ export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void
           if (!ok) {
             setUi('error');
             setMessage('Could not connect Spotify player.');
-            reject(new Error('connect_failed'));
+            done(new Error('connect_failed'));
           }
         });
       });
-    })().finally(() => {
-      // Keep resolved promise so concurrent callers see ready device; clear only on failure.
-      if (!deviceIdRef.current) {
-        ensurePromiseRef.current = null;
-      }
-    });
+    })()
+      .catch((err) => {
+        setUi((prev) => (prev === 'premium_required' || prev === 'reconnect' ? prev : 'error'));
+        setMessage((prev) =>
+          prev && (prev.includes('Premium') || prev.includes('Reconnect'))
+            ? prev
+            : 'Spotify player timed out. Using Deezer preview when available.'
+        );
+        throw err;
+      })
+      .finally(() => {
+        // Always clear so a failed/hung init can be retried.
+        if (!deviceIdRef.current) {
+          ensurePromiseRef.current = null;
+        }
+      });
 
     await ensurePromiseRef.current;
   }, [onReconnectNeeded, refreshToken]);

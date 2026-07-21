@@ -61,6 +61,7 @@ function mapError(err, res) {
 protectedRouter.get('/status', (req, res) => {
   const userId = requireUser(req, res);
   if (!userId) return;
+  console.log('GET /api/spotify/status - user:', userId);
   try {
     const status = spotifyService.getConnectionStatus(userId);
     // Safe allowlist — never include tokens or secrets.
@@ -108,6 +109,7 @@ protectedRouter.get('/status', (req, res) => {
 protectedRouter.get('/player/token', async (req, res) => {
   const userId = requireUser(req, res);
   if (!userId) return;
+  console.log('GET /api/spotify/player/token - user:', userId);
   try {
     const token = await spotifyService.issuePlayerAccess(userId);
     res.json(token);
@@ -125,6 +127,14 @@ protectedRouter.post('/resolve-play', async (req, res) => {
   const userId = requireUser(req, res);
   if (!userId) return;
   const body = req.body && typeof req.body === 'object' ? req.body : {};
+  console.log(
+    'POST /api/spotify/resolve-play - user:',
+    userId,
+    'title:',
+    body.title,
+    'artist:',
+    body.artist
+  );
   try {
     const result = await resolvePlayableSpotifyTrack(userId, {
       title: body.title,
@@ -132,6 +142,7 @@ protectedRouter.post('/resolve-play', async (req, res) => {
       duration_ms: body.duration_ms,
       song_id: body.song_id,
     });
+    console.log('POST /api/spotify/resolve-play - ok:', result.uri, result.match);
     res.json(result);
   } catch (err) {
     safeLog('POST /api/spotify/resolve-play', err);

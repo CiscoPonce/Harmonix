@@ -89,7 +89,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const pronunciationAudioRef = useRef<HTMLAudioElement | null>(null);
   const hearStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioProviderRef = useRef<'spotify' | 'deezer' | null>(null);
-  const [spotifyReady, setSpotifyReady] = useState(false);
+  const [hearBusy, setHearBusy] = useState(false);
   const spotifyPlayer = useSpotifyInAppPlayer();
 
   const clearHearStopTimer = useCallback(() => {
@@ -99,27 +99,27 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     }
   }, []);
 
-  // Pre-warm Spotify Web Playback so Hear-it click can unlock audio immediately.
+  // Warm Spotify in background (non-blocking). Hear-it must never wait forever on this.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const status = await fetchSpotifyStatus();
-        if (cancelled) return;
-        if (status.state === 'connected' && status.playback_scopes_ok !== false) {
-          await spotifyPlayer.warmup();
-          if (!cancelled) setSpotifyReady(true);
-        } else {
-          setSpotifyReady(false);
+        if (cancelled || status.state !== 'connected' || status.playback_scopes_ok === false) {
+          return;
         }
+        await Promise.race([
+          spotifyPlayer.warmup(),
+          new Promise((resolve) => window.setTimeout(resolve, 10000)),
+        ]);
       } catch {
-        if (!cancelled) setSpotifyReady(false);
+        /* ignore — Deezer remains available */
       }
     })();
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- warm once per mount / player identity
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchQueueStatus = useCallback(async () => {
@@ -308,10 +308,10 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   }, [clearHearStopTimer, data]);
 
   const togglePlay = async () => {
-    if (!data) return;
-    // Unlock Spotify audio while still in the click call stack.
-    spotifyPlayer.unlockAudio();
+    if (!data || hearBusy) return;
+    setHearBusy(true);
     clearHearStopTimer();
+    spotifyPlayer.unlockAudio();
 
     if (isPlaying) {
       if (audioProviderRef.current === 'spotify') {
@@ -324,70 +324,60 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         }
       }
       setIsPlaying(false);
+      setHearBusy(false);
       return;
     }
 
-    // Spotify-first for connected Premium; Deezer for everyone else / fallback.
-    let spotifyAttempted = false;
-    try {
-      const status = await fetchSpotifyStatus();
-      if (status.state === 'connected' && status.playback_scopes_ok !== false) {
-        spotifyAttempted = true;
-        if (!spotifyReady) {
-          await spotifyPlayer.warmup();
-          setSpotifyReady(true);
+    setRefreshError(null);
+
+    // Only try Spotify if the Web Playback SDK is already ready — never block Hear-it on SDK init.
+    const spotifyAlreadyReady =
+      spotifyPlayer.ui === 'ready' ||
+      spotifyPlayer.ui === 'paused' ||
+      spotifyPlayer.ui === 'playing';
+
+    if (spotifyAlreadyReady) {
+      try {
+        const status = await fetchSpotifyStatus();
+        if (status.state === 'connected' && status.playback_scopes_ok !== false) {
+          spotifyPlayer.unlockAudio();
+          const resolved = await resolveSpotifyPlay({
+            title: data.song.title,
+            artist: data.song.artist,
+            song_id: data.song.id,
+            duration_ms:
+              data.audio.duration_seconds > 0
+                ? Math.round(data.audio.duration_seconds * 1000)
+                : null,
+          });
+          const LEAD_IN_MS = 1250;
+          const PLAY_AFTER_MS = 5500;
+          const ok = await Promise.race([
+            spotifyPlayer.playTrack(resolved.uri, {
+              positionMs: Math.max(0, data.lyric.timestamp_ms - LEAD_IN_MS),
+              stopAfterMs: LEAD_IN_MS + PLAY_AFTER_MS,
+            }),
+            new Promise<boolean>((resolve) => window.setTimeout(() => resolve(false), 4000)),
+          ]);
+          if (ok) {
+            audioProviderRef.current = 'spotify';
+            setIsPlaying(true);
+            setHearBusy(false);
+            return;
+          }
         }
-        spotifyPlayer.unlockAudio();
-        const resolved = await resolveSpotifyPlay({
-          title: data.song.title,
-          artist: data.song.artist,
-          song_id: data.song.id,
-          duration_ms:
-            data.audio.duration_seconds > 0
-              ? Math.round(data.audio.duration_seconds * 1000)
-              : null,
-        });
-        const LEAD_IN_MS = 1250;
-        const PLAY_AFTER_MS = 5500;
-        const positionMs = Math.max(0, data.lyric.timestamp_ms - LEAD_IN_MS);
-        const stopAfterMs = LEAD_IN_MS + PLAY_AFTER_MS;
-        const ok = await spotifyPlayer.playTrack(resolved.uri, {
-          positionMs,
-          stopAfterMs,
-        });
-        if (ok) {
-          audioProviderRef.current = 'spotify';
-          setIsPlaying(true);
-          setRefreshError(null);
-          return;
-        }
-        setRefreshError(
-          spotifyPlayer.message ||
-            'Spotify did not start — trying Deezer preview…'
-        );
-        window.setTimeout(() => setRefreshError(null), 5000);
-      } else if (status.state === 'reconnect') {
-        setRefreshError('Reconnect Spotify in Settings for full-song playback.');
-        window.setTimeout(() => setRefreshError(null), 5000);
-      }
-    } catch (err) {
-      console.error('Spotify hear-it failed:', err);
-      if (spotifyAttempted) {
-        setRefreshError(
-          spotifyPlayer.message ||
-            'Spotify did not start — trying Deezer preview…'
-        );
-        window.setTimeout(() => setRefreshError(null), 5000);
+      } catch (err) {
+        console.error('Spotify hear-it failed:', err);
       }
     }
 
+    // Default / fallback: Deezer 30s preview — must work without Spotify SDK.
     if (!data.audio.preview_url) {
       setRefreshError(
-        spotifyPlayer.ui === 'premium_required'
-          ? 'Spotify Premium required for full playback. No Deezer preview available.'
-          : 'Audio unavailable. Connect Spotify Premium in Settings, or try Open full player.'
+        'No preview available. Open full player, or wait for Spotify player to connect.'
       );
       setIsPlaying(false);
+      setHearBusy(false);
       return;
     }
 
@@ -396,6 +386,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       setRefreshError('Audio preview unavailable. Try Open full player.');
       setIsPlaying(false);
     }
+    setHearBusy(false);
   };
 
   useEffect(() => {
@@ -727,11 +718,17 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           <Button
             type="button"
             onClick={() => void togglePlay()}
-            disabled={refreshing || (!data.audio.preview_url && !data.song.title)}
+            disabled={refreshing || hearBusy || (!data.audio.preview_url && !data.song.title)}
             className="gap-2 uppercase tracking-widest text-[10px] font-bold"
           >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            Hear it in the song
+            {hearBusy ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isPlaying ? (
+              <Pause className="w-4 h-4" />
+            ) : (
+              <Play className="w-4 h-4" />
+            )}
+            {hearBusy ? 'Starting…' : 'Hear it in the song'}
           </Button>
           <Button
             type="button"
