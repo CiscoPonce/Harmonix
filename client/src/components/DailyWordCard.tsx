@@ -89,7 +89,9 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const hearStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioProviderRef = useRef<'spotify' | 'deezer' | null>(null);
   const [hearBusy, setHearBusy] = useState(false);
+  const [elapsedSec, setElapsedSec] = useState(0);
   const spotifyPlayer = useSpotifyInAppPlayer();
+  const loadAbortRef = useRef<AbortController | null>(null);
 
   const clearHearStopTimer = useCallback(() => {
     if (hearStopTimerRef.current) {
@@ -145,23 +147,33 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const loadDailyWord = useCallback(async (initial = false) => {
     const hasBuffered = (queueStatus?.ready ?? 0) > 0;
 
+    loadAbortRef.current?.abort();
+    const ac = new AbortController();
+    loadAbortRef.current = ac;
+
     if (!initial) {
       setRefreshing(true);
       setRefreshError(null);
+      setElapsedSec(0);
     } else {
       setLoading(true);
       setError(null);
+      setElapsedSec(0);
     }
 
     if (!initial && hasBuffered) {
-      setStatusMessage(null);
+      setStatusMessage("Loading next word…");
     } else if (!initial) {
-      setStatusMessage("Finding a new word in a real song...");
+      setStatusMessage("Asking AI for song candidates…");
     }
 
     try {
       const endpoint = initial ? "/daily-word" : "/daily-word/next";
-      const res = await apiFetch(endpoint, { method: initial ? "GET" : "POST" });
+      const res = await apiFetch(endpoint, {
+        method: initial ? "GET" : "POST",
+        signal: ac.signal,
+      });
+      if (ac.signal.aborted) return;
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         if (body.queue) setQueueStatus(body.queue);
@@ -183,6 +195,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       }
       applyPayload(await res.json());
     } catch (err) {
+      if (ac.signal.aborted || (err instanceof DOMException && err.name === "AbortError")) return;
       const msg = err instanceof Error ? err.message : "Failed to load daily word";
       if (!initial && data) {
         setRefreshError(msg);
@@ -190,10 +203,13 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         setError(msg);
       }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
-      setStatusMessage(null);
-      fetchQueueStatus();
+      if (!ac.signal.aborted) {
+        setLoading(false);
+        setRefreshing(false);
+        setStatusMessage(null);
+        setElapsedSec(0);
+        fetchQueueStatus();
+      }
     }
   }, [applyPayload, data, fetchQueueStatus, queueStatus?.ready]);
 
@@ -205,22 +221,31 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     setIsFlipped(false);
     loadDailyWord(true);
     fetchQueueStatus();
+    return () => loadAbortRef.current?.abort();
   }, [user?.target_language, user?.native_language]);
 
+  // Poll while stocking OR while cold-generating so the "ready" badge updates live.
   useEffect(() => {
-    if (!queueStatus?.refilling) return;
-    const timer = setInterval(fetchQueueStatus, 3000);
+    const shouldPoll = queueStatus?.refilling || (refreshing && (queueStatus?.ready ?? 0) === 0);
+    if (!shouldPoll) return;
+    const timer = setInterval(fetchQueueStatus, 2000);
     return () => clearInterval(timer);
-  }, [queueStatus?.refilling, fetchQueueStatus]);
+  }, [queueStatus?.refilling, queueStatus?.ready, refreshing, fetchQueueStatus]);
 
   useEffect(() => {
-    if (!refreshing) return;
+    if (!refreshing && !(loading && !data)) return;
+    setElapsedSec(0);
+    const tick = setInterval(() => setElapsedSec((s) => s + 1), 1000);
     const timers = [
-      setTimeout(() => setStatusMessage("Searching Deezer and LRCLib for a matching song..."), 8000),
-      setTimeout(() => setStatusMessage("Still working — this can take up to a minute..."), 25000),
+      setTimeout(() => setStatusMessage("Searching Deezer for a real track…"), 6000),
+      setTimeout(() => setStatusMessage("Checking synced lyrics on LRCLib…"), 16000),
+      setTimeout(() => setStatusMessage("Still matching — cold generate can take up to a minute…"), 32000),
     ];
-    return () => timers.forEach(clearTimeout);
-  }, [refreshing]);
+    return () => {
+      clearInterval(tick);
+      timers.forEach(clearTimeout);
+    };
+  }, [refreshing, loading, data]);
 
   const playDeezerClip = useCallback(async () => {
     const audio = audioRef.current;
@@ -448,7 +473,6 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   }, [data?.word?.text]);
 
   const toggleFlip = () => {
-    if (refreshing) return;
     setIsFlipped((prev) => !prev);
   };
 
@@ -529,7 +553,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
         </div>
         <div className="p-5 sm:p-8 md:p-10">
-          <div className="min-h-[17rem] sm:min-h-[19rem] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 p-5 sm:p-8 flex flex-col justify-between animate-pulse">
+          <div className="min-h-[15.5rem] sm:min-h-[19rem] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 p-4 sm:p-8 flex flex-col justify-between animate-pulse">
             <div className="flex justify-center pt-2">
               <div className="h-12 sm:h-16 w-2/3 max-w-xs rounded-lg bg-zinc-200 dark:bg-zinc-800" />
             </div>
@@ -562,7 +586,10 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     router.push(playerHref);
   };
   const readyCount = queueStatus?.ready ?? data.queue?.ready ?? 0;
-  const showHeavyOverlay = refreshing && (queueStatus?.ready ?? 0) === 0;
+  // Full-screen blocker only on first cold load (no word yet). While refreshing,
+  // keep the current word interactive and show a slim progress strip instead.
+  const showHeavyOverlay = loading && !data;
+  const showInlineProgress = refreshing && !!data;
   const homeLanguage = (user?.native_language || "en").toUpperCase();
   const meaning = data.word.translation?.trim();
   const showMeaning = Boolean(
@@ -574,10 +601,35 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       {showHeavyOverlay && (
         <div className="absolute inset-0 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-8 text-center">
           <Loader2 className="w-8 h-8 animate-spin text-zinc-900 dark:text-white" />
-          <p className="text-sm font-bold uppercase tracking-widest text-zinc-900 dark:text-white">{statusMessage || "Generating your next words..."}</p>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
-            {queueStatus?.refilling ? "Stocking your word queue in the background…" : "Generating a batch of words — this can take up to a minute"}
+          <p className="text-sm font-bold uppercase tracking-widest text-zinc-900 dark:text-white">
+            {statusMessage || "Generating your first word…"}
           </p>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
+            {elapsedSec > 0 ? `${elapsedSec}s · ` : ""}
+            Cold generate validates real songs — usually 20–60s
+          </p>
+        </div>
+      )}
+
+      {showInlineProgress && (
+        <div className="px-4 py-2.5 sm:px-6 border-b border-amber-200/80 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/40 flex items-center gap-3">
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-700 dark:text-amber-300 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold text-amber-900 dark:text-amber-100 truncate">
+              {statusMessage || (readyCount > 0 ? "Loading next word…" : "Finding a new word in a real song…")}
+            </p>
+            <p className="text-[10px] text-amber-700/80 dark:text-amber-200/70">
+              {readyCount > 0
+                ? "Queue hit — should be instant"
+                : `${elapsedSec}s · keep using this word; next one arrives when matched`}
+            </p>
+          </div>
+          <div className="hidden sm:block h-1 w-24 rounded-full bg-amber-200 dark:bg-amber-900 overflow-hidden shrink-0">
+            <div
+              className="h-full bg-amber-600 dark:bg-amber-400 transition-[width] duration-1000 ease-out"
+              style={{ width: `${Math.min(92, 8 + elapsedSec * 1.4)}%` }}
+            />
+          </div>
         </div>
       )}
 
@@ -596,8 +648,10 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
               {readyCount} ready
             </span>
           )}
-          {queueStatus?.refilling && readyCount === 0 && !refreshing && (
-            <span className="text-zinc-400 dark:text-zinc-600 truncate">· stocking</span>
+          {(queueStatus?.refilling || (refreshing && readyCount === 0)) && !showHeavyOverlay && (
+            <span className="text-zinc-400 dark:text-zinc-600 truncate">
+              · {queueStatus?.refilling ? "stocking" : "matching"}
+            </span>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -618,7 +672,9 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         </div>
       </div>
       <p className="border-b border-zinc-100 px-4 py-2 text-[11px] text-zinc-500 dark:border-zinc-900 dark:text-zinc-400 sm:px-6">
-        Request a new word as many times as you like — no daily limit.
+        {readyCount > 0
+          ? `${readyCount} buffered — Next word is instant.`
+          : "Request a new word anytime. First cold generate can take up to a minute; later ones are queued."}
       </p>
 
       <div className="p-5 sm:p-8 md:p-10">
@@ -630,9 +686,8 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
             {/* Front — word & translation */}
             <button
               type="button"
-              className="daily-word-flip-face daily-word-flip-front flex flex-col justify-between text-left w-full min-h-[17rem] sm:min-h-[19rem] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 p-5 sm:p-8 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-600"
+              className="daily-word-flip-face daily-word-flip-front flex flex-col justify-between text-left w-full min-h-[15.5rem] sm:min-h-[19rem] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 p-4 sm:p-8 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-600"
               onClick={toggleFlip}
-              disabled={refreshing}
               aria-label="Show song context for this word"
             >
               <div className="flex justify-center pt-1 sm:pt-2 min-w-0">
@@ -681,7 +736,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
 
             {/* Back — lyric snippet & actions */}
             <div
-              className="daily-word-flip-face daily-word-flip-back flex flex-col justify-between min-h-[17rem] sm:min-h-[19rem] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black p-4 sm:p-6 space-y-4 min-w-0 cursor-pointer"
+              className="daily-word-flip-face daily-word-flip-back flex flex-col justify-between min-h-[15.5rem] sm:min-h-[19rem] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black p-4 sm:p-6 space-y-4 min-w-0 cursor-pointer"
               onClick={toggleFlip}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleFlip(); } }}
               role="button"
@@ -717,7 +772,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           <Button
             type="button"
             onClick={() => void togglePlay()}
-            disabled={refreshing || hearBusy || (!data.audio.preview_url && !data.song.title)}
+            disabled={hearBusy || (!data.audio.preview_url && !data.song.title)}
             className="gap-2 uppercase tracking-widest text-[10px] font-bold"
           >
             {hearBusy ? (
@@ -733,7 +788,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
             type="button"
             variant="secondary"
             onClick={openFullPlayer}
-            disabled={refreshing || !data.song.id}
+            disabled={!data.song.id}
             className="gap-2 uppercase tracking-widest text-[10px] font-bold"
           >
             <BookOpen className="w-4 h-4" />

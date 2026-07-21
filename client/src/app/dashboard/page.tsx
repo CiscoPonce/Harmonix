@@ -174,7 +174,7 @@ export default function DashboardPage() {
     >
       <BadgeUnlockToast badge={unlockedBadge} onDismiss={() => setUnlockedBadge(null)} />
 
-      <div className="mx-auto flex w-full max-w-5xl flex-col items-center">
+      <div className="mx-auto flex w-full max-w-5xl flex-col items-center px-0 sm:px-0">
         <p className="mb-2 self-start text-[10px] font-bold uppercase tracking-[0.2em] text-[#7A8A80] dark:text-[#9AABA0]">
           Word of the day
         </p>
@@ -182,7 +182,7 @@ export default function DashboardPage() {
           <DailyWordCard onWordChange={refreshDashboardData} />
         </div>
 
-        <section className="mt-12 w-full space-y-4">
+        <section className="mt-8 w-full space-y-3 sm:mt-12 sm:space-y-4">
           <div className="space-y-2 text-center">
             <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-[#5C6B62] dark:text-[#9AABA0]">
               Or explore
@@ -196,8 +196,8 @@ export default function DashboardPage() {
 
         <ReviewCountBadge />
 
-        <div className="mt-16 grid w-full min-w-0 gap-4 sm:mt-20 sm:grid-cols-2 sm:gap-6">
-          <div className="group flex min-h-[250px] min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E4EBE6] bg-white p-5 dark:border-[#2A3530] dark:bg-[#171E1B] sm:p-8">
+        <div className="mt-10 grid w-full min-w-0 gap-3 sm:mt-16 sm:grid-cols-2 sm:gap-6">
+          <div className="group flex min-h-[220px] min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E4EBE6] bg-white p-4 dark:border-[#2A3530] dark:bg-[#171E1B] sm:min-h-[250px] sm:p-8">
             <div className="mb-6 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E8F5EE] text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
               <Clock className="h-6 w-6" />
             </div>
@@ -254,7 +254,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="group flex min-h-[250px] min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E4EBE6] bg-white p-5 dark:border-[#2A3530] dark:bg-[#171E1B] sm:p-8">
+          <div className="group flex min-h-[220px] min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E4EBE6] bg-white p-4 dark:border-[#2A3530] dark:bg-[#171E1B] sm:min-h-[250px] sm:p-8">
             <div className="mb-6 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E8F5EE] text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
               <Trophy className="h-6 w-6" />
             </div>

@@ -339,9 +339,10 @@ html {
 .daily-word-flip-inner {
   position: relative;
   width: 100%;
-  min-height: 17rem;
+  min-height: 15.5rem;
   transform-style: preserve-3d;
-  transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transition: transform 0.4s cubic-bezier(0.4, 0.2, 0.2, 1);
+  will-change: transform;
 }
 
 @media (min-width: 640px) {
