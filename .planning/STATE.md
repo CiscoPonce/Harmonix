@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: mobile-dual-frontend
 status: in_progress
-stopped_at: Phase 12.5 planned — resume popup OAuth + Library connect UX this afternoon
-last_updated: "2026-07-20T06:50:00.000Z"
+stopped_at: Phase 12 live on VPS — Spotify Dashboard redirect URI must match; Phase 12.5 UX next
+last_updated: "2026-07-21T20:40:00.000Z"
 progress:
   total_phases: 1
   completed_phases: 1
@@ -16,9 +16,14 @@ progress:
 
 ## Current Focus
 
-**Phase 12 — Spotify API Integration:** code complete (12-01–12-10). Pending: 12-11 human gates + operator `SPOTIFY_CLIENT_ID` on VPS.
+**Phase 12 — Spotify API Integration:** code complete (12-01–12-10) on GitHub `main` + VPS.  
+- VPS has `SPOTIFY_CLIENT_ID` and redirect env set.  
+- Live blocker: Spotify Developer Dashboard **Redirect URI** must exactly match  
+  `https://moral-sparrow-nationally.ngrok-free.app/api/spotify/oauth/callback`  
+- Pending: 12-11 sandbox/device/UI/policy/quota human gates.
 
-**Phase 12.5 — Spotify Connect UX (planned):** popup OAuth, Library inline Connect, onboarding prompt. Context: [12.5-CONTEXT.md](./phases/12.5-spotify-connect-ux/12.5-CONTEXT.md). Resume with `/gsd:plan-phase 12.5` this afternoon.
+**Phase 12.5 — Spotify Connect UX (planned):** popup OAuth, Library inline Connect, onboarding prompt.  
+Context: [12.5-CONTEXT.md](./phases/12.5-spotify-connect-ux/12.5-CONTEXT.md). Next: `/gsd:plan-phase 12.5` after Connect works.
 
 **Phase 10 — Option C in progress.** Flutter Android MVP lives in `mobile/` (light + dark-green Learn UI). Capacitor remains the temporary bridge APK until Flutter public launch (D-10-04).
 
@@ -101,9 +106,10 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 
 ## Session
 
-**Last session:** 2026-07-20T06:50:00.000Z
-**Stopped at:** Phase 12.5 planned — resume popup OAuth + Library connect UX this afternoon
+**Last session:** 2026-07-21T20:40:00.000Z
+**Stopped at:** Consolidated on `main` (`8713f93`+); VPS synced; Spotify Connect blocked on Dashboard redirect URI match
 **Resume file:** .planning/phases/12.5-spotify-connect-ux/12.5-CONTEXT.md
+**Default branch:** `main` only (feature branch `repository-analysis-6864d` merged & deleted)
 
 ## Performance Metrics
 

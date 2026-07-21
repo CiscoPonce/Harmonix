@@ -100,7 +100,7 @@ Context: [phases/12-spotify-api-integration/12-CONTEXT.md](./phases/12-spotify-a
 **Mode:** mvp  
 **Status:** Planned  
 **Milestone:** v1.5 — Spotify Integration (UX polish)  
-**Depends on:** Phase 12 backend OAuth (complete); operator Client ID on VPS (pending)
+**Depends on:** Phase 12 backend OAuth (complete); operator Client ID on VPS (set); Dashboard redirect URI must match live env
 
 Context: [phases/12.5-spotify-connect-ux/12.5-CONTEXT.md](./phases/12.5-spotify-connect-ux/12.5-CONTEXT.md)
 
