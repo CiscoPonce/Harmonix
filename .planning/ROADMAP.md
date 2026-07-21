@@ -47,10 +47,14 @@ Context: [phases/11-word-phonics-tts/11-CONTEXT.md](./phases/11-word-phonics-tts
 
 **Goal:** As a signed-in Harmonix learner, I want to connect my Spotify account from Settings and view and export playlists on web and Android, so that I can use my Spotify music inside Harmonix across both platforms.
 **Mode:** mvp
-**Status:** In Progress  
+**Status:** Code complete — live Connect gate open (12-11 partial)  
 **Milestone:** v1.5 — Spotify Integration  
 **Strategy:** Implement OAuth 2.0 PKCE flow, playlist management, and export functionality.
-**Plans:** 10/11 plans executed
+**Plans:** 10/11 complete; 12-11 partial (operator Dashboard redirect + human smoke)
+
+**Deployed:** GitHub `main` + VPS (`SPOTIFY_CLIENT_ID` set).  
+**Live blocker:** Spotify Dashboard Redirect URI must exactly equal  
+`https://moral-sparrow-nationally.ngrok-free.app/api/spotify/oauth/callback`
 
 - [x] 12-01-PLAN.md
 - [x] 12-02-PLAN.md
@@ -62,9 +66,10 @@ Context: [phases/11-word-phonics-tts/11-CONTEXT.md](./phases/11-word-phonics-tts
 - [x] 12-08-PLAN.md
 - [x] 12-09-PLAN.md
 - [x] 12-10-PLAN.md
-- [ ] 12-11-PLAN.md
+- [~] 12-11-PLAN.md — automated evidence done; live sandbox/UI gates open
 
-Context: [phases/12-spotify-api-integration/12-CONTEXT.md](./phases/12-spotify-api-integration/12-CONTEXT.md)
+Context: [phases/12-spotify-api-integration/12-CONTEXT.md](./phases/12-spotify-api-integration/12-CONTEXT.md)  
+Status detail: [phases/12-spotify-api-integration/12-11-SUMMARY.md](./phases/12-spotify-api-integration/12-11-SUMMARY.md)
 
 | Plan | Name | Status |
 |------|------|--------|
@@ -78,7 +83,7 @@ Context: [phases/12-spotify-api-integration/12-CONTEXT.md](./phases/12-spotify-a
 | 12-08 | Validation-first matching and web export match report | Complete |
 | 12-09 | Android export parity and cross-platform resilience/cleanup | Complete |
 | 12-10 | Automated release matrix and Spotify operations runbook | Complete |
-| 12-11 | Sandbox/device, UI/accessibility, policy/branding, and quota gates | Pending |
+| 12-11 | Sandbox/device, UI/accessibility, policy/branding, and quota gates | Partial — Dashboard redirect URI + human smoke remaining |
 
 **End state:** Users can connect Spotify accounts, view their Spotify playlists in Harmonix, and export Harmonix playlists to Spotify with intelligent song matching.
 
@@ -90,6 +95,7 @@ Context: [phases/12-spotify-api-integration/12-CONTEXT.md](./phases/12-spotify-a
 - Export Harmonix playlists to Spotify (>90% match accuracy target)
 - Rate limiting and caching for API efficiency
 - Match report showing successful and unmatched tracks
+- Live `/settings` + `/callback` alias on VPS (2026-07-21)
 
 ---
 

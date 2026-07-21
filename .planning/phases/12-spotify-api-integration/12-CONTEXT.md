@@ -1,8 +1,12 @@
 # Phase 12: Spotify API Integration
 
-**Status:** Planned  
+**Status:** Code complete — 12-11 live Connect gate open (2026-07-21)  
 **Milestone:** v1.5 — Spotify Integration  
 **Goal:** Enable users to view their Spotify playlists and export Harmonix playlists to Spotify.
+
+**Live status:** Implemented and deployed on VPS. Operator Client ID is set. Connect fails until Spotify Dashboard Redirect URI exactly matches  
+`https://moral-sparrow-nationally.ngrok-free.app/api/spotify/oauth/callback`.  
+See [12-11-SUMMARY.md](./12-11-SUMMARY.md).
 
 ## Phase Boundary
 

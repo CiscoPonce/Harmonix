@@ -3,27 +3,38 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: mobile-dual-frontend
 status: in_progress
-stopped_at: Phase 12 live on VPS — Spotify Dashboard redirect URI must match; Phase 12.5 UX next
-last_updated: "2026-07-21T20:40:00.000Z"
+stopped_at: Phase 12 code complete on main+VPS — close 12-11 via Dashboard redirect URI + Connect smoke
+last_updated: "2026-07-21T20:45:00.000Z"
 progress:
   total_phases: 1
-  completed_phases: 1
+  completed_phases: 0
   total_plans: 11
-  completed_plans: 11
+  completed_plans: 10
 ---
 
 # Project State — Harmonix
 
 ## Current Focus
 
-**Phase 12 — Spotify API Integration:** code complete (12-01–12-10) on GitHub `main` + VPS.  
-- VPS has `SPOTIFY_CLIENT_ID` and redirect env set.  
-- Live blocker: Spotify Developer Dashboard **Redirect URI** must exactly match  
-  `https://moral-sparrow-nationally.ngrok-free.app/api/spotify/oauth/callback`  
-- Pending: 12-11 sandbox/device/UI/policy/quota human gates.
+**Phase 12 — Spotify API Integration:** **code complete** (12-01–12-10) on GitHub `main` + VPS.
+
+| Item | Status |
+|------|--------|
+| Implementation (web + Android + backend) | Done |
+| Automated Spotify tests | Green |
+| VPS deploy + `/settings` live | Done |
+| `SPOTIFY_CLIENT_ID` on VPS | Done |
+| Spotify Dashboard Redirect URI match | **Open** — `redirect_uri: Not matching configuration` |
+| 12-11 live sandbox / UI / policy gates | **Open** |
+| Phase 12.5 popup / Library Connect UX | Planned (after Connect works) |
+
+**Required Redirect URI (exact):**  
+`https://moral-sparrow-nationally.ngrok-free.app/api/spotify/oauth/callback`
+
+Detail: [12-11-SUMMARY.md](./phases/12-spotify-api-integration/12-11-SUMMARY.md)
 
 **Phase 12.5 — Spotify Connect UX (planned):** popup OAuth, Library inline Connect, onboarding prompt.  
-Context: [12.5-CONTEXT.md](./phases/12.5-spotify-connect-ux/12.5-CONTEXT.md). Next: `/gsd:plan-phase 12.5` after Connect works.
+Context: [12.5-CONTEXT.md](./phases/12.5-spotify-connect-ux/12.5-CONTEXT.md).
 
 **Phase 10 — Option C in progress.** Flutter Android MVP lives in `mobile/` (light + dark-green Learn UI). Capacitor remains the temporary bridge APK until Flutter public launch (D-10-04).
 
@@ -58,7 +69,7 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 - [x] Plan 12-08: Validation-first matching and web export report
 - [x] Plan 12-09: Android export and resilience matrix
 - [x] Plan 12-10: Automated release matrix and operations runbook
-- [ ] Plan 12-11: Sandbox/device/UI/policy/quota release gates
+- [~] Plan 12-11: Sandbox/device/UI/policy/quota — **partial** (Client ID on VPS; Dashboard redirect URI + smoke remaining)
 
 ## Phase 12.5 Progress
 
@@ -106,10 +117,10 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 
 ## Session
 
-**Last session:** 2026-07-21T20:40:00.000Z
-**Stopped at:** Consolidated on `main` (`8713f93`+); VPS synced; Spotify Connect blocked on Dashboard redirect URI match
-**Resume file:** .planning/phases/12.5-spotify-connect-ux/12.5-CONTEXT.md
-**Default branch:** `main` only (feature branch `repository-analysis-6864d` merged & deleted)
+**Last session:** 2026-07-21T20:45:00.000Z
+**Stopped at:** Phase 12 marked code-complete; 12-11 open on Dashboard redirect URI + Connect smoke
+**Resume file:** .planning/phases/12-spotify-api-integration/12-11-SUMMARY.md
+**Default branch:** `main` only
 
 ## Performance Metrics
 
@@ -132,13 +143,13 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 - [Phase 12]: Precision gate uses accepted-match precision (>0.90), not overall accuracy inflated by rejections
 - [Phase 12]: Flutter RED uses explicit Args/factory hooks with per-slice sentinels until 12-06/07/09
 - [Phase 12]: Web Spotify strategy is pure DTO contracts + Node 24 test:spotify; no new test package
-- [Phase ?]: Public Spotify callback mounted separately; status never returns tokens — D-12-01/D-12-04 backend-owned PKCE with fixed client-kind destinations
-- [Phase ?]: Playlist list uses complete-sync upsert/prune with 7-day metadata TTL — Preserve prior rows on partial/provider failure; match-cache policy alignment
+- [Phase 12]: Public Spotify callback mounted separately; status never returns tokens — D-12-01/D-12-04 backend-owned PKCE with fixed client-kind destinations
+- [Phase 12]: Playlist list uses complete-sync upsert/prune with 7-day metadata TTL — Preserve prior rows on partial/provider failure; match-cache policy alignment
 - [Phase 12]: Web Spotify success lands on /playlists?spotify=connected; errors recover on /settings with allowlisted outcomes
 - [Phase 12]: Library fetches Harmonix/Spotify/Recent independently; Spotify failures never clear Harmonix content
 - [Phase 12]: Disconnect clears provider UI only after DELETE /api/spotify/connection acknowledgement
-- [Phase ?]: Development-only App Links on ngrok host; release association blocked until production domain + release cert
-- [Phase ?]: Android Spotify OAuth via Settings card + url_launcher; provider tokens never stored on device
+- [Phase 12]: Development-only App Links on ngrok host; release association blocked until production domain + release cert
+- [Phase 12]: Android Spotify OAuth via Settings card + url_launcher; provider tokens never stored on device
 - [Phase 12]: Library Open Settings recovery only; Spotify cards open provider-aware in-app detail (12-07)
 - [Phase 12]: Restricted Spotify detail trusts user_spotify_playlists only when fresh; stale rows revalidate via full /me/playlists sync
 - [Phase 12]: Playlist detail Open in Spotify uses only API-provided HTTPS open.spotify.com URLs after client validation
@@ -147,5 +158,7 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 - [Phase 12]: Disconnect clears user export jobs and match evidence for that user's playlist songs
 - [Phase 12]: Flutter export job identity restored via authenticated latest/by-id; sheet state is not the store
 - [Phase 12]: No-AI boundary proven by injected spy, AI-host fetch rejection, and match/export source import scan
-- [Phase ?]: nyquist_compliant remains false until full npm test and repo lint are green; Spotify surface documented as RC substitute
-- [Phase ?]: Spotify ops runbook pins Development Mode ≠ Extended Quota public release and February 2026 endpoints
+- [Phase 12]: nyquist_compliant remains false until full npm test and repo lint are green; Spotify surface documented as RC substitute
+- [Phase 12]: Spotify ops runbook pins Development Mode ≠ Extended Quota public release and February 2026 endpoints
+- [Phase 12]: VPS uses long OAuth callback path; `/callback` alias present for Dashboard convenience (2026-07-21)
+- [Phase 12]: Repo consolidated to single `main` branch (2026-07-21)
