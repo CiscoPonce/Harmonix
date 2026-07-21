@@ -3,6 +3,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, fetchSpotifyStatus, resolveSpotifyPlay } from "@/lib/api";
+import {
+  computeDeezerHearWindow,
+  computeSpotifyHearClip,
+  formatPreviewWindowLabel,
+} from "@/lib/hearItTiming";
 import { useAuth } from "@/hooks/useAuth";
 import { useSpotifyInAppPlayer } from "@/components/SpotifyInAppPlayer";
 import { Button } from "./ui/Button";
@@ -63,13 +68,6 @@ function highlightWord(snippet: string, start: number, end: number) {
       {after}
     </>
   );
-}
-
-function formatPreviewWindow(offsetSec: number) {
-  const start = Math.floor(offsetSec);
-  const end = start + 30;
-  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-  return `${fmt(start)}–${fmt(end)}`;
 }
 
 export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
@@ -228,28 +226,19 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     if (!audio || !data) return false;
     clearHearStopTimer();
 
-    // Deezer preview is a 30s cut: for songs >60s it is full-song [30s, 60s].
-    // audio.currentTime=0 is already at preview_offset in the full track.
-    const PREVIEW_LEN = 30;
-    const LEAD_IN = 1.25;
-    const PLAY_AFTER = 5.5;
-    const offset = data.audio.preview_offset || 0;
-    const songTimeSec = data.lyric.timestamp_ms / 1000;
-    const relative = songTimeSec - offset;
-    const inWindow = relative >= 0.25 && relative <= PREVIEW_LEN - 1;
+    const win = computeDeezerHearWindow({
+      timestamp_ms: data.lyric.timestamp_ms,
+      snippet: data.lyric.snippet,
+      char_start: data.lyric.char_start,
+      char_end: data.lyric.char_end,
+      preview_offset: data.audio.preview_offset || 0,
+    });
 
-    let seekTo: number;
-    let stopAt: number;
-    if (inWindow) {
-      seekTo = Math.max(0, Math.min(PREVIEW_LEN - 2, relative - LEAD_IN));
-      stopAt = Math.min(PREVIEW_LEN, Math.max(seekTo + 3.5, relative + PLAY_AFTER));
-    } else {
-      seekTo = 0;
-      stopAt = Math.min(PREVIEW_LEN, 8);
+    if (!win.inWindow) {
       setRefreshError(
-        `Deezer preview is ~${formatPreviewWindow(offset)}; this line is at ${data.lyric.timestamp}. Playing the available clip.`
+        `Word is at ${data.lyric.timestamp}; Deezer preview is ${formatPreviewWindowLabel(data.audio.preview_offset || 0)}. Playing the closest available clip.`
       );
-      window.setTimeout(() => setRefreshError(null), 5000);
+      window.setTimeout(() => setRefreshError(null), 5500);
     }
 
     try {
@@ -273,24 +262,24 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         });
       }
 
-      audio.currentTime = seekTo;
-      if (Math.abs(audio.currentTime - seekTo) > 0.35) {
+      audio.currentTime = win.seekTo;
+      if (Math.abs(audio.currentTime - win.seekTo) > 0.35) {
         await new Promise<void>((resolve) => {
           const done = () => {
             audio.removeEventListener('seeked', done);
             resolve();
           };
           audio.addEventListener('seeked', done, { once: true });
-          window.setTimeout(done, 400);
+          window.setTimeout(done, 450);
         });
       }
 
       await audio.play();
       audioProviderRef.current = 'deezer';
       setIsPlaying(true);
-      if (inWindow) setRefreshError(null);
+      if (win.inWindow) setRefreshError(null);
 
-      const playMs = Math.max(1500, (stopAt - seekTo) * 1000);
+      const playMs = Math.max(1500, (win.stopAt - win.seekTo) * 1000);
       hearStopTimerRef.current = setTimeout(() => {
         try {
           audio.pause();
@@ -330,51 +319,53 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
 
     setRefreshError(null);
 
-    // Only try Spotify if the Web Playback SDK is already ready — never block Hear-it on SDK init.
-    const spotifyAlreadyReady =
-      spotifyPlayer.ui === 'ready' ||
-      spotifyPlayer.ui === 'paused' ||
-      spotifyPlayer.ui === 'playing';
-
-    if (spotifyAlreadyReady) {
-      try {
-        const status = await fetchSpotifyStatus();
-        if (status.state === 'connected' && status.playback_scopes_ok !== false) {
-          spotifyPlayer.unlockAudio();
-          const resolved = await resolveSpotifyPlay({
-            title: data.song.title,
-            artist: data.song.artist,
-            song_id: data.song.id,
-            duration_ms:
-              data.audio.duration_seconds > 0
-                ? Math.round(data.audio.duration_seconds * 1000)
-                : null,
-          });
-          const LEAD_IN_MS = 1250;
-          const PLAY_AFTER_MS = 5500;
-          const ok = await Promise.race([
-            spotifyPlayer.playTrack(resolved.uri, {
-              positionMs: Math.max(0, data.lyric.timestamp_ms - LEAD_IN_MS),
-              stopAfterMs: LEAD_IN_MS + PLAY_AFTER_MS,
-            }),
-            new Promise<boolean>((resolve) => window.setTimeout(() => resolve(false), 4000)),
-          ]);
-          if (ok) {
-            audioProviderRef.current = 'spotify';
-            setIsPlaying(true);
-            setHearBusy(false);
-            return;
-          }
-        }
-      } catch (err) {
-        console.error('Spotify hear-it failed:', err);
+    const trySpotifyHear = async (): Promise<boolean> => {
+      const status = await fetchSpotifyStatus();
+      if (status.state !== 'connected' || status.playback_scopes_ok === false) {
+        return false;
       }
+      spotifyPlayer.unlockAudio();
+      const resolved = await resolveSpotifyPlay({
+        title: data.song.title,
+        artist: data.song.artist,
+        song_id: data.song.id,
+        duration_ms:
+          data.audio.duration_seconds > 0
+            ? Math.round(data.audio.duration_seconds * 1000)
+            : null,
+      });
+      const clip = computeSpotifyHearClip({
+        timestamp_ms: data.lyric.timestamp_ms,
+        snippet: data.lyric.snippet,
+        char_start: data.lyric.char_start,
+        char_end: data.lyric.char_end,
+      });
+      return spotifyPlayer.playTrack(resolved.uri, {
+        positionMs: clip.positionMs,
+        stopAfterMs: clip.stopAfterMs,
+      });
+    };
+
+    // Prefer Spotify for exact word timing when it starts quickly; else Deezer.
+    try {
+      const ok = await Promise.race([
+        trySpotifyHear(),
+        new Promise<boolean>((resolve) => window.setTimeout(() => resolve(false), 2800)),
+      ]);
+      if (ok) {
+        audioProviderRef.current = 'spotify';
+        setIsPlaying(true);
+        setHearBusy(false);
+        return;
+      }
+    } catch (err) {
+      console.error('Spotify hear-it failed:', err);
     }
 
-    // Default / fallback: Deezer 30s preview — must work without Spotify SDK.
+    // Deezer 30s preview — seek toward the highlighted word in the lyric line.
     if (!data.audio.preview_url) {
       setRefreshError(
-        'No preview available. Open full player, or wait for Spotify player to connect.'
+        'No preview available. Open full player, or reconnect Spotify in Settings.'
       );
       setIsPlaying(false);
       setHearBusy(false);
@@ -707,7 +698,12 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
                 <blockquote className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-zinc-800 dark:text-zinc-200 italic break-words">
                   &ldquo;{highlightWord(data.lyric.snippet, data.lyric.char_start, data.lyric.char_end)}&rdquo;
                 </blockquote>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-600">At {data.lyric.timestamp}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-600">
+                  Word around {data.lyric.timestamp}
+                  {data.lyric.in_preview === false
+                    ? ` · preview ${formatPreviewWindowLabel(data.audio.preview_offset || 0)}`
+                    : ""}
+                </p>
               </div>
             </div>
           </div>
