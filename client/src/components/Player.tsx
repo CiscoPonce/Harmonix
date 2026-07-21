@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useSyncEngine } from '../hooks/useSyncEngine';
 import LyricList, { MappedVocabItem } from './LyricList';
-import { Play, Pause, SkipBack, SkipForward, BookOpen, Settings, X } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, BookOpen, Settings, X, ArrowLeft } from 'lucide-react';
 import { Button } from './ui/Button';
 import { CefrSelector } from './CefrSelector';
 import { VocabPopover } from './VocabPopover';
@@ -59,19 +60,39 @@ const Player: React.FC<PlayerProps> = ({
     return () => audio.removeEventListener('timeupdate', handleTimeUpdate);
   }, []);
 
-  const togglePlay = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        audioRef.current.play().catch(err => {
-          console.error("Playback failed:", err);
-          setAudioError("Playback failed: Audio preview unavailable.");
-          setIsPlaying(false);
+  const togglePlay = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+      return;
+    }
+    try {
+      setAudioError(null);
+      if (audio.readyState < 1) {
+        audio.load();
+        await new Promise<void>((resolve, reject) => {
+          const ok = () => {
+            audio.removeEventListener('loadedmetadata', ok);
+            audio.removeEventListener('error', bad);
+            resolve();
+          };
+          const bad = () => {
+            audio.removeEventListener('loadedmetadata', ok);
+            audio.removeEventListener('error', bad);
+            reject(new Error('load_failed'));
+          };
+          audio.addEventListener('loadedmetadata', ok, { once: true });
+          audio.addEventListener('error', bad, { once: true });
         });
-        setIsPlaying(true);
       }
+      await audio.play();
+      setIsPlaying(true);
+    } catch (err) {
+      console.error('Playback failed:', err);
+      setAudioError('Playback failed: Audio preview unavailable.');
+      setIsPlaying(false);
     }
   };
 
@@ -91,9 +112,18 @@ const Player: React.FC<PlayerProps> = ({
     <div className="flex flex-col h-screen bg-black text-white font-sans selection:bg-white selection:text-black overflow-hidden">
       {/* Header */}
       <div className="p-6 flex items-center justify-between border-b border-zinc-900 bg-black/50 backdrop-blur-xl sticky top-0 z-10">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl md:text-2xl font-black tracking-tighter truncate uppercase italic">{track.title}</h1>
-          <p className="text-zinc-500 font-medium tracking-widest text-xs uppercase mt-1">{track.artist}</p>
+        <div className="flex flex-1 min-w-0 items-center gap-3">
+          <Link
+            href="/dashboard"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-900 hover:text-white"
+            aria-label="Back to Learn"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl md:text-2xl font-black tracking-tighter truncate uppercase italic">{track.title}</h1>
+            <p className="text-zinc-500 font-medium tracking-widest text-xs uppercase mt-1">{track.artist}</p>
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
@@ -188,6 +218,7 @@ const Player: React.FC<PlayerProps> = ({
         <audio 
           ref={audioRef} 
           src={track.preview} 
+          preload="metadata"
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
           onEnded={() => setIsPlaying(false)}

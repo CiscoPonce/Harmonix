@@ -27,9 +27,17 @@ const DEFAULT_SCOPES = [
   'streaming',
   'user-read-email',
   'user-read-private',
+  'user-modify-playback-state',
+  'user-read-playback-state',
 ].join(' ');
 
-const PLAYBACK_REQUIRED_SCOPES = ['streaming', 'user-read-email', 'user-read-private'];
+const PLAYBACK_REQUIRED_SCOPES = [
+  'streaming',
+  'user-read-email',
+  'user-read-private',
+  'user-modify-playback-state',
+  'user-read-playback-state',
+];
 
 const upsertTokensPreserveAuth = db.prepare(`
   INSERT INTO user_spotify_tokens (

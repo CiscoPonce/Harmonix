@@ -178,27 +178,65 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     return () => timers.forEach(clearTimeout);
   }, [refreshing]);
 
-  const togglePlay = () => {
+  const togglePlay = async () => {
     const audio = audioRef.current;
     if (!audio || !data) return;
-    if (isPlaying) { audio.pause(); setIsPlaying(false); return; }
-    const startSec = data.audio.preview_offset + data.lyric.timestamp_ms / 1000;
-    audio.currentTime = Math.max(0, startSec - 2);
-    audio.play().catch((err) => {
-      console.error("Playback failed:", err);
-      setRefreshError("Audio preview unavailable in your region.");
+    if (isPlaying) {
+      audio.pause();
       setIsPlaying(false);
-    });
-    setIsPlaying(true);
+      return;
+    }
+
+    // Preview file is only ~30s; t=0 is already at preview_offset in the full song.
+    const songTimeSec = data.lyric.timestamp_ms / 1000;
+    const startInPreview = songTimeSec - (data.audio.preview_offset || 0) - 2;
+    const seekTo = Math.max(0, Math.min(28, startInPreview));
+
+    try {
+      if (audio.readyState < 1) {
+        audio.load();
+        await new Promise<void>((resolve, reject) => {
+          const onReady = () => {
+            cleanup();
+            resolve();
+          };
+          const onErr = () => {
+            cleanup();
+            reject(new Error('audio_load_failed'));
+          };
+          const cleanup = () => {
+            audio.removeEventListener('loadedmetadata', onReady);
+            audio.removeEventListener('error', onErr);
+          };
+          audio.addEventListener('loadedmetadata', onReady, { once: true });
+          audio.addEventListener('error', onErr, { once: true });
+        });
+      }
+      audio.currentTime = seekTo;
+      await audio.play();
+      setIsPlaying(true);
+      setRefreshError(null);
+    } catch (err) {
+      console.error('Playback failed:', err);
+      setRefreshError('Audio preview unavailable. Try Open full player.');
+      setIsPlaying(false);
+    }
   };
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const stop = () => setIsPlaying(false);
-    audio.addEventListener("ended", stop);
-    audio.addEventListener("pause", stop);
-    return () => { audio.removeEventListener("ended", stop); audio.removeEventListener("pause", stop); };
+    const onEnded = () => setIsPlaying(false);
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    return () => {
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+    };
   }, [data]);
 
   // Reset pronunciation playback when the daily word changes.
@@ -468,15 +506,21 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
               </div>
 
               <div className="flex flex-wrap gap-3 pt-2" onClick={(e) => e.stopPropagation()}>
-                <Button onClick={togglePlay} disabled={refreshing} className="gap-2 uppercase tracking-widest text-[10px] font-bold">
+                <Button
+                  type="button"
+                  onClick={() => void togglePlay()}
+                  disabled={refreshing || !data.audio.preview_url}
+                  className="gap-2 uppercase tracking-widest text-[10px] font-bold"
+                >
                   {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                   Hear it in the song
                 </Button>
-                <Link href={playerHref}>
-                  <Button variant="secondary" disabled={refreshing} className="gap-2 uppercase tracking-widest text-[10px] font-bold">
-                    <BookOpen className="w-4 h-4" />
-                    Open full player
-                  </Button>
+                <Link
+                  href={playerHref}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-zinc-800 bg-black px-4 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-zinc-900"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Open full player
                 </Link>
               </div>
             </div>
@@ -488,7 +532,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         <audio
           ref={audioRef}
           src={data.audio.preview_url}
-          preload="none"
+          preload="metadata"
           onError={(e) => {
             console.error("Audio preview load failed:", e);
             setRefreshError("Audio preview unavailable in your region.");

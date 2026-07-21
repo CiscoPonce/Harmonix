@@ -67,6 +67,31 @@ function loadSpotifySdk(): Promise<void> {
 }
 
 async function playUriOnDevice(accessToken: string, deviceId: string, uri: string) {
+  // Activate Harmonix as the playback device first (avoids "no active device").
+  const transfer = await fetch('https://api.spotify.com/v1/me/player', {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ device_ids: [deviceId], play: false }),
+  });
+  if (transfer.status === 403) {
+    const body = await transfer.json().catch(() => null);
+    const reason =
+      body && typeof body === 'object' && 'error' in body
+        ? String((body as { error?: { reason?: string } }).error?.reason || '')
+        : '';
+    if (reason === 'PREMIUM_REQUIRED' || /premium/i.test(JSON.stringify(body))) {
+      const err = new Error('premium_required') as Error & { code?: string };
+      err.code = 'premium_required';
+      throw err;
+    }
+  }
+
+  // Brief settle so Spotify registers the SDK device before play.
+  await new Promise((r) => setTimeout(r, 400));
+
   const res = await fetch(
     `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`,
     {
@@ -90,6 +115,11 @@ async function playUriOnDevice(accessToken: string, deviceId: string, uri: strin
       err.code = 'premium_required';
       throw err;
     }
+  }
+  if (res.status === 401) {
+    const err = new Error('reconnect') as Error & { code?: string };
+    err.code = 'reconnect';
+    throw err;
   }
   throw new Error(`playback_failed_${res.status}`);
 }
@@ -273,11 +303,18 @@ export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void
           );
           return;
         }
+        if (code === 'reconnect') {
+          setUi('reconnect');
+          setMessage(
+            'Reconnect Spotify in Settings to enable in-app playback (streaming permission).'
+          );
+          return;
+        }
         setUi((prev) => (prev === 'reconnect' ? prev : 'error'));
         setMessage((prev) =>
           prev?.includes('Reconnect')
             ? prev
-            : 'Could not play this track. Try Open in Spotify.'
+            : 'Could not play this track. Try Open in Spotify, or reconnect Spotify in Settings.'
         );
       }
     },

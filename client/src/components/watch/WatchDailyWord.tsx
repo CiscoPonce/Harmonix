@@ -77,7 +77,7 @@ export function WatchDailyWord() {
     loadWord(true);
   }, [loadWord]);
 
-  const togglePlay = () => {
+  const togglePlay = async () => {
     const audio = audioRef.current;
     if (!audio || !data) return;
     if (isPlaying) {
@@ -85,21 +85,32 @@ export function WatchDailyWord() {
       setIsPlaying(false);
       return;
     }
-    const startSec = data.audio.preview_offset + data.lyric.timestamp_ms / 1000;
-    audio.currentTime = Math.max(0, startSec - 2);
-    audio.play().catch(() => setIsPlaying(false));
-    setIsPlaying(true);
+    const songTimeSec = data.lyric.timestamp_ms / 1000;
+    const startInPreview = songTimeSec - (data.audio.preview_offset || 0) - 2;
+    const seekTo = Math.max(0, Math.min(28, startInPreview));
+    try {
+      if (audio.readyState < 1) audio.load();
+      audio.currentTime = seekTo;
+      await audio.play();
+      setIsPlaying(true);
+    } catch {
+      setIsPlaying(false);
+    }
   };
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const stop = () => setIsPlaying(false);
-    audio.addEventListener("ended", stop);
-    audio.addEventListener("pause", stop);
+    const onEnded = () => setIsPlaying(false);
+    const onPause = () => setIsPlaying(false);
+    const onPlay = () => setIsPlaying(true);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("play", onPlay);
     return () => {
-      audio.removeEventListener("ended", stop);
-      audio.removeEventListener("pause", stop);
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("play", onPlay);
     };
   }, [data]);
 
