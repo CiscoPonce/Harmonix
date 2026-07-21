@@ -4,7 +4,7 @@ milestone: v1.3
 milestone_name: mobile-dual-frontend
 status: in_progress
 stopped_at: Phase 12 code complete on main+VPS — close 12-11 via Dashboard redirect URI + Connect smoke
-last_updated: "2026-07-21T20:45:00.000Z"
+last_updated: "2026-07-21T20:50:00.000Z"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -27,6 +27,7 @@ progress:
 | Spotify Dashboard Redirect URI match | **Open** — `redirect_uri: Not matching configuration` |
 | 12-11 live sandbox / UI / policy gates | **Open** |
 | Phase 12.5 popup / Library Connect UX | Planned (after Connect works) |
+| Phase 12.6 Spotify in-app playback | Planned (after Connect + Premium path) |
 
 **Required Redirect URI (exact):**  
 `https://moral-sparrow-nationally.ngrok-free.app/api/spotify/oauth/callback`
@@ -35,6 +36,9 @@ Detail: [12-11-SUMMARY.md](./phases/12-spotify-api-integration/12-11-SUMMARY.md)
 
 **Phase 12.5 — Spotify Connect UX (planned):** popup OAuth, Library inline Connect, onboarding prompt.  
 Context: [12.5-CONTEXT.md](./phases/12.5-spotify-connect-ux/12.5-CONTEXT.md).
+
+**Phase 12.6 — Spotify In-App Playback (planned):** Web Playback SDK on Spotify playlist detail for Premium users; Open in Spotify fallback.  
+Context: [12.6-CONTEXT.md](./phases/12.6-spotify-in-app-playback/12.6-CONTEXT.md).
 
 **Phase 10 — Option C in progress.** Flutter Android MVP lives in `mobile/` (light + dark-green Learn UI). Capacitor remains the temporary bridge APK until Flutter public launch (D-10-04).
 
@@ -78,6 +82,14 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 - [ ] Plan 12.5-03: Optional onboarding connect prompt (web)
 - [ ] Plan 12.5-04: Operator runbook + popup/Library tests
 
+## Phase 12.6 Progress
+
+- [ ] Plan 12.6-01: Research SDK/scopes/Premium + update COVERAGE
+- [ ] Plan 12.6-02: Backend short-lived player token + scope reconnect
+- [ ] Plan 12.6-03: Web Spotify detail player (Web Playback SDK)
+- [ ] Plan 12.6-04: Android parity (if feasible)
+- [ ] Plan 12.6-05: Validation matrix + ops runbook
+
 ## Mobile design
 
 - **Flutter SoT:** light background `#FFFFFF`, accent `#006432` — [10-UI-SPEC.md](./phases/10-mobile-dual-frontend/10-UI-SPEC.md)
@@ -117,9 +129,9 @@ Language reliability Track A (catalogs, queue purge, per-lang stopwords, smoke g
 
 ## Session
 
-**Last session:** 2026-07-21T20:45:00.000Z
-**Stopped at:** Phase 12 marked code-complete; 12-11 open on Dashboard redirect URI + Connect smoke
-**Resume file:** .planning/phases/12-spotify-api-integration/12-11-SUMMARY.md
+**Last session:** 2026-07-21T20:50:00.000Z
+**Stopped at:** Phase 12.6 planned (in-app Spotify playback); Phase 12 still blocked on Dashboard redirect URI
+**Resume file:** .planning/phases/12.6-spotify-in-app-playback/12.6-CONTEXT.md
 **Default branch:** `main` only
 
 ## Performance Metrics

@@ -128,6 +128,36 @@ Context: [phases/12.5-spotify-connect-ux/12.5-CONTEXT.md](./phases/12.5-spotify-
 
 ---
 
+## Phase 12.6 — Spotify In-App Playback
+
+**Goal:** As a signed-in Harmonix learner with Spotify connected (Premium), I want to play tracks from a Spotify playlist inside Harmonix playlist detail, so that I can listen without leaving the app — with Open in Spotify as fallback.
+
+**Mode:** mvp  
+**Status:** Planned  
+**Milestone:** v1.5 — Spotify Integration (playback)  
+**Depends on:** Phase 12 playlist detail + live Connect (12-11); Phase 12.5 optional in parallel
+
+Context: [phases/12.6-spotify-in-app-playback/12.6-CONTEXT.md](./phases/12.6-spotify-in-app-playback/12.6-CONTEXT.md)
+
+| Plan | Name | Status |
+|------|------|--------|
+| 12.6-01 | Research SDK/scopes/Premium rules + update COVERAGE | Pending |
+| 12.6-02 | Backend short-lived player token + scope reconnect | Pending |
+| 12.6-03 | Web Spotify detail player (Web Playback SDK) | Pending |
+| 12.6-04 | Android parity (if feasible) | Pending |
+| 12.6-05 | Validation matrix + ops runbook | Pending |
+
+**End state:** Premium users can play/pause Spotify tracks on in-app playlist detail; non-Premium / SDK failures keep honest recovery + Open in Spotify; Harmonix-native audio remains Deezer 30s previews.
+
+**Key constraints:**
+
+- Spotify-licensed playback via user Premium — Harmonix does not host Spotify audio files
+- Refresh tokens stay server-side; no AI/NIM on Spotify content
+- Design Guidelines + attribution required
+- Explicitly reverses Phase 12 OPT-OUT for Web Playback SDK when implemented
+
+---
+
 ## Phase 9.5 — Background Word Queue Service
 
 **Status:** Complete  

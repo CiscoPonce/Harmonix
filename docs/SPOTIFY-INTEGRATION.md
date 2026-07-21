@@ -304,6 +304,6 @@ Feasible only with Premium owner + allowlisted account + live Client ID:
 
 ## 16. Coverage & OPT-OUT reminder
 
-Every Spotify capability disposition lives in [`COVERAGE.md`](../.planning/phases/12-spotify-api-integration/COVERAGE.md). OPT-OUT reasons include: no Spotify playback/SDK, no listening history, no saved-library→NIM import, no extra profile storage, no playlist item editing, no public playlist creation, no manual match override.
+Every Spotify capability disposition lives in [`COVERAGE.md`](../.planning/phases/12-spotify-api-integration/COVERAGE.md). Deferred/out-of-scope reminders include: Spotify playback deferred to **Phase 12.6**, no listening history, no saved-library→NIM import, no extra profile storage, no playlist item editing, no public playlist creation, no manual match override.
 
 When changing endpoints or scopes, update COVERAGE.md and this runbook together so operators are never guessing against stale February 2026 facts.
