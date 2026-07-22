@@ -380,12 +380,16 @@ class SpotifyExportReportRow {
   const SpotifyExportReportRow({
     required this.sourceIdentity,
     required this.outcome,
+    this.title,
+    this.artist,
     this.reason,
     this.spotifyUri,
   });
 
   final String sourceIdentity;
   final ExportOutcome outcome;
+  final String? title;
+  final String? artist;
   final String? reason;
   final String? spotifyUri;
 }
@@ -460,6 +464,8 @@ SpotifyExportReport parseExportReportDto(Map<String, dynamic> raw) {
       rows.add(
         SpotifyExportReportRow(
           sourceIdentity: map['source_identity']?.toString() ?? '',
+          title: map['title']?.toString(),
+          artist: map['artist']?.toString(),
           outcome: outcome,
           reason: map['reason']?.toString(),
           spotifyUri: map['spotify_uri']?.toString(),

@@ -107,10 +107,38 @@ class SpotifyMatchReport extends StatelessWidget {
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final row = rows[index];
-                    final label = row.sourceIdentity.replaceFirst(
-                      RegExp(r'^harmonix:'),
-                      '',
-                    );
+                    final label = () {
+                      final title = row.title?.trim();
+                      final artist = row.artist?.trim();
+                      if (title != null &&
+                          title.isNotEmpty &&
+                          artist != null &&
+                          artist.isNotEmpty) {
+                        return '$title — $artist';
+                      }
+                      if (title != null && title.isNotEmpty) return title;
+                      return row.sourceIdentity.replaceFirst(
+                        RegExp(r'^harmonix:'),
+                        '',
+                      );
+                    }();
+                    final reasonText = () {
+                      switch (row.reason) {
+                        case 'duration_conflict':
+                          return 'Duration didn’t match Spotify’s version closely enough';
+                        case 'ambiguous_tie':
+                          return 'Several Spotify matches looked equally likely';
+                        case 'weak_candidate':
+                          return 'No confident Spotify match found';
+                        case 'edition_conflict':
+                          return 'Edition/version conflict (live, remix, etc.)';
+                        case null:
+                        case '':
+                          return null;
+                        default:
+                          return row.reason!.replaceAll('_', ' ');
+                      }
+                    }();
                     return Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -136,10 +164,9 @@ class SpotifyMatchReport extends StatelessWidget {
                                     color: colors.textPrimary,
                                   ),
                                 ),
-                                if (row.reason != null &&
-                                    row.reason!.isNotEmpty)
+                                if (reasonText != null && reasonText.isNotEmpty)
                                   Text(
-                                    row.reason!,
+                                    reasonText,
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: colors.textMuted,
