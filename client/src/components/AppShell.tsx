@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { HarmonixWordmark } from '@/components/HarmonixWordmark';
 
 const NAV = [
   { href: '/discover', label: 'Discover', icon: Compass },
@@ -47,14 +48,9 @@ export function AppShell({
     <div className="flex min-h-screen bg-[#F7F8F6] text-[#0C1210] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
       {/* Sidebar */}
       <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col border-r border-[#E4EBE6] bg-white px-5 py-6 dark:border-[#2A3530] dark:bg-[#121A17] lg:flex">
-        <Link href="/discover" className="mb-10 block">
-          <span className="font-display text-[28px] font-bold leading-none tracking-tight text-[#0B4D2E] dark:text-[#3DCF7A]">
-            Harmonix
-          </span>
-          <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7A8A80] dark:text-[#9AABA0]">
-            Linguistic Resonance
-          </span>
-        </Link>
+        <div className="mb-8">
+          <HarmonixWordmark href="/discover" size="lg" showTagline />
+        </div>
 
         <nav className="flex flex-1 flex-col gap-1" aria-label="Main">
           {NAV.map(({ href, label, icon: Icon }) => {
@@ -118,11 +114,9 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 border-b border-[#E4EBE6] bg-[#F7F8F6]/90 backdrop-blur-xl dark:border-[#2A3530] dark:bg-[#0C1210]/90">
           <div className="flex items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
-            <Link href="/discover" className="shrink-0 lg:hidden">
-              <span className="font-display text-xl font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">
-                Harmonix
-              </span>
-            </Link>
+            <div className="shrink-0 lg:hidden">
+              <HarmonixWordmark href="/discover" size="sm" />
+            </div>
 
             {pageTitle ? (
               <h1 className="font-display hidden text-2xl font-bold italic text-[#0B4D2E] dark:text-[#3DCF7A] sm:block">

@@ -6,7 +6,23 @@
 
 AI-first language learning through real music lyrics — validated against Deezer + LRCLib, with Spotify connect/export and web in-app playback.
 
-![Harmonix Logo](./logoharmonix2.png)
+![Harmonix Logo](./logoharmonix.png)
+
+**Tagline:** Learn Words Through Music  
+**Live:** https://moral-sparrow-nationally.ngrok-free.app  
+**Default branch:** `main` (all product work lands here)
+
+## Status
+
+| Item | State |
+|------|--------|
+| Roadmap phases 1–14 | **Complete** (v1.7 Production Parity & Ship) |
+| Web home | Unified **Discover** (Word of the Day + practice + search) |
+| Nav | Discover · Library · Settings |
+| Mobile | Flutter primary (`mobile/`); Capacitor legacy fallback |
+| Branches | Product work is on `main` only |
+
+See [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](./.planning/STATE.md).
 
 ## Features
 
@@ -15,8 +31,9 @@ AI-first language learning through real music lyrics — validated against Deeze
 - **Pronunciation** — Pocket-TTS cached WAV for supported languages
 - **Song search & player** — Synced lyrics + vocabulary extraction
 - **Library** — Harmonix playlists + Spotify playlists; export Harmonix → Spotify
-- **Web shell** — Discover · Library · Learn · Settings (forest-green design system)
-- **Android** — Flutter native app (`mobile/`) as primary mobile app; Capacitor web-wrapper build (`client/android/`) retained as legacy fallback (D-14-05)
+- **Practice** — SRS review + streak/goal chips on Discover
+- **Web shell** — Discover · Library · Settings (forest-green design system + brand logo)
+- **Android** — Flutter native app (`mobile/`) as primary mobile app; Capacitor web-wrapper (`client/android/`) retained as legacy fallback (D-14-05)
 
 ## Stack
 
@@ -24,7 +41,7 @@ AI-first language learning through real music lyrics — validated against Deeze
 |-------|------|
 | API | Node.js, Express, SQLite |
 | Web | Next.js App Router, Tailwind v4 |
-| Mobile | Flutter (`mobile/`) — Primary Mobile App · Capacitor (`client/android/`) — Legacy Fallback |
+| Mobile | Flutter (`mobile/`) — Primary · Capacitor (`client/android/`) — Legacy Fallback |
 | AI | NVIDIA NIM + OpenRouter fallback |
 | Music | Deezer, LRCLib, Spotify Web API / Web Playback SDK |
 | TTS | Pocket-TTS (local daemon) |
@@ -38,6 +55,7 @@ mobile/          Flutter Android app (Play Store path)
 releases/        Sideload debug APKs
 docs/            Runbooks (Spotify, mobile, language reliability, releases)
 .planning/       ROADMAP, STATE, phase contexts & plans
+logoharmonix.png Brand logo (also client/public/logo.png)
 run_env.sh       VPS: backend + Next prod + TTS + ngrok
 deploy.sh        pull → tests → run_env (tests may block; prefer run_env after pull)
 ```
@@ -80,12 +98,11 @@ Public tunnel (current): `https://moral-sparrow-nationally.ngrok-free.app`
 cd server && npm test
 ```
 
-Known env-sensitive failures: Pocket-TTS not running; Spotify `/status` contract drift — tracked in Phase 14-07.
+Known env-sensitive failures: Pocket-TTS not running; Spotify `/status` contract drift — see ops notes in `.planning/STATE.md`.
 
 ## Planning
 
-Active milestone: **v1.7 Phase 14 — Production Parity & Ship**  
-See [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](./.planning/STATE.md).
+Milestone **v1.7** is complete (Phase 14). Remaining work is optional ops polish (AI provider reliability, Play Store listing, domain).
 
 ## Releases
 

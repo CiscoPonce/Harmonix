@@ -89,7 +89,7 @@ html {
 }
 
 .landing-hero-logo-img {
-  @apply h-28 w-auto max-w-[min(100%,20rem)] object-contain drop-shadow-2xl sm:h-32 md:h-40;
+  @apply h-32 w-auto max-w-[min(100%,22rem)] object-contain drop-shadow-2xl sm:h-40 md:h-48;
 }
 
 .landing-hero-logo-text {

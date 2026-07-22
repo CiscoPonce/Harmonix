@@ -39,9 +39,15 @@ export default function LandingPage() {
   if (isLoading || user || nativeApp) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black text-white">
-        <div className="flex flex-col items-center gap-3">
-          <Image src="/logo.png" alt="Harmonix" width={2816} height={1536} className="h-12 w-auto animate-pulse" />
-          <p className="text-xl font-medium animate-pulse uppercase tracking-widest italic font-black">Harmonix</p>
+        <div className="flex flex-col items-center gap-3 px-6">
+          <Image
+            src="/logo.png"
+            alt="Harmonix"
+            width={1024}
+            height={558}
+            className="h-16 w-auto animate-pulse sm:h-20"
+            priority
+          />
         </div>
       </div>
     );

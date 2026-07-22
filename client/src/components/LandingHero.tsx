@@ -15,11 +15,14 @@ export function LandingHero() {
         {/* Left side - Content */}
         <div className="landing-hero-content">
           <div className="landing-hero-logo-block">
-            <Image src="/logo.png" alt="Harmonix" width={2816} height={1536} priority className="landing-hero-logo-img" />
-            <div className="landing-hero-logo-text">
-              <h2 className="landing-hero-brand">Harmonix</h2>
-              <p className="landing-hero-tagline">Learn Words Through Music</p>
-            </div>
+            <Image
+              src="/logo.png"
+              alt="Harmonix — Learn Words Through Music"
+              width={1024}
+              height={558}
+              priority
+              className="landing-hero-logo-img"
+            />
           </div>
 
           <h1 className="landing-hero-headline">

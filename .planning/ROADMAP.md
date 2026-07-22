@@ -9,7 +9,7 @@
 
 ```text
   Browser / Capacitor WebView          Flutter Android (`mobile/`)
-  Next.js :3009 (prod via run_env)     Discover · Library · Learn · Settings
+  Next.js :3009 (prod via run_env)     Discover · Library · Settings
               \                         /
                \                       /
                 ▼                     ▼
@@ -25,7 +25,7 @@
 
 **Deploy:** `git pull` on VPS → `bash run_env.sh` (backend + `next build/start` + TTS + ngrok).  
 **Auth:** JWT access + httpOnly refresh cookie.  
-**Learning core:** AI song candidates → Deezer match → LRCLib synced lyrics → queue (`user_word_queue`) → Daily Word / Learn.
+**Learning core:** AI song candidates → Deezer match → LRCLib synced lyrics → queue (`user_word_queue`) → Daily Word on unified Discover home.
 
 ---
 
@@ -56,9 +56,7 @@ Android in-app Spotify streaming remains **Phase 14**.
 
 ### Phase 13 — Web Design System ✅
 
-Shipped: AppShell (Discover · Library · Learn · Settings), DM Sans + Fraunces, forest tokens, `/discover` home, shell on Learn/Library/Settings.
-
-Pixel polish (WOTD/player bar/search wiring) → **Phase 14**.
+Shipped: AppShell (Discover · Library · Settings), DM Sans + Fraunces, forest tokens, unified `/discover` home (Word of the Day + practice strip + search; Learn folded in), brand logo wordmark.
 
 ### Phase 11 — TTS ✅
 
@@ -85,7 +83,7 @@ Validated queue + `/next` + refill; cold generate still ~20–60s when empty (AI
 | 10-04 | Dual-frontend parity / test gate | → Phase 14 |
 | 10-05 | Dual-frontend runbook | → Phase 14 |
 
-**Shipped on Flutter today:** 4-tab shell, Daily Word + Deezer preview + TTS, Spotify OAuth/Library/export, language edit via Onboarding, dark mode, stats/badges.  
+**Shipped on Flutter today:** 3-tab shell (Discover · Library · Settings), Daily Word + Deezer preview + TTS, Spotify OAuth/Library/export, language edit in Settings, dark mode, stats/badges.  
 **Not on Flutter:** in-app Spotify playback (external Open in Spotify only).
 
 ---
@@ -136,4 +134,4 @@ Observed on VPS while live:
 
 ## Suggested next command
 
-`/gsd-discuss-phase 14` — lock UX choices for Connect popup vs redirect, Flutter playback feasibility, and Play Store timing.
+Optional ops only — Phase 14 is complete. Prefer `/gsd-progress` or a new milestone discuss if starting post-v1.7 work (domain, Play Store listing, AI provider hardening).

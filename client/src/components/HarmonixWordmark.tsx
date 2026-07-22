@@ -1,27 +1,40 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 interface HarmonixWordmarkProps {
   href?: string | null;
   showTagline?: boolean;
+  /** Visual size of the logo mark */
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
   linkClassName?: string;
 }
 
+const SIZE_CLASS = {
+  sm: 'h-8 w-auto sm:h-9',
+  md: 'h-10 w-auto sm:h-11',
+  lg: 'h-14 w-auto sm:h-16',
+} as const;
+
 export function HarmonixWordmark({
   href = '/',
   showTagline = false,
+  size = 'md',
   className = '',
   linkClassName = '',
 }: HarmonixWordmarkProps) {
   const mark = (
     <div className={`flex min-w-0 flex-col ${className}`}>
-      <span className="truncate text-lg font-black uppercase italic leading-none tracking-tighter text-zinc-900 dark:text-white sm:text-xl">
-        Harmonix
-      </span>
+      <Image
+        src="/logo.png"
+        alt="Harmonix — Learn Words Through Music"
+        width={1024}
+        height={558}
+        className={`${SIZE_CLASS[size]} max-w-full object-contain object-left`}
+        priority
+      />
       {showTagline ? (
-        <span className="mt-1 hidden text-[9px] font-bold uppercase leading-none tracking-[0.18em] text-zinc-500 sm:block">
-          Learn Words Through Music
-        </span>
+        <span className="sr-only">Learn Words Through Music</span>
       ) : null}
     </div>
   );

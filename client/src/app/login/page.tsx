@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { HarmonixWordmark } from '@/components/HarmonixWordmark';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -32,9 +33,12 @@ function LoginForm() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4 text-white">
       <div className="w-full max-w-sm space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tighter uppercase">Login</h1>
-          <p className="text-zinc-400">Enter your credentials to access your account</p>
+        <div className="flex flex-col items-center gap-6 text-center">
+          <HarmonixWordmark href="/" size="lg" showTagline />
+          <div>
+            <h1 className="text-2xl font-bold tracking-tighter uppercase">Login</h1>
+            <p className="mt-1 text-zinc-400">Enter your credentials to access your account</p>
+          </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

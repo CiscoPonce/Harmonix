@@ -16,9 +16,19 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Harmonix — Linguistic Resonance",
+  title: "Harmonix — Learn Words Through Music",
   description:
     "Master vocabulary with every beat. Unlock language through rhythm and melody. Turn your favorite songs into powerful learning tools.",
+  applicationName: "Harmonix",
+  icons: {
+    icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
+  openGraph: {
+    title: "Harmonix — Learn Words Through Music",
+    description: "AI-first language learning through real music lyrics.",
+    images: [{ url: "/logo.png", width: 1024, height: 558, alt: "Harmonix" }],
+  },
 };
 
 export const viewport = {

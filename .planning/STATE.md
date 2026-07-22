@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: production-parity-ship
 status: complete
-stopped_at: "Phase 14 execution complete — Production Parity & Ship shipped"
-last_updated: "2026-07-22T19:30:00.000Z"
+stopped_at: "Phases 1–14 complete; Discover/Learn unified; brand logo shipped"
+last_updated: "2026-07-22T22:35:00.000Z"
 progress:
   total_phases: 14
   completed_phases: 14
@@ -15,7 +15,7 @@ progress:
 
 ## Current Focus
 
-**Phase 14 — Production Parity & Ship** is COMPLETE! All 14 roadmap phases finished.
+**All roadmap phases (1–14) are COMPLETE.** Product home is unified **Discover** (Learn folded in). Brand logo live on web shell / auth / landing.
 
 ## What is live now
 
@@ -26,9 +26,11 @@ progress:
 | Frontend | Next production `:3009` via `run_env.sh` |
 | TTS | Pocket-TTS HQ `:3002` |
 | Spotify | OAuth Connect (Popup & Deep Link), Library, export, web play / Hear-it |
-| Languages | Web & Flutter Settings change home + learning languages |
-| Flutter | 4-tab app + Spotify OAuth/Library/export + language editing |
-| Deploy | Standalone APK runbook + `deploy.sh --skip-tests` |
+| Languages | Web & Flutter Settings change home + learning languages (not genre) |
+| Flutter | 3-tab app (Discover · Library · Settings) + Spotify OAuth/Library/export |
+| Brand | `client/public/logo.png` + AppShell / auth wordmark |
+| Deploy | Standalone APK runbook + `run_env.sh` |
+| Git | Product branch = `main` only |
 
 ## Phase status (reconciled)
 
@@ -40,7 +42,7 @@ progress:
 | 12 | Complete | Spotify API Integration |
 | 12.5 | Complete | Popup OAuth & Library Connect |
 | 12.6 | Complete | Web Playback SDK & Android Honest Fallback |
-| 13 | Complete | Web Design System |
+| 13 | Complete | Web Design System + unified Discover |
 | **14** | **Complete** | Production Parity & Ship |
 
 ## Architecture (verified)
@@ -61,20 +63,17 @@ Flutter Android (`mobile/`) ──────┼─► Express + SQLite
 - External browser + deep link on Flutter (`D-14-03`)
 - Honest Fallback for Spotify on Flutter Android (`D-14-04`)
 - Standalone APK + release runbook (`D-14-07`)
+- Discover is the single home; Learn nav removed (`2026-07-22`)
 
 ## Session
 
-**Last session:** 2026-07-22T19:27:00.000Z  
-**Stopped at:** Phase 14 planning complete  
-**Resume file:** `.planning/phases/14-production-parity-ship/14-01-PLAN.md`  
+**Last session:** 2026-07-22  
+**Stopped at:** Brand logo + repo README readiness; phases verified complete on `main`  
 **Default branch:** `main`
 
-## Known runtime issues (for Phase 14-07)
+## Known runtime issues (ops polish)
 
 - NVIDIA `moonshotai/kimi-k2.6` → frequent 404; falls back to OpenRouter
 - OpenRouter free models → 429 under load; curated catalogs keep daily word alive
-- Server tests ~268 pass / **2 fail:** Pocket-TTS pronounce readiness timeout; Spotify `/status` contract drift (`playback_scopes_ok` / redirect diagnostics ahead of test)
-- `deploy.sh` runs full `npm test` then stalls on those failures — use `run_env.sh` after pull until 14-07 fixes them
+- Server tests may fail when Pocket-TTS is down or Spotify `/status` contract drifts — use `run_env.sh` after pull for deploys
 - Spotify playback is client SDK-driven (`player/token` + `resolve-play`); no server `/me/player` control (by design)
-
-
