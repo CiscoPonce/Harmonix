@@ -1,17 +1,20 @@
 import 'package:flutter/foundation.dart';
 
-/// Four-tab shell indices and one-shot Spotify App Link routing (D-12-04).
+/// Three-tab shell indices and one-shot Spotify App Link routing (D-12-04).
 ///
-/// Ordinary default is Learn. Trusted HTTPS App Links may select Library or
-/// Settings exactly once. Provider secrets in query strings are never retained.
+/// Ordinary default is Discover (unified home). Trusted HTTPS App Links may
+/// select Library or Settings exactly once. Provider secrets in query strings
+/// are never retained.
 class HomeNavigationController extends ChangeNotifier {
-  HomeNavigationController({int initialIndex = learnIndex})
+  HomeNavigationController({int initialIndex = discoverIndex})
       : _index = initialIndex;
 
   static const int discoverIndex = 0;
   static const int libraryIndex = 1;
-  static const int learnIndex = 2;
-  static const int settingsIndex = 3;
+  static const int settingsIndex = 2;
+
+  /// Backward-compatible alias — Learn folded into Discover.
+  static const int learnIndex = discoverIndex;
 
   /// Development-only host locked in 12-01. Production App Links remain blocked.
   static const String approvedHost = 'moral-sparrow-nationally.ngrok-free.app';

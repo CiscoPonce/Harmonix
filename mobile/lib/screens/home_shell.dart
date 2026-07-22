@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../state/home_navigation_controller.dart';
 import 'discover_screen.dart';
-import 'learn_screen.dart';
 import 'library_screen.dart';
 import 'settings_screen.dart';
 
@@ -50,7 +49,6 @@ class _HomeShellState extends State<HomeShell> {
     final pages = [
       const DiscoverScreen(),
       const LibraryScreen(),
-      LearnScreen(onOpenSearch: () => nav.selectTab(HomeNavigationController.discoverIndex)),
       const SettingsScreen(),
     ];
 
@@ -69,11 +67,6 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.library_music_outlined),
             selectedIcon: Icon(Icons.library_music),
             label: 'Library',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.school_outlined),
-            selectedIcon: Icon(Icons.school),
-            label: 'Learn',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

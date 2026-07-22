@@ -1,17 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Loader2, Play, Search } from 'lucide-react';
+import { Flame, Loader2, Play, Search, Target } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AppShell } from '@/components/AppShell';
 import { DailyWordCard } from '@/components/DailyWordCard';
+import { ReviewCountBadge } from '@/components/ReviewCountBadge';
+import { BadgeUnlockToast } from '@/components/BadgeUnlockToast';
 import { apiFetch } from '@/lib/api';
 
 type RecentWord = {
   word: { text: string; translation: string | null };
   song: { id: string; title: string; artist: string } | null;
+};
+
+type ProgressStats = {
+  streak_days: number;
+  total_words: number;
+  today_words: number;
+  daily_goal: number;
+  today_goal_met: boolean;
+  badges_unlocked?: Array<{ id: string; name: string; icon?: string; category?: string }>;
 };
 
 export default function DiscoverPage() {
@@ -24,6 +35,13 @@ export default function DiscoverPage() {
   const [searching, setSearching] = useState(false);
   const [trending, setTrending] = useState<RecentWord[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
+  const [stats, setStats] = useState<ProgressStats | null>(null);
+  const [unlockedBadge, setUnlockedBadge] = useState<{
+    id: string;
+    name: string;
+    icon?: string;
+    category?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
@@ -48,16 +66,50 @@ export default function DiscoverPage() {
     }
   }, []);
 
+  const refreshHomeData = useCallback(async () => {
+    try {
+      const [statsRes, recentRes] = await Promise.all([
+        apiFetch('/progress/stats'),
+        apiFetch('/daily-word/recent?days=14'),
+      ]);
+      if (statsRes.ok) {
+        const statsData = (await statsRes.json()) as ProgressStats;
+        setStats(statsData);
+        if (statsData.badges_unlocked?.length) {
+          const b = statsData.badges_unlocked[0];
+          setUnlockedBadge({ id: b.id, name: b.name, icon: b.icon, category: b.category });
+        }
+      }
+      if (recentRes.ok) {
+        const data = await recentRes.json();
+        setTrending(data.recent || []);
+      }
+    } catch {
+      /* keep current shelf / stats */
+    }
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     let active = true;
     (async () => {
       try {
         setTrendingLoading(true);
-        const res = await apiFetch('/daily-word/recent?days=14');
+        const [statsRes, recentRes] = await Promise.all([
+          apiFetch('/progress/stats'),
+          apiFetch('/daily-word/recent?days=14'),
+        ]);
         if (!active) return;
-        if (res.ok) {
-          const data = await res.json();
+        if (statsRes.ok) {
+          const statsData = (await statsRes.json()) as ProgressStats;
+          setStats(statsData);
+          if (statsData.badges_unlocked?.length) {
+            const b = statsData.badges_unlocked[0];
+            setUnlockedBadge({ id: b.id, name: b.name, icon: b.icon, category: b.category });
+          }
+        }
+        if (recentRes.ok) {
+          const data = await recentRes.json();
           setTrending(data.recent || []);
         }
       } catch {
@@ -101,24 +153,52 @@ export default function DiscoverPage() {
     );
   }
 
+  const goalPct =
+    stats && stats.daily_goal > 0
+      ? Math.min(100, (stats.today_words / stats.daily_goal) * 100)
+      : 0;
+
   return (
     <AppShell userEmail={user.email} onLogout={logout} searchPlaceholder="Search lyrics, artists, or languages...">
+      <BadgeUnlockToast badge={unlockedBadge} onDismiss={() => setUnlockedBadge(null)} />
+
       <section className="mx-auto w-full max-w-3xl" aria-label="Word of the Day">
-        <DailyWordCard
-          onWordChange={() => {
-            void (async () => {
-              try {
-                const res = await apiFetch('/daily-word/recent?days=14');
-                if (res.ok) {
-                  const data = await res.json();
-                  setTrending(data.recent || []);
-                }
-              } catch {
-                /* keep current shelf */
-              }
-            })();
-          }}
-        />
+        <DailyWordCard onWordChange={refreshHomeData} />
+      </section>
+
+      <section
+        className="mx-auto mt-6 flex w-full max-w-3xl flex-wrap items-center justify-center gap-3"
+        aria-label="Practice"
+      >
+        {stats ? (
+          <>
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#E4EBE6] bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-[#0C1210] dark:border-[#2A3530] dark:bg-[#171E1B] dark:text-[#F2F5F3]">
+              <Flame className="h-3.5 w-3.5 text-[#0B4D2E] dark:text-[#3DCF7A]" aria-hidden />
+              {stats.streak_days} day{stats.streak_days === 1 ? '' : 's'}
+            </div>
+            <div className="inline-flex min-w-[140px] flex-col gap-1 rounded-full border border-[#E4EBE6] bg-white px-3 py-1.5 dark:border-[#2A3530] dark:bg-[#171E1B]">
+              <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-widest text-[#5C6B62] dark:text-[#9AABA0]">
+                <span className="inline-flex items-center gap-1">
+                  <Target className="h-3 w-3" aria-hidden />
+                  Today
+                </span>
+                <span>
+                  {stats.today_words}
+                  {stats.daily_goal ? `/${stats.daily_goal}` : ''}
+                </span>
+              </div>
+              <div className="h-1 w-full overflow-hidden rounded-full bg-[#E4EBE6] dark:bg-[#2A3530]">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    stats.today_goal_met ? 'bg-[#0B4D2E] dark:bg-[#3DCF7A]' : 'bg-[#7A8A80]'
+                  }`}
+                  style={{ width: `${goalPct}%` }}
+                />
+              </div>
+            </div>
+          </>
+        ) : null}
+        <ReviewCountBadge />
       </section>
 
       <section className="relative mt-10 overflow-hidden rounded-3xl bg-[#0B4D2E] px-6 py-8 text-white sm:px-10">
@@ -169,7 +249,7 @@ export default function DiscoverPage() {
         </section>
       )}
 
-      <section className="mt-12" aria-label="Trending in other words">
+      <section className="mt-12" aria-label="Recent words">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {trendingLoading ? (
             <div className="col-span-full flex justify-center py-10">
@@ -177,7 +257,7 @@ export default function DiscoverPage() {
             </div>
           ) : trending.length === 0 ? (
             <p className="col-span-full text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-              Flip today&apos;s word above — your trending shelf fills as you discover more.
+              Flip today&apos;s word above — your shelf fills as you discover more.
             </p>
           ) : (
             trending.slice(0, 8).map((item, i) => (

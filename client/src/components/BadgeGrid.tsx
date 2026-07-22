@@ -83,10 +83,10 @@ export function BadgeGrid() {
           Complete lessons, build streaks, and explore songs to unlock badges.
         </p>
         <Link
-          href="/dashboard"
+          href="/discover"
           className="inline-block text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:text-white underline underline-offset-4"
         >
-          Start learning
+          Start discovering
         </Link>
       </div>
     );

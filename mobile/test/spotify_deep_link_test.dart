@@ -66,12 +66,13 @@ Widget _harness(Widget child, {HomeNavigationController? nav}) {
 }
 
 void main() {
-  test('Learn remains the ordinary default tab index (2)', () {
+  test('Discover is the ordinary default tab index (0)', () {
     final nav = HomeNavigationController();
-    expect(nav.index, HomeNavigationController.learnIndex);
-    expect(HomeNavigationController.learnIndex, 2);
+    expect(nav.index, HomeNavigationController.discoverIndex);
+    expect(HomeNavigationController.discoverIndex, 0);
     expect(HomeNavigationController.libraryIndex, 1);
-    expect(HomeNavigationController.settingsIndex, 3);
+    expect(HomeNavigationController.settingsIndex, 2);
+    expect(HomeNavigationController.learnIndex, HomeNavigationController.discoverIndex);
   });
 
   test('success App Link selects Library once; duplicate delivery is ignored', () {
@@ -141,7 +142,7 @@ void main() {
   testWidgets('warm start OAuth completion selects Library once', (tester) async {
     final shell = buildHomeShellForSpotifyLink(
       const HomeShellArgs(
-        initialTabIndex: 3,
+        initialTabIndex: 2,
         selectLibraryAfterSpotifyLink: true,
       ),
     );
@@ -155,11 +156,11 @@ void main() {
     expect(find.text('Library'), findsWidgets);
   });
 
-  testWidgets('ordinary launch selects Learn', (tester) async {
+  testWidgets('ordinary launch selects Discover', (tester) async {
     final nav = HomeNavigationController();
     await tester.pumpWidget(_harness(const HomeShell(), nav: nav));
     await tester.pumpAndSettle();
-    expect(nav.index, HomeNavigationController.learnIndex);
-    expect(find.text('Learn'), findsWidgets);
+    expect(nav.index, HomeNavigationController.discoverIndex);
+    expect(find.text('Discover'), findsWidgets);
   });
 }

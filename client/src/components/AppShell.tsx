@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import {
   Compass,
   Library,
-  GraduationCap,
   Settings,
   Search,
   Bell,
@@ -18,7 +17,6 @@ import { cn } from '@/lib/utils';
 const NAV = [
   { href: '/discover', label: 'Discover', icon: Compass },
   { href: '/playlists', label: 'Library', icon: Library },
-  { href: '/dashboard', label: 'Learn', icon: GraduationCap },
   { href: '/settings', label: 'Settings', icon: Settings },
 ] as const;
 

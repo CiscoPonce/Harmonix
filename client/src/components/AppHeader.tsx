@@ -17,7 +17,7 @@ interface AppHeaderProps {
 export function AppHeader({
   userEmail,
   onLogout,
-  homeHref = '/dashboard',
+  homeHref = '/discover',
   showSettingsLink = true,
 }: AppHeaderProps) {
   return (

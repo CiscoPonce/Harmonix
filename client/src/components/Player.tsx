@@ -325,9 +325,9 @@ const Player: React.FC<PlayerProps> = ({
       <div className="p-6 flex items-center justify-between border-b border-zinc-900 bg-black/50 backdrop-blur-xl sticky top-0 z-10">
         <div className="flex flex-1 min-w-0 items-center gap-3">
           <Link
-            href="/dashboard"
+            href="/discover"
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-900 hover:text-white"
-            aria-label="Back to Learn"
+            aria-label="Back to Discover"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>

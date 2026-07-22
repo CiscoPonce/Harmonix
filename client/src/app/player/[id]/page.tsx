@@ -156,10 +156,10 @@ export default function PlayerPage() {
             Try Again
           </button>
           <Link
-            href="/dashboard"
+            href="/discover"
             className="px-6 py-2 border border-zinc-600 text-xs font-bold uppercase text-zinc-300 hover:border-white hover:text-white transition-colors"
           >
-            Back to Learn
+            Back to Discover
           </Link>
         </div>
       </div>
@@ -170,8 +170,8 @@ export default function PlayerPage() {
     return (
       <div className="h-screen bg-black flex flex-col items-center justify-center text-white gap-4 uppercase font-black italic">
         <p>Track Not Found</p>
-        <Link href="/dashboard" className="text-xs font-bold tracking-widest text-zinc-400 hover:text-white not-italic">
-          Back to Learn
+        <Link href="/discover" className="text-xs font-bold tracking-widest text-zinc-400 hover:text-white not-italic">
+          Back to Discover
         </Link>
       </div>
     );

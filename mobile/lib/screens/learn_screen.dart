@@ -17,9 +17,7 @@ import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
 
 class LearnScreen extends StatefulWidget {
-  const LearnScreen({super.key, this.onOpenSearch});
-
-  final VoidCallback? onOpenSearch;
+  const LearnScreen({super.key});
 
   @override
   State<LearnScreen> createState() => _LearnScreenState();
@@ -29,11 +27,14 @@ class _LearnScreenState extends State<LearnScreen> {
   final _previewPlayer = ja.AudioPlayer();
   final _pronouncePlayer = ap.AudioPlayer();
   final _tts = FlutterTts();
+  final _searchQuery = TextEditingController();
   Map<String, dynamic>? _word;
   Map<String, dynamic>? _queue;
+  List<dynamic> _searchResults = [];
   bool _loading = true;
   bool _nexting = false;
   bool _speaking = false;
+  bool _searching = false;
   String? _error;
   String? _trackedLang;
   AuthState? _auth;
@@ -61,6 +62,7 @@ class _LearnScreenState extends State<LearnScreen> {
   @override
   void dispose() {
     _auth?.removeListener(_onAuthChanged);
+    _searchQuery.dispose();
     _previewPlayer.dispose();
     _pronouncePlayer.dispose();
     super.dispose();
@@ -245,6 +247,23 @@ class _LearnScreenState extends State<LearnScreen> {
     await Share.share(text);
   }
 
+  Future<void> _search() async {
+    final q = _searchQuery.text.trim();
+    if (q.isEmpty) return;
+    setState(() => _searching = true);
+    try {
+      final results = await context.read<ApiClient>().searchSongs(q);
+      if (!mounted) return;
+      setState(() => _searchResults = results);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading && _word == null) {
@@ -297,11 +316,6 @@ class _LearnScreenState extends State<LearnScreen> {
               Text(
                 'Harmonix',
                 style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: widget.onOpenSearch,
-                icon: const Icon(Icons.search),
               ),
             ],
           ),
@@ -394,6 +408,44 @@ class _LearnScreenState extends State<LearnScreen> {
             const SizedBox(height: 12),
             Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
           ],
+          const SizedBox(height: 32),
+          TextField(
+            controller: _searchQuery,
+            decoration: InputDecoration(
+              hintText: 'Search songs, artists…',
+              suffixIcon: IconButton(
+                onPressed: _searching ? null : _search,
+                icon: _searching
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.search),
+              ),
+            ),
+            onSubmitted: (_) => _search(),
+          ),
+          const SizedBox(height: 12),
+          ..._searchResults.map((raw) {
+            final item = raw as Map<String, dynamic>;
+            final title = item['title']?.toString() ?? 'Track';
+            final artist = item['artist'] is Map
+                ? (item['artist'] as Map)['name']?.toString()
+                : item['artist']?.toString();
+            final id = item['id']?.toString();
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.music_note, color: colors.accent),
+              title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(artist ?? ''),
+              trailing: id == null ? null : const Icon(Icons.open_in_new, size: 18),
+              onTap: id == null
+                  ? null
+                  : () async {
+                      final uri = Uri.parse(context.read<ApiClient>().playerUrlForSongId(id));
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+            );
+          }),
         ],
       ),
     );

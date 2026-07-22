@@ -317,7 +317,7 @@ export default function PlaylistDetailPage() {
             <p className="text-sm text-[#6B756F] dark:text-[#8A9690]">
               Search and add songs from the player.
             </p>
-            <Link href="/dashboard">
+            <Link href="/discover">
               <Button variant="secondary">Explore songs</Button>
             </Link>
           </div>

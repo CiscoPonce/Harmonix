@@ -85,14 +85,14 @@ export default function ReviewPage() {
     } catch {
       // Best effort — progress saved locally even if server fails
     }
-    router.push('/dashboard');
+    router.push('/discover');
   };
 
   const handleEndReview = () => {
     if (results.length > 0) {
       submitResults(results);
     } else {
-      router.push('/dashboard');
+      router.push('/discover');
     }
   };
 
@@ -111,7 +111,7 @@ export default function ReviewPage() {
       <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4 text-white">
         <div className="w-full max-w-md text-center space-y-4">
           <p className="text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg p-4">{error}</p>
-          <Button variant="secondary" onClick={() => router.push('/dashboard')}>
+          <Button variant="secondary" onClick={() => router.push('/discover')}>
             Back to Dashboard
           </Button>
         </div>
@@ -126,7 +126,7 @@ export default function ReviewPage() {
           <CheckCircle2 className="w-16 h-16 text-green-500 animate-pulse mx-auto" />
           <h1 className="text-3xl font-bold tracking-tighter uppercase">All caught up!</h1>
           <p className="text-zinc-500 text-sm">No words due for review. Come back tomorrow.</p>
-          <Button variant="secondary" onClick={() => router.push('/dashboard')}>
+          <Button variant="secondary" onClick={() => router.push('/discover')}>
             Back to Dashboard
           </Button>
         </div>

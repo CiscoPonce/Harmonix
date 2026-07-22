@@ -234,8 +234,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onChanged: (val) async {
                           if (val != null) {
                             try {
+                              final api = context.read<ApiClient>();
                               await api.patchPreferences({'native_language': val});
-                              await auth.checkAuth();
+                              await auth.refreshUser();
                             } catch (_) {}
                           }
                         },
@@ -264,8 +265,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onChanged: (val) async {
                           if (val != null) {
                             try {
+                              final api = context.read<ApiClient>();
                               await api.patchPreferences({'target_language': val});
-                              await auth.checkAuth();
+                              await auth.refreshUser();
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text('Target language updated to $val')),
