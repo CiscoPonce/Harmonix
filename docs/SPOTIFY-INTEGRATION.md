@@ -301,10 +301,25 @@ Feasible only with Premium owner + allowlisted account + live Client ID:
 
 ## 15. Extended Quota & release gate
 
-- **Sandbox:** Development Mode, ≤5 users, Premium owner.
-- **Public release:** Blocked until Spotify Extended Quota is approved for the production app.
-- Cache duration, mixed-provider branding, and 20-item shelf + onward-link policy require explicit policy approval (12-11).
-- Rollback: disable Client ID / unset `SPOTIFY_CLIENT_ID` in deployment to fail closed; disconnect existing users if token custody is compromised; rotate encryption key and force reconnect (§8).
+### 15.1 Extended Quota Submission Payload & Checklist
+
+When submitting the Harmonix Spotify App for Extended Quota approval in the Spotify Developer Dashboard:
+
+1. **App Name:** Harmonix (Linguistic Resonance)
+2. **App Description:** AI-first contextual language learning app teaching vocabulary through song lyrics and music playlists.
+3. **Requested Scopes:**
+   - `playlist-read-private` & `playlist-read-collaborative` (Sync user playlists into Harmonix Library)
+   - `playlist-modify-private` (Export Harmonix song recommendations to a user's private Spotify playlist)
+   - `streaming` (Web Playback SDK in-app audio playback for Premium users)
+   - `user-read-private` & `user-read-email` (User authentication and account validation)
+4. **Policy Compliance Checklist:**
+   - [x] No Spotify audio or track data sent to AI/ML LLM models
+   - [x] Spotify branding complies with Developer Terms and Design Guidelines (Spotify Green badge & logo)
+   - [x] Onward links provided for lists > 20 items
+   - [x] Refresh tokens stored AES-256 encrypted server-side; short-lived access material issued to Web Playback SDK
+   - [x] Clear option for user to disconnect Spotify in Settings with full data purging
+
+- **Rollback:** Disable Client ID / unset `SPOTIFY_CLIENT_ID` in deployment to fail closed; disconnect existing users if token custody is compromised; rotate encryption key and force reconnect (§8).
 
 ### Incident response (short)
 

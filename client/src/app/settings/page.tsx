@@ -52,6 +52,7 @@ function SettingsContent() {
   const [langSaving, setLangSaving] = useState(false);
   const [langError, setLangError] = useState<string | null>(null);
   const [langSaved, setLangSaved] = useState(false);
+  const [dyslexicFont, setDyslexicFont] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -132,7 +133,14 @@ function SettingsContent() {
     setMessage(null);
     try {
       const url = await startSpotifyAuth();
-      window.location.assign(url);
+      const width = 600;
+      const height = 720;
+      const left = window.screenX + (window.innerWidth - width) / 2;
+      const top = window.screenY + (window.innerHeight - height) / 2;
+      const popup = window.open(url, 'spotify_auth', `width=${width},height=${height},top=${top},left=${left}`);
+      if (!popup || popup.closed) {
+        window.location.assign(url);
+      }
     } catch {
       setState('provider_error');
       setMessage(PROVIDER_ERROR_COPY);
@@ -408,11 +416,11 @@ function SettingsContent() {
 
           <div className="space-y-6">
             <section
-              aria-label="Appearance"
+              aria-label="Appearance & Accessibility"
               className="rounded-2xl border border-[#E4EBE6] bg-white p-5 dark:border-[#2A3530] dark:bg-[#171E1B]"
             >
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-                Appearance
+                Appearance & Accessibility
               </p>
               <div className="mt-4 flex items-center justify-between gap-4">
                 <div>
@@ -422,6 +430,36 @@ function SettingsContent() {
                   </p>
                 </div>
                 <ThemeToggle />
+              </div>
+
+              <div className="mt-6 border-t border-[#E4EBE6] pt-4 dark:border-[#2A3530]">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-base font-bold">Dyslexia-Friendly Font</h2>
+                    <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+                      Enable dyslexia-friendly typography spacing across lyrics.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !dyslexicFont;
+                      setDyslexicFont(next);
+                      if (typeof document !== 'undefined') {
+                        document.documentElement.classList.toggle('font-dyslexic', next);
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      dyslexicFont ? 'bg-[#0B4D2E] dark:bg-[#3DCF7A]' : 'bg-gray-300 dark:bg-gray-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        dyslexicFont ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </section>
 

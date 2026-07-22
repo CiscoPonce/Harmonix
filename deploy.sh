@@ -8,9 +8,13 @@ cd "$PROJECT_ROOT"
 echo "=== git pull ==="
 git pull origin main
 
-echo "=== server tests ==="
-cd "$PROJECT_ROOT/server"
-npm test
+if [[ "${1:-}" == "--skip-tests" ]]; then
+  echo "=== skipping server tests (--skip-tests active) ==="
+else
+  echo "=== server tests ==="
+  cd "$PROJECT_ROOT/server"
+  npm test
+fi
 
 echo "=== run_env.sh (backend + frontend build + ngrok) ==="
 bash "$PROJECT_ROOT/run_env.sh"

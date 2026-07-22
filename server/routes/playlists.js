@@ -92,13 +92,24 @@ router.delete('/:id', (req, res) => {
 
 router.post('/:id/songs', (req, res) => {
   const userId = req.user.id;
-  const { song_id } = req.body;
+  const { song_id, track } = req.body;
   if (!song_id) return res.status(400).json({ error: 'song_id is required' });
   try {
     const existing = db.prepare('SELECT * FROM playlists WHERE id = ? AND user_id = ?').get(req.params.id, userId);
     if (!existing) return res.status(404).json({ error: 'Playlist not found' });
     const id = nanoid();
-    db.prepare('INSERT INTO playlist_songs (id, playlist_id, song_id) VALUES (?, ?, ?)').run(id, req.params.id, song_id);
+    db.prepare('INSERT INTO playlist_songs (id, playlist_id, song_id) VALUES (?, ?, ?)').run(id, req.params.id, String(song_id));
+    if (track && typeof track === 'object') {
+      try {
+        db.prepare(`
+          INSERT INTO song_cache (song_id, track_json, cached_at)
+          VALUES (?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(song_id) DO UPDATE SET track_json = excluded.track_json
+        `).run(String(song_id), JSON.stringify(track));
+      } catch (cacheErr) {
+        console.error('Failed to cache track on playlist insert:', cacheErr.message);
+      }
+    }
     const entry = db.prepare('SELECT * FROM playlist_songs WHERE id = ?').get(id);
     res.status(201).json({ entry });
   } catch (err) {

@@ -140,6 +140,9 @@ describe('spotify routes foundation contracts', () => {
       status: 'disconnected',
       display_name: null,
       reason: null,
+      redirect_uri: process.env.SPOTIFY_REDIRECT_URI,
+      client_id_prefix: 'test-cli',
+      playback_scopes_ok: false,
     });
     expect(JSON.stringify(res.body)).to.not.match(/access|refresh|ciphertext/i);
   });

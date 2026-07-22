@@ -272,8 +272,10 @@ async function ensureDaemonLanguage(langCode) {
     return;
   }
   await ttsDaemon.restart(pocketLang);
-  for (let i = 0; i < 90; i++) {
-    await new Promise((r) => setTimeout(r, 1000));
+  const maxRetries = process.env.NODE_ENV === 'test' ? 3 : 30;
+  const pollInterval = process.env.NODE_ENV === 'test' ? 100 : 500;
+  for (let i = 0; i < maxRetries; i++) {
+    await new Promise((r) => setTimeout(r, pollInterval));
     if (await ttsDaemon.healthCheck()) return;
   }
   const err = new Error('Pocket-TTS daemon failed to become ready');

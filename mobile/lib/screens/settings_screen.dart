@@ -186,7 +186,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(fontWeight: FontWeight.w800, color: colors.textPrimary),
             ),
             subtitle: Text(
-              '${user['native_language'] ?? '?'} → ${user['target_language'] ?? '?'} · ${user['cefr_level'] ?? ''}',
+              '${user['native_language'] ?? 'en'} → ${user['target_language'] ?? 'fr'} · ${user['cefr_level'] ?? 'B1'}',
               style: TextStyle(color: colors.textMuted),
             ),
             trailing: IconButton(
@@ -196,6 +196,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   MaterialPageRoute(builder: (_) => const OnboardingScreen()),
                 );
               },
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              border: Border.all(color: colors.border),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'LANGUAGES',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: colors.accent),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        value: (user['native_language']?.toString().isNotEmpty == true)
+                            ? user['native_language'].toString()
+                            : 'en',
+                        decoration: const InputDecoration(
+                          labelText: 'Home Language',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'en', child: Text('English')),
+                          DropdownMenuItem(value: 'es', child: Text('Spanish')),
+                          DropdownMenuItem(value: 'fr', child: Text('French')),
+                          DropdownMenuItem(value: 'de', child: Text('German')),
+                          DropdownMenuItem(value: 'it', child: Text('Italian')),
+                          DropdownMenuItem(value: 'ja', child: Text('Japanese')),
+                        ],
+                        onChanged: (val) async {
+                          if (val != null) {
+                            try {
+                              await api.patchPreferences({'native_language': val});
+                              await auth.checkAuth();
+                            } catch (_) {}
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        value: (user['target_language']?.toString().isNotEmpty == true)
+                            ? user['target_language'].toString()
+                            : 'fr',
+                        decoration: const InputDecoration(
+                          labelText: 'Learning',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'fr', child: Text('French')),
+                          DropdownMenuItem(value: 'es', child: Text('Spanish')),
+                          DropdownMenuItem(value: 'de', child: Text('German')),
+                          DropdownMenuItem(value: 'it', child: Text('Italian')),
+                          DropdownMenuItem(value: 'ja', child: Text('Japanese')),
+                          DropdownMenuItem(value: 'en', child: Text('English')),
+                        ],
+                        onChanged: (val) async {
+                          if (val != null) {
+                            try {
+                              await api.patchPreferences({'target_language': val});
+                              await auth.checkAuth();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Target language updated to $val')),
+                                );
+                              }
+                            } catch (_) {}
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),

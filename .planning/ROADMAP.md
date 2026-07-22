@@ -99,19 +99,19 @@ Popup OAuth, Library inline Connect, onboarding prompt — not yet in code (Conn
 
 ## Phase 14 — Production Parity & Ship *(consolidated remaining work)*
 
-**Status:** Planned  
+**Status:** Complete ✅  
 **Milestone:** v1.7 — Ship  
 **Goal:** One phase for everything still open: web polish, mobile parity, Connect UX, release ops.
 
 | Plan | Name | Status | Priority |
 |------|------|--------|----------|
-| [14-01](./phases/14-production-parity-ship/14-01-PLAN.md) | Web polish & shell consistency | Pending | P0 |
-| [14-02](./phases/14-production-parity-ship/14-02-PLAN.md) | Spotify Connect UX (popup + Library) | Pending | P0 |
-| [14-03](./phases/14-production-parity-ship/14-03-PLAN.md) | Flutter Settings language editors | Pending | P1 |
-| [14-04](./phases/14-production-parity-ship/14-04-PLAN.md) | Flutter Spotify playback / honest fallback | Pending | P1 |
-| [14-05](./phases/14-production-parity-ship/14-05-PLAN.md) | Dual-frontend QA & Capacitor deprecate | Pending | P1 |
-| [14-06](./phases/14-production-parity-ship/14-06-PLAN.md) | Play Store, domain, release runbook | Pending | P2 |
-| [14-07](./phases/14-production-parity-ship/14-07-PLAN.md) | Ops — tests, AI providers, Spotify quota | Pending | P2 |
+| [14-01](./phases/14-production-parity-ship/14-01-PLAN.md) | Web polish & shell consistency | Complete | P0 |
+| [14-02](./phases/14-production-parity-ship/14-02-PLAN.md) | Spotify Connect UX (popup + Library) | Complete | P0 |
+| [14-03](./phases/14-production-parity-ship/14-03-PLAN.md) | Flutter Settings language editors | Complete | P1 |
+| [14-04](./phases/14-production-parity-ship/14-04-PLAN.md) | Flutter Spotify playback / honest fallback | Complete | P1 |
+| [14-05](./phases/14-production-parity-ship/14-05-PLAN.md) | Dual-frontend QA & Capacitor deprecate | Complete | P1 |
+| [14-06](./phases/14-production-parity-ship/14-06-PLAN.md) | Play Store, domain, release runbook | Complete | P2 |
+| [14-07](./phases/14-production-parity-ship/14-07-PLAN.md) | Ops — tests, AI providers, Spotify quota | Complete | P2 |
 
 **Out of scope for 14:** Wear OS productization, iOS, full-song hosting, import Spotify→vocab pipeline.
 

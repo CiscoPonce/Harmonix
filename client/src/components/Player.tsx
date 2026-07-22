@@ -4,13 +4,13 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useSyncEngine } from '../hooks/useSyncEngine';
 import LyricList, { MappedVocabItem } from './LyricList';
-import { Play, Pause, SkipBack, SkipForward, BookOpen, X, ArrowLeft } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, BookOpen, X, ArrowLeft, FolderPlus, Share2 } from 'lucide-react';
 import { Button } from './ui/Button';
-import { CefrSelector } from './CefrSelector';
 import { VocabPopover } from './VocabPopover';
 import { VocabItem } from '@/app/player/[id]/page';
 import { fetchSpotifyStatus, resolveSpotifyPlay } from '@/lib/api';
 import { useSpotifyInAppPlayer } from '@/components/SpotifyInAppPlayer';
+import { AddToPlaylistModal } from './AddToPlaylistModal';
 
 interface TrackMetadata {
   id: number;
@@ -26,8 +26,8 @@ interface PlayerProps {
   lrcString: string | null;
   mappedVocab?: MappedVocabItem[];
   unmappedVocab?: VocabItem[];
-  cefrLevel: string;
-  onCefrChange: (level: string) => void;
+  cefrLevel?: string;
+  onCefrChange?: (level: string) => void;
 }
 
 const Player: React.FC<PlayerProps> = ({ 
@@ -35,14 +35,41 @@ const Player: React.FC<PlayerProps> = ({
   lrcString, 
   mappedVocab = [], 
   unmappedVocab = [],
-  cefrLevel,
-  onCefrChange
+  cefrLevel = 'B1',
+  onCefrChange,
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [showAddPlaylist, setShowAddPlaylist] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
-  const [audioSource, setAudioSource] = useState<'spotify' | 'deezer' | 'pending'>('pending');
+
+  const handleShare = async () => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${track.title} - ${track.artist}`,
+          text: `Listen to ${track.title} by ${track.artist} on Harmonix!`,
+          url: shareUrl,
+        });
+        return;
+      } catch {
+        /* fallback to clipboard copy */
+      }
+    }
+    if (shareUrl) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2500);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+  const [audioSource, setAudioSource] = useState<'spotify' | 'deezer' | 'pending'>('deezer');
   const [spotifyUri, setSpotifyUri] = useState<string | null>(null);
   const [songTimeSec, setSongTimeSec] = useState(0);
   const [spotifyDurationMs, setSpotifyDurationMs] = useState<number | null>(null);
@@ -199,24 +226,10 @@ const Player: React.FC<PlayerProps> = ({
     }
     try {
       setAudioError(null);
-      if (audio.readyState < 1) {
-        audio.load();
-        await new Promise<void>((resolve, reject) => {
-          const ok = () => {
-            audio.removeEventListener('loadedmetadata', ok);
-            audio.removeEventListener('error', bad);
-            resolve();
-          };
-          const bad = () => {
-            audio.removeEventListener('loadedmetadata', ok);
-            audio.removeEventListener('error', bad);
-            reject(new Error('load_failed'));
-          };
-          audio.addEventListener('loadedmetadata', ok, { once: true });
-          audio.addEventListener('error', bad, { once: true });
-        });
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        await playPromise;
       }
-      await audio.play();
       setIsPlaying(true);
     } catch (err) {
       console.error('Playback failed:', err);
@@ -240,6 +253,26 @@ const Player: React.FC<PlayerProps> = ({
       setIsPlaying(true);
     }
   };
+
+  const CEFR_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+  const cefrIdx = CEFR_ORDER.indexOf(cefrLevel) >= 0 ? CEFR_ORDER.indexOf(cefrLevel) : 2;
+
+  const activeMappedVocab = mappedVocab.filter((item) => {
+    if (!item.cefr_level) return true;
+    const idx = CEFR_ORDER.indexOf(item.cefr_level.toUpperCase());
+    if (idx < 0) return true;
+    return idx <= cefrIdx || Math.abs(idx - cefrIdx) <= 1;
+  });
+
+  const activeUnmappedVocab = unmappedVocab.filter((item) => {
+    if (!item.cefr_level) return true;
+    const idx = CEFR_ORDER.indexOf(item.cefr_level.toUpperCase());
+    if (idx < 0) return true;
+    return idx <= cefrIdx || Math.abs(idx - cefrIdx) <= 1;
+  });
+
+  const displayMapped = activeMappedVocab.length > 0 ? activeMappedVocab : mappedVocab;
+  const displayUnmapped = activeUnmappedVocab.length > 0 ? activeUnmappedVocab : unmappedVocab;
 
   const progressDurationSec =
     audioSource === 'spotify'
@@ -271,25 +304,41 @@ const Player: React.FC<PlayerProps> = ({
             <h1 className="text-xl md:text-2xl font-black tracking-tighter truncate uppercase italic">{track.title}</h1>
             <p className="text-zinc-500 font-medium tracking-widest text-xs uppercase mt-1">
               {track.artist}
-              {audioSource === 'spotify' ? ' · Spotify' : audioSource === 'deezer' ? ' · Preview' : ''}
+              {audioSource === 'spotify' ? ' · Spotify' : audioSource === 'deezer' ? ' · Preview (30s)' : ''}
             </p>
           </div>
         </div>
         
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void handleShare()}
+            className="text-zinc-300 hover:text-white flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 px-3.5 py-1.5 rounded-full transition-colors"
+          >
+            <Share2 className="w-4 h-4 text-sky-400" />
+            <span>{copiedLink ? 'Link Copied!' : 'Share'}</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowAddPlaylist(true)}
+            className="text-zinc-300 hover:text-white flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 px-3.5 py-1.5 rounded-full transition-colors"
+          >
+            <FolderPlus className="w-4 h-4 text-emerald-400" />
+            <span>Add to my playlist</span>
+          </Button>
+
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => setShowSidebar(!showSidebar)}
             className={showSidebar ? "text-white bg-zinc-800" : "text-zinc-500 hover:text-white"}
+            aria-label="Toggle Words Sidebar"
           >
             <BookOpen className="w-5 h-5" />
           </Button>
-          <CefrSelector 
-            currentLevel={cefrLevel} 
-            onLevelChange={onCefrChange} 
-            className="hidden md:flex"
-          />
         </div>
       </div>
 
@@ -301,7 +350,7 @@ const Player: React.FC<PlayerProps> = ({
             lines={lines} 
             currentLineIndex={currentLineIndex} 
             onLineClick={handleLineClick} 
-            mappedVocab={mappedVocab}
+            mappedVocab={displayMapped}
           />
           <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black via-transparent to-black pointer-events-none z-10 h-32" />
         </div>
@@ -317,16 +366,9 @@ const Player: React.FC<PlayerProps> = ({
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
-              <div className="md:hidden mb-4">
-                <CefrSelector 
-                  currentLevel={cefrLevel} 
-                  onLevelChange={onCefrChange} 
-                />
-              </div>
-
-              {unmappedVocab.length > 0 ? (
+              {displayUnmapped.length > 0 ? (
                 <div className="grid gap-4">
-                  {unmappedVocab.map((item) => (
+                  {displayUnmapped.map((item) => (
                     <VocabPopover
                       key={item.vocab_id}
                       word={item.word}
@@ -444,6 +486,16 @@ const Player: React.FC<PlayerProps> = ({
           </p>
         )}
 
+        {audioSource === 'deezer' && (
+          <p className="max-w-xl mx-auto mt-3 text-center text-[10px] text-zinc-400 font-medium uppercase tracking-widest">
+            30s Preview Mode ·{' '}
+            <Link href="/settings" className="text-emerald-400 underline hover:text-emerald-300 font-bold">
+              Connect Spotify in Settings
+            </Link>{' '}
+            for full track audio
+          </p>
+        )}
+
         {/* Progress bar */}
         <div className="mt-8 max-w-xl mx-auto flex flex-col gap-2">
           <div className="h-1 bg-zinc-900 rounded-full overflow-hidden">
@@ -454,10 +506,16 @@ const Player: React.FC<PlayerProps> = ({
           </div>
           <div className="flex justify-between text-[10px] font-bold tracking-tighter text-zinc-600 uppercase">
             <span>{formatClock(progressCurrent)}</span>
-            <span>{audioSource === 'spotify' ? formatClock(progressDurationSec) : '0:30'}</span>
+            <span>{formatClock(progressDurationSec)}</span>
           </div>
         </div>
       </div>
+
+      <AddToPlaylistModal
+        isOpen={showAddPlaylist}
+        onClose={() => setShowAddPlaylist(false)}
+        track={track}
+      />
     </div>
   );
 };

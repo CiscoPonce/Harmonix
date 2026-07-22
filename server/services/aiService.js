@@ -62,7 +62,7 @@ function isRateLimitError(err) {
 }
 
 function isRetryableError(err) {
-  return isRateLimitError(err) || (err?.status >= 500 && err?.status < 600);
+  return isRateLimitError(err) || err?.status === 404 || (err?.status >= 500 && err?.status < 600);
 }
 
 function buildModelAttempts(primaryModel, { fast = false } = {}) {

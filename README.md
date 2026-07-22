@@ -16,7 +16,7 @@ AI-first language learning through real music lyrics — validated against Deeze
 - **Song search & player** — Synced lyrics + vocabulary extraction
 - **Library** — Harmonix playlists + Spotify playlists; export Harmonix → Spotify
 - **Web shell** — Discover · Library · Learn · Settings (forest-green design system)
-- **Android** — Flutter native app (`mobile/`) + temporary Capacitor WebView APK
+- **Android** — Flutter native app (`mobile/`) as primary mobile app; Capacitor web-wrapper build (`client/android/`) retained as legacy fallback (D-14-05)
 
 ## Stack
 
@@ -24,7 +24,7 @@ AI-first language learning through real music lyrics — validated against Deeze
 |-------|------|
 | API | Node.js, Express, SQLite |
 | Web | Next.js App Router, Tailwind v4 |
-| Mobile | Flutter (Option C) · Capacitor (Option B bridge) |
+| Mobile | Flutter (`mobile/`) — Primary Mobile App · Capacitor (`client/android/`) — Legacy Fallback |
 | AI | NVIDIA NIM + OpenRouter fallback |
 | Music | Deezer, LRCLib, Spotify Web API / Web Playback SDK |
 | TTS | Pocket-TTS (local daemon) |

@@ -41,22 +41,14 @@ export default function DiscoverPage() {
   }, [user, isLoading, router]);
 
   useEffect(() => {
-    if (!user) return;
-    let active = true;
-    (async () => {
-      try {
-        const res = await apiFetch('/daily-word/recent?days=7');
-        if (!active || !res.ok) return;
-        const data = await res.json();
-        setRecent(data.recent || []);
-      } catch {
-        /* ignore */
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('q');
+      if (q) {
+        setQuery(q);
       }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [user]);
+    }
+  }, []);
 
   useEffect(() => {
     if (!query.trim()) {

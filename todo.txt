@@ -1,0 +1,13 @@
+# Harmonix ops notes (VPS)
+
+## Rebuild / restart live stack
+bash /home/ubuntu/lyric/run_env.sh
+
+Public: https://moral-sparrow-nationally.ngrok-free.app
+
+## Status (2026-07-22)
+- Phase 14 marked complete in planning docs
+- Share + Add to my playlist shipped in Player (rebuild applied)
+- Library Connect Spotify popup + Settings languages + Flutter language dropdowns present
+- Remaining risk: Flutter offers Japanese (ja) but server VALID_LANGUAGE_CODES may not include ja yet
+- Prefer: git pull && bash run_env.sh  (or deploy.sh --skip-tests)

@@ -112,6 +112,24 @@ export default function PlayerPage() {
 
   const handleCefrChange = async (newLevel: string) => {
     setCefrLevel(newLevel);
+    try {
+      await apiFetch('/user/preferences', {
+        method: 'PATCH',
+        body: JSON.stringify({ cefr_level: newLevel }),
+      });
+      const vocabRes = await apiFetch(`/vocab/${encodeURIComponent(id)}`);
+      if (vocabRes.ok) {
+        const vocabData = await parseJsonResponse<{
+          mapped?: MappedVocabItem[];
+          unmapped?: VocabItem[];
+          synced_lyrics?: string;
+        }>(vocabRes);
+        setMappedVocab(vocabData.mapped || []);
+        setUnmappedVocab(vocabData.unmapped || []);
+      }
+    } catch (err) {
+      console.error('Failed to update CEFR preference:', err);
+    }
   };
 
   if (loading) {
@@ -164,8 +182,6 @@ export default function PlayerPage() {
       lrcString={lrcString}
       mappedVocab={mappedVocab}
       unmappedVocab={unmappedVocab}
-      cefrLevel={cefrLevel}
-      onCefrChange={handleCefrChange}
     />
   );
 }

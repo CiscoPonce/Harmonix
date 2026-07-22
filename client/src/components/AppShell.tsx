@@ -132,7 +132,16 @@ export function AppShell({
               </h1>
             ) : null}
 
-            <div className="relative mx-auto hidden w-full max-w-xl flex-1 md:block">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const input = e.currentTarget.querySelector('input');
+                if (input && input.value.trim()) {
+                  window.location.href = `/discover?q=${encodeURIComponent(input.value.trim())}`;
+                }
+              }}
+              className="relative mx-auto hidden w-full max-w-xl flex-1 md:block"
+            >
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A8A80]"
                 aria-hidden
@@ -143,7 +152,7 @@ export function AppShell({
                 className="h-11 w-full rounded-full border border-[#E4EBE6] bg-white py-2 pl-10 pr-4 text-sm text-[#0C1210] placeholder:text-[#9AABA0] focus:border-[#0B4D2E] focus:outline-none focus:ring-2 focus:ring-[#0B4D2E]/20 dark:border-[#2A3530] dark:bg-[#171E1B] dark:text-[#F2F5F3] dark:focus:border-[#3DCF7A] dark:focus:ring-[#3DCF7A]/20"
                 aria-label="Search"
               />
-            </div>
+            </form>
 
             <div className="ml-auto flex items-center gap-2">
               {headerExtra}

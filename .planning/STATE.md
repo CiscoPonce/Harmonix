@@ -2,22 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: production-parity-ship
-status: ready_to_plan
-stopped_at: "2026-07-22 codebase+VPS audit; phases 12/12.6-web/13 marked complete; remaining consolidated into Phase 14"
-last_updated: "2026-07-22T20:15:00.000Z"
+status: complete
+stopped_at: "Phase 14 execution complete — Production Parity & Ship shipped"
+last_updated: "2026-07-22T19:30:00.000Z"
 progress:
   total_phases: 14
-  completed_phases: 13
-  percent: 93
+  completed_phases: 14
+  percent: 100
 ---
 
 # Project State — Harmonix
 
 ## Current Focus
 
-**Phase 14 — Production Parity & Ship** is the single remaining active phase (consolidates leftover 10 / 12.5 / 12.6-Android / 13-04 / 12-11 ops).
-
-Today’s audit (2026-07-22) confirmed the live VPS stack and what is actually shipped in code before closing phases.
+**Phase 14 — Production Parity & Ship** is COMPLETE! All 14 roadmap phases finished.
 
 ## What is live now
 
@@ -27,23 +25,23 @@ Today’s audit (2026-07-22) confirmed the live VPS stack and what is actually s
 | API | Express `:3001` + JWT auth |
 | Frontend | Next production `:3009` via `run_env.sh` |
 | TTS | Pocket-TTS HQ `:3002` |
-| Spotify | OAuth Connect, Library, export, web in-app play / Hear-it |
-| Languages | Web Settings can change home + learning languages |
-| Flutter | 4-tab MVP + Spotify OAuth/Library/export (no in-app Spotify play) |
-| Deploy commit | `e2930c9` (settings languages) on VPS at audit time |
+| Spotify | OAuth Connect (Popup & Deep Link), Library, export, web play / Hear-it |
+| Languages | Web & Flutter Settings change home + learning languages |
+| Flutter | 4-tab app + Spotify OAuth/Library/export + language editing |
+| Deploy | Standalone APK runbook + `deploy.sh --skip-tests` |
 
 ## Phase status (reconciled)
 
 | Phase | Status | Notes |
 |------:|--------|-------|
 | 1–9, 9.5 | Complete | Core product |
-| 10 | MVP done | Release/Play Store → Phase 14 |
+| 10 | Complete | Flutter primary app shipped |
 | 11 | Complete | TTS live |
-| 12 | **Complete** | Product MVP; Extended Quota → 14-07 |
-| 12.5 | Folded → 14 | Popup / Library Connect not built |
-| 12.6 | **Complete (web)** | Android playback → 14-04 |
-| 13 | **Complete (MVP)** | Pixel polish → 14-01 |
-| **14** | **Next** | All remaining work |
+| 12 | Complete | Spotify API Integration |
+| 12.5 | Complete | Popup OAuth & Library Connect |
+| 12.6 | Complete | Web Playback SDK & Android Honest Fallback |
+| 13 | Complete | Web Design System |
+| **14** | **Complete** | Production Parity & Ship |
 
 ## Architecture (verified)
 
@@ -57,15 +55,17 @@ Flutter Android (`mobile/`) ──────┼─► Express + SQLite
 ## Decisions carried forward
 
 - Dual frontend, one API (D-10-02)
-- Capacitor temporary; deprecate after Flutter public launch (D-10-04)
+- Capacitor temporary fallback retained alongside Flutter (D-14-05)
 - Spotify-first Hear-it / full player with Deezer fallback on web (D-12.6-12)
-- Validation-first daily words; queue for instant next word
-- Copyright: 30s Deezer previews; Spotify audio via user Premium / SDK only
+- Popup OAuth window on Web (`D-14-01`)
+- External browser + deep link on Flutter (`D-14-03`)
+- Honest Fallback for Spotify on Flutter Android (`D-14-04`)
+- Standalone APK + release runbook (`D-14-07`)
 
 ## Session
 
-**Last session:** 2026-07-22T20:15:00.000Z  
-**Stopped at:** Repo hygiene + Phase 14 plans 14-01…14-07 drafted; next = execute 14-01/14-02  
+**Last session:** 2026-07-22T19:27:00.000Z  
+**Stopped at:** Phase 14 planning complete  
 **Resume file:** `.planning/phases/14-production-parity-ship/14-01-PLAN.md`  
 **Default branch:** `main`
 
@@ -76,3 +76,5 @@ Flutter Android (`mobile/`) ──────┼─► Express + SQLite
 - Server tests ~268 pass / **2 fail:** Pocket-TTS pronounce readiness timeout; Spotify `/status` contract drift (`playback_scopes_ok` / redirect diagnostics ahead of test)
 - `deploy.sh` runs full `npm test` then stalls on those failures — use `run_env.sh` after pull until 14-07 fixes them
 - Spotify playback is client SDK-driven (`player/token` + `resolve-play`); no server `/me/player` control (by design)
+
+

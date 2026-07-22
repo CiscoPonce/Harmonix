@@ -14,6 +14,7 @@ import {
   apiFetch,
   fetchSpotifyPlaylists,
   fetchSpotifyStatus,
+  startSpotifyAuth,
 } from '@/lib/api';
 import {
   capSpotifyPlaylistShelf,
@@ -468,17 +469,35 @@ function LibraryContent() {
             </div>
           ) : spotifyError ? (
             <div
-              className="max-w-[800px] rounded-xl border border-[#D7E0DA] bg-white p-4 dark:border-[#2A3530] dark:bg-[#171E1B]"
+              className="max-w-[800px] rounded-2xl border-2 border-dashed border-[#0B4D2E]/30 bg-[#E8F5EE]/40 p-6 text-center dark:border-[#3DCF7A]/30 dark:bg-[#0B4D2E]/10"
               role={spotifyError.kind === 'provider_error' ? 'alert' : 'status'}
             >
-              <p className="text-sm text-[#121612] dark:text-[#F2F5F3]">{spotifyError.message}</p>
+              <h3 className="font-display text-xl font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">
+                Sync Your Spotify Library
+              </h3>
+              <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+                {spotifyError.message}
+              </p>
               {(spotifyError.kind === 'disconnected' || spotifyError.kind === 'reconnect') && (
-                <Link
-                  href="/settings"
-                  className="mt-3 inline-block text-base font-bold text-[#0B6B3A] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const url = await startSpotifyAuth();
+                      const width = 600;
+                      const height = 720;
+                      const left = window.screenX + (window.innerWidth - width) / 2;
+                      const top = window.screenY + (window.innerHeight - height) / 2;
+                      window.open(url, 'spotify_auth', `width=${width},height=${height},top=${top},left=${left}`);
+                    } catch {
+                      window.location.href = '/settings';
+                    }
+                  }}
+                  className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#0B4D2E] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-[#093F25] dark:bg-[#3DCF7A] dark:text-[#0C1210] dark:hover:bg-[#2FB86A]"
                 >
-                  Open Settings
-                </Link>
+                  <Image src="/spotify-logo.svg" alt="" width={16} height={16} className="h-4 w-4" unoptimized />
+                  Connect Spotify
+                </button>
               )}
               {spotifyError.kind === 'provider_error' || spotifyError.kind === 'offline' ? (
                 <button
