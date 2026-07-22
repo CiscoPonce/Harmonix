@@ -17,8 +17,8 @@ describe('AI Service', () => {
     openai.chat.completions.create = originalCreate;
   });
 
-  it('uses Kimi K2.6 as the default primary model', () => {
-    expect(AVAILABLE_MODELS[0]).to.equal('moonshotai/kimi-k2.6');
+  it('uses Llama 3.1 8B as the default primary model', () => {
+    expect(AVAILABLE_MODELS[0]).to.equal('meta/llama-3.1-8b-instruct');
     expect(AVAILABLE_MODELS).to.include('stepfun-ai/step-3.7-flash');
   });
 
@@ -54,7 +54,7 @@ describe('AI Service', () => {
 
     expect(result).to.be.an('array');
     expect(result[0].word).to.equal('test');
-    expect(capturedArgs.model).to.equal('moonshotai/kimi-k2.6');
+    expect(capturedArgs.model).to.equal('meta/llama-3.1-8b-instruct');
     expect(capturedArgs.messages[0].content).to.contain('English');
     expect(capturedArgs.messages[0].content).to.contain('A1');
     expect(capturedArgs.messages[1].content).to.contain(lyrics);

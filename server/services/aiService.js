@@ -29,21 +29,27 @@ const modelsEnv = process.env.NVIDIA_NIM_MODELS || process.env.NVIDIA_NIM_MODEL;
 const AVAILABLE_MODELS = modelsEnv
   ? modelsEnv.split(',').map(m => m.trim())
   : [
-      'moonshotai/kimi-k2.6',
-      'stepfun-ai/step-3.7-flash',
+      // Ranked 2026-07-22 free-model bench (gloss "brings"→"trae" + song JSON):
+      // llama-3.1-8b won on quality+latency; kimi-k2.6 currently 404 on NIM.
       'meta/llama-3.1-8b-instruct',
-      'meta/llama-3.3-70b-instruct',
-      'mistralai/mistral-medium-3.5-128b',
       'minimaxai/minimax-m3',
+      'qwen/qwen3-next-80b-a3b-instruct',
+      'meta/llama-3.3-70b-instruct',
+      'stepfun-ai/step-3.7-flash',
+      'nvidia/nvidia-nemotron-nano-9b-v2',
     ];
 
 const OPENROUTER_MODELS = (process.env.OPENROUTER_MODELS
-  || 'poolside/laguna-xs-2.1:free,cohere/north-mini-code:free,nvidia/nemotron-3.5-content-safety:free')
+  || 'google/gemma-4-26b-a4b-it:free,poolside/laguna-s-2.1:free,nvidia/nemotron-3-super-120b-a12b:free')
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
 
-const FAST_MODELS = ['moonshotai/kimi-k2.6', 'stepfun-ai/step-3.7-flash', 'meta/llama-3.1-8b-instruct'];
+const FAST_MODELS = [
+  'meta/llama-3.1-8b-instruct',
+  'stepfun-ai/step-3.7-flash',
+  'nvidia/nvidia-nemotron-nano-9b-v2',
+];
 
 const NIM_COOLDOWN_MS = parseInt(process.env.NIM_RATE_LIMIT_COOLDOWN_MS || '300000', 10);
 let nimRateLimitedUntil = 0;
