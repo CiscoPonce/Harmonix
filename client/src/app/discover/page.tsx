@@ -103,12 +103,26 @@ export default function DiscoverPage() {
 
   return (
     <AppShell userEmail={user.email} onLogout={logout} searchPlaceholder="Search lyrics, artists, or languages...">
-      {/* Compact search */}
-      <section className="relative overflow-hidden rounded-3xl bg-[#0B4D2E] px-6 py-8 text-white sm:px-10">
-        <h1 className="font-display text-3xl font-bold italic tracking-tight sm:text-4xl">
-          Find your resonance.
-        </h1>
-        <div className="relative mt-6 max-w-2xl">
+      <section className="mx-auto w-full max-w-3xl" aria-label="Word of the Day">
+        <DailyWordCard
+          onWordChange={() => {
+            void (async () => {
+              try {
+                const res = await apiFetch('/daily-word/recent?days=14');
+                if (res.ok) {
+                  const data = await res.json();
+                  setTrending(data.recent || []);
+                }
+              } catch {
+                /* keep current shelf */
+              }
+            })();
+          }}
+        />
+      </section>
+
+      <section className="relative mt-10 overflow-hidden rounded-3xl bg-[#0B4D2E] px-6 py-8 text-white sm:px-10">
+        <div className="relative max-w-2xl">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7A8A80]" />
           <input
             value={query}
@@ -122,9 +136,6 @@ export default function DiscoverPage() {
 
       {(searching || results.length > 0) && (
         <section className="mt-8 space-y-3" aria-label="Search results">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-            Results
-          </h2>
           {searching ? (
             <Loader2 className="h-6 w-6 animate-spin text-[#0B4D2E] dark:text-[#3DCF7A]" />
           ) : (
@@ -158,54 +169,8 @@ export default function DiscoverPage() {
         </section>
       )}
 
-      {/* Priority: Word of the Day flip card */}
-      <section className="mt-10" aria-labelledby="discover-wotd-heading">
-        <div className="mb-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-            Start here
-          </p>
-          <h2
-            id="discover-wotd-heading"
-            className="font-display text-2xl font-bold text-[#0C1210] dark:text-[#F2F5F3]"
-          >
-            Word of the Day
-          </h2>
-          <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-            Flip the card, hear it in the song, then share or save it.
-          </p>
-        </div>
-        <div className="mx-auto w-full max-w-3xl">
-          <DailyWordCard
-            onWordChange={() => {
-              void (async () => {
-                try {
-                  const res = await apiFetch('/daily-word/recent?days=14');
-                  if (res.ok) {
-                    const data = await res.json();
-                    setTrending(data.recent || []);
-                  }
-                } catch {
-                  /* keep current shelf */
-                }
-              })();
-            }}
-          />
-        </div>
-      </section>
-
-      {/* Trending in other words */}
-      <section className="mt-12" aria-labelledby="trending-words-heading">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-          Trending in other words
-        </p>
-        <h2
-          id="trending-words-heading"
-          className="font-display text-xl font-bold text-[#0C1210] dark:text-[#F2F5F3]"
-        >
-          Words you&apos;ve been discovering
-        </h2>
-
-        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <section className="mt-12" aria-label="Trending in other words">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {trendingLoading ? (
             <div className="col-span-full flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-[#0B4D2E] dark:text-[#3DCF7A]" />
