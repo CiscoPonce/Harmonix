@@ -57,6 +57,10 @@ if (!userPrefCols.some(col => col.name === 'genre')) {
 if (!userPrefCols.some(col => col.name === 'difficulty')) {
  db.exec("ALTER TABLE users ADD COLUMN difficulty TEXT DEFAULT 'medium'");
 }
+const userPrefCols2 = db.prepare("PRAGMA table_info(users)").all();
+if (!userPrefCols2.some(col => col.name === 'voice_gender')) {
+ db.exec("ALTER TABLE users ADD COLUMN voice_gender TEXT DEFAULT 'female'");
+}
 
 // Vocabulary tables
 db.exec(`

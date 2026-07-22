@@ -188,7 +188,8 @@ describe("GET /pronounce", () => {
   it("returns cached WAV on cache hit without calling Pocket-TTS", async () => {
     const testWav = Buffer.alloc(64, 0);
     testWav.writeUInt32LE(56, 0);
-    db.prepare("INSERT OR IGNORE INTO word_pronunciation_cache (word, audio_blob) VALUES (?, ?)").run("testword", testWav);
+    const cacheKey = `${ttsService.CACHE_VERSION}::es::female::testword`;
+    db.prepare("INSERT OR IGNORE INTO word_pronunciation_cache (word, audio_blob) VALUES (?, ?)").run(cacheKey, testWav);
 
     // Do NOT mock getPronunciationForWord — let it check the cache for real.
     // If Pocket-TTS isn't running, a cache miss would throw. Passing = cache hit worked.
@@ -206,13 +207,16 @@ describe("GET /pronounce", () => {
     fakeWav.writeUInt32LE(4, 40);
 
     let calledWith = null;
-    ttsService.getPronunciationForWord = async (word, lang) => { calledWith = [word, lang]; return fakeWav; };
+    ttsService.getPronunciationForWord = async (word, lang, gender) => {
+      calledWith = [word, lang, gender];
+      return fakeWav;
+    };
 
     const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack[0].handle;
     const req = { user: { id: userId }, query: { word: "newword" } };
     const res = mockRes();
     await handler(req, res);
-    expect(calledWith).to.deep.equal(["newword", "es"]);
+    expect(calledWith).to.deep.equal(["newword", "es", "female"]);
     expect(res.statusCode).to.equal(200);
   });
 });

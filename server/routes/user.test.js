@@ -40,6 +40,22 @@ describe('User Preferences API Routes', () => {
   });
 
   describe('PATCH /preferences', () => {
+    it('updates voice_gender', () => {
+      const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
+      const req = { body: { voice_gender: 'male' }, user: { id: 'up-test' } };
+      const res = mockRes();
+      handler(req, res);
+      expect(res.body.voice_gender).to.equal('male');
+    });
+
+    it('rejects invalid voice_gender with 400', () => {
+      const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
+      const req = { body: { voice_gender: 'other' }, user: { id: 'up-test' } };
+      const res = mockRes();
+      handler(req, res);
+      expect(res.statusCode).to.equal(400);
+    });
+
     it('updates native_language and target_language', () => {
       const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
       const req = { body: { native_language: 'en', target_language: 'fr' }, user: { id: 'up-test' } };

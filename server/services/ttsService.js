@@ -5,14 +5,26 @@ const { spawn } = require('child_process');
 const db = require('../db');
 const ttsDaemon = require('./ttsDaemon');
 
-const VOICE_MAP = {
+const VOICE_MAP_FEMALE = {
   es: 'lola',
   fr: 'estelle',
+  de: 'anna',
+  pt: 'lola',
+  en: 'alba',
+  it: 'anna',
+};
+
+const VOICE_MAP_MALE = {
+  es: 'rafael',
+  fr: 'jean',
   de: 'juergen',
   pt: 'rafael',
-  en: 'alba',
+  en: 'charles',
   it: 'giovanni',
 };
+
+/** @deprecated Prefer resolveVoice(lang, gender) */
+const VOICE_MAP = VOICE_MAP_FEMALE;
 
 const POCKET_LANG_MAP = {
   en: 'english',
@@ -24,7 +36,7 @@ const POCKET_LANG_MAP = {
 };
 
 /** Bump to invalidate SQLite pronunciation cache after quality/speed changes. */
-const CACHE_VERSION = 'hq-v7-loud2';
+const CACHE_VERSION = 'hq-v8-gender';
 
 /** Playback tempo (< 1 = slower). Pitch preserved via ffmpeg atempo. */
 const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.75');
@@ -186,17 +198,32 @@ function padWavWithSilence(
   return buildCleanWav(Buffer.concat([lead, pcmData, trail]), sampleRate);
 }
 
-function cacheKey(word) {
-  return `${CACHE_VERSION}::${String(word || '').trim()}`;
+function normalizeVoiceGender(gender) {
+  return String(gender || '').toLowerCase() === 'male' ? 'male' : 'female';
 }
 
-function getCachedPronunciation(word) {
-  const row = db.prepare('SELECT audio_blob FROM word_pronunciation_cache WHERE word = ?').get(cacheKey(word));
+function resolveVoice(langCode, gender = 'female') {
+  const g = normalizeVoiceGender(gender);
+  const map = g === 'male' ? VOICE_MAP_MALE : VOICE_MAP_FEMALE;
+  return map[langCode] || VOICE_MAP_FEMALE.en;
+}
+
+function cacheKey(word, langCode = '', gender = 'female') {
+  return `${CACHE_VERSION}::${langCode}::${normalizeVoiceGender(gender)}::${String(word || '').trim()}`;
+}
+
+function getCachedPronunciation(word, langCode = '', gender = 'female') {
+  const row = db.prepare('SELECT audio_blob FROM word_pronunciation_cache WHERE word = ?').get(
+    cacheKey(word, langCode, gender)
+  );
   return row ? row.audio_blob : undefined;
 }
 
-function cachePronunciation(word, audioBlob) {
-  db.prepare('INSERT OR IGNORE INTO word_pronunciation_cache (word, audio_blob) VALUES (?, ?)').run(cacheKey(word), audioBlob);
+function cachePronunciation(word, audioBlob, langCode = '', gender = 'female') {
+  db.prepare('INSERT OR IGNORE INTO word_pronunciation_cache (word, audio_blob) VALUES (?, ?)').run(
+    cacheKey(word, langCode, gender),
+    audioBlob
+  );
 }
 
 function ttsPromptForWord(word) {
@@ -283,28 +310,29 @@ async function ensureDaemonLanguage(langCode) {
   throw err;
 }
 
-async function getPronunciationForWord(word, langCode) {
+async function getPronunciationForWord(word, langCode, gender = 'female') {
   if (!SUPPORTED_LANGUAGES.includes(langCode)) {
     const err = new Error('unsupported_language');
     err.code = 'unsupported_language';
     throw err;
   }
 
-  const cached = getCachedPronunciation(word);
+  const voiceGender = normalizeVoiceGender(gender);
+  const cached = getCachedPronunciation(word, langCode, voiceGender);
   if (cached) return cached;
 
   await ensureDaemonLanguage(langCode);
 
-  const wavBuffer = await fetchFromPocketTTS(word, VOICE_MAP[langCode]);
+  const wavBuffer = await fetchFromPocketTTS(word, resolveVoice(langCode, voiceGender));
   const slowed = await slowWav(wavBuffer, SPEECH_TEMPO);
   const padded = padWavWithSilence(slowed);
-  cachePronunciation(word, padded);
+  cachePronunciation(word, padded, langCode, voiceGender);
   return padded;
 }
 
-async function preCachePronunciation(word, langCode) {
+async function preCachePronunciation(word, langCode, gender = 'female') {
   try {
-    await getPronunciationForWord(word, langCode);
+    await getPronunciationForWord(word, langCode, gender);
   } catch {
     // fire-and-forget
   }
@@ -312,6 +340,8 @@ async function preCachePronunciation(word, langCode) {
 
 module.exports = {
   VOICE_MAP,
+  VOICE_MAP_FEMALE,
+  VOICE_MAP_MALE,
   POCKET_LANG_MAP,
   CACHE_VERSION,
   SPEECH_TEMPO,
@@ -320,6 +350,8 @@ module.exports = {
   LEAD_SILENCE_SEC,
   TRAIL_SILENCE_SEC,
   SUPPORTED_LANGUAGES,
+  normalizeVoiceGender,
+  resolveVoice,
   normalizeStreamingWav,
   padWavWithSilence,
   fadeInPcm,

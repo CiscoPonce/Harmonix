@@ -1,7 +1,6 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -29,6 +28,9 @@ const PROVIDER_ERROR_COPY =
 const selectClassName =
   'mt-1.5 flex h-10 w-full rounded-lg border border-[#E4EBE6] bg-[#F7F8F6] px-3 text-sm text-[#0C1210] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B4D2E]/40 dark:border-[#2A3530] dark:bg-[#121A17] dark:text-[#F2F5F3] dark:focus-visible:ring-[#3DCF7A]/40';
 
+const cardClassName =
+  'rounded-2xl border border-[#E4EBE6] bg-white p-5 dark:border-[#2A3530] dark:bg-[#171E1B] sm:p-6';
+
 function SettingsContent() {
   const { user, isLoading: authLoading, logout, refreshUser } = useAuth();
   const router = useRouter();
@@ -49,6 +51,7 @@ function SettingsContent() {
 
   const [nativeLanguage, setNativeLanguage] = useState('');
   const [targetLanguage, setTargetLanguage] = useState('');
+  const [voiceGender, setVoiceGender] = useState<'female' | 'male'>('female');
   const [langSaving, setLangSaving] = useState(false);
   const [langError, setLangError] = useState<string | null>(null);
   const [langSaved, setLangSaved] = useState(false);
@@ -58,13 +61,14 @@ function SettingsContent() {
     if (!user) return;
     setNativeLanguage(user.native_language || '');
     setTargetLanguage(user.target_language || '');
+    setVoiceGender(user.voice_gender === 'male' ? 'male' : 'female');
   }, [user]);
 
   const languagesDirty =
     nativeLanguage !== (user?.native_language || '') ||
-    targetLanguage !== (user?.target_language || '');
+    targetLanguage !== (user?.target_language || '') ||
+    voiceGender !== (user?.voice_gender === 'male' ? 'male' : 'female');
 
-  // Fixed allowlisted return only — never read code/state/tokens from the URL.
   useEffect(() => {
     if (!callbackOutcome || clearedCallback.current) return;
     clearedCallback.current = true;
@@ -137,7 +141,11 @@ function SettingsContent() {
       const height = 720;
       const left = window.screenX + (window.innerWidth - width) / 2;
       const top = window.screenY + (window.innerHeight - height) / 2;
-      const popup = window.open(url, 'spotify_auth', `width=${width},height=${height},top=${top},left=${left}`);
+      const popup = window.open(
+        url,
+        'spotify_auth',
+        `width=${width},height=${height},top=${top},left=${left}`
+      );
       if (!popup || popup.closed) {
         window.location.assign(url);
       }
@@ -170,7 +178,7 @@ function SettingsContent() {
     }
   };
 
-  const handleSaveLanguages = async () => {
+  const handleSaveProfilePrefs = async () => {
     if (langSaving) return;
     if (!nativeLanguage || !targetLanguage) {
       setLangError('Select both your home language and the language you are learning.');
@@ -191,17 +199,18 @@ function SettingsContent() {
         body: JSON.stringify({
           native_language: nativeLanguage,
           target_language: targetLanguage,
+          voice_gender: voiceGender,
         }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || 'Could not save languages');
+        throw new Error(body.error || 'Could not save preferences');
       }
       await refreshUser();
       setLangSaved(true);
       window.setTimeout(() => setLangSaved(false), 2500);
     } catch (err) {
-      setLangError(err instanceof Error ? err.message : 'Could not save languages');
+      setLangError(err instanceof Error ? err.message : 'Could not save preferences');
     } finally {
       setLangSaving(false);
     }
@@ -222,258 +231,277 @@ function SettingsContent() {
       pageTitle="Account Settings"
       searchPlaceholder="Search terminology..."
     >
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
         <header>
           <h1 className="font-display text-3xl font-bold italic tracking-tight text-[#0B4D2E] dark:text-[#3DCF7A] sm:text-4xl">
             Account Settings
           </h1>
           <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-            Refine your resonance and track your linguistic growth.
+            Languages, pronunciation voice, Spotify, and appearance.
           </p>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="space-y-6">
-            <section
-              aria-label="Profile"
-              className="rounded-2xl border border-[#E4EBE6] border-l-4 border-l-[#0B4D2E] bg-white p-5 dark:border-[#2A3530] dark:border-l-[#3DCF7A] dark:bg-[#171E1B] sm:p-6"
-            >
-              <div className="flex items-start gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#E8F5EE] text-xl font-bold text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                  {(user.email || '?').slice(0, 1).toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-lg font-bold">{user.email}</p>
-                  <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                    Capturing the rhythm of the world, one word at a time.
-                  </p>
-                  {(user.target_language || user.native_language) && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {user.native_language ? (
-                        <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                          Home · {languageLabel(user.native_language)}
-                        </span>
-                      ) : null}
-                      {user.target_language ? (
-                        <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                          Learning · {languageLabel(user.target_language)}
-                        </span>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
+        <section aria-label="Profile" className={cardClassName}>
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#E8F5EE] text-lg font-bold text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
+              {(user.email || '?').slice(0, 1).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-bold">{user.email}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {user.native_language ? (
+                  <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
+                    Home · {languageLabel(user.native_language)}
+                  </span>
+                ) : null}
+                {user.target_language ? (
+                  <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
+                    Learning · {languageLabel(user.target_language)}
+                  </span>
+                ) : null}
+                <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
+                  Voice · {user.voice_gender === 'male' ? 'Male' : 'Female'}
+                </span>
               </div>
-            </section>
+            </div>
+          </div>
+        </section>
 
-            <section
-              aria-label="Languages"
-              className="rounded-2xl border border-[#E4EBE6] border-l-4 border-l-[#0B4D2E] bg-white p-5 dark:border-[#2A3530] dark:border-l-[#3DCF7A] dark:bg-[#171E1B] sm:p-6"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-                Languages
-              </p>
-              <h2 className="mt-1 text-base font-bold">What are you learning?</h2>
-              <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                You can change home and learning languages here. Genre and difficulty are set once
-                during onboarding and are not editable in profile settings.
-              </p>
+        <section aria-label="Languages and voice" className={cardClassName}>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
+            Learning profile
+          </p>
+          <h2 className="mt-1 text-base font-bold">Languages & voice gender</h2>
+          <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+            Change home and learning languages, and choose a female or male pronunciation voice.
+            Genre and difficulty stay set from onboarding.
+          </p>
 
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="settings-native-language" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
-                    Home language
-                  </label>
-                  <select
-                    id="settings-native-language"
-                    value={nativeLanguage}
-                    onChange={(e) => {
-                      setNativeLanguage(e.target.value);
-                      setLangError(null);
-                      setLangSaved(false);
-                    }}
-                    className={selectClassName}
-                  >
-                    <option value="">Select language</option>
-                    {LANGUAGES.map((l) => (
-                      <option key={l.value} value={l.value}>
-                        {l.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="settings-target-language" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
-                    Learning language
-                  </label>
-                  <select
-                    id="settings-target-language"
-                    value={targetLanguage}
-                    onChange={(e) => {
-                      setTargetLanguage(e.target.value);
-                      setLangError(null);
-                      setLangSaved(false);
-                    }}
-                    className={selectClassName}
-                  >
-                    <option value="">Select language</option>
-                    {LANGUAGES.map((l) => (
-                      <option key={l.value} value={l.value}>
-                        {l.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {langError && (
-                <p className="mt-3 text-sm text-red-600 dark:text-red-400">{langError}</p>
-              )}
-              {langSaved && !langError && (
-                <p className="mt-3 text-sm font-medium text-[#0B4D2E] dark:text-[#3DCF7A]">
-                  Languages saved. Open Discover for a new word.
-                </p>
-              )}
-
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={() => void handleSaveLanguages()}
-                  disabled={langSaving || !languagesDirty}
-                >
-                  {langSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving…
-                    </>
-                  ) : (
-                    'Save languages'
-                  )}
-                </Button>
-                {languagesDirty && (
-                  <button
-                    type="button"
-                    className="text-sm font-medium text-[#5C6B62] underline-offset-4 hover:underline dark:text-[#9AABA0]"
-                    onClick={() => {
-                      setNativeLanguage(user.native_language || '');
-                      setTargetLanguage(user.target_language || '');
-                      setLangError(null);
-                      setLangSaved(false);
-                    }}
-                  >
-                    Reset
-                  </button>
-                )}
-              </div>
-            </section>
-
-            <SpotifyConnectionCard
-              state={cardState}
-              displayName={displayName}
-              message={recoveryMessage}
-              onConnect={handleConnect}
-              onReconnect={handleConnect}
-              onDisconnect={() => setConfirmDisconnect(true)}
-              confirmDisconnect={confirmDisconnect}
-              onConfirmDisconnect={handleDisconnectConfirm}
-              onCancelDisconnect={() => setConfirmDisconnect(false)}
-            />
-
-            {redirectUri ? (
-              <section
-                aria-label="Spotify Dashboard setup"
-                className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 dark:border-amber-400/30 dark:bg-amber-400/10"
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="settings-native-language"
+                className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]"
               >
-                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-800 dark:text-amber-300">
-                  Spotify Dashboard — Redirect URI
-                </p>
-                <p className="mt-2 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                  If you see <code className="text-xs">redirect_uri: Not matching configuration</code>,
-                  open the app with Client ID starting{' '}
-                  <strong>{clientIdPrefix || '56e75581'}</strong>, add this URI exactly, then click{' '}
-                  <strong>Add</strong> and <strong>Save</strong> at the bottom of Settings.
-                </p>
-                <code className="mt-3 block break-all rounded-lg bg-white px-3 py-2 text-xs text-[#0C1210] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
-                  {redirectUri}
-                </code>
-                <button
-                  type="button"
-                  className="mt-3 text-sm font-bold text-[#0B4D2E] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(redirectUri);
-                      setCopiedUri(true);
-                      window.setTimeout(() => setCopiedUri(false), 2000);
-                    } catch {
-                      /* ignore */
-                    }
-                  }}
-                >
-                  {copiedUri ? 'Copied' : 'Copy Redirect URI'}
-                </button>
-              </section>
-            ) : null}
+                Home language
+              </label>
+              <select
+                id="settings-native-language"
+                value={nativeLanguage}
+                onChange={(e) => {
+                  setNativeLanguage(e.target.value);
+                  setLangError(null);
+                  setLangSaved(false);
+                }}
+                className={selectClassName}
+              >
+                <option value="">Select language</option>
+                {LANGUAGES.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="settings-target-language"
+                className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]"
+              >
+                Learning language
+              </label>
+              <select
+                id="settings-target-language"
+                value={targetLanguage}
+                onChange={(e) => {
+                  setTargetLanguage(e.target.value);
+                  setLangError(null);
+                  setLangSaved(false);
+                }}
+                className={selectClassName}
+              >
+                <option value="">Select language</option>
+                {LANGUAGES.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="space-y-6">
-            <section
-              aria-label="Appearance & Accessibility"
-              className="rounded-2xl border border-[#E4EBE6] bg-white p-5 dark:border-[#2A3530] dark:bg-[#171E1B]"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-                Appearance & Accessibility
-              </p>
-              <div className="mt-4 flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-base font-bold">Dark Resonance</h2>
-                  <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                    Switch between light and dark themes.
-                  </p>
-                </div>
-                <ThemeToggle />
-              </div>
-
-              <div className="mt-6 border-t border-[#E4EBE6] pt-4 dark:border-[#2A3530]">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-base font-bold">Dyslexia-Friendly Font</h2>
-                    <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                      Enable dyslexia-friendly typography spacing across lyrics.
-                    </p>
-                  </div>
+          <div className="mt-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+              Voice gender
+            </p>
+            <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+              Used for Word of the Day pronunciation audio.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Voice gender">
+              {(
+                [
+                  { value: 'female', label: 'Female' },
+                  { value: 'male', label: 'Male' },
+                ] as const
+              ).map((opt) => {
+                const active = voiceGender === opt.value;
+                return (
                   <button
+                    key={opt.value}
                     type="button"
+                    role="radio"
+                    aria-checked={active}
                     onClick={() => {
-                      const next = !dyslexicFont;
-                      setDyslexicFont(next);
-                      if (typeof document !== 'undefined') {
-                        document.documentElement.classList.toggle('font-dyslexic', next);
-                      }
+                      setVoiceGender(opt.value);
+                      setLangError(null);
+                      setLangSaved(false);
                     }}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      dyslexicFont ? 'bg-[#0B4D2E] dark:bg-[#3DCF7A]' : 'bg-gray-300 dark:bg-gray-700'
+                    className={`rounded-xl border px-4 py-3 text-sm font-bold transition ${
+                      active
+                        ? 'border-[#0B4D2E] bg-[#E8F5EE] text-[#0B4D2E] dark:border-[#3DCF7A] dark:bg-[#0B4D2E]/35 dark:text-[#3DCF7A]'
+                        : 'border-[#E4EBE6] bg-[#F7F8F6] text-[#5C6B62] hover:border-[#0B4D2E]/40 dark:border-[#2A3530] dark:bg-[#121A17] dark:text-[#9AABA0]'
                     }`}
                   >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        dyslexicFont ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
+                    {opt.label}
                   </button>
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-[#E4EBE6] bg-white p-5 dark:border-[#2A3530] dark:bg-[#171E1B]">
-              <Link
-                href="/playlists"
-                className="text-base font-bold text-[#0B4D2E] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
-              >
-                Open Library →
-              </Link>
-            </section>
+                );
+              })}
+            </div>
           </div>
-        </div>
+
+          {langError && (
+            <p className="mt-3 text-sm text-red-600 dark:text-red-400">{langError}</p>
+          )}
+          {langSaved && !langError && (
+            <p className="mt-3 text-sm font-medium text-[#0B4D2E] dark:text-[#3DCF7A]">
+              Preferences saved.
+            </p>
+          )}
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => void handleSaveProfilePrefs()}
+              disabled={langSaving || !languagesDirty}
+            >
+              {langSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                'Save changes'
+              )}
+            </Button>
+            {languagesDirty && (
+              <button
+                type="button"
+                className="text-sm font-medium text-[#5C6B62] underline-offset-4 hover:underline dark:text-[#9AABA0]"
+                onClick={() => {
+                  setNativeLanguage(user.native_language || '');
+                  setTargetLanguage(user.target_language || '');
+                  setVoiceGender(user.voice_gender === 'male' ? 'male' : 'female');
+                  setLangError(null);
+                  setLangSaved(false);
+                }}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </section>
+
+        <SpotifyConnectionCard
+          state={cardState}
+          displayName={displayName}
+          message={recoveryMessage}
+          onConnect={handleConnect}
+          onReconnect={handleConnect}
+          onDisconnect={() => setConfirmDisconnect(true)}
+          confirmDisconnect={confirmDisconnect}
+          onConfirmDisconnect={handleDisconnectConfirm}
+          onCancelDisconnect={() => setConfirmDisconnect(false)}
+        />
+
+        <section aria-label="Appearance & Accessibility" className={cardClassName}>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
+            Appearance
+          </p>
+          <div className="mt-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold">Dark mode</h2>
+              <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+                Switch between light and dark themes.
+              </p>
+            </div>
+            <ThemeToggle />
+          </div>
+
+          <div className="mt-5 border-t border-[#E4EBE6] pt-4 dark:border-[#2A3530]">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-bold">Dyslexia-friendly font</h2>
+                <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+                  Wider letter spacing for lyrics and study text.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !dyslexicFont;
+                  setDyslexicFont(next);
+                  if (typeof document !== 'undefined') {
+                    document.documentElement.classList.toggle('font-dyslexic', next);
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  dyslexicFont ? 'bg-[#0B4D2E] dark:bg-[#3DCF7A]' : 'bg-gray-300 dark:bg-gray-700'
+                }`}
+                aria-pressed={dyslexicFont}
+                aria-label="Toggle dyslexia-friendly font"
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    dyslexicFont ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {redirectUri ? (
+          <details className="rounded-2xl border border-[#E4EBE6] bg-white open:pb-5 dark:border-[#2A3530] dark:bg-[#171E1B]">
+            <summary className="cursor-pointer list-none px-5 py-4 text-sm font-bold text-[#5C6B62] dark:text-[#9AABA0] sm:px-6">
+              Advanced · Spotify redirect URI
+            </summary>
+            <div className="border-t border-[#E4EBE6] px-5 pt-4 dark:border-[#2A3530] sm:px-6">
+              <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+                If OAuth fails with a redirect mismatch, add this URI in the Spotify Dashboard for
+                Client ID starting <strong>{clientIdPrefix || '56e75581'}</strong>, then Save.
+              </p>
+              <code className="mt-3 block break-all rounded-lg bg-[#F7F8F6] px-3 py-2 text-xs text-[#0C1210] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
+                {redirectUri}
+              </code>
+              <button
+                type="button"
+                className="mt-3 text-sm font-bold text-[#0B4D2E] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(redirectUri);
+                    setCopiedUri(true);
+                    window.setTimeout(() => setCopiedUri(false), 2000);
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+              >
+                {copiedUri ? 'Copied' : 'Copy Redirect URI'}
+              </button>
+            </div>
+          </details>
+        ) : null}
       </div>
     </AppShell>
   );

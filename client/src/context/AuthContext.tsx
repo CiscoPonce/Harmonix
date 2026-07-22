@@ -12,6 +12,7 @@ export interface User {
   genre?: string;
   difficulty?: string;
   cefr_level?: string;
+  voice_gender?: 'female' | 'male' | string;
 }
 
 export interface AuthContextType {

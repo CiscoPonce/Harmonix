@@ -7,7 +7,7 @@ const ttsService = require("../services/ttsService");
 
 function loadUser(userId) {
   return db.prepare(
-    "SELECT id, email, cefr_level, native_language, target_language, genre, difficulty FROM users WHERE id = ?"
+    "SELECT id, email, cefr_level, native_language, target_language, genre, difficulty, voice_gender FROM users WHERE id = ?"
   ).get(userId);
 }
 
@@ -21,7 +21,7 @@ async function handleDailyWord(req, res, force) {
     const payload = await dailyWordService.generateDailyWord(user, { force });
     console.log(`${req.method} /api/daily-word${force ? "/new" : ""} - success in ${Date.now() - started}ms: ${payload.word.text}${payload.from_queue ? " (queue)" : ""}`);
     res.json({ ...payload, queue: wordQueue.getQueueStatus(user.id) });
-    ttsService.preCachePronunciation(payload.word.text, user.target_language).catch(() => {});
+    ttsService.preCachePronunciation(payload.word.text, user.target_language, user.voice_gender || 'female').catch(() => {});
   } catch (err) {
     console.error(`${req.method} /api/daily-word${force ? "/new" : ""} - failed in ${Date.now() - started}ms:`, err.code || err.message);
     const reason = err.code || err.message;
@@ -55,7 +55,7 @@ router.post("/next", async (req, res) => {
 
     console.log(`POST /api/daily-word/next - success in ${Date.now() - started}ms: ${payload.word.text}${payload.from_queue ? " (queue)" : ""}`);
     res.json({ ...payload, queue: wordQueue.getQueueStatus(user.id) });
-    ttsService.preCachePronunciation(payload.word.text, user.target_language).catch(() => {});
+    ttsService.preCachePronunciation(payload.word.text, user.target_language, user.voice_gender || 'female').catch(() => {});
   } catch (err) {
     console.error(`POST /api/daily-word/next - failed in ${Date.now() - started}ms:`, err.code || err.message);
     const reason = err.code || err.message;
@@ -86,7 +86,11 @@ router.get("/pronounce", async (req, res) => {
   }
 
   try {
-    const audioBuffer = await ttsService.getPronunciationForWord(word.trim(), langCode);
+    const audioBuffer = await ttsService.getPronunciationForWord(
+      word.trim(),
+      langCode,
+      user.voice_gender || 'female'
+    );
     res.setHeader("Content-Type", "audio/wav");
     res.setHeader("Cache-Control", "private, no-cache");
     res.send(audioBuffer);

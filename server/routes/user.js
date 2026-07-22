@@ -4,6 +4,8 @@ const db = require('../db');
 const { VALID_LANGUAGE_CODES } = require('../constants/languages');
 const wordQueue = require('../services/wordQueueService');
 
+const VALID_VOICE_GENDERS = ['female', 'male'];
+
 function rejectInvalidLanguage(res, field, value) {
   if (value && !VALID_LANGUAGE_CODES.includes(value)) {
     res.status(400).json({
@@ -14,11 +16,16 @@ function rejectInvalidLanguage(res, field, value) {
   return false;
 }
 
+function preferencesSelect() {
+  return 'SELECT native_language, target_language, genre, difficulty, cefr_level, voice_gender FROM users WHERE id = ?';
+}
+
 router.get('/preferences', (req, res) => {
   const userId = req.user.id;
   try {
-    const user = db.prepare('SELECT native_language, target_language, genre, difficulty, cefr_level FROM users WHERE id = ?').get(userId);
+    const user = db.prepare(preferencesSelect()).get(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user.voice_gender) user.voice_gender = 'female';
     res.json(user);
   } catch (err) {
     console.error('GET /api/user/preferences error:', err.message);
@@ -28,10 +35,15 @@ router.get('/preferences', (req, res) => {
 
 router.patch('/preferences', (req, res) => {
   const userId = req.user.id;
-  const { native_language, target_language, genre, difficulty, cefr_level } = req.body;
+  const { native_language, target_language, genre, difficulty, cefr_level, voice_gender } = req.body;
 
   if (rejectInvalidLanguage(res, 'native_language', native_language)) return;
   if (rejectInvalidLanguage(res, 'target_language', target_language)) return;
+  if (voice_gender !== undefined && !VALID_VOICE_GENDERS.includes(voice_gender)) {
+    return res.status(400).json({
+      error: `Invalid voice_gender. Must be one of: ${VALID_VOICE_GENDERS.join(', ')}`,
+    });
+  }
 
   const current = db.prepare(
     'SELECT native_language, target_language FROM users WHERE id = ?'
@@ -47,7 +59,14 @@ router.patch('/preferences', (req, res) => {
   try {
     const sets = [];
     const params = [];
-    for (const [key, value] of Object.entries({ native_language, target_language, genre, difficulty, cefr_level })) {
+    for (const [key, value] of Object.entries({
+      native_language,
+      target_language,
+      genre,
+      difficulty,
+      cefr_level,
+      voice_gender,
+    })) {
       if (value !== undefined) {
         sets.push(`${key} = ?`);
         params.push(value);
@@ -61,7 +80,8 @@ router.patch('/preferences', (req, res) => {
     if (target_language !== undefined && target_language !== current?.target_language) {
       wordQueue.purgeAll(userId);
     }
-    const user = db.prepare('SELECT native_language, target_language, genre, difficulty, cefr_level FROM users WHERE id = ?').get(userId);
+    const user = db.prepare(preferencesSelect()).get(userId);
+    if (user && !user.voice_gender) user.voice_gender = 'female';
     res.json(user);
   } catch (err) {
     console.error('PATCH /api/user/preferences error:', err.message);

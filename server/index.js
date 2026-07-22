@@ -177,7 +177,7 @@ app.post('/api/auth/refresh', (req, res) => {
 // Get Current User
 app.get('/api/auth/me', authenticateToken, (req, res) => {
   console.log('GET /api/auth/me - for user:', req.user.id);
-  const user = db.prepare('SELECT id, email, created_at, cefr_level, target_language, genre, difficulty, native_language FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT id, email, created_at, cefr_level, target_language, genre, difficulty, native_language, voice_gender FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.sendStatus(404);
   res.json(user);
 });
