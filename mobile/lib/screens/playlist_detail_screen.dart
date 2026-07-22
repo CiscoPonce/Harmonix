@@ -769,6 +769,8 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
 
   Widget _buildHarmonixBody(BuildContext context, HarmonixColors colors) {
     final songs = (_localPlaylist?['songs'] as List?) ?? const [];
+    final artwork = _localPlaylist?['artwork_url']?.toString();
+    final name = _localPlaylist?['name']?.toString() ?? widget.playlistName;
 
     return RefreshIndicator(
       color: HarmonixColors.brand,
@@ -776,11 +778,47 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text(
-            '${songs.length} song${songs.length == 1 ? '' : 's'}',
-            style: Theme.of(context).textTheme.titleSmall,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (artwork != null && artwork.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    artwork,
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _artworkPlaceholder(colors),
+                  ),
+                )
+              else
+                _artworkPlaceholder(colors),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name.isEmpty ? 'Playlist' : name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${songs.length} song${songs.length == 1 ? '' : 's'}',
+                      style: TextStyle(color: colors.textMuted, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _buildExportChrome(colors),
           if (songs.isEmpty)
             Padding(
@@ -803,7 +841,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
             final id = (track['id'] ?? song['song_id'])?.toString();
             return ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.music_note, color: HarmonixColors.brand),
+              leading: _songCover(song, track, colors),
               title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text(artist ?? ''),
               trailing: id == null ? null : const Icon(Icons.open_in_new, size: 18),
@@ -820,6 +858,41 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
             );
           }),
         ],
+      ),
+    );
+  }
+
+  Widget _songCover(
+    Map<String, dynamic> song,
+    Map<String, dynamic> track,
+    HarmonixColors colors,
+  ) {
+    final cover = (song['cover'] ?? track['cover'])?.toString();
+    if (cover == null || cover.isEmpty) {
+      return Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: colors.border),
+          color: colors.surface,
+        ),
+        child: const Icon(Icons.music_note, color: HarmonixColors.brand, size: 22),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: Image.network(
+        cover,
+        width: 48,
+        height: 48,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          width: 48,
+          height: 48,
+          color: colors.surface,
+          child: const Icon(Icons.music_note, color: HarmonixColors.brand, size: 22),
+        ),
       ),
     );
   }

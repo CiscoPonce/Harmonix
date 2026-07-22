@@ -6,6 +6,27 @@ describe('deezerService', () => {
     expect(deezer.previewProxyPath(123456)).to.equal('/api/audio/preview/123456');
   });
 
+  it('coverFromDeezerTrack prefers medium album art', () => {
+    expect(
+      deezer.coverFromDeezerTrack({
+        album: {
+          cover_small: 'https://e.dzcdn.net/s.jpg',
+          cover_medium: 'https://e.dzcdn.net/m.jpg',
+          cover_big: 'https://e.dzcdn.net/b.jpg',
+        },
+      })
+    ).to.equal('https://e.dzcdn.net/m.jpg');
+  });
+
+  it('extractCoverFromCachedTrack reads cover field', () => {
+    expect(deezer.extractCoverFromCachedTrack({ cover: 'https://x/c.jpg' })).to.equal(
+      'https://x/c.jpg'
+    );
+    expect(
+      deezer.extractCoverFromCachedTrack(JSON.stringify({ cover_medium: 'https://x/m.jpg' }))
+    ).to.equal('https://x/m.jpg');
+  });
+
   it('strips feat./ft. from artist strings', () => {
     expect(deezer.stripFeaturing('Luis Fonsi ft. Daddy Yankee')).to.equal('Luis Fonsi');
     expect(deezer.stripFeaturing('Artist (feat. Someone)')).to.equal('Artist');

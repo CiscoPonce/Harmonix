@@ -18,6 +18,7 @@ interface TrackInfo {
   artist: string;
   preview?: string;
   duration?: number;
+  cover?: string | null;
 }
 
 interface AddToPlaylistModalProps {
@@ -133,6 +134,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
             artist: track.artist,
             preview: track.preview || '',
             duration: track.duration || 0,
+            cover: track.cover || null,
           },
         }),
       });

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { UndoDeleteToast } from '@/components/UndoDeleteToast';
 import { AppShell } from '@/components/AppShell';
+import { CoverArt } from '@/components/CoverArt';
 import {
   apiFetch,
   fetchSpotifyPlaylists,
@@ -30,6 +31,8 @@ interface HarmonixPlaylist {
   id: string;
   name: string;
   song_count: number;
+  artwork_url?: string | null;
+  cover_urls?: string[];
 }
 
 interface SpotifyPlaylistCard {
@@ -417,9 +420,12 @@ function LibraryContent() {
                       href={`/playlists/${encodeURIComponent(p.id)}`}
                       className="flex min-w-0 flex-1 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6B3A]"
                     >
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-[#D7E0DA] bg-[#F4F7F5] dark:border-[#2A3530] dark:bg-[#0C1210]">
-                        <Music2 className="h-6 w-6 text-[#5C6B62]" aria-hidden />
-                      </div>
+                      <CoverArt
+                        src={p.artwork_url}
+                        covers={p.cover_urls}
+                        alt={`${p.name} cover`}
+                        size="md"
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-base font-bold" title={p.name}>
                           {p.name}

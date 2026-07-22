@@ -65,6 +65,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               providerId: p['id']?.toString() ?? '',
               name: p['name']?.toString() ?? 'Playlist',
               songCount: (p['song_count'] as num?)?.toInt(),
+              artworkUrl: p['artwork_url']?.toString(),
             );
           }).where((p) => p.providerId.isNotEmpty).toList();
         });

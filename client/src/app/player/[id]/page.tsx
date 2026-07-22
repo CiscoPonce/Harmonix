@@ -16,6 +16,7 @@ interface TrackMetadata {
   preview: string;
   duration: number;
   preview_offset: number;
+  cover?: string | null;
 }
 
 export interface VocabItem {

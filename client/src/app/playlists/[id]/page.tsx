@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { SpotifyExportDialog } from '@/components/SpotifyExportDialog';
 import { SpotifyMatchReport } from '@/components/SpotifyMatchReport';
+import { CoverArt } from '@/components/CoverArt';
 import {
   apiFetch,
   fetchLatestSpotifyExport,
@@ -27,12 +28,17 @@ interface SongEntry {
   song_id: string;
   added_at: string;
   track_data: string;
+  cover?: string | null;
+  title?: string | null;
+  artist?: string | null;
 }
 
 interface PlaylistDetail {
   id: string;
   name: string;
   song_count?: number;
+  artwork_url?: string | null;
+  cover_urls?: string[];
   songs: SongEntry[];
 }
 
@@ -246,9 +252,26 @@ export default function PlaylistDetailPage() {
       </nav>
 
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center px-6 py-10">
+        <div className="mb-8 flex w-full items-center gap-4">
+          <CoverArt
+            src={playlist.artwork_url}
+            covers={playlist.cover_urls}
+            alt={`${playlist.name} cover`}
+            size="lg"
+          />
+          <div className="min-w-0">
+            <h2 className="truncate text-2xl font-black uppercase italic tracking-tighter">
+              {playlist.name}
+            </h2>
+            <p className="text-sm text-[#6B756F] dark:text-[#8A9690]">
+              {songCount} {songCount === 1 ? 'song' : 'songs'}
+            </p>
+          </div>
+        </div>
+
         <div className="mb-6 flex w-full flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-[#6B756F] dark:text-[#8A9690]">
-            {songCount} {songCount === 1 ? 'song' : 'songs'}
+            Harmonix playlist
           </p>
           {songCount === 0 ? (
             <p className="text-sm text-[#6B756F] dark:text-[#8A9690]">
@@ -301,26 +324,30 @@ export default function PlaylistDetailPage() {
         ) : (
           <div className="w-full space-y-3">
             {playlist.songs.map((entry) => {
-              let trackData: { title?: string; artist?: string } = {};
+              let trackData: { title?: string; artist?: string; cover?: string } = {};
               try {
                 trackData = JSON.parse(entry.track_data);
               } catch {
                 /* ignore */
               }
+              const title = entry.title || trackData.title || `Song ${entry.song_id}`;
+              const artist = entry.artist || trackData.artist || null;
+              const cover = entry.cover || trackData.cover || null;
               return (
                 <div
                   key={entry.entry_id}
-                  className="flex items-center justify-between rounded-xl border border-[#D7E0DA] bg-white p-4 transition-colors hover:border-[#0B6B3A]/40 dark:border-[#2A3530] dark:bg-[#171E1B]"
+                  className="flex items-center justify-between rounded-xl border border-[#D7E0DA] bg-white p-3 transition-colors hover:border-[#0B6B3A]/40 dark:border-[#2A3530] dark:bg-[#171E1B]"
                 >
-                  <Link href={`/player/${entry.song_id}`} className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold">
-                      {trackData.title || `Song ${entry.song_id}`}
-                    </p>
-                    {trackData.artist ? (
-                      <p className="truncate text-xs text-[#6B756F] dark:text-[#8A9690]">
-                        {trackData.artist}
-                      </p>
-                    ) : null}
+                  <Link href={`/player/${entry.song_id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                    <CoverArt src={cover} alt={`${title} cover`} size="sm" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold">{title}</p>
+                      {artist ? (
+                        <p className="truncate text-xs text-[#6B756F] dark:text-[#8A9690]">
+                          {artist}
+                        </p>
+                      ) : null}
+                    </div>
                   </Link>
                   <button
                     type="button"

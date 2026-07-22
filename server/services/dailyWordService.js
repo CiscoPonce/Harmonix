@@ -255,6 +255,7 @@ function persistPayloadSideEffects(payload, track, lyricsData, syncCheck) {
     preview: track.preview,
     duration: track.duration,
     preview_offset: previewOffset(track.duration),
+    cover: deezer.coverFromDeezerTrack(track),
   });
   validation.recordValidation(String(track.id), track.artist.name, track.title, track.duration, syncCheck);
 

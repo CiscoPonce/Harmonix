@@ -11,6 +11,7 @@ import { VocabItem } from '@/app/player/[id]/page';
 import { fetchSpotifyStatus, resolveSpotifyPlay } from '@/lib/api';
 import { useSpotifyInAppPlayer } from '@/components/SpotifyInAppPlayer';
 import { AddToPlaylistModal } from './AddToPlaylistModal';
+import { CoverArt } from './CoverArt';
 
 interface TrackMetadata {
   id: number;
@@ -19,6 +20,7 @@ interface TrackMetadata {
   preview: string;
   duration: number;
   preview_offset: number;
+  cover?: string | null;
 }
 
 interface PlayerProps {
@@ -329,6 +331,12 @@ const Player: React.FC<PlayerProps> = ({
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
+          <CoverArt
+            src={track.cover}
+            alt={`${track.title} cover`}
+            size="sm"
+            className="border-zinc-800 bg-zinc-900"
+          />
           <div className="min-w-0 flex-1">
             <h1 className="text-xl md:text-2xl font-black tracking-tighter truncate uppercase italic">{track.title}</h1>
             <p className="text-zinc-500 font-medium tracking-widest text-xs uppercase mt-1">

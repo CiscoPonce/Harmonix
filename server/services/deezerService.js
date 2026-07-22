@@ -159,6 +159,41 @@ async function fetchTrack(trackId, fetchImpl = fetch) {
   return data;
 }
 
+/** Prefer medium Deezer album art; fall back to larger/smaller variants. */
+function coverFromDeezerTrack(track) {
+  if (!track || typeof track !== 'object') return null;
+  const album = track.album || {};
+  const url =
+    album.cover_medium ||
+    album.cover_big ||
+    album.cover ||
+    album.cover_small ||
+    album.cover_xl ||
+    null;
+  return typeof url === 'string' && url.trim() ? url.trim() : null;
+}
+
+function extractCoverFromCachedTrack(trackOrJson) {
+  if (trackOrJson == null) return null;
+  let track = trackOrJson;
+  if (typeof trackOrJson === 'string') {
+    try {
+      track = JSON.parse(trackOrJson);
+    } catch {
+      return null;
+    }
+  }
+  if (!track || typeof track !== 'object') return null;
+  const direct =
+    track.cover ||
+    track.cover_medium ||
+    track.artwork_url ||
+    track.album?.cover_medium ||
+    track.album?.cover ||
+    null;
+  return typeof direct === 'string' && direct.trim() ? direct.trim() : null;
+}
+
 /** Same-origin path; browser audio tag cannot send JWT headers. */
 function previewProxyPath(trackId) {
   return `/api/audio/preview/${trackId}`;
@@ -173,5 +208,7 @@ module.exports = {
   searchTrack,
   searchTracks,
   fetchTrack,
+  coverFromDeezerTrack,
+  extractCoverFromCachedTrack,
   previewProxyPath,
 };

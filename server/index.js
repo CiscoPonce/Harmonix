@@ -259,7 +259,8 @@ app.get('/api/tracks/:id', async (req, res) => {
       artist: data.artist.name,
       preview: deezer.previewProxyPath(data.id),
       duration: duration,
-      preview_offset: previewOffset
+      preview_offset: previewOffset,
+      cover: deezer.coverFromDeezerTrack(data),
     });
   } catch (err) {
     console.error(err);
