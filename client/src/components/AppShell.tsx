@@ -46,13 +46,13 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen bg-[#F7F8F6] text-[#0C1210] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
-      {/* Sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col border-r border-[#E4EBE6] bg-white px-5 py-6 dark:border-[#2A3530] dark:bg-[#121A17] lg:flex">
-        <div className="mb-8">
+      {/* Sidebar — fixed full viewport height so the column bar always reaches the bottom */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[240px] flex-col border-r border-[#E4EBE6] bg-white px-5 py-6 dark:border-[#2A3530] dark:bg-[#121A17] lg:flex">
+        <div className="mb-8 shrink-0">
           <HarmonixWordmark href="/discover" size="lg" showTagline />
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1" aria-label="Main">
+        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto" aria-label="Main">
           {NAV.map(({ href, label, icon: Icon }) => {
             const active =
               pathname === href ||
@@ -82,23 +82,38 @@ export function AppShell({
           })}
         </nav>
 
-        {nowPlaying ? (
-          <div className="mb-4 rounded-2xl bg-[#E8F5EE] p-4 dark:bg-[#0B4D2E]/30">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#0B4D2E] dark:text-[#3DCF7A]">
-              Now playing
-            </p>
-            <p className="mt-1 truncate text-sm font-bold text-[#0C1210] dark:text-[#F2F5F3]">
-              {nowPlaying.title}
-            </p>
-            <p className="truncate text-xs text-[#5C6B62] dark:text-[#9AABA0]">
-              {nowPlaying.artist}
-            </p>
-          </div>
-        ) : null}
+        <div className="mt-auto shrink-0 pt-6">
+          {nowPlaying ? (
+            <div className="rounded-2xl bg-[#E8F5EE] p-4 dark:bg-[#0B4D2E]/30">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#0B4D2E] dark:text-[#3DCF7A]">
+                Now playing
+              </p>
+              <p className="mt-1 truncate text-sm font-bold text-[#0C1210] dark:text-[#F2F5F3]">
+                {nowPlaying.title}
+              </p>
+              <p className="truncate text-xs text-[#5C6B62] dark:text-[#9AABA0]">
+                {nowPlaying.artist}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-gradient-to-br from-[#E8F5EE] to-[#D7EDE0] p-4 dark:from-[#0B4D2E]/40 dark:to-[#163D2A]">
+              <p className="text-sm font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">Pro Plan</p>
+              <p className="mt-1 text-xs leading-relaxed text-[#3D5A4A] dark:text-[#9AABA0]">
+                Unlock advanced linguistic analysis and offline modes.
+              </p>
+              <button
+                type="button"
+                className="mt-3 w-full rounded-full bg-[#0B4D2E] px-3 py-2 text-xs font-bold text-white hover:bg-[#093F25] dark:bg-[#3DCF7A] dark:text-[#0C1210] dark:hover:bg-[#2FB86A]"
+              >
+                Upgrade
+              </button>
+            </div>
+          )}
+        </div>
       </aside>
 
-      {/* Main column */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* Main column — offset for fixed sidebar on desktop */}
+      <div className="flex min-w-0 min-h-screen flex-1 flex-col lg:pl-[240px]">
         <header className="sticky top-0 z-30 border-b border-[#E4EBE6] bg-[#F7F8F6]/90 backdrop-blur-xl dark:border-[#2A3530] dark:bg-[#0C1210]/90">
           <div className="flex items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
             <div className="shrink-0 lg:hidden">
