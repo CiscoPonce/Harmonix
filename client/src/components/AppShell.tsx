@@ -94,20 +94,7 @@ export function AppShell({
               {nowPlaying.artist}
             </p>
           </div>
-        ) : (
-          <div className="mb-4 rounded-2xl bg-gradient-to-br from-[#E8F5EE] to-[#D7EDE0] p-4 dark:from-[#0B4D2E]/40 dark:to-[#163D2A]">
-            <p className="text-sm font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">Pro Plan</p>
-            <p className="mt-1 text-xs leading-relaxed text-[#3D5A4A] dark:text-[#9AABA0]">
-              Unlock advanced linguistic analysis and offline modes.
-            </p>
-            <button
-              type="button"
-              className="mt-3 w-full rounded-full bg-[#0B4D2E] px-3 py-2 text-xs font-bold text-white hover:bg-[#093F25] dark:bg-[#3DCF7A] dark:text-[#0C1210] dark:hover:bg-[#2FB86A]"
-            >
-              Upgrade
-            </button>
-          </div>
-        )}
+        ) : null}
       </aside>
 
       {/* Main column */}
