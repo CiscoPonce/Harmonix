@@ -48,12 +48,34 @@ const Player: React.FC<PlayerProps> = ({
   const handleShare = async () => {
     const songId = String(track?.id ?? '').trim();
     if (!songId || typeof window === 'undefined') return;
-    // Canonical player deep link — avoid copying dashboard/query junk from location.href.
-    const shareUrl = `${window.location.origin}/player/${encodeURIComponent(songId)}`;
-    const shareText = `Listen to ${track.title} by ${track.artist} on Harmonix\n${shareUrl}`;
+
+    // Prefer a public Spotify destination so recipients don't need a Harmonix account.
+    let spotifyUrl: string | null = null;
+    try {
+      const resolved = await resolveSpotifyPlay({
+        title: track.title,
+        artist: track.artist,
+        song_id: songId,
+        duration_ms: track.duration > 0 ? Math.round(track.duration * 1000) : null,
+      });
+      const m = String(resolved?.uri || '').match(/^spotify:track:([A-Za-z0-9]+)$/);
+      if (m) spotifyUrl = `https://open.spotify.com/track/${m[1]}`;
+    } catch {
+      /* search fallback */
+    }
+    if (!spotifyUrl) {
+      spotifyUrl = `https://open.spotify.com/search/${encodeURIComponent(
+        `${track.artist} ${track.title}`
+      )}`;
+    }
+
+    const shareText = [
+      `${track.title} — ${track.artist}`,
+      `Open in Spotify: ${spotifyUrl}`,
+    ].join('\n');
 
     const copyShareUrl = async () => {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(shareText);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2500);
     };
@@ -63,7 +85,7 @@ const Player: React.FC<PlayerProps> = ({
         await navigator.share({
           title: `${track.title} - ${track.artist}`,
           text: shareText,
-          url: shareUrl,
+          url: spotifyUrl,
         });
         return;
       } catch (err) {

@@ -488,6 +488,19 @@ db.exec(
    WHERE idempotency_key IS NOT NULL AND deleted_at IS NULL`
 );
 
+// Public word postcards — shareable without a Harmonix account
+db.exec(`
+  CREATE TABLE IF NOT EXISTS shared_postcards (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    payload_json TEXT NOT NULL,
+    spotify_url TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_shared_postcards_created ON shared_postcards(created_at DESC)`);
+
 const { ensureCanonicalKeys } = require('./services/canonicalKeyService');
 ensureCanonicalKeys(db);
 

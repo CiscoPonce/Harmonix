@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { apiFetch, fetchSpotifyStatus, resolveSpotifyPlay } from "@/lib/api";
+import { apiFetch, fetchSpotifyStatus, parseJsonResponse, resolveSpotifyPlay } from "@/lib/api";
 import {
   computeDeezerHearWindow,
   computeSpotifyHearClip,
@@ -91,6 +91,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const [elapsedSec, setElapsedSec] = useState(0);
   const [showAddPlaylist, setShowAddPlaylist] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const spotifyPlayer = useSpotifyInAppPlayer();
   const loadAbortRef = useRef<AbortController | null>(null);
 
@@ -582,34 +583,65 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
 
   const handleShare = async () => {
     const songId = String(data.song?.id || "").trim();
-    if (!songId || typeof window === "undefined") return;
-    // Canonical player deep link (not the dashboard URL).
-    const shareUrl = `${window.location.origin}/player/${encodeURIComponent(songId)}`;
-    const shareText = `Learn "${data.word.text}" with ${data.song.title} by ${data.song.artist} on Harmonix\n${shareUrl}`;
+    if (!songId || typeof window === "undefined" || sharing) return;
 
-    const copyShareUrl = async () => {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
-    };
-
-    if (typeof navigator.share === "function") {
-      try {
-        await navigator.share({
-          title: `${data.word.text} · ${data.song.title}`,
-          text: shareText,
-          url: shareUrl,
-        });
-        return;
-      } catch (err) {
-        // User dismissed the sheet — don't overwrite with clipboard.
-        if (err instanceof DOMException && err.name === "AbortError") return;
-      }
-    }
+    setSharing(true);
     try {
+      const res = await apiFetch("/share/postcards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          word: data.word,
+          lyric: data.lyric,
+          song: data.song,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Could not create postcard");
+      }
+      const card = await parseJsonResponse<{
+        id: string;
+        path: string;
+        spotify_url: string | null;
+      }>(res);
+
+      const shareUrl = `${window.location.origin}${card.path}`;
+      const lines = [
+        `Word postcard: ${data.word.text}`,
+        data.word.translation ? `Meaning: ${data.word.translation}` : null,
+        `Song: ${data.song.title} — ${data.song.artist}`,
+        card.spotify_url ? `Open in Spotify: ${card.spotify_url}` : null,
+        `Snapshot: ${shareUrl}`,
+      ].filter(Boolean) as string[];
+      const shareText = lines.join("\n");
+
+      const copyShareUrl = async () => {
+        await navigator.clipboard.writeText(shareText);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2500);
+      };
+
+      if (typeof navigator.share === "function") {
+        try {
+          await navigator.share({
+            title: `${data.word.text} · Harmonix word postcard`,
+            text: shareText,
+            url: shareUrl,
+          });
+          return;
+        } catch (err) {
+          if (err instanceof DOMException && err.name === "AbortError") return;
+        }
+      }
       await copyShareUrl();
-    } catch {
-      /* ignore */
+    } catch (err) {
+      console.error("Share postcard failed:", err);
+      setRefreshError(
+        err instanceof Error ? err.message : "Could not create share postcard."
+      );
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -816,11 +848,15 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
             type="button"
             variant="secondary"
             onClick={() => void handleShare()}
-            disabled={!data.song.id}
+            disabled={!data.song.id || sharing}
             className="gap-2 uppercase tracking-widest text-[10px] font-bold"
           >
-            <Share2 className="w-4 h-4" />
-            {copiedLink ? 'Link Copied!' : 'Share'}
+            {sharing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Share2 className="w-4 h-4" />
+            )}
+            {sharing ? "Creating…" : copiedLink ? "Postcard copied!" : "Share"}
           </Button>
           <Button
             type="button"
