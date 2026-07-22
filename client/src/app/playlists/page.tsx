@@ -98,6 +98,10 @@ function LibraryContent() {
   const [spotifyError, setSpotifyError] = useState<SpotifyListErrorView | null>(null);
   const [onwardUrl, setOnwardUrl] = useState<string | null>(null);
   const [spotifyConnected, setSpotifyConnected] = useState(false);
+  const [spotifyDisplayName, setSpotifyDisplayName] = useState<string | null>(null);
+  const [spotifyLinkState, setSpotifyLinkState] = useState<
+    'loading' | 'connected' | 'reconnect' | 'disconnected'
+  >('loading');
 
   const [recent, setRecent] = useState<RecentDiscovery[]>([]);
   const [recentLoading, setRecentLoading] = useState(true);
@@ -174,8 +178,10 @@ function LibraryContent() {
         try {
           const status = await fetchSpotifyStatus();
           if (!active) return;
+          setSpotifyDisplayName(status.display_name || null);
           if (status.state === 'connect' || status.state === 'disconnected') {
             setSpotifyConnected(false);
+            setSpotifyLinkState('disconnected');
             setSpotify([]);
             setSpotifyError({
               kind: 'disconnected',
@@ -186,6 +192,7 @@ function LibraryContent() {
           }
           if (status.state === 'reconnect') {
             setSpotifyConnected(false);
+            setSpotifyLinkState('reconnect');
             setSpotify([]);
             setSpotifyError({
               kind: 'reconnect',
@@ -195,6 +202,7 @@ function LibraryContent() {
             return;
           }
           setSpotifyConnected(true);
+          setSpotifyLinkState('connected');
           const list = await fetchSpotifyPlaylists();
           if (!active) return;
           setSpotify(
@@ -297,6 +305,85 @@ function LibraryContent() {
     spotify.length === 0 &&
     recent.length === 0;
 
+  const openSpotifyAuth = async () => {
+    try {
+      const url = await startSpotifyAuth();
+      const width = 600;
+      const height = 720;
+      const left = window.screenX + (window.innerWidth - width) / 2;
+      const top = window.screenY + (window.innerHeight - height) / 2;
+      const popup = window.open(
+        url,
+        'spotify_auth',
+        `width=${width},height=${height},top=${top},left=${left}`
+      );
+      if (!popup || popup.closed) {
+        window.location.href = '/settings';
+      }
+    } catch {
+      window.location.href = '/settings';
+    }
+  };
+
+  const spotifyHeaderExtra =
+    spotifyLinkState === 'connected' ? (
+      <Link
+        href="/settings"
+        className="hidden max-w-[16rem] items-center gap-2 rounded-full border border-[#1DB954]/40 bg-[#1DB954]/15 px-3 py-1.5 text-xs font-bold text-[#1DB954] hover:bg-[#1DB954]/25 sm:inline-flex"
+        title="Manage Spotify in Settings"
+      >
+        <Image src="/spotify-logo.svg" alt="" width={14} height={14} className="h-3.5 w-3.5" unoptimized />
+        <span className="truncate">
+          {spotifyDisplayName ? `Spotify · ${spotifyDisplayName}` : 'Spotify connected'}
+        </span>
+      </Link>
+    ) : spotifyLinkState === 'reconnect' ? (
+      <button
+        type="button"
+        onClick={() => void openSpotifyAuth()}
+        className="hidden rounded-full bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-500 sm:inline-flex"
+      >
+        Reconnect Spotify
+      </button>
+    ) : spotifyLinkState === 'disconnected' ? (
+      <button
+        type="button"
+        onClick={() => void openSpotifyAuth()}
+        className="hidden rounded-full bg-[#0B4D2E] px-4 py-2 text-xs font-bold text-white hover:bg-[#093F25] sm:inline-flex"
+      >
+        Connect to Spotify
+      </button>
+    ) : null;
+
+  const spotifyHeroAction =
+    spotifyLinkState === 'connected' ? (
+      <Link
+        href="/settings"
+        className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#1DB954]/50 bg-[#1DB954]/15 px-4 py-2.5 text-sm font-bold text-[#1DB954] hover:bg-[#1DB954]/25"
+      >
+        <Image src="/spotify-logo.svg" alt="" width={16} height={16} className="h-4 w-4" unoptimized />
+        <span className="truncate">
+          {spotifyDisplayName ? `Connected as ${spotifyDisplayName}` : 'Spotify connected'}
+        </span>
+      </Link>
+    ) : spotifyLinkState === 'reconnect' ? (
+      <button
+        type="button"
+        onClick={() => void openSpotifyAuth()}
+        className="inline-flex shrink-0 items-center justify-center rounded-full bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-500"
+      >
+        Reconnect Spotify
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={() => void openSpotifyAuth()}
+        className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#0B4D2E] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#093F25]"
+      >
+        Connect to Spotify
+      </button>
+    );
+
   return (
     <AppShell
       userEmail={user?.email}
@@ -309,14 +396,7 @@ function LibraryContent() {
           ? { title: recent[0].song.title, artist: recent[0].song.artist }
           : null
       }
-      headerExtra={
-        <Link
-          href="/settings"
-          className="hidden rounded-full bg-[#0B4D2E] px-4 py-2 text-xs font-bold text-white hover:bg-[#093F25] sm:inline-flex"
-        >
-          Connect to Spotify
-        </Link>
-      }
+      headerExtra={spotifyHeaderExtra}
     >
       <div
         className="mx-auto flex w-full max-w-[1120px] flex-col gap-8"
@@ -327,7 +407,8 @@ function LibraryContent() {
             role="status"
             className="rounded-lg border border-[#0B4D2E]/30 bg-white px-4 py-3 text-sm font-bold text-[#0B4D2E]"
           >
-            Spotify connected. Loading your playlists.
+            Spotify connected
+            {spotifyDisplayName ? ` as ${spotifyDisplayName}` : ''}. Loading your playlists.
           </p>
         ) : null}
 
@@ -340,12 +421,7 @@ function LibraryContent() {
               Your resonance library brings together language and lyric in perfect harmony.
             </p>
           </div>
-          <Link
-            href="/settings"
-            className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#0B4D2E] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#093F25]"
-          >
-            Connect to Spotify
-          </Link>
+          {spotifyHeroAction}
         </div>
 
         {/* Create action */}
@@ -498,22 +574,11 @@ function LibraryContent() {
               {(spotifyError.kind === 'disconnected' || spotifyError.kind === 'reconnect') && (
                 <button
                   type="button"
-                  onClick={async () => {
-                    try {
-                      const url = await startSpotifyAuth();
-                      const width = 600;
-                      const height = 720;
-                      const left = window.screenX + (window.innerWidth - width) / 2;
-                      const top = window.screenY + (window.innerHeight - height) / 2;
-                      window.open(url, 'spotify_auth', `width=${width},height=${height},top=${top},left=${left}`);
-                    } catch {
-                      window.location.href = '/settings';
-                    }
-                  }}
+                  onClick={() => void openSpotifyAuth()}
                   className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#0B4D2E] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-[#093F25] dark:bg-[#3DCF7A] dark:text-[#0C1210] dark:hover:bg-[#2FB86A]"
                 >
                   <Image src="/spotify-logo.svg" alt="" width={16} height={16} className="h-4 w-4" unoptimized />
-                  Connect Spotify
+                  {spotifyError.kind === 'reconnect' ? 'Reconnect Spotify' : 'Connect Spotify'}
                 </button>
               )}
               {spotifyError.kind === 'provider_error' || spotifyError.kind === 'offline' ? (
