@@ -73,4 +73,6 @@ Flutter Android (`mobile/`) ──────┼─► Express + SQLite
 
 - NVIDIA `moonshotai/kimi-k2.6` → frequent 404; falls back to OpenRouter
 - OpenRouter free models → 429 under load; curated catalogs keep daily word alive
-- `deploy.sh` still blocked by pre-existing Deezer-mock test failures — use `run_env.sh` after pull
+- Server tests ~268 pass / **2 fail:** Pocket-TTS pronounce readiness timeout; Spotify `/status` contract drift (`playback_scopes_ok` / redirect diagnostics ahead of test)
+- `deploy.sh` runs full `npm test` then stalls on those failures — use `run_env.sh` after pull until 14-07 fixes them
+- Spotify playback is client SDK-driven (`player/token` + `resolve-play`); no server `/me/player` control (by design)
