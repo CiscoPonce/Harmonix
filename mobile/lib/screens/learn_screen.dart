@@ -237,14 +237,52 @@ class _LearnScreenState extends State<LearnScreen> {
     final w = _word?['word'] as Map<String, dynamic>?;
     final lyric = _word?['lyric'] as Map<String, dynamic>?;
     final song = _word?['song'] as Map<String, dynamic>?;
-    final text = [
-      w?['text'],
-      w?['translation'],
-      '"${lyric?['snippet']}"',
-      '${song?['artist']} — ${song?['title']}',
-      '— Harmonix',
-    ].whereType<String>().join('\n');
-    await Share.share(text);
+    if (w == null || song == null) return;
+
+    final api = context.read<ApiClient>();
+    final title = [
+      w['text']?.toString(),
+      if ((w['translation']?.toString() ?? '').trim().isNotEmpty)
+        w['translation']?.toString(),
+    ].whereType<String>().join(' · ');
+    final caption =
+        '$title\nFrom ${song['title']} — ${song['artist']}';
+
+    try {
+      final card = await api.createPostcard(word: w, lyric: lyric, song: song);
+      final id = card['id']?.toString();
+      if (id == null || id.isEmpty) {
+        throw ApiException('Could not create postcard');
+      }
+      final shareUrl = api.sharePageUrl(id);
+      final text = '$caption\n\n$shareUrl';
+
+      try {
+        final bytes = await api.fetchPostcardPng(id);
+        final dir = await getTemporaryDirectory();
+        final slug = (w['text']?.toString() ?? 'word')
+            .trim()
+            .replaceAll(RegExp(r'\s+'), '-')
+            .replaceAll(RegExp(r'[^\w\-]+'), '');
+        final file = File(
+          '${dir.path}/harmonix-${slug.isEmpty ? 'word' : slug}.png',
+        );
+        await file.writeAsBytes(bytes, flush: true);
+        await Share.shareXFiles(
+          [XFile(file.path, mimeType: 'image/png', name: file.uri.pathSegments.last)],
+          text: text,
+          subject: '$title · Harmonix',
+        );
+      } catch (_) {
+        // PNG unavailable — still share the classic link + caption.
+        await Share.share(text, subject: '$title · Harmonix');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e is ApiException ? e.message : '$e')),
+      );
+    }
   }
 
   Future<void> _search() async {

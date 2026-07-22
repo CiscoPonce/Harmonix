@@ -4,7 +4,13 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ExternalLink, Loader2, Music2 } from 'lucide-react';
+import { ExternalLink, Loader2, Music2, Share2 } from 'lucide-react';
+import { PostcardShareSheet } from '@/components/PostcardShareSheet';
+import {
+  fetchPostcardPng,
+  postcardFileName,
+  type PostcardSharePayload,
+} from '@/lib/sharePostcard';
 
 type Postcard = {
   id: string;
@@ -47,6 +53,9 @@ export default function SharePostcardPage() {
   const [card, setCard] = useState<Postcard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [sharePayload, setSharePayload] = useState<PostcardSharePayload | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -91,6 +100,30 @@ export default function SharePostcardPage() {
       cancelled = true;
     };
   }, [id]);
+
+  const openShareSheet = async () => {
+    if (!card || typeof window === 'undefined' || shareBusy) return;
+    setShareBusy(true);
+    try {
+      const title = `${card.word.text}${
+        card.word.translation ? ` · ${card.word.translation}` : ''
+      }`;
+      const caption = `${title}\nFrom ${card.song.title} — ${card.song.artist}`;
+      const fileName = postcardFileName(card.word.text);
+      const file = await fetchPostcardPng(card.id, fileName);
+      setSharePayload({
+        id: card.id,
+        shareUrl: `${window.location.origin}/share/${encodeURIComponent(card.id)}`,
+        title,
+        caption,
+        fileName,
+        file,
+      });
+      setShareOpen(true);
+    } finally {
+      setShareBusy(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -185,6 +218,20 @@ export default function SharePostcardPage() {
           </div>
 
           <div className="mt-8 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => void openShareSheet()}
+              disabled={shareBusy}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#3DCF7A] px-5 text-sm font-bold text-[#0C1210] transition hover:bg-[#2FB86A] disabled:opacity-60"
+            >
+              {shareBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Share2 className="h-4 w-4" />
+              )}
+              Share or download PNG
+            </button>
+
             {spotifyHref ? (
               <a
                 href={spotifyHref}
@@ -222,6 +269,12 @@ export default function SharePostcardPage() {
           Language through real lyrics
         </p>
       </main>
+
+      <PostcardShareSheet
+        open={shareOpen}
+        payload={sharePayload}
+        onClose={() => setShareOpen(false)}
+      />
     </div>
   );
 }

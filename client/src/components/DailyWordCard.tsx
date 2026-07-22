@@ -11,6 +11,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSpotifyInAppPlayer } from "@/components/SpotifyInAppPlayer";
 import { Button } from "./ui/Button";
 import { AddToPlaylistModal } from "./AddToPlaylistModal";
+import { PostcardShareSheet } from "./PostcardShareSheet";
+import {
+  fetchPostcardPng,
+  postcardFileName,
+  type PostcardSharePayload,
+} from "@/lib/sharePostcard";
 import { FolderPlus, Loader2, Music2, Play, Pause, RefreshCw, Share2, Sparkles, RotateCw, Volume2 } from "lucide-react";
 
 const SUPPORTED_PRONUNCIATION_LANGUAGES = ["es", "fr", "de", "pt", "en", "it"];
@@ -90,8 +96,9 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const [hearBusy, setHearBusy] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [showAddPlaylist, setShowAddPlaylist] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [sharePayload, setSharePayload] = useState<PostcardSharePayload | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const spotifyPlayer = useSpotifyInAppPlayer();
   const loadAbortRef = useRef<AbortController | null>(null);
 
@@ -611,72 +618,18 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         data.word.translation ? ` · ${data.word.translation}` : ""
       }`;
       const caption = `${title}\nFrom ${data.song.title} — ${data.song.artist}`;
+      const fileName = postcardFileName(data.word.text);
+      const file = await fetchPostcardPng(card.id, fileName);
 
-      // WhatsApp/Meta often ignore OG tags on free ngrok hosts. Attach the
-      // postcard PNG so the chat shows a real image snapshot instead.
-      let postcardFile: File | null = null;
-      try {
-        const imgHeaders: HeadersInit = {};
-        if (window.location.hostname.includes("ngrok")) {
-          imgHeaders["ngrok-skip-browser-warning"] = "true";
-        }
-        const imgRes = await fetch(
-          `/api/share/postcards/${encodeURIComponent(card.id)}/og.png?v=3`,
-          { headers: imgHeaders, credentials: "omit" }
-        );
-        if (imgRes.ok) {
-          const blob = await imgRes.blob();
-          postcardFile = new File(
-            [blob],
-            `harmonix-${data.word.text.replace(/\s+/g, "-").slice(0, 24)}.png`,
-            { type: blob.type || "image/png" }
-          );
-        }
-      } catch {
-        /* fall through to link share */
-      }
-
-      const copyShare = async () => {
-        await navigator.clipboard.writeText(`${caption}\n\n${shareUrl}`);
-        setCopiedLink(true);
-        setTimeout(() => setCopiedLink(false), 2500);
-      };
-
-      if (typeof navigator.share === "function") {
-        try {
-          if (
-            postcardFile &&
-            typeof navigator.canShare === "function" &&
-            navigator.canShare({ files: [postcardFile] })
-          ) {
-            await navigator.share({
-              files: [postcardFile],
-              title: `${title} · Harmonix`,
-              text: `${caption}\n${shareUrl}`,
-            });
-            return;
-          }
-          await navigator.share({
-            title: `${title} · Harmonix`,
-            text: caption,
-            url: shareUrl,
-          });
-          return;
-        } catch (err) {
-          if (err instanceof DOMException && err.name === "AbortError") return;
-        }
-      }
-
-      // Desktop fallback: download postcard image + copy caption/link.
-      if (postcardFile) {
-        const objectUrl = URL.createObjectURL(postcardFile);
-        const a = document.createElement("a");
-        a.href = objectUrl;
-        a.download = postcardFile.name;
-        a.click();
-        URL.revokeObjectURL(objectUrl);
-      }
-      await copyShare();
+      setSharePayload({
+        id: card.id,
+        shareUrl,
+        title,
+        caption,
+        fileName,
+        file,
+      });
+      setShareOpen(true);
     } catch (err) {
       console.error("Share postcard failed:", err);
       setRefreshError(
@@ -898,7 +851,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
             ) : (
               <Share2 className="w-4 h-4" />
             )}
-            {sharing ? "Creating…" : copiedLink ? "Postcard ready!" : "Share"}
+            {sharing ? "Creating…" : "Share"}
           </Button>
           <Button
             type="button"
@@ -912,6 +865,12 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           </Button>
         </div>
       </div>
+
+      <PostcardShareSheet
+        open={shareOpen}
+        payload={sharePayload}
+        onClose={() => setShareOpen(false)}
+      />
 
       {data.audio.preview_url && (
         <audio

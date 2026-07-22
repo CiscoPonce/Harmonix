@@ -420,4 +420,44 @@ class ApiClient {
     );
     return parseExportJobDto(data);
   }
+
+  /// Create a public word postcard. Returns `{ id, path, spotify_url }`.
+  Future<Map<String, dynamic>> createPostcard({
+    required Map<String, dynamic> word,
+    required Map<String, dynamic>? lyric,
+    required Map<String, dynamic> song,
+  }) {
+    return request('POST', '/share/postcards', body: {
+      'word': word,
+      'lyric': lyric,
+      'song': song,
+    });
+  }
+
+  String sharePageUrl(String postcardId) {
+    final root = kApiBase.replaceAll(RegExp(r'/api/?$'), '');
+    return '$root/share/${Uri.encodeComponent(postcardId)}';
+  }
+
+  /// Public OG postcard PNG bytes (no auth).
+  Future<Uint8List> fetchPostcardPng(String postcardId) async {
+    final uri = _uri('/share/postcards/${Uri.encodeComponent(postcardId)}/og.png', {
+      'v': '3',
+    });
+    final res = await _client.get(
+      uri,
+      headers: _headers(accept: 'image/png, application/json'),
+    );
+    if (res.statusCode >= 400) {
+      throw ApiException('Postcard image unavailable (${res.statusCode})', status: res.statusCode);
+    }
+    final contentType = res.headers['content-type'] ?? '';
+    if (contentType.contains('application/json') || contentType.contains('text/html')) {
+      throw ApiException('Postcard image unavailable (bad response)');
+    }
+    if (res.bodyBytes.isEmpty) {
+      throw ApiException('Postcard image was empty');
+    }
+    return res.bodyBytes;
+  }
 }
