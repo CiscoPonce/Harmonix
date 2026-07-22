@@ -16,6 +16,12 @@ const userRouter = require('./routes/user');
 const audioRouter = require('./routes/audio');
 const { protectedRouter: spotifyProtectedRouter, callbackRouter: spotifyCallbackRouter } = require('./routes/spotify');
 const { publicRouter: sharePublicRouter, protectedRouter: shareProtectedRouter } = require('./routes/share');
+const {
+  isSocialCrawler,
+  getPostcardById,
+  publicBaseUrl,
+  buildCrawlerHtml,
+} = require('./services/shareOg');
 const deezer = require('./services/deezerService');
 require('dotenv').config();
 const ttsDaemon = require('./services/ttsDaemon');
@@ -316,6 +322,19 @@ app.use('/api/spotify', authenticateToken, spotifyProtectedRouter);
 app.get("/callback", (req, res) => {
   const q = new URLSearchParams(req.query).toString();
   res.redirect(302, `/api/spotify/oauth/callback${q ? `?${q}` : ""}`);
+});
+
+// Social crawlers (WhatsApp, etc.) get static OG HTML — no JS, no account.
+app.get('/share/:id', (req, res, next) => {
+  if (!isSocialCrawler(req.get('user-agent'))) return next();
+  const card = getPostcardById(req.params.id);
+  if (!card) return next();
+  const html = buildCrawlerHtml(card, publicBaseUrl(req));
+  res.set({
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'public, max-age=300',
+  });
+  return res.status(200).send(html);
 });
 
 // --- Frontend Proxy ---

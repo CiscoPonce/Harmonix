@@ -606,15 +606,18 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
         spotify_url: string | null;
       }>(res);
 
+      // Share ONLY the Harmonix postcard URL so WhatsApp/iMessage unfurl our OG card
+      // (including Spotify in the text steals the preview with Spotify's artwork).
       const shareUrl = `${window.location.origin}${card.path}`;
-      const lines = [
-        `Word postcard: ${data.word.text}`,
-        data.word.translation ? `Meaning: ${data.word.translation}` : null,
-        `Song: ${data.song.title} — ${data.song.artist}`,
-        card.spotify_url ? `Open in Spotify: ${card.spotify_url}` : null,
-        `Snapshot: ${shareUrl}`,
-      ].filter(Boolean) as string[];
-      const shareText = lines.join("\n");
+      const title = `${data.word.text}${
+        data.word.translation ? ` · ${data.word.translation}` : ""
+      }`;
+      const shareText = [
+        title,
+        `From ${data.song.title} — ${data.song.artist}`,
+        "",
+        shareUrl,
+      ].join("\n");
 
       const copyShareUrl = async () => {
         await navigator.clipboard.writeText(shareText);
@@ -625,8 +628,8 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       if (typeof navigator.share === "function") {
         try {
           await navigator.share({
-            title: `${data.word.text} · Harmonix word postcard`,
-            text: shareText,
+            title: `${title} · Harmonix`,
+            text: `${title}\nFrom ${data.song.title} — ${data.song.artist}`,
             url: shareUrl,
           });
           return;

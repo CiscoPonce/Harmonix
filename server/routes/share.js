@@ -4,7 +4,11 @@ const express = require('express');
 const { nanoid } = require('nanoid');
 const db = require('../db');
 const { resolvePlayableSpotifyTrack } = require('../services/spotifyPlayResolve');
-const { safeSpotifyExternalUrl } = require('../services/spotifyService');
+const {
+  getPostcardById,
+  buildPostcardPng,
+  postcardSeo,
+} = require('../services/shareOg');
 
 const publicRouter = express.Router();
 const protectedRouter = express.Router();
@@ -81,24 +85,6 @@ async function resolveSpotifyShareUrl(userId, song) {
   return spotifySearchUrl(song.artist, song.title);
 }
 
-function toPublicCard(row) {
-  let payload;
-  try {
-    payload = JSON.parse(row.payload_json);
-  } catch {
-    return null;
-  }
-  const spotifyUrl = safeSpotifyExternalUrl(row.spotify_url) || payload.spotify_url || null;
-  return {
-    id: row.id,
-    word: payload.word,
-    lyric: payload.lyric,
-    song: payload.song,
-    spotify_url: spotifyUrl,
-    created_at: row.created_at,
-  };
-}
-
 /** GET /api/share/postcards/:id — public postcard snapshot (no account). */
 publicRouter.get('/postcards/:id', (req, res) => {
   const id = String(req.params.id || '').trim();
@@ -106,12 +92,54 @@ publicRouter.get('/postcards/:id', (req, res) => {
     return res.status(400).json({ error: 'invalid_id' });
   }
 
-  const row = db.prepare('SELECT * FROM shared_postcards WHERE id = ?').get(id);
-  if (!row) return res.status(404).json({ error: 'not_found' });
-
-  const card = toPublicCard(row);
-  if (!card) return res.status(500).json({ error: 'corrupt_postcard' });
+  const card = getPostcardById(id);
+  if (!card) return res.status(404).json({ error: 'not_found' });
   return res.json(card);
+});
+
+/** GET /api/share/postcards/:id/og.png — Open Graph image for WhatsApp / iMessage. */
+publicRouter.get('/postcards/:id/og.png', async (req, res) => {
+  const id = String(req.params.id || '').trim();
+  const card = getPostcardById(id);
+  if (!card) return res.status(404).json({ error: 'not_found' });
+
+  // Prefer the Next.js designed OG card when the frontend is up.
+  try {
+    const upstream = await fetch(
+      `http://127.0.0.1:3009/share/${encodeURIComponent(id)}/opengraph-image`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (upstream.ok) {
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      res.set({
+        'Content-Type': upstream.headers.get('content-type') || 'image/png',
+        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+      });
+      return res.send(buf);
+    }
+  } catch {
+    /* fall through to local PNG */
+  }
+
+  try {
+    const png = buildPostcardPng(card);
+    res.set({
+      'Content-Type': 'image/png',
+      'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+      'Content-Disposition': `inline; filename="harmonix-${id}.png"`,
+    });
+    return res.send(png);
+  } catch (err) {
+    console.error('OG png error:', err.message);
+    return res.status(500).json({ error: 'og_failed' });
+  }
+});
+
+/** GET /api/share/postcards/:id/meta — SEO helpers for the Next share page. */
+publicRouter.get('/postcards/:id/meta', (req, res) => {
+  const card = getPostcardById(String(req.params.id || '').trim());
+  if (!card) return res.status(404).json({ error: 'not_found' });
+  return res.json({ card, seo: postcardSeo(card) });
 });
 
 /** POST /api/share/postcards — create a shareable word postcard. */
