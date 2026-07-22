@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { apiFetch, fetchSpotifyStatus, resolveSpotifyPlay } from "@/lib/api";
 import {
   computeDeezerHearWindow,
@@ -11,7 +10,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useSpotifyInAppPlayer } from "@/components/SpotifyInAppPlayer";
 import { Button } from "./ui/Button";
-import { BookOpen, Loader2, Music2, Play, Pause, RefreshCw, Sparkles, RotateCw, Volume2 } from "lucide-react";
+import { AddToPlaylistModal } from "./AddToPlaylistModal";
+import { FolderPlus, Loader2, Music2, Play, Pause, RefreshCw, Share2, Sparkles, RotateCw, Volume2 } from "lucide-react";
 
 const SUPPORTED_PRONUNCIATION_LANGUAGES = ["es", "fr", "de", "pt", "en", "it"];
 
@@ -73,7 +73,6 @@ function highlightWord(snippet: string, start: number, end: number) {
 
 export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const { user } = useAuth();
-  const router = useRouter();
   const [data, setData] = useState<DailyWordPayload | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,6 +89,8 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   const audioProviderRef = useRef<'spotify' | 'deezer' | null>(null);
   const [hearBusy, setHearBusy] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
+  const [showAddPlaylist, setShowAddPlaylist] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const spotifyPlayer = useSpotifyInAppPlayer();
   const loadAbortRef = useRef<AbortController | null>(null);
 
@@ -393,7 +394,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     // Deezer 30s preview — seek toward the highlighted word in the lyric line.
     if (!data.audio.preview_url) {
       setRefreshError(
-        'No preview available. Open full player, or reconnect Spotify in Settings.'
+        'No preview available. Reconnect Spotify in Settings for full-track audio.'
       );
       setIsPlaying(false);
       setHearBusy(false);
@@ -402,7 +403,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
 
     const deezerOk = await playDeezerClip();
     if (!deezerOk) {
-      setRefreshError('Audio preview unavailable. Try Open full player.');
+      setRefreshError('Audio preview unavailable. Reconnect Spotify in Settings.');
       setIsPlaying(false);
     }
     setHearBusy(false);
@@ -579,12 +580,35 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     );
   }
 
-  const playerHref = "/player/" + encodeURIComponent(String(data.song.id));
-  const openFullPlayer = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    router.push(playerHref);
+  const handleShare = async () => {
+    const shareUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/player/${encodeURIComponent(String(data.song.id))}`
+        : "";
+    const shareText = `Learn “${data.word.text}” with ${data.song.title} by ${data.song.artist} on Harmonix`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${data.word.text} · ${data.song.title}`,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch {
+        /* fall through to clipboard */
+      }
+    }
+    if (shareUrl) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2500);
+      } catch {
+        /* ignore */
+      }
+    }
   };
+
   const readyCount = queueStatus?.ready ?? data.queue?.ready ?? 0;
   // Full-screen blocker only on first cold load (no word yet). While refreshing,
   // keep the current word interactive and show a slim progress strip instead.
@@ -787,12 +811,22 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           <Button
             type="button"
             variant="secondary"
-            onClick={openFullPlayer}
+            onClick={() => void handleShare()}
             disabled={!data.song.id}
             className="gap-2 uppercase tracking-widest text-[10px] font-bold"
           >
-            <BookOpen className="w-4 h-4" />
-            Open full player
+            <Share2 className="w-4 h-4" />
+            {copiedLink ? 'Link Copied!' : 'Share'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setShowAddPlaylist(true)}
+            disabled={!data.song.id}
+            className="gap-2 uppercase tracking-widest text-[10px] font-bold"
+          >
+            <FolderPlus className="w-4 h-4" />
+            Add to my playlist
           </Button>
         </div>
       </div>
@@ -809,6 +843,18 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           }}
         />
       )}
+
+      <AddToPlaylistModal
+        isOpen={showAddPlaylist}
+        onClose={() => setShowAddPlaylist(false)}
+        track={{
+          id: data.song.id,
+          title: data.song.title,
+          artist: data.song.artist,
+          preview: data.audio.preview_url,
+          duration: data.audio.duration_seconds,
+        }}
+      />
     </div>
   );
 }
