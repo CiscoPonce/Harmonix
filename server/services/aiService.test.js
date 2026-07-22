@@ -100,4 +100,13 @@ describe('AI Service', () => {
     expect(callCount).to.be.at.least(2);
     expect(response.choices[0].message.content).to.equal('{"ok":true}');
   });
+
+  it('flags idiom calques like brings → hace caer as suspicious', () => {
+    const { translationLooksSuspicious, sanitizeGloss } = require('./aiService');
+    expect(translationLooksSuspicious('brings', 'hace caer')).to.equal(true);
+    expect(translationLooksSuspicious('brings', 'trae')).to.equal(false);
+    expect(translationLooksSuspicious('make', 'hacer')).to.equal(false);
+    expect(sanitizeGloss('brings', { translation: 'brings' }).translation).to.equal(null);
+    expect(sanitizeGloss('brings', { translation: 'trae' }).translation).to.equal('trae');
+  });
 });

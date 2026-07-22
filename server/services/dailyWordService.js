@@ -227,6 +227,7 @@ function buildPayload(date, suggestion, track, lyricsData, occurrence, langCode 
       pronunciation: suggestion.pronunciation || null,
       difficulty: suggestion.difficulty || "medium",
       cefr_level: suggestion.cefr_level || null,
+      gloss_v: suggestion.gloss_v || null,
     },
     lyric: {
       ...occurrence,
@@ -534,6 +535,7 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
       translation: gloss.translation,
       part_of_speech: gloss.part_of_speech,
       pronunciation: gloss.pronunciation,
+      gloss_v: gloss.gloss_v || 2,
       difficulty: userDifficulty,
       genre: p.genre,
     };
@@ -1087,8 +1089,15 @@ function translationNeedsFix(word) {
   return !translation || translation.toLowerCase() === word.text.toLowerCase();
 }
 
+function glossNeedsQualityCheck(word) {
+  if (!word?.text) return false;
+  // gloss_v < 2 → one-time verify/refine (fixes bad cached senses like "brings"→"hace caer")
+  if (Number(word.gloss_v || 0) >= 2) return false;
+  return true;
+}
+
 function wordMetaNeedsEnrichment(word) {
-  return translationNeedsFix(word) || !word?.pronunciation;
+  return glossNeedsQualityCheck(word) || !word?.pronunciation;
 }
 
 async function glossWithCompleteness(items, languageName, nativeLanguageName, { fast = false } = {}) {
@@ -1099,9 +1108,11 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, { 
     translation: glosses[i]?.translation,
     pronunciation: glosses[i]?.pronunciation,
   }));
-  if (!incomplete) return glosses;
+  if (!incomplete) {
+    return glosses.map((g) => ({ ...g, gloss_v: 2 }));
+  }
   glosses = await aiService.glossDailyWords(items, languageName, { fast: false, nativeLanguageName });
-  return glosses;
+  return glosses.map((g) => ({ ...g, gloss_v: 2 }));
 }
 
 async function enrichPayloadWordMeta(payload, user) {
@@ -1115,13 +1126,25 @@ async function enrichPayloadWordMeta(payload, user) {
   const started = Date.now();
 
   try {
-    let glosses = await aiService.glossDailyWords(item, languageName, { fast: true, nativeLanguageName });
+    // Full refine for suspicious / unverified glosses (e.g. "brings" → "hace caer").
+    let glosses = await aiService.glossDailyWords(item, languageName, {
+      fast: false,
+      nativeLanguageName,
+      refine: true,
+    });
     let gloss = glosses[0];
-    if (translationNeedsFix({
-      text,
-      translation: gloss?.translation ?? payload.word.translation,
-    })) {
-      glosses = await aiService.glossDailyWords(item, languageName, { fast: false, nativeLanguageName });
+    const candidateTranslation = gloss?.translation ?? payload.word.translation;
+    if (
+      translationNeedsFix({ text, translation: candidateTranslation }) ||
+      aiService.translationLooksSuspicious(text, candidateTranslation)
+    ) {
+      glosses = await aiService.refineGlosses(
+        item,
+        glosses,
+        languageName,
+        nativeLanguageName,
+        { fast: false }
+      );
       gloss = glosses[0];
     }
     if (!gloss) return payload;
@@ -1133,12 +1156,13 @@ async function enrichPayloadWordMeta(payload, user) {
         translation: gloss.translation ?? payload.word.translation,
         part_of_speech: gloss.part_of_speech ?? payload.word.part_of_speech,
         pronunciation: gloss.pronunciation ?? payload.word.pronunciation,
+        gloss_v: 2,
       },
     };
   } catch (err) {
     console.warn(`daily word enrich gloss failed in ${Date.now() - started}ms: ${err.message || err}`);
-    return payload;
   }
+  return payload;
 }
 
 async function backfillQueueMetadata(user) {
@@ -1169,7 +1193,8 @@ async function enrichIfNeeded(payload, user) {
   const prev = hydrated.word || {};
   const changed = w.translation !== prev.translation
     || w.pronunciation !== prev.pronunciation
-    || w.part_of_speech !== prev.part_of_speech;
+    || w.part_of_speech !== prev.part_of_speech
+    || w.gloss_v !== prev.gloss_v;
   if (changed && user?.id) {
     saveDailyWord(user.id, enriched.date || todayDate(), enriched);
   }
@@ -1227,6 +1252,7 @@ module.exports = {
   enrichPayloadWordMeta,
   enrichIfNeeded,
   translationNeedsFix,
+  glossNeedsQualityCheck,
   wordMetaNeedsEnrichment,
   backfillQueueMetadata,
   glossWithCompleteness,

@@ -262,7 +262,7 @@ Reply with ONLY a JSON object containing a "candidates" array, no markdown or ex
   "candidates": [
     {
       "target_word": "word in lyrics",
-      "translation": "English translation",
+      "translation": "short gloss in the learner's HOME/native language (not English unless native is English)",
       "part_of_speech": "noun|verb|adjective|...",
       "pronunciation": "IPA phonetic spelling, e.g. /eŋ.konˈtɾar/",
       "cefr_level": "A1-C2",
@@ -657,13 +657,120 @@ function sanitizeGloss(word, gloss) {
   };
 }
 
-async function glossDailyWords(items, languageName, { fast = false, nativeLanguageName = "English" } = {}) {
+/**
+ * Heuristic: models often map a whole lyric idiom onto one word
+ * (e.g. "brings" in "brings me down" → "hace caer"). Flag for re-check.
+ */
+function translationLooksSuspicious(word, translation) {
+  const w = String(word || "").trim().toLowerCase();
+  const t = String(translation || "").trim().toLowerCase();
+  if (!w || !t) return true;
+  if (t === w) return true;
+  const tokens = t.split(/\s+/).filter(Boolean);
+  if (tokens.length > 4) return true;
+  // Calques of "makes/does X" for verbs that are not make/do
+  if (
+    /^(hace|hacer|makes?|making|does|doing)\b/.test(t) &&
+    !/^(make|makes|making|made|do|does|doing|did|hacer|hace|hago|hacen)$/.test(w)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+async function refineGlosses(items, glosses, languageName, nativeLanguageName, { fast = false } = {}) {
+  if (!items?.length) return glosses || [];
+
+  const pairs = items.map((item, i) => ({
+    word: item.word,
+    line: item.line,
+    translation: glosses?.[i]?.translation || null,
+    part_of_speech: glosses?.[i]?.part_of_speech || null,
+    pronunciation: glosses?.[i]?.pronunciation || null,
+  }));
+
+  const needsCheck = pairs.some((p) => translationLooksSuspicious(p.word, p.translation));
+  // Always verify when any pair looks suspicious; otherwise light pass still helps catch wrong senses.
+  if (!needsCheck && fast) return glosses;
+
+  const refinePrompt = `You are checking vocabulary glosses for language learners.
+For each item, the translation MUST be a short, accurate ${nativeLanguageName} meaning of ONLY the single ${languageName} word — as that word is used in the lyric line.
+Do NOT translate the whole line, idiom, or neighboring words onto this word.
+
+Wrong example: word "brings", line "…brings me down…", translation "hace caer" or "derriba" → FIX to "trae" (or "lleva").
+Wrong example: word "pressure", line "under pressure", translation "bajo presión" as if the word meant the whole phrase → FIX to "presión".
+
+Keep translations to 1–3 everyday words in ${nativeLanguageName}. Never repeat the ${languageName} word.
+Keep or improve part_of_speech and pronunciation (IPA or readable phonetic for the ${languageName} word).
+
+Items: ${JSON.stringify(pairs)}
+
+Reply JSON only: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "...", "pronunciation": "...", "corrected": true|false } ] }`;
+
+  try {
+    const response = await (fast
+      ? createFastChatCompletion({
+        messages: [
+          {
+            role: 'system',
+            content: `You verify ${languageName}→${nativeLanguageName} learner glosses. Fix wrong word senses. JSON only.`,
+          },
+          { role: 'user', content: refinePrompt },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 768,
+        temperature: 0.1,
+      }, 12000)
+      : createChatCompletion({
+        messages: [
+          {
+            role: 'system',
+            content: `You verify ${languageName}→${nativeLanguageName} learner glosses. Fix wrong word senses. JSON only.`,
+          },
+          { role: 'user', content: refinePrompt },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 2048,
+        temperature: 0.1,
+      }));
+
+    const raw = parseJsonContent(response.choices?.[0]?.message?.content);
+    const list = raw?.words || raw?.items || [];
+    const byWord = new Map(list.map((w) => [String(w.word || '').toLowerCase(), w]));
+
+    return pairs.map((pair) => {
+      const hit = byWord.get(String(pair.word || '').toLowerCase());
+      const merged = sanitizeGloss(pair.word, {
+        translation: hit?.translation ?? pair.translation,
+        part_of_speech: hit?.part_of_speech ?? pair.part_of_speech,
+        pronunciation: hit?.pronunciation ?? pair.pronunciation,
+      });
+      // Prefer refined translation unless sanitizer wiped it
+      if (!merged.translation && pair.translation) {
+        return sanitizeGloss(pair.word, pair);
+      }
+      return merged;
+    });
+  } catch (err) {
+    console.warn(`daily word gloss refine failed: ${err.message || err}`);
+    return glosses || pairs.map((p) => sanitizeGloss(p.word, p));
+  }
+}
+
+async function glossDailyWords(items, languageName, { fast = false, nativeLanguageName = "English", refine = true } = {}) {
   if (!items?.length) return [];
 
-  const glossUserPrompt = `For each item, use the lyric "line" to choose the correct sense of the word in that context.
-Ambiguous words MUST match how they are used in the line (e.g. Spanish "pendiente" in "Un pendiente de oro" → "earring", not "pending").
-The learner's native language is ${nativeLanguageName}. Give translation in ${nativeLanguageName} only (1–3 words, never repeat the ${languageName} word).
-Also give part_of_speech and pronunciation (IPA or readable phonetic for how to say the ${languageName} word).
+  const glossUserPrompt = `For each item, translate ONLY the single target "word" into ${nativeLanguageName}.
+Use the lyric "line" only to pick the correct dictionary sense of that word — never gloss the whole phrase or idiom as if it were the word.
+
+Hard rules:
+1. Translation language: ${nativeLanguageName} only.
+2. Length: 1–3 short everyday words (prefer one word when possible).
+3. Never repeat the ${languageName} word as the translation.
+4. Do not invent meanings from surrounding words (WRONG: "brings" → "hace caer" because the line says "brings me down"; RIGHT: "trae").
+5. Ambiguous words must match the line (e.g. Spanish "pendiente" in "Un pendiente de oro" → "earring", not "pending").
+6. Also give part_of_speech and pronunciation (IPA or readable phonetic for how to say the ${languageName} word).
+
 Items: ${JSON.stringify(items)}
 
 Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "noun|verb|...", "pronunciation": "/.../" } ] }`;
@@ -674,7 +781,7 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
         messages: [
           {
             role: 'system',
-            content: `You translate ${languageName} vocabulary for language learners. Use lyric context to disambiguate. Return JSON only.`,
+            content: `You translate single ${languageName} words into ${nativeLanguageName} for learners. Use lyric context only to disambiguate sense — never paraphrase the whole line. Return JSON only.`,
           },
           {
             role: 'user',
@@ -683,13 +790,13 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
         ],
         response_format: { type: 'json_object' },
         max_tokens: 512,
-        temperature: 0.2,
+        temperature: 0.15,
       }, 10000)
       : createChatCompletion({
         messages: [
           {
             role: 'system',
-            content: `You translate ${languageName} vocabulary for language learners. Use lyric context to disambiguate. Return JSON only.`,
+            content: `You translate single ${languageName} words into ${nativeLanguageName} for learners. Use lyric context only to disambiguate sense — never paraphrase the whole line. Return JSON only.`,
           },
           {
             role: 'user',
@@ -698,14 +805,14 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
         ],
         response_format: { type: 'json_object' },
         max_tokens: 2048,
-        temperature: 0.2,
+        temperature: 0.15,
       }));
 
     const raw = parseJsonContent(response.choices?.[0]?.message?.content);
     const list = raw?.words || raw?.items || [];
     const byWord = new Map(list.map((w) => [String(w.word || '').toLowerCase(), w]));
 
-    return items.map((item) => {
+    const glosses = items.map((item) => {
       const hit = byWord.get(String(item.word || '').toLowerCase());
       return sanitizeGloss(item.word, {
         translation: hit?.translation,
@@ -713,6 +820,9 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
         pronunciation: hit?.pronunciation,
       });
     });
+
+    if (!refine) return glosses;
+    return refineGlosses(items, glosses, languageName, nativeLanguageName, { fast });
   };
 
   if (!fast) return runGloss();
@@ -733,7 +843,9 @@ module.exports = {
   getVerifiedSongCandidates,
   normalizeGenre,
   glossDailyWords,
+  refineGlosses,
   sanitizeGloss,
+  translationLooksSuspicious,
   createChatCompletion,
   createFastChatCompletion,
   AVAILABLE_MODELS,
