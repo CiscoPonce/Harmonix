@@ -690,8 +690,8 @@ async function refineGlosses(items, glosses, languageName, nativeLanguageName, {
   }));
 
   const needsCheck = pairs.some((p) => translationLooksSuspicious(p.word, p.translation));
-  // Always verify when any pair looks suspicious; otherwise light pass still helps catch wrong senses.
-  if (!needsCheck && fast) return glosses;
+  // Never spend an AI round-trip when glosses already look fine (keeps Next Word snappy).
+  if (!needsCheck) return glosses;
 
   const refinePrompt = `You are checking vocabulary glosses for language learners.
 For each item, the translation MUST be a short, accurate ${nativeLanguageName} meaning of ONLY the single ${languageName} word — as that word is used in the lyric line.
@@ -757,7 +757,7 @@ Reply JSON only: { "words": [ { "word": "...", "translation": "...", "part_of_sp
   }
 }
 
-async function glossDailyWords(items, languageName, { fast = false, nativeLanguageName = "English", refine = true } = {}) {
+async function glossDailyWords(items, languageName, { fast = false, nativeLanguageName = "English", refine = false } = {}) {
   if (!items?.length) return [];
 
   const glossUserPrompt = `For each item, translate ONLY the single target "word" into ${nativeLanguageName}.

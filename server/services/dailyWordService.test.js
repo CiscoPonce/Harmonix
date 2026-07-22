@@ -23,12 +23,24 @@ const aiService = require("./aiService");
 function stubSongPipeline(songCandidates) {
   const originalSongs = aiService.generateDailyWordSongs;
   const originalGloss = aiService.glossDailyWords;
+  const originalRefine = aiService.refineGlosses;
   aiService.generateDailyWordSongs = async () => songCandidates;
   aiService.glossDailyWords = async (items) =>
-    items.map((item) => ({ translation: item.word, part_of_speech: "noun" }));
+    items.map((item) => ({
+      translation: `${item.word}-en`,
+      part_of_speech: "noun",
+      pronunciation: "/x/",
+    }));
+  aiService.refineGlosses = async (items, glosses) =>
+    items.map((item, i) => ({
+      translation: glosses?.[i]?.translation || `${item.word}-en`,
+      part_of_speech: glosses?.[i]?.part_of_speech || "noun",
+      pronunciation: glosses?.[i]?.pronunciation || "/x/",
+    }));
   return () => {
     aiService.generateDailyWordSongs = originalSongs;
     aiService.glossDailyWords = originalGloss;
+    aiService.refineGlosses = originalRefine;
   };
 }
 
@@ -269,11 +281,23 @@ describe("Daily Word Service", () => {
 
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     const originalGloss = aiService.glossDailyWords;
+    const originalRefine = aiService.refineGlosses;
     aiService.glossDailyWords = async (items) =>
-      items.map((item) => ({ translation: item.word, part_of_speech: "noun" }));
+      items.map((item) => ({
+        translation: `${item.word}-en`,
+        part_of_speech: "noun",
+        pronunciation: "/x/",
+      }));
+    aiService.refineGlosses = async (items, glosses) =>
+      items.map((item, i) => ({
+        translation: glosses?.[i]?.translation || `${item.word}-en`,
+        part_of_speech: "noun",
+        pronunciation: "/x/",
+      }));
 
     const { valid } = await validateAllCandidates(candidates, "2026-06-27", user, mockFetch);
     aiService.glossDailyWords = originalGloss;
+    aiService.refineGlosses = originalRefine;
     expect(valid).to.have.lengthOf(1);
     expect(valid[0].word.text).to.be.oneOf(["amor", "noche", "brillan"]);
 
@@ -319,11 +343,23 @@ describe("Daily Word Service", () => {
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     user.difficulty = "easy";
     const originalGloss = aiService.glossDailyWords;
+    const originalRefine = aiService.refineGlosses;
     aiService.glossDailyWords = async (items) =>
-      items.map((item) => ({ translation: item.word, part_of_speech: "noun" }));
+      items.map((item) => ({
+        translation: `${item.word}-en`,
+        part_of_speech: "noun",
+        pronunciation: "/x/",
+      }));
+    aiService.refineGlosses = async (items, glosses) =>
+      items.map((item, i) => ({
+        translation: glosses?.[i]?.translation || `${item.word}-en`,
+        part_of_speech: "noun",
+        pronunciation: "/x/",
+      }));
 
     const { valid } = await validateAllCandidates(candidates, "2026-06-27", user, mockFetch);
     aiService.glossDailyWords = originalGloss;
+    aiService.refineGlosses = originalRefine;
     expect(valid).to.have.lengthOf(1);
     expect(valid[0].word.text).to.be.oneOf(["amor", "noche", "brillan"]);
   });

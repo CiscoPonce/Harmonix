@@ -173,7 +173,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     if (!initial && hasBuffered) {
       setStatusMessage("Loading next word…");
     } else if (!initial) {
-      setStatusMessage("Asking AI for song candidates…");
+      setStatusMessage("Matching a word in a real song…");
     }
 
     try {
@@ -729,7 +729,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
       <p className="border-b border-zinc-100 px-4 py-2 text-[11px] text-zinc-500 dark:border-zinc-900 dark:text-zinc-400 sm:px-6">
         {readyCount > 0
           ? `${readyCount} buffered — Next word is instant.`
-          : "Request a new word anytime. First cold generate can take up to a minute; later ones are queued."}
+          : "Request a new word anytime. Buffered words appear instantly; cold generate runs in the background."}
       </p>
 
       <div className="p-5 sm:p-8 md:p-10">

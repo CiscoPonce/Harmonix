@@ -850,11 +850,36 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
       merged = getFullSongCandidatePool(langCode, genre).slice(0, 20);
       console.log(`daily word batch: retrying ${merged.length} candidates allowing new words from known songs`);
     } else {
-      const curated = getCuratedCandidatesForBatch(user.id, langCode, genre).slice(0, 15);
+      const userWaiting = stopAfter <= USER_DELIVER_STOP_AFTER;
+      const curated = getCuratedCandidatesForBatch(user.id, langCode, genre).slice(
+        0,
+        userWaiting ? 8 : 15
+      );
+
+      // Start AI candidate fetch immediately — don't block curated validation on it.
+      const aiPromise = fetchAiCandidates(user).catch((err) => {
+        if (err.code === "ai_rate_limit") throw err;
+        console.warn(`daily word: AI song pick failed (${err.code || err.message})`);
+        return [];
+      });
+
+      if (userWaiting && curated.length) {
+        const curatedResult = await validateAllCandidates(curated, date, user, fetchImpl, {
+          ...options,
+          tryCuratedFirst: false,
+          stopAfter,
+          relaxSongReuse,
+        });
+        if (curatedResult.valid.length) {
+          // Keep AI warm for background refill; don't make the user wait for it.
+          void aiPromise;
+          return curatedResult;
+        }
+      }
 
       let candidates = [];
       try {
-        candidates = await fetchAiCandidates(user);
+        candidates = await aiPromise;
       } catch (err) {
         if (err.code === "ai_rate_limit") throw err;
         if (!curated.length) {
@@ -862,7 +887,14 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
         }
       }
 
-      merged = mergeCandidateLists(curated, candidates);
+      // User-facing cold path: curated already failed above — validate AI picks next.
+      // Background refill still prefers curated-first for throughput.
+      merged = userWaiting
+        ? mergeCandidateLists(candidates, [])
+        : mergeCandidateLists(curated, candidates);
+      if (userWaiting && !merged.length && curated.length) {
+        merged = curated;
+      }
     }
 
     if (!merged.length) {
@@ -1089,30 +1121,78 @@ function translationNeedsFix(word) {
   return !translation || translation.toLowerCase() === word.text.toLowerCase();
 }
 
+/** Blocking path only — missing gloss or obvious idiom calque. */
 function glossNeedsQualityCheck(word) {
   if (!word?.text) return false;
-  // gloss_v < 2 → one-time verify/refine (fixes bad cached senses like "brings"→"hace caer")
-  if (Number(word.gloss_v || 0) >= 2) return false;
-  return true;
+  if (translationNeedsFix(word)) return true;
+  return aiService.translationLooksSuspicious(word.text, word.translation);
 }
 
 function wordMetaNeedsEnrichment(word) {
   return glossNeedsQualityCheck(word) || !word?.pronunciation;
 }
 
+function shouldBackgroundPolish(word) {
+  return Boolean(word?.text)
+    && Number(word.gloss_v || 0) < 2
+    && !wordMetaNeedsEnrichment(word);
+}
+
 async function glossWithCompleteness(items, languageName, nativeLanguageName, { fast = false } = {}) {
   if (!items?.length) return [];
-  let glosses = await aiService.glossDailyWords(items, languageName, { fast, nativeLanguageName });
+  let glosses = await aiService.glossDailyWords(items, languageName, {
+    fast,
+    nativeLanguageName,
+    refine: false,
+  });
+
+  const needsRefine = items.some((item, i) => (
+    translationNeedsFix({ text: item.word, translation: glosses[i]?.translation })
+    || aiService.translationLooksSuspicious(item.word, glosses[i]?.translation)
+  ));
+  if (needsRefine) {
+    glosses = await aiService.refineGlosses(
+      items,
+      glosses,
+      languageName,
+      nativeLanguageName,
+      { fast }
+    );
+  }
+
   const incomplete = items.some((item, i) => wordMetaNeedsEnrichment({
     text: item.word,
     translation: glosses[i]?.translation,
     pronunciation: glosses[i]?.pronunciation,
   }));
-  if (!incomplete) {
-    return glosses.map((g) => ({ ...g, gloss_v: 2 }));
+  if (incomplete && fast) {
+    glosses = await aiService.glossDailyWords(items, languageName, {
+      fast: false,
+      nativeLanguageName,
+      refine: false,
+    });
+    const stillBad = items.some((item, i) => (
+      translationNeedsFix({ text: item.word, translation: glosses[i]?.translation })
+      || aiService.translationLooksSuspicious(item.word, glosses[i]?.translation)
+    ));
+    if (stillBad) {
+      glosses = await aiService.refineGlosses(
+        items,
+        glosses,
+        languageName,
+        nativeLanguageName,
+        { fast: false }
+      );
+    }
   }
-  glosses = await aiService.glossDailyWords(items, languageName, { fast: false, nativeLanguageName });
-  return glosses.map((g) => ({ ...g, gloss_v: 2 }));
+
+  return glosses.map((g, i) => ({
+    ...g,
+    gloss_v: (
+      g?.translation
+      && !aiService.translationLooksSuspicious(items[i].word, g.translation)
+    ) ? 2 : 1,
+  }));
 }
 
 async function enrichPayloadWordMeta(payload, user) {
@@ -1126,43 +1206,141 @@ async function enrichPayloadWordMeta(payload, user) {
   const started = Date.now();
 
   try {
-    // Full refine for suspicious / unverified glosses (e.g. "brings" → "hace caer").
+    // Fast path first — never double-call AI unless the gloss is missing/suspicious.
     let glosses = await aiService.glossDailyWords(item, languageName, {
-      fast: false,
+      fast: true,
       nativeLanguageName,
-      refine: true,
+      refine: false,
     });
     let gloss = glosses[0];
-    const candidateTranslation = gloss?.translation ?? payload.word.translation;
+    let candidateTranslation = gloss?.translation ?? payload.word.translation;
+
     if (
-      translationNeedsFix({ text, translation: candidateTranslation }) ||
-      aiService.translationLooksSuspicious(text, candidateTranslation)
+      translationNeedsFix({ text, translation: candidateTranslation })
+      || aiService.translationLooksSuspicious(text, candidateTranslation)
+      || !gloss?.pronunciation
     ) {
       glosses = await aiService.refineGlosses(
         item,
-        glosses,
+        [{
+          translation: candidateTranslation,
+          part_of_speech: gloss?.part_of_speech ?? payload.word.part_of_speech,
+          pronunciation: gloss?.pronunciation ?? payload.word.pronunciation,
+        }],
         languageName,
         nativeLanguageName,
-        { fast: false }
+        { fast: true }
       );
       gloss = glosses[0];
+      candidateTranslation = gloss?.translation ?? candidateTranslation;
     }
+
+    if (
+      translationNeedsFix({ text, translation: candidateTranslation })
+      || aiService.translationLooksSuspicious(text, candidateTranslation)
+    ) {
+      glosses = await aiService.glossDailyWords(item, languageName, {
+        fast: false,
+        nativeLanguageName,
+        refine: false,
+      });
+      gloss = glosses[0];
+      candidateTranslation = gloss?.translation ?? candidateTranslation;
+      if (
+        translationNeedsFix({ text, translation: candidateTranslation })
+        || aiService.translationLooksSuspicious(text, candidateTranslation)
+      ) {
+        glosses = await aiService.refineGlosses(
+          item,
+          glosses,
+          languageName,
+          nativeLanguageName,
+          { fast: false }
+        );
+        gloss = glosses[0];
+      }
+    }
+
     if (!gloss) return payload;
     console.log(`daily word enrich gloss: ${text} in ${Date.now() - started}ms`);
+    const nextTranslation = gloss.translation ?? payload.word.translation;
     return {
       ...payload,
       word: {
         ...payload.word,
-        translation: gloss.translation ?? payload.word.translation,
+        translation: nextTranslation,
         part_of_speech: gloss.part_of_speech ?? payload.word.part_of_speech,
         pronunciation: gloss.pronunciation ?? payload.word.pronunciation,
-        gloss_v: 2,
+        gloss_v: (
+          nextTranslation
+          && !aiService.translationLooksSuspicious(text, nextTranslation)
+        ) ? 2 : 1,
       },
     };
   } catch (err) {
     console.warn(`daily word enrich gloss failed in ${Date.now() - started}ms: ${err.message || err}`);
   }
   return payload;
+}
+
+function scheduleBackgroundGlossPolish(user, payload) {
+  if (process.env.NODE_ENV === "test" || !user?.id || !payload?.word?.text) return;
+  setImmediate(() => {
+    (async () => {
+      try {
+        const text = payload.word.text;
+        const translation = payload.word.translation;
+        // Healthy glosses: stamp gloss_v without another AI call.
+        if (
+          translation
+          && !translationNeedsFix(payload.word)
+          && !aiService.translationLooksSuspicious(text, translation)
+        ) {
+          if (Number(payload.word.gloss_v || 0) < 2) {
+            saveDailyWord(user.id, payload.date || todayDate(), {
+              ...payload,
+              word: { ...payload.word, gloss_v: 2 },
+            });
+          }
+          return;
+        }
+
+        const languageName = languageNameFromCode(user.target_language || "es");
+        const nativeLanguageName = languageNameFromCode(user.native_language || "en", "English");
+        const item = [{ word: text, line: payload.lyric?.snippet }];
+        if (!item[0].line) return;
+        let glosses = [{
+          translation: payload.word.translation,
+          part_of_speech: payload.word.part_of_speech,
+          pronunciation: payload.word.pronunciation,
+        }];
+        glosses = await aiService.refineGlosses(
+          item,
+          glosses,
+          languageName,
+          nativeLanguageName,
+          { fast: true }
+        );
+        const gloss = glosses[0];
+        if (!gloss?.translation) return;
+        if (aiService.translationLooksSuspicious(text, gloss.translation)) return;
+        const enriched = {
+          ...payload,
+          word: {
+            ...payload.word,
+            translation: gloss.translation,
+            part_of_speech: gloss.part_of_speech ?? payload.word.part_of_speech,
+            pronunciation: gloss.pronunciation ?? payload.word.pronunciation,
+            gloss_v: 2,
+          },
+        };
+        saveDailyWord(user.id, enriched.date || todayDate(), enriched);
+        console.log(`daily word background gloss polish: ${text}`);
+      } catch (err) {
+        console.warn(`background gloss polish failed: ${err.message || err}`);
+      }
+    })();
+  });
 }
 
 async function backfillQueueMetadata(user) {
@@ -1186,7 +1364,14 @@ async function backfillQueueMetadata(user) {
 async function enrichIfNeeded(payload, user) {
   if (process.env.NODE_ENV === "test") return hydratePayloadAudio(payload);
   const hydrated = hydratePayloadAudio(payload);
-  if (!wordMetaNeedsEnrichment(hydrated.word)) return hydrated;
+
+  // Queued / cached words with a usable gloss must return immediately.
+  if (!wordMetaNeedsEnrichment(hydrated.word)) {
+    if (shouldBackgroundPolish(hydrated.word)) {
+      scheduleBackgroundGlossPolish(user, hydrated);
+    }
+    return hydrated;
+  }
 
   const enriched = await enrichPayloadWordMeta(hydrated, user);
   const w = enriched.word || {};
