@@ -16,6 +16,7 @@ import {
   fetchSpotifyStatus,
   startSpotifyAuth,
 } from '@/lib/api';
+import { PLAYLISTS_CHANGED_EVENT } from '@/lib/playlistEvents';
 import {
   capSpotifyPlaylistShelf,
   mapSpotifyListError,
@@ -112,6 +113,16 @@ function LibraryContent() {
     }, 2500);
     return () => window.clearTimeout(t);
   }, [callbackOutcome, router]);
+
+  useEffect(() => {
+    const onPlaylistsChanged = () => {
+      setHarmonixLoading(true);
+      setRefreshTick((n) => n + 1);
+    };
+    window.addEventListener(PLAYLISTS_CHANGED_EVENT, onPlaylistsChanged);
+    return () => window.removeEventListener(PLAYLISTS_CHANGED_EVENT, onPlaylistsChanged);
+  }, []);
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) {

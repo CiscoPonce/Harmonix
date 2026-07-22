@@ -15,6 +15,7 @@ import {
   fetchSpotifyStatus,
   startSpotifyExport,
 } from '@/lib/api';
+import { PLAYLISTS_CHANGED_EVENT, type PlaylistsChangedDetail } from '@/lib/playlistEvents';
 import {
   isExportJobActive,
   type ConnectionState,
@@ -51,6 +52,7 @@ export default function PlaylistDetailPage() {
   const [job, setJob] = useState<SpotifyExportJobDto | null>(null);
   const pollRef = useRef<number | null>(null);
   const restoreFocusRef = useRef<HTMLButtonElement>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current != null) {
@@ -85,6 +87,17 @@ export default function PlaylistDetailPage() {
   useEffect(() => () => stopPolling(), [stopPolling]);
 
   useEffect(() => {
+    const onPlaylistsChanged = (event: Event) => {
+      const detail = (event as CustomEvent<PlaylistsChangedDetail>).detail;
+      if (detail?.playlistId && detail.playlistId !== playlistId) return;
+      setLoading(true);
+      setRefreshTick((n) => n + 1);
+    };
+    window.addEventListener(PLAYLISTS_CHANGED_EVENT, onPlaylistsChanged);
+    return () => window.removeEventListener(PLAYLISTS_CHANGED_EVENT, onPlaylistsChanged);
+  }, [playlistId]);
+
+  useEffect(() => {
     if (authLoading) return;
     if (!user) {
       router.push('/login');
@@ -105,6 +118,7 @@ export default function PlaylistDetailPage() {
         if (playlistRes.ok) {
           const data = (await playlistRes.json()) as PlaylistDetail;
           setPlaylist(data);
+          setError(null);
 
           // Job identity lives on the backend — restore after refresh/route recreation.
           try {
@@ -138,7 +152,7 @@ export default function PlaylistDetailPage() {
     return () => {
       active = false;
     };
-  }, [user, authLoading, router, playlistId, pollJob]);
+  }, [user, authLoading, router, playlistId, pollJob, refreshTick]);
 
   const handleRemoveSong = async (songId: string) => {
     try {
