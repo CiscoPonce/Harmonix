@@ -5,7 +5,9 @@ const { safeSpotifyExternalUrl } = require('./spotifyService');
 
 function isSocialCrawler(userAgent) {
   const ua = String(userAgent || '');
-  return /whatsapp|facebookexternalhit|facebot|twitterbot|linkedinbot|slackbot|discordbot|telegrambot|skypeuripreview|embedly|quora link preview|pinterest|redditbot|applebot|googlebot|bingbot|duckduckbot/i.test(
+  // Broad match: WhatsApp/Meta often use variants; empty UA sometimes used by preview bots.
+  if (!ua.trim()) return true;
+  return /whatsapp|facebookexternalhit|facebot|twitterbot|linkedinbot|slackbot|discordbot|telegrambot|skypeuripreview|embedly|quora link preview|pinterest|redditbot|applebot|googlebot|bingbot|duckduckbot|meta-externalagent|meta-externalads|instagram|pinterestbot/i.test(
     ua
   );
 }
@@ -35,6 +37,7 @@ function getPostcardById(id) {
     word: payload.word,
     lyric: payload.lyric,
     song: payload.song,
+    cover: payload.cover || null,
     spotify_url: safeSpotifyExternalUrl(row.spotify_url) || payload.spotify_url || null,
     created_at: row.created_at,
   };
@@ -75,9 +78,8 @@ function publicBaseUrl(req) {
 function buildCrawlerHtml(card, baseUrl) {
   const seo = postcardSeo(card);
   const pageUrl = `${baseUrl}/share/${encodeURIComponent(card.id)}`;
-  const imageUrl = `${baseUrl}/api/share/postcards/${encodeURIComponent(card.id)}/og.png`;
-  // Also expose Next OG route for clients that prefer it
-  const imageUrlAlt = `${baseUrl}/share/${encodeURIComponent(card.id)}/opengraph-image`;
+  // Cache-busted image URL helps WhatsApp refetch after OG improvements.
+  const imageUrl = `${baseUrl}/api/share/postcards/${encodeURIComponent(card.id)}/og.png?v=3`;
   const word = escapeHtml(card.word?.text || '');
   const meaning = escapeHtml(card.word?.translation || '');
   const song = escapeHtml(seo.songLine);
@@ -105,8 +107,7 @@ function buildCrawlerHtml(card, baseUrl) {
   <meta name="twitter:title" content="${escapeHtml(seo.ogTitle)}" />
   <meta name="twitter:description" content="${escapeHtml(seo.description)}" />
   <meta name="twitter:image" content="${escapeHtml(imageUrl)}" />
-  <link rel="image_src" href="${escapeHtml(imageUrlAlt)}" />
-  <meta http-equiv="refresh" content="0;url=${escapeHtml(pageUrl)}" />
+  <link rel="image_src" href="${escapeHtml(imageUrl)}" />
 </head>
 <body style="margin:0;background:#06140e;color:#f2f5f3;font-family:Georgia,serif;">
   <main style="max-width:28rem;margin:0 auto;padding:3rem 1.5rem;">

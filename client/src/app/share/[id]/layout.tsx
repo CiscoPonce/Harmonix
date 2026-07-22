@@ -50,7 +50,7 @@ export async function generateMetadata({
   const ogTitle = meta?.seo?.ogTitle || 'Harmonix';
   const pageUrl = `${origin}/share/${encodeURIComponent(id)}`;
   // Prefer Express PNG (stable for crawlers) + Next opengraph-image as alt path.
-  const imageUrl = `${origin}/api/share/postcards/${encodeURIComponent(id)}/og.png`;
+  const imageUrl = `${origin}/api/share/postcards/${encodeURIComponent(id)}/og.png?v=3`;
 
   return {
     title,

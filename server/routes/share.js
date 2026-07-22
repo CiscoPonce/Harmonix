@@ -9,6 +9,8 @@ const {
   buildPostcardPng,
   postcardSeo,
 } = require('../services/shareOg');
+const deezer = require('../services/deezerService');
+const { ensureTrackCover } = require('../services/coverArtService');
 
 const publicRouter = express.Router();
 const protectedRouter = express.Router();
@@ -147,8 +149,20 @@ protectedRouter.post('/postcards', async (req, res) => {
   try {
     const core = sanitizePostcardInput(req.body);
     const spotifyUrl = await resolveSpotifyShareUrl(req.user.id, core.song);
+    let cover = null;
+    if (core.song?.id) {
+      try {
+        const enriched = await ensureTrackCover(core.song.id, {
+          title: core.song.title,
+          artist: core.song.artist,
+        });
+        cover = enriched.cover || deezer.extractCoverFromCachedTrack(enriched);
+      } catch {
+        /* optional */
+      }
+    }
     const id = nanoid(12);
-    const payload = { ...core, spotify_url: spotifyUrl };
+    const payload = { ...core, spotify_url: spotifyUrl, cover };
 
     db.prepare(
       `INSERT INTO shared_postcards (id, user_id, payload_json, spotify_url)
@@ -159,6 +173,7 @@ protectedRouter.post('/postcards', async (req, res) => {
       id,
       path: `/share/${id}`,
       spotify_url: spotifyUrl,
+      cover,
       word: core.word,
       lyric: core.lyric,
       song: core.song,
