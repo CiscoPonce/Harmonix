@@ -15,13 +15,22 @@ export function LandingHero() {
         {/* Left side - Content */}
         <div className="landing-hero-content">
           <div className="landing-hero-logo-block">
+            {/* Theme-aware transparent logos */}
             <Image
-              src="/logo.png"
+              src="/logo-light.png"
               alt="Harmonix — Learn Words Through Music"
               width={1024}
               height={558}
               priority
-              className="landing-hero-logo-img"
+              className="landing-hero-logo-img dark:hidden"
+            />
+            <Image
+              src="/logo-dark.png"
+              alt="Harmonix — Learn Words Through Music"
+              width={1024}
+              height={558}
+              priority
+              className="landing-hero-logo-img hidden dark:block"
             />
           </div>
 

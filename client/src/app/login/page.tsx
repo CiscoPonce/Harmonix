@@ -34,7 +34,7 @@ function LoginForm() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4 text-white">
       <div className="w-full max-w-sm space-y-8">
         <div className="flex flex-col items-center gap-6 text-center">
-          <HarmonixWordmark href="/" size="lg" showTagline />
+          <HarmonixWordmark href="/" size="lg" showTagline variant="dark" />
           <div>
             <h1 className="text-2xl font-bold tracking-tighter uppercase">Login</h1>
             <p className="mt-1 text-zinc-400">Enter your credentials to access your account</p>

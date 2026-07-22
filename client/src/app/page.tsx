@@ -41,7 +41,7 @@ export default function LandingPage() {
       <div className="flex min-h-screen items-center justify-center bg-black text-white">
         <div className="flex flex-col items-center gap-3 px-6">
           <Image
-            src="/logo.png"
+            src="/logo-dark.png"
             alt="Harmonix"
             width={1024}
             height={558}
