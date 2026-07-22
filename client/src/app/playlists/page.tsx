@@ -355,35 +355,6 @@ function LibraryContent() {
       </button>
     ) : null;
 
-  const spotifyHeroAction =
-    spotifyLinkState === 'connected' ? (
-      <Link
-        href="/settings"
-        className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#1DB954]/50 bg-[#1DB954]/15 px-4 py-2.5 text-sm font-bold text-[#1DB954] hover:bg-[#1DB954]/25"
-      >
-        <Image src="/spotify-logo.svg" alt="" width={16} height={16} className="h-4 w-4" unoptimized />
-        <span className="truncate">
-          {spotifyDisplayName ? `Connected as ${spotifyDisplayName}` : 'Spotify connected'}
-        </span>
-      </Link>
-    ) : spotifyLinkState === 'reconnect' ? (
-      <button
-        type="button"
-        onClick={() => void openSpotifyAuth()}
-        className="inline-flex shrink-0 items-center justify-center rounded-full bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-500"
-      >
-        Reconnect Spotify
-      </button>
-    ) : (
-      <button
-        type="button"
-        onClick={() => void openSpotifyAuth()}
-        className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#0B4D2E] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#093F25]"
-      >
-        Connect to Spotify
-      </button>
-    );
-
   return (
     <AppShell
       userEmail={user?.email}
@@ -412,16 +383,13 @@ function LibraryContent() {
           </p>
         ) : null}
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80]">
-              Personal collection
-            </p>
-            <p className="mt-1 max-w-xl font-display text-xl font-bold italic text-[#0C1210] sm:text-2xl">
-              Your resonance library brings together language and lyric in perfect harmony.
-            </p>
-          </div>
-          {spotifyHeroAction}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80]">
+            Personal collection
+          </p>
+          <p className="mt-1 max-w-xl font-display text-xl font-bold italic text-[#0C1210] sm:text-2xl">
+            Your resonance library brings together language and lyric in perfect harmony.
+          </p>
         </div>
 
         {/* Create action */}
