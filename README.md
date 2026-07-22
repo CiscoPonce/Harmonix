@@ -1,48 +1,55 @@
 # Harmonix
 
 <!-- x-release-please-start-version -->
-**Version:** 0.0.2 (v0.01)
+**Version:** 0.0.2
 <!-- x-release-please-end -->
 
-Learn Words Through Music. AI-first language learning through real music lyrics. Validated vocabulary extraction + spaced repetition tied to actual songs.
+AI-first language learning through real music lyrics — validated against Deezer + LRCLib, with Spotify connect/export and web in-app playback.
 
 ![Harmonix Logo](./logoharmonix2.png)
 
 ## Features
 
-- **Word of the Day**: Get one personalized word, hear it in a real song lyric, then dive deeper.
-- **Song Search**: Search any song or artist to extract and learn vocabulary from its lyrics.
-- **Audio Previews**: Hear the exact moment in the song where the word is sung.
-- **Progress Tracking**: Keep your streaks alive and track your daily vocabulary progress.
-- **Dynamic Themes**: Minimalist UI with full support for Light and Dark modes.
-- **Android App (beta)**: Installable APK wrapping the web app via Capacitor — same backend, real-device testing.
+- **Word of the Day** — Personalized word in a real lyric, buffered queue for fast next words
+- **Hear it** — Spotify Premium in-app clip when connected; Deezer 30s preview fallback
+- **Pronunciation** — Pocket-TTS cached WAV for supported languages
+- **Song search & player** — Synced lyrics + vocabulary extraction
+- **Library** — Harmonix playlists + Spotify playlists; export Harmonix → Spotify
+- **Web shell** — Discover · Library · Learn · Settings (forest-green design system)
+- **Android** — Flutter native app (`mobile/`) + temporary Capacitor WebView APK
 
 ## Stack
 
-- **Backend:** Node.js + Express + SQLite
-- **Frontend:** Next.js 16 App Router (React)
-- **Mobile (Option B):** Capacitor Android (`com.harmonix.app`)
-- **Styling:** Tailwind CSS v4
-- **AI:** NVIDIA NIM (Kimi K2.6)
-- **Data:** LRCLib, Deezer
+| Layer | Tech |
+|-------|------|
+| API | Node.js, Express, SQLite |
+| Web | Next.js App Router, Tailwind v4 |
+| Mobile | Flutter (Option C) · Capacitor (Option B bridge) |
+| AI | NVIDIA NIM + OpenRouter fallback |
+| Music | Deezer, LRCLib, Spotify Web API / Web Playback SDK |
+| TTS | Pocket-TTS (local daemon) |
 
-## Repo Layout
+## Repo layout
 
-- `server/`: Express API, SQLite DB (`harmonix.db`), business logic
-- `client/`: Next.js frontend + Capacitor Android project (`client/android/`)
-- `releases/`: Pre-built debug APK for sideload testing
-- `docs/`: Runbooks including [MOBILE-B-CAPACITOR.md](./docs/MOBILE-B-CAPACITOR.md), [RELEASES.md](./docs/RELEASES.md), and [architecture diagrams](./docs/architecture/README.md)
-- `.planning/`: Roadmap and phase plans (Phase 10 mobile)
-- `CHANGELOG.md` / `version.txt`: Release history and current version ([release-please](https://github.com/googleapis/release-please))
+```text
+server/          Express API + SQLite + Spotify/TTS/daily-word services
+client/          Next.js web + Capacitor Android (`client/android/`)
+mobile/          Flutter Android app (Play Store path)
+releases/        Sideload debug APKs
+docs/            Runbooks (Spotify, mobile, language reliability, releases)
+.planning/       ROADMAP, STATE, phase contexts & plans
+run_env.sh       VPS: backend + Next prod + TTS + ngrok
+deploy.sh        pull → tests → run_env (tests may block; prefer run_env after pull)
+```
 
 ## Quickstart
 
 ### Backend
 ```bash
 cd server
-cp .env.example .env
+cp .env.example .env   # fill JWT_*, AI keys, Spotify as needed
 npm install
-npm start
+npm start              # :3001
 ```
 
 ### Frontend
@@ -50,55 +57,40 @@ npm start
 cd client
 cp .env.example .env
 npm install
-npm run dev
+npm run dev            # :3009
 ```
 
-Then open the client URL (default Next.js `:3009`) and the backend (default `:3001`).
-
-Production on VPS: `bash run_env.sh` (backend + Next.js production + ngrok).
-
-## Android APK (test on other devices)
-
-**Pre-built debug APK** (no Android Studio required):
-
-1. Download or copy [`releases/Harmonix-debug.apk`](./releases/Harmonix-debug.apk)
-2. On the phone: allow **Install unknown apps**, then open the APK
-3. Requires internet — app loads from the live Harmonix server (ngrok)
-
-Full build and sideload guide: [docs/MOBILE-B-CAPACITOR.md](./docs/MOBILE-B-CAPACITOR.md)
-
-**Build from source:**
+### Production (VPS)
 ```bash
-cd client
-npm install
-npm run android:sync
-export JAVA_HOME="$HOME/android-studio/jbr"   # adjust for your OS
-npm run android:build
+git pull origin main
+bash run_env.sh
 ```
+Public tunnel (current): `https://moral-sparrow-nationally.ngrok-free.app`
 
-APK output: `client/android/app/build/outputs/apk/debug/app-debug.apk`
+## Security
+
+- Never commit `.env` — only `.env.example` placeholders
+- Spotify tokens encrypted at rest; refresh stays server-side
+- OAuth uses PKCE; short `/callback` alias for Dashboard redirect matching
+- See [SECURITY.md](./SECURITY.md)
 
 ## Tests
 
 ```bash
-cd server
-npm test
+cd server && npm test
 ```
 
-## Key Rules
+Known env-sensitive failures: Pocket-TTS not running; Spotify `/status` contract drift — tracked in Phase 14-07.
 
-- **Validation First:** AI output is verified against external metadata before the UI sees it.
-- **Audio Previews:** Stay short due to copyright limitations.
-- **UI:** Dynamic Light/Dark-mode minimalist design.
-- **Mobile:** Option B (Capacitor) = web UI in WebView; Option C (Flutter mockup) planned in Phase 10.
+## Planning
+
+Active milestone: **v1.7 Phase 14 — Production Parity & Ship**  
+See [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](./.planning/STATE.md).
 
 ## Releases
 
-Versioning is automated with [release-please](https://github.com/googleapis/release-please). See [docs/RELEASES.md](./docs/RELEASES.md) for the workflow and [CHANGELOG.md](./CHANGELOG.md) for release notes.
-
-- Latest: [GitHub Releases](https://github.com/CiscoPonce/Harmonix/releases)
-- Commits on `main` should follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, etc.)
+Versioning via [release-please](https://github.com/googleapis/release-please). Commits on `main` use [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).

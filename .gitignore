@@ -1,12 +1,73 @@
-.planning/
+# --- Dependencies ---
+node_modules/
+**/node_modules/
 
-# IDE
-.idea/
-.vscode/
+# --- Build / framework outputs ---
+client/.next/
+client/out/
+client/build/
+server/dist/
+mobile/build/
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+**/android/.gradle/
+**/android/local.properties
+**/android/app/build/
+**/.cxx/
 
-# Environment secrets — never commit real .env files
+# --- Environment & secrets (never commit real values) ---
 .env
 .env.*
 **/.env
 **/.env.*
 !**/.env.example
+!**/.env*.example
+cookies.txt
+**/cookies.txt
+*.pem
+*.key
+
+# --- Databases ---
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+**/harmonix.db
+**/harmonix.test.db
+
+# --- Logs ---
+logs/
+*.log
+**/server.log
+**/client.log
+ngrok.log
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Local agent / runtime tooling ---
+.cursor/
+.claude/
+gsd-core/
+**/gsd-file-manifest.json
+
+# --- Large local APK duplicates (keep releases/ intentionally) ---
+/harmonix.apk
+*.apk
+!releases/*.apk
+
+# --- Planning scratch (core ROADMAP/STATE/phases stay tracked) ---
+.planning/research/
+.planning/**/scratch/
+
+# Legacy duplicate phase folders
+.planning/phases/phase-1/
+.planning/phases/phase-2/
+.planning/phases/phase-3/
+.planning/phases/**/design/

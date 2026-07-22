@@ -65,8 +65,8 @@ Flutter Android (`mobile/`) ──────┼─► Express + SQLite
 ## Session
 
 **Last session:** 2026-07-22T20:15:00.000Z  
-**Stopped at:** Roadmap reconciled; next = discuss/plan Phase 14  
-**Resume file:** `.planning/ROADMAP.md` (Phase 14)  
+**Stopped at:** Repo hygiene + Phase 14 plans 14-01…14-07 drafted; next = execute 14-01/14-02  
+**Resume file:** `.planning/phases/14-production-parity-ship/14-01-PLAN.md`  
 **Default branch:** `main`
 
 ## Known runtime issues (for Phase 14-07)

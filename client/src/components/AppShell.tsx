@@ -237,7 +237,7 @@ export function AppShell({
                 </p>
               </div>
               <p className="hidden text-xs text-[#7A8A80] dark:text-[#9AABA0] sm:block">
-                Preview via Deezer · Spotify full play in Phase 12.6
+                Preview via Deezer · Spotify in-app when connected (Premium)
               </p>
             </div>
           </div>
