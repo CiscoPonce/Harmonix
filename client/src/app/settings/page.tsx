@@ -31,6 +31,24 @@ const selectClassName =
 const cardClassName =
   'rounded-2xl border border-[#E4EBE6] bg-white p-5 dark:border-[#2A3530] dark:bg-[#171E1B] sm:p-6';
 
+const MUSIC_STYLES = [
+  { value: 'any', label: 'Any' },
+  { value: 'pop', label: 'Pop' },
+  { value: 'rock', label: 'Rock' },
+  { value: 'hip-hop', label: 'Hip-Hop' },
+  { value: 'reggaeton', label: 'Reggaeton' },
+] as const;
+
+function normalizeGenre(value: string | undefined | null): string {
+  const g = String(value || 'pop').toLowerCase();
+  return MUSIC_STYLES.some((s) => s.value === g) ? g : 'pop';
+}
+
+function genreLabel(value: string | undefined | null): string {
+  const g = normalizeGenre(value);
+  return MUSIC_STYLES.find((s) => s.value === g)?.label || 'Pop';
+}
+
 function SettingsContent() {
   const { user, isLoading: authLoading, logout, refreshUser } = useAuth();
   const router = useRouter();
@@ -51,6 +69,7 @@ function SettingsContent() {
 
   const [nativeLanguage, setNativeLanguage] = useState('');
   const [targetLanguage, setTargetLanguage] = useState('');
+  const [musicStyle, setMusicStyle] = useState('pop');
   const [voiceGender, setVoiceGender] = useState<'female' | 'male'>('female');
   const [langSaving, setLangSaving] = useState(false);
   const [langError, setLangError] = useState<string | null>(null);
@@ -61,12 +80,14 @@ function SettingsContent() {
     if (!user) return;
     setNativeLanguage(user.native_language || '');
     setTargetLanguage(user.target_language || '');
+    setMusicStyle(normalizeGenre(user.genre));
     setVoiceGender(user.voice_gender === 'male' ? 'male' : 'female');
   }, [user]);
 
   const languagesDirty =
     nativeLanguage !== (user?.native_language || '') ||
     targetLanguage !== (user?.target_language || '') ||
+    musicStyle !== normalizeGenre(user?.genre) ||
     voiceGender !== (user?.voice_gender === 'male' ? 'male' : 'female');
 
   useEffect(() => {
@@ -199,6 +220,7 @@ function SettingsContent() {
         body: JSON.stringify({
           native_language: nativeLanguage,
           target_language: targetLanguage,
+          genre: musicStyle,
           voice_gender: voiceGender,
         }),
       });
@@ -237,7 +259,7 @@ function SettingsContent() {
             Account Settings
           </h1>
           <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-            Languages, pronunciation voice, Spotify, and appearance.
+            Languages, music style, pronunciation voice, Spotify, and appearance.
           </p>
         </header>
 
@@ -260,6 +282,9 @@ function SettingsContent() {
                   </span>
                 ) : null}
                 <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
+                  Style · {genreLabel(user.genre)}
+                </span>
+                <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
                   Voice · {user.voice_gender === 'male' ? 'Male' : 'Female'}
                 </span>
               </div>
@@ -271,10 +296,9 @@ function SettingsContent() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
             Learning profile
           </p>
-          <h2 className="mt-1 text-base font-bold">Languages & voice gender</h2>
+          <h2 className="mt-1 text-base font-bold">Languages, music style & voice</h2>
           <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-            Change home and learning languages, and choose a female or male pronunciation voice.
-            Genre and difficulty stay set from onboarding.
+            Choose where words come from and how they sound. Difficulty stays set from onboarding.
           </p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -330,7 +354,41 @@ function SettingsContent() {
             </div>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-5">
+            <p className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+              Music style
+            </p>
+            <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+              Prefer songs in this style when picking words for you.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Music style">
+              {MUSIC_STYLES.map((opt) => {
+                const active = musicStyle === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => {
+                      setMusicStyle(opt.value);
+                      setLangError(null);
+                      setLangSaved(false);
+                    }}
+                    className={`rounded-xl border px-3 py-3 text-sm font-bold transition ${
+                      active
+                        ? 'border-[#0B4D2E] bg-[#E8F5EE] text-[#0B4D2E] dark:border-[#3DCF7A] dark:bg-[#0B4D2E]/35 dark:text-[#3DCF7A]'
+                        : 'border-[#E4EBE6] bg-[#F7F8F6] text-[#5C6B62] hover:border-[#0B4D2E]/40 dark:border-[#2A3530] dark:bg-[#121A17] dark:text-[#9AABA0]'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-5">
             <p className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
               Voice gender
             </p>
@@ -401,6 +459,7 @@ function SettingsContent() {
                 onClick={() => {
                   setNativeLanguage(user.native_language || '');
                   setTargetLanguage(user.target_language || '');
+                  setMusicStyle(normalizeGenre(user.genre));
                   setVoiceGender(user.voice_gender === 'male' ? 'male' : 'female');
                   setLangError(null);
                   setLangSaved(false);

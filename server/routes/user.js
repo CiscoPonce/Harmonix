@@ -5,6 +5,7 @@ const { VALID_LANGUAGE_CODES } = require('../constants/languages');
 const wordQueue = require('../services/wordQueueService');
 
 const VALID_VOICE_GENDERS = ['female', 'male'];
+const VALID_GENRES = ['any', 'pop', 'rock', 'hip-hop', 'reggaeton'];
 
 function rejectInvalidLanguage(res, field, value) {
   if (value && !VALID_LANGUAGE_CODES.includes(value)) {
@@ -44,9 +45,18 @@ router.patch('/preferences', (req, res) => {
       error: `Invalid voice_gender. Must be one of: ${VALID_VOICE_GENDERS.join(', ')}`,
     });
   }
+  if (genre !== undefined) {
+    const normalizedGenre = String(genre).toLowerCase();
+    if (!VALID_GENRES.includes(normalizedGenre)) {
+      return res.status(400).json({
+        error: `Invalid genre. Must be one of: ${VALID_GENRES.join(', ')}`,
+      });
+    }
+    req.body.genre = normalizedGenre;
+  }
 
   const current = db.prepare(
-    'SELECT native_language, target_language FROM users WHERE id = ?'
+    'SELECT native_language, target_language, genre FROM users WHERE id = ?'
   ).get(userId);
   const nextNative = native_language ?? current?.native_language;
   const nextTarget = target_language ?? current?.target_language;
@@ -62,7 +72,7 @@ router.patch('/preferences', (req, res) => {
     for (const [key, value] of Object.entries({
       native_language,
       target_language,
-      genre,
+      genre: req.body.genre,
       difficulty,
       cefr_level,
       voice_gender,
@@ -77,7 +87,11 @@ router.patch('/preferences', (req, res) => {
     }
     params.push(userId);
     db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...params);
-    if (target_language !== undefined && target_language !== current?.target_language) {
+    const genreChanged =
+      req.body.genre !== undefined && req.body.genre !== current?.genre;
+    const languageChanged =
+      target_language !== undefined && target_language !== current?.target_language;
+    if (languageChanged || genreChanged) {
       wordQueue.purgeAll(userId);
     }
     const user = db.prepare(preferencesSelect()).get(userId);

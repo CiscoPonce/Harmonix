@@ -40,6 +40,22 @@ describe('User Preferences API Routes', () => {
   });
 
   describe('PATCH /preferences', () => {
+    it('updates genre', () => {
+      const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
+      const req = { body: { genre: 'Rock' }, user: { id: 'up-test' } };
+      const res = mockRes();
+      handler(req, res);
+      expect(res.body.genre).to.equal('rock');
+    });
+
+    it('rejects invalid genre with 400', () => {
+      const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
+      const req = { body: { genre: 'opera' }, user: { id: 'up-test' } };
+      const res = mockRes();
+      handler(req, res);
+      expect(res.statusCode).to.equal(400);
+    });
+
     it('updates voice_gender', () => {
       const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
       const req = { body: { voice_gender: 'male' }, user: { id: 'up-test' } };
