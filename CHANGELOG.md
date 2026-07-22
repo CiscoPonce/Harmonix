@@ -4,6 +4,32 @@ All notable changes to Harmonix are documented here. Releases are managed by
 [release-please](https://github.com/googleapis/release-please) from
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [Unreleased]
+
+### Features
+
+* unify Discover and Learn into one home (`/discover`; Learn nav removed)
+* Settings music style (genre) for daily-word personalization
+* Settings voice gender for Pocket-TTS pronunciation
+* theme-aware Harmonix logos (light / dark / mark)
+* Library header shows Spotify account when connected (`Spotify · {name}`)
+* player: Open in Spotify when Web Playback SDK is unavailable
+* public word postcards with rich WhatsApp / OG share
+* Deezer album art on Harmonix playlists and songs
+* Phase 14 production parity (popup OAuth, Flutter Settings languages, release runbook)
+
+### Bug Fixes
+
+* Library: keep Spotify status in header only (no duplicate Connected CTA)
+* sidebar: pin full height and restore Pro Plan card
+* player: fall back to Deezer 30s when Spotify SDK times out
+* daily-word: Hear-it seek / Spotify admission / cold-generate reliability
+* Spotify export: Deezer duration units and mobile match-report titles
+
+### Documentation
+
+* sync ROADMAP, STATE, README, PROJECT, REQUIREMENTS, and ops docs with v1.7 + post-ship polish
+
 ## [0.0.2](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.1...harmonix-v0.0.2) (2026-07-21)
 
 

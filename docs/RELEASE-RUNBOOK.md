@@ -58,6 +58,8 @@ Distribute directly to learners for sideloading.
 
 ## 3. Post-Deploy Smoke Test
 1. Open `https://moral-sparrow-nationally.ngrok-free.app/login`
-2. Test Login & Daily Word queue refill
-3. Click "Connect Spotify" to verify Popup OAuth flow
-4. Verify 30s Deezer preview audio playback
+2. Land on **Discover** — Word of the Day loads (or queues)
+3. **Settings** — languages, music style, voice gender save; Connect Spotify via popup OAuth
+4. **Library** — header shows `Spotify · {name}` when connected (no duplicate Connected button in body)
+5. Hear it / player — Spotify clip or Deezer 30s fallback; Open in Spotify when needed
+6. Create a Harmonix playlist and confirm it appears under Harmonix Playlists

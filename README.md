@@ -19,6 +19,7 @@ AI-first language learning through real music lyrics — validated against Deeze
 | Roadmap phases 1–14 | **Complete** (v1.7 Production Parity & Ship) |
 | Web home | Unified **Discover** (Word of the Day + practice + search) |
 | Nav | Discover · Library · Settings |
+| Settings | Languages · music style · voice gender · Spotify |
 | Mobile | Flutter primary (`mobile/`); Capacitor legacy fallback |
 | Branches | Product work is on `main` only |
 
@@ -27,12 +28,13 @@ See [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](
 ## Features
 
 - **Word of the Day** — Personalized word in a real lyric, buffered queue for fast next words
-- **Hear it** — Spotify Premium in-app clip when connected; Deezer 30s preview fallback
-- **Pronunciation** — Pocket-TTS cached WAV for supported languages
+- **Hear it** — Spotify Premium in-app clip when connected; Deezer 30s preview fallback + Open in Spotify
+- **Pronunciation** — Pocket-TTS cached WAV; Settings voice gender (female/male)
+- **Music style** — any / pop / rock / hip-hop / reggaeton (Settings; changing style refreshes the word queue)
 - **Song search & player** — Synced lyrics + vocabulary extraction
-- **Library** — Harmonix playlists + Spotify playlists; export Harmonix → Spotify
+- **Library** — Harmonix playlists + Spotify playlists; export Harmonix → Spotify; connected account shown in the header (`Spotify · {name}`)
 - **Practice** — SRS review + streak/goal chips on Discover
-- **Web shell** — Discover · Library · Settings (forest-green design system + brand logo)
+- **Web shell** — Discover · Library · Settings (forest-green design system + theme-aware logos)
 - **Android** — Flutter native app (`mobile/`) as primary mobile app; Capacitor web-wrapper (`client/android/`) retained as legacy fallback (D-14-05)
 
 ## Stack
@@ -55,7 +57,7 @@ mobile/          Flutter Android app (Play Store path)
 releases/        Sideload debug APKs
 docs/            Runbooks (Spotify, mobile, language reliability, releases)
 .planning/       ROADMAP, STATE, phase contexts & plans
-logoharmonix.png Brand logo (also client/public/logo.png)
+logoharmonix.png Brand logo (web: client/public/logo-{light,dark,mark}.png)
 run_env.sh       VPS: backend + Next prod + TTS + ngrok
 deploy.sh        pull → tests → run_env (tests may block; prefer run_env after pull)
 ```
@@ -102,7 +104,7 @@ Known env-sensitive failures: Pocket-TTS not running; Spotify `/status` contract
 
 ## Planning
 
-Milestone **v1.7** is complete (Phase 14). Remaining work is optional ops polish (AI provider reliability, Play Store listing, domain).
+Milestone **v1.7** is complete (Phase 14). Post-ship polish (Discover unify, Settings music style / voice, Library Spotify header) is documented in ROADMAP → *Post-v1.7 polish*. Remaining work is optional ops (AI provider reliability, Play Store listing, domain).
 
 ## Releases
 

@@ -1,6 +1,6 @@
 # Harmonix Roadmap
 
-**Last reconciled:** 2026-07-22 — full codebase + VPS runtime audit  
+**Last reconciled:** 2026-07-22 — phases 1–14 complete + post-ship polish synced  
 **Live:** https://moral-sparrow-nationally.ngrok-free.app (`main` @ VPS)
 
 ---
@@ -25,7 +25,8 @@
 
 **Deploy:** `git pull` on VPS → `bash run_env.sh` (backend + `next build/start` + TTS + ngrok).  
 **Auth:** JWT access + httpOnly refresh cookie.  
-**Learning core:** AI song candidates → Deezer match → LRCLib synced lyrics → queue (`user_word_queue`) → Daily Word on unified Discover home.
+**Learning core:** AI song candidates → Deezer match → LRCLib synced lyrics → queue (`user_word_queue`) → Daily Word on unified **Discover** home.  
+**Preferences:** Settings edits home/learning languages, music style (genre), and TTS voice gender; genre change purges the word queue.
 
 ---
 
@@ -37,69 +38,56 @@
 | 8 | Harmonix rebrand & landing | Complete |
 | 9 | Badges, playlists, onboarding, SRS | Complete |
 | 9.5 | Background word queue | Complete |
+| 10 | Mobile dual frontend (Flutter primary) | Complete (MVP) |
 | 11 | Word Phonics TTS (Pocket-TTS) | Complete |
-| **12** | Spotify API (OAuth, Library, export) | **Complete** (product MVP) |
-| **12.6** | Spotify in-app playback **(web)** | **Complete** (web MVP) |
-| **13** | Web design system (shell + Discover) | **Complete** (MVP) |
+| **12** | Spotify API (OAuth, Library, export) | **Complete** |
+| **12.5** | Spotify Connect UX (popup + Library) | **Complete** (via Phase 14-02) |
+| **12.6** | Spotify in-app playback **(web)** | **Complete** |
+| **13** | Web design system (shell + Discover) | **Complete** |
+| **14** | Production Parity & Ship | **Complete** |
 
 ### Phase 12 — Spotify API Integration ✅
 
-Shipped and live: PKCE OAuth, encrypted tokens, Settings Connect, provider-separated Library, playlist detail, Harmonix→Spotify export + match report, web + Android linking, `/callback` alias, ops runbook.
+Shipped and live: PKCE OAuth, encrypted tokens, Settings Connect card, provider-separated Library, playlist detail, Harmonix→Spotify export + match report, web + Android linking, `/callback` alias, ops runbook.
 
-Residual ops (not blocking “done”): Extended Quota Mode for public users; formal accessibility/policy checklist — tracked in **Phase 14**.
+Residual ops (not blocking “done”): Extended Quota Mode for public users — tracked as optional post-v1.7 ops.
+
+### Phase 12.5 — Spotify Connect UX ✅
+
+Shipped via Phase 14-02: popup OAuth on web, Library refresh after connect, Settings Connect / Connected / Reconnect / Disconnect. Library header shows account chip (`Spotify · {display_name}`) when linked; Connect / Reconnect CTAs stay in the header (not duplicated in page body).
 
 ### Phase 12.6 — Spotify In-App Playback (web) ✅
 
-Shipped on web: Web Playback SDK, `GET /api/spotify/player/token`, `POST /api/spotify/resolve-play`, Daily Word Hear-it + full player Spotify-first / Deezer fallback, ~12s line-anchored clips, per-user API admission queue.
+Shipped on web: Web Playback SDK, `GET /api/spotify/player/token`, `POST /api/spotify/resolve-play`, Daily Word Hear-it + full player Spotify-first / Deezer 30s fallback, **Open in Spotify** when SDK unavailable, ~12s line-anchored clips, per-user API admission queue.
 
-Android in-app Spotify streaming remains **Phase 14**.
+Android in-app Spotify streaming remains out of scope (honest fallback: Deezer preview + Open in Spotify).
 
 ### Phase 13 — Web Design System ✅
 
-Shipped: AppShell (Discover · Library · Settings), DM Sans + Fraunces, forest tokens, unified `/discover` home (Word of the Day + practice strip + search; Learn folded in), brand logo wordmark.
+Shipped: AppShell (Discover · Library · Settings), DM Sans + Fraunces, forest tokens, unified `/discover` home (Word of the Day + practice strip + search; Learn folded in; `/dashboard` redirects), theme-aware brand logos, full-height sidebar + Pro Plan card.
 
 ### Phase 11 — TTS ✅
 
-Pocket-TTS HQ on `:3002`, `/api/daily-word/pronounce`, SQLite cache, web + Flutter speakers. Live on VPS.
+Pocket-TTS HQ on `:3002`, `/api/daily-word/pronounce`, SQLite cache, web + Flutter speakers, Settings **voice gender** preference.
 
 ### Phase 9.5 — Word queue ✅
 
-Validated queue + `/next` + refill; cold generate still ~20–60s when empty (AI timeouts fall back to curated catalogs).
+Validated queue + `/next` + refill; cold generate still ~20–60s when empty (AI timeouts fall back to curated catalogs). Music style changes purge the queue so the next refill matches the new genre.
 
----
+### Phase 10 — Mobile dual frontend ✅
 
-## Phase 10 — Mobile dual frontend (MVP shipped; release open)
+MVP complete. Flutter is primary Android; Capacitor retained as legacy fallback (D-14-05). Play Store listing / production domain remain optional ops.
 
-**Status:** MVP complete — release / Play Store / docs open → rolled into Phase 14  
-**Milestone:** v1.3
-
-| Plan | Name | Status |
-|------|------|--------|
-| 10-00A | Prerequisites — ngrok OK | Done |
-| 10-00B | Domain + Play Store | → Phase 14 |
-| 10-01 | Capacitor Android APK | Done (bridge) |
-| 10-02 | Option B Play internal track | → Phase 14 |
-| 10-03 | Flutter MVP (`mobile/`) | Done |
-| 10-04 | Dual-frontend parity / test gate | → Phase 14 |
-| 10-05 | Dual-frontend runbook | → Phase 14 |
-
-**Shipped on Flutter today:** 3-tab shell (Discover · Library · Settings), Daily Word + Deezer preview + TTS, Spotify OAuth/Library/export, language edit in Settings, dark mode, stats/badges.  
+**Shipped on Flutter:** 3-tab shell (Discover · Library · Settings), Daily Word + Deezer preview + TTS, Spotify OAuth/Library/export, language edit in Settings, dark mode, stats/badges.  
 **Not on Flutter:** in-app Spotify playback (external Open in Spotify only).
 
 ---
 
-## Phase 12.5 — Spotify Connect UX
+## Phase 14 — Production Parity & Ship ✅
 
-**Status:** Planned — folded into Phase 14  
-Popup OAuth, Library inline Connect, onboarding prompt — not yet in code (Connect still Settings-first / Discover link to Settings).
-
----
-
-## Phase 14 — Production Parity & Ship *(consolidated remaining work)*
-
-**Status:** Complete ✅  
+**Status:** Complete  
 **Milestone:** v1.7 — Ship  
-**Goal:** One phase for everything still open: web polish, mobile parity, Connect UX, release ops.
+**Goal:** One phase for everything still open at ship: web polish, mobile parity, Connect UX, release ops.
 
 | Plan | Name | Status | Priority |
 |------|------|--------|----------|
@@ -113,11 +101,26 @@ Popup OAuth, Library inline Connect, onboarding prompt — not yet in code (Conn
 
 **Out of scope for 14:** Wear OS productization, iOS, full-song hosting, import Spotify→vocab pipeline.
 
-**Context stubs:** reuse  
+**Context stubs:**  
 [12.5-CONTEXT](./phases/12.5-spotify-connect-ux/12.5-CONTEXT.md),  
 [12.6-CONTEXT](./phases/12.6-spotify-in-app-playback/12.6-CONTEXT.md),  
 [13-CONTEXT](./phases/13-web-design-system/13-CONTEXT.md),  
 [10-CONTEXT](./phases/10-mobile-dual-frontend/10-CONTEXT.md).
+
+---
+
+## Post-v1.7 polish (shipped on `main`, 2026-07-22)
+
+Not a new phase — product refinements after Phase 14 close:
+
+| Area | What shipped |
+|------|----------------|
+| Home | Discover = single home; Learn removed from nav; `/dashboard` → `/discover` |
+| Settings | Music style (any/pop/rock/hip-hop/reggaeton) + voice gender (female/male) |
+| Library | Connected Spotify account in **header only** (`Spotify · {name}`) |
+| Player | Spotify SDK timeout → Deezer 30s + Open in Spotify |
+| Brand | Transparent theme logos; HarmonixWordmark light/dark |
+| Shell | Sidebar pinned full height; Pro Plan restored |
 
 ---
 
@@ -132,6 +135,6 @@ Observed on VPS while live:
 
 ---
 
-## Suggested next command
+## Suggested next
 
-Optional ops only — Phase 14 is complete. Prefer `/gsd-progress` or a new milestone discuss if starting post-v1.7 work (domain, Play Store listing, AI provider hardening).
+Optional ops only — Phase 14 is complete. Prefer `/gsd-progress` or a new milestone discuss for: production domain, Play Store listing, AI provider hardening, Extended Spotify Quota.

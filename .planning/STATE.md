@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: production-parity-ship
 status: complete
-stopped_at: "Phases 1–14 complete; Discover/Learn unified; brand logo shipped"
-last_updated: "2026-07-22T22:35:00.000Z"
+stopped_at: "Phases 1–14 complete; post-ship polish + docs sync (2026-07-22)"
+last_updated: "2026-07-22T23:00:00.000Z"
 progress:
   total_phases: 14
   completed_phases: 14
@@ -15,7 +15,9 @@ progress:
 
 ## Current Focus
 
-**All roadmap phases (1–14) are COMPLETE.** Product home is unified **Discover** (Learn folded in). Brand logo live on web shell / auth / landing.
+**All roadmap phases (1–14) are COMPLETE** (milestone v1.7). Post-ship polish on `main` is live: unified Discover home, Settings music style + voice gender, Library Spotify account in header only, theme-aware brand logos, player Open-in-Spotify / Deezer fallback.
+
+Optional next work: domain + Play Store listing, AI provider hardening — not a new phase until discussed.
 
 ## What is live now
 
@@ -25,10 +27,11 @@ progress:
 | API | Express `:3001` + JWT auth |
 | Frontend | Next production `:3009` via `run_env.sh` |
 | TTS | Pocket-TTS HQ `:3002` |
-| Spotify | OAuth Connect (Popup & Deep Link), Library, export, web play / Hear-it |
-| Languages | Web & Flutter Settings change home + learning languages (not genre) |
+| Spotify | Popup OAuth, Library sync/export, web play / Hear-it; Library header shows `Spotify · {name}` when connected |
+| Settings | Home + learning languages, **music style**, **voice gender**, Spotify Connect card |
 | Flutter | 3-tab app (Discover · Library · Settings) + Spotify OAuth/Library/export |
-| Brand | `client/public/logo.png` + AppShell / auth wordmark |
+| Brand | Theme logos (`logo-light.png` / `logo-dark.png` / `logo-mark.png`) + AppShell wordmark |
+| Shell | Fixed full-height sidebar; Pro Plan card; nav Discover · Library · Settings |
 | Deploy | Standalone APK runbook + `run_env.sh` |
 | Git | Product branch = `main` only |
 
@@ -40,9 +43,9 @@ progress:
 | 10 | Complete | Flutter primary app shipped |
 | 11 | Complete | TTS live |
 | 12 | Complete | Spotify API Integration |
-| 12.5 | Complete | Popup OAuth & Library Connect |
-| 12.6 | Complete | Web Playback SDK & Android Honest Fallback |
-| 13 | Complete | Web Design System + unified Discover |
+| 12.5 | Complete | Popup OAuth & Library Connect (via Phase 14-02) |
+| 12.6 | Complete | Web Playback SDK & Android honest fallback |
+| 13 | Complete | Web design system + unified Discover |
 | **14** | **Complete** | Production Parity & Ship |
 
 ## Architecture (verified)
@@ -61,14 +64,16 @@ Flutter Android (`mobile/`) ──────┼─► Express + SQLite
 - Spotify-first Hear-it / full player with Deezer fallback on web (D-12.6-12)
 - Popup OAuth window on Web (`D-14-01`)
 - External browser + deep link on Flutter (`D-14-03`)
-- Honest Fallback for Spotify on Flutter Android (`D-14-04`)
+- Honest fallback for Spotify on Flutter Android (`D-14-04`)
 - Standalone APK + release runbook (`D-14-07`)
 - Discover is the single home; Learn nav removed (`2026-07-22`)
+- Library Spotify status lives in the **header only** (`2026-07-22`)
+- Music style (genre) and TTS voice gender are editable in Settings (`2026-07-22`)
 
 ## Session
 
 **Last session:** 2026-07-22  
-**Stopped at:** Brand logo + repo README readiness; phases verified complete on `main`  
+**Stopped at:** Documentation sync across ROADMAP / STATE / README / CHANGELOG / ops docs  
 **Default branch:** `main`
 
 ## Known runtime issues (ops polish)

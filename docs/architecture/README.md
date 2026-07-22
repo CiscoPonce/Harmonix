@@ -2,6 +2,9 @@
 
 Dark-mode overviews of how Harmonix is wired. PNG previews render on GitHub; SVG sources are editable in any browser or VS Code.
 
+**Product surfaces (2026-07-22):** Next.js web + Flutter Android → Express `:3001` + SQLite; Deezer, LRCLib, NVIDIA/OpenRouter, Spotify, Pocket-TTS `:3002`.  
+**IA:** Discover (home) · Library · Settings. See [`.planning/ROADMAP.md`](../../.planning/ROADMAP.md).
+
 ## Backend architecture
 
 VPS layout: Express gateway, routes, services, SQLite, Next.js proxy, external APIs.
@@ -17,3 +20,4 @@ Client screens, API calls, NVIDIA NIM, Deezer/LRCLib, validation, and SQLite cac
 ![Harmonix app flow](./app-flow.png)
 
 Sources: [app-flow.svg](./app-flow.svg) · [app-flow.png](./app-flow.png)
+

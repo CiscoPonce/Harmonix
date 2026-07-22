@@ -159,7 +159,8 @@ Official references:
 
 ## 6. Client UX constraints
 
-- Settings hosts Connect / Connected / Reconnect / Disconnect (not Library).
+- **Settings** hosts the full Connect / Connected / Reconnect / Disconnect card (`SpotifyConnectionCard`).
+- **Library (web)** shows a compact account chip in the **header only** when linked (`Spotify · {display_name}`); Connect / Reconnect CTAs also live in the header when not connected. Do not duplicate Connected CTAs in the page body.
 - Library shows provider-separated Spotify group; Spotify failures must not clear Harmonix content.
 - Display at most **20** Spotify items in a content set; continuation is the **API-provided** HTTPS `open.spotify.com` onward link (no invented local pagination).
 - Open in Spotify: only API-provided HTTPS URLs after client validation.

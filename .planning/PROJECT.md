@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Harmonix is an AI-first language learning platform that teaches vocabulary through song lyrics. It dynamically generates personalized content based on user preferences and proficiency, strictly validated against real-world music APIs (LRCLib, Deezer) to ensure accuracy.
+Harmonix is an AI-first language learning platform that teaches vocabulary through song lyrics. It dynamically generates personalized content based on user preferences and proficiency, strictly validated against real-world music APIs (LRCLib, Deezer) to ensure accuracy. Spotify Connect powers Library sync, export, and (on web) Premium in-app playback.
 
 ## Core Value
 
@@ -10,46 +10,51 @@ Contextual language learning through real music lyrics with 100% accurate, AI-pe
 
 ## Requirements
 
-### Validated
+### Validated (v1.7 shipped)
 
-(None yet — ship to validate)
+- [x] **AI-Personalized Vocabulary**: Daily words from user profile (languages, difficulty, music style).
+- [x] **Lyric Validation Loop**: AI candidates matched to Deezer + LRCLib before serving.
+- [x] **Interactive web app**: Next.js App Router shell (Discover · Library · Settings).
+- [x] **Audio Integration**: Deezer 30s previews; Spotify Web Playback when connected (Premium).
+- [x] **User Authentication**: JWT access + httpOnly refresh cookie.
+- [x] **SQLite Caching**: Songs, daily-word queue, TTS pronunciation cache.
+- [x] **Open-Source Core**: MIT-licensed codebase.
+- [x] **Native Android (Flutter)**: Primary mobile client (`mobile/`); Capacitor retained as legacy fallback.
 
-### Active
+### Active / optional ops
 
-- [ ] **AI-Personalized Vocabulary**: Generate daily words based on user profile (language, difficulty, genre).
-- [ ] **Lyric Validation Loop**: Cross-check AI-generated content against LRCLib and Deezer to prevent hallucinations.
-- [ ] **Interactive PWA**: Web-based Progressive Web App with offline caching support.
-- [ ] **Audio Integration**: 30-second song previews for contextual listening.
-- [ ] **User Authentication**: JWT-based auth for personalized learning history.
-- [ ] **SQLite Caching**: Persistent storage for validated songs and daily words to optimize API usage.
-- [ ] **Open-Source Core**: MIT-licensed codebase for transparency and community trust.
+- [ ] Production domain (replace ngrok for public release)
+- [ ] Play Store listing + Extended Spotify Quota for non-allowlisted users
+- [ ] AI provider hardening (reduce NIM 404 / OpenRouter 429 cold-path latency)
 
 ### Out of Scope
 
-- [ ] **Native Mobile Apps (v1)** — Deferred to Phase 4 (Flutter) to prioritize web validation.
-- [ ] **Wear OS Support** — Deferred to future mobile phase.
-- [ ] **Full Song Streaming** — Out of scope due to copyright; restricted to 30s previews.
-- [ ] **Proprietary SRS Algorithms** — Kept in separate private repositories.
+- [ ] **Wear OS Support** — Deferred.
+- [ ] **Full Song Streaming / hosting** — Copyright; 30s Deezer + Spotify Premium streaming only.
+- [ ] **iOS App Store** — After Android release path is stable.
+- [ ] **Import Spotify → vocab pipeline** — Not in v1.7.
 
 ## Context
 
-Harmonix aims to bridge the gap between traditional vocabulary apps and real-world media consumption. It leverages NVIDIA NIM for free AI inference and existing music databases for validation, keeping infrastructure costs near zero.
+Harmonix bridges traditional vocabulary apps and real-world music. Learning home is unified **Discover**. Preferences (languages, music style, voice gender) live in Settings. Dual frontend (Next.js + Flutter) shares one Express API.
 
 ## Constraints
 
-- **Tech Stack**: Node.js (Express), SQLite, Next.js/React.
-- **Budget**: Zero-budget MVP (utilizing existing VPS and free-tier APIs).
-- **API Limits**: Must respect rate limits for NVIDIA NIM, LRCLib, and Deezer.
-- **Licensing**: Core must be MIT-compliant; lyrics must respect Fair Use/Copyright.
+- **Tech Stack**: Node.js (Express), SQLite, Next.js/React, Flutter Android, Pocket-TTS, Spotify Web API.
+- **Budget**: Near-zero MVP (VPS + free-tier APIs); Spotify Extended Quota required for public OAuth beyond allowlist.
+- **API Limits**: Respect rate limits for NVIDIA NIM, OpenRouter, LRCLib, Deezer, Spotify.
+- **Licensing**: Core MIT; lyrics via LRCLib; no full-song hosting.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Node.js (Express) | Lightweight, excellent API support, fast for PWA development. | — Pending |
-| SQLite | Zero-config, perfect for MVP scale and local caching. | — Pending |
-| Minimalistic UI | Prioritizing focus and speed for language learning. | — Pending |
-| PWA First | Faster validation of concept before committing to native mobile. | — Pending |
+| Node.js (Express) + SQLite | Lightweight API + zero-config persistence | Shipped |
+| Dual frontend, one API | Web validate fast; Flutter for Play Store | Shipped (D-10-02) |
+| Discover = single home | Remove Learn/Dashboard split | Shipped 2026-07-22 |
+| Spotify-first play + Deezer fallback | Premium UX when linked; always-on preview | Shipped (D-12.6-12) |
+| Library Spotify status in header only | Avoid duplicate Connect/Connected CTAs | Shipped 2026-07-22 |
+| Capacitor kept as fallback | Bridge until Flutter is sole mobile path | D-14-05 |
 
 ## Evolution
 
@@ -69,4 +74,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: June 12, 2026 after initialization*
+*Last updated: July 22, 2026 — v1.7 complete + post-ship polish*

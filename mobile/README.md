@@ -2,7 +2,9 @@
 
 Native Android client for Harmonix. Consumes the same Express `/api/*` as the web app.
 
-**Roadmap:** Android Play Store first → production domain live → iOS / App Store.
+**Nav:** Discover · Library · Settings (Learn folded into Discover)  
+**Roadmap:** Android Play Store first → production domain live → iOS / App Store.  
+**Planning:** [`.planning/ROADMAP.md`](../.planning/ROADMAP.md) · [`.planning/STATE.md`](../.planning/STATE.md)
 
 ## Setup
 
@@ -37,16 +39,19 @@ flutter build appbundle --release --dart-define=API_BASE=https://YOUR_DOMAIN/api
 ## QA checklist
 
 - [ ] Register / login / session restore after kill
-- [ ] Onboarding: 6 languages, genre, difficulty → prefs saved
-- [ ] Language switch clears stale queue (no wrong-language WOTD)
-- [ ] Learn: hero word, definition, IPA, lyric highlight, Play preview, Share, Next word
+- [ ] Onboarding: languages, genre, difficulty → prefs saved
+- [ ] Language / genre switch clears stale queue (no wrong-language WOTD)
+- [ ] Discover: Word of the Day, definition, IPA, lyric highlight, Play preview, Share, Next word
 - [ ] Speaker uses Pocket-TTS `/daily-word/pronounce` (fallback device TTS only on failure)
 - [ ] Queue badge updates (`N ready`)
 - [ ] Discover search returns tracks; tap opens player
-- [ ] Library: create playlist; open playlist detail
-- [ ] Settings: stats, badges, edit prefs, logout
+- [ ] Library: create playlist; open playlist detail; Spotify section when connected
+- [ ] Settings: stats, badges, languages, Spotify Connect, logout
+- [ ] Spotify: OAuth via external browser + deep link return
+- [ ] Playback: Deezer 30s preview + Open in Spotify (no in-app Spotify SDK on Android)
 - [ ] Offline / API error shows retry (not hang)
 
 ## Design
 
 Light + dark green (`#006432`) — team WOTD mockup + `.planning/phases/10-mobile-dual-frontend/10-UI-SPEC.md`.
+Align with web forest tokens where practical; web is source of truth for Discover · Library · Settings IA.

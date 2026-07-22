@@ -1,53 +1,65 @@
 # v1 Requirements — Harmonix
 
+**Status:** Core v1 requirements satisfied by milestone **v1.7** (Phase 14). Traceability below reflects shipped product on `main`.
+
 ## 1. Music Playback & Sync (PLAYER)
 
 - [x] **PLAYER-01**: **Synced 30s Previews**. Play 30-second audio snippets from Deezer API synchronized with LRC-format lyrics.
-- [x] **PLAYER-02**: **Contextual Audio Playback**. Allow users to replay the specific timestamped audio segment associated with a target vocabulary word.
-- [ ] **PLAYER-03**: **Validation Loop**. Implement logic to verify that AI-selected songs have valid LRC lyrics and that audio durations match the lyric timestamps before serving to users.
+- [x] **PLAYER-02**: **Contextual Audio Playback**. Replay the timestamped audio segment for a target vocabulary word (Hear it / player seek).
+- [x] **PLAYER-03**: **Validation Loop**. Serve words only after Deezer match + LRCLib synced lyrics (queue + curated fallback).
+- [x] **PLAYER-04**: **Spotify in-app (web)**. Web Playback SDK when connected + Premium; Deezer fallback + Open in Spotify otherwise.
 
 ## 2. AI-Driven Learning (AI)
 
-- [x] **AI-01**: **AI-Personalized Vocab**. Use NVIDIA NIM to analyze song lyrics and select 5-10 vocabulary words appropriate for the user's proficiency level and target language.
-- [x] **AI-02**: **Daily Word**. AI generates one personalized word per day (or on demand), finds a real song containing it, validates lyrics/audio, and presents the lyric snippet.
+- [x] **AI-01**: **AI-Personalized Vocab**. NVIDIA NIM / OpenRouter select vocabulary appropriate for proficiency and target language.
+- [x] **AI-02**: **Daily Word**. Personalized word in a real song lyric, queued for fast next-word delivery.
 
 ## 3. Learning & Gamification (STUDY)
 
-- [ ] **STUDY-01**: **SRS Flashcards**. Implement a Spaced Repetition System (FSRS) for reviewing learned vocabulary words.
-- [ ] **STUDY-02**: **Fill-in-the-blank Quizzes**. Generate interactive exercises where users must identify or type the missing target word in a lyric snippet while the audio plays.
-- [ ] **STUDY-03**: **Basic Gamification**. Track user XP, daily streaks, and levels to encourage consistent practice.
+- [x] **STUDY-01**: **SRS Flashcards**. Spaced repetition review (`/review`) with streak/goal chips on Discover.
+- [ ] **STUDY-02**: **Fill-in-the-blank Quizzes**. Interactive lyric cloze while audio plays — deferred / not shipped.
+- [x] **STUDY-03**: **Basic Gamification**. Streaks, goals, badges, stats.
 
 ## 4. Platform & Infrastructure (PLAT)
 
-- [ ] **PLAT-01**: **User Authentication**. JWT-based secure login and registration system (Email/Password).
-- [ ] **PLAT-02**: **Minimalist Dark Theme**. A high-contrast, distraction-free UI designed for focused language study.
+- [x] **PLAT-01**: **User Authentication**. JWT login/register + refresh cookie.
+- [x] **PLAT-02**: **Minimalist Dark Theme**. Forest-green design system; Discover · Library · Settings shell.
+- [x] **PLAT-03**: **Settings preferences**. Home/learning languages, music style, voice gender, Spotify Connect.
+- [x] **PLAT-04**: **Native Android**. Flutter primary app; Capacitor legacy fallback.
+- [x] **PLAT-05**: **Spotify Library**. OAuth, playlist sync, Harmonix→Spotify export, header account chip.
 
----
+## v2 / Deferred
 
-## v2 / Deferred Requirements
-
-- **PLAYER-04**: Search & Discovery (Manual song search).
-- **AI-02**: Metaphor Decoder (Explaining poetic slang).
-- **AI-03**: Grammar Pattern Tagging.
-- **PLAT-03**: PWA Support (Service workers, offline caching).
-- **PLAT-04**: Native Mobile Apps (Flutter).
+- **STUDY-02**: Fill-in-the-blank quizzes.
+- **AI metaphor / grammar tagging**.
+- **PWA offline-first** hardening.
+- **iOS / Wear OS**.
+- **Production domain + Play Store public listing**.
+- **Spotify Extended Quota** for users beyond Development Mode allowlist.
 
 ## Out of Scope
 
-- **Full Song Playback**: Restricted to 30s previews for copyright compliance.
-- **Community-Contributed Lyrics**: All lyrics must be sourced from validated APIs.
+- **Full Song Playback / hosting**: Restricted to Deezer 30s + Spotify Premium streaming.
+- **Community-Contributed Lyrics**: Lyrics from validated APIs only (LRCLib).
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PLAYER-01 | Phase 2 | Complete |
-| PLAYER-02 | Phase 2 | Complete |
-| PLAYER-03 | Phase 6 | Pending |
+| PLAYER-02 | Phase 2 / 12.6 | Complete |
+| PLAYER-03 | Phase 6 / 9.5 | Complete |
+| PLAYER-04 | Phase 12.6 | Complete (web) |
 | AI-01 | Phase 3 | Complete |
-| AI-02 | Phase 7 | Complete |
-| STUDY-01 | Phase 5 | Pending |
-| STUDY-02 | Phase 4 | Pending |
-| STUDY-03 | Phase 5 | Pending |
-| PLAT-01 | Phase 1 | Pending |
-| PLAT-02 | Phase 1 | Pending |
+| AI-02 | Phase 7 / 9.5 | Complete |
+| STUDY-01 | Phase 5 / 9 | Complete |
+| STUDY-02 | — | Deferred |
+| STUDY-03 | Phase 9 | Complete |
+| PLAT-01 | Phase 1 | Complete |
+| PLAT-02 | Phase 1 / 13 | Complete |
+| PLAT-03 | Phase 9 / 14 + polish | Complete |
+| PLAT-04 | Phase 10 / 14 | Complete |
+| PLAT-05 | Phase 12 / 14 | Complete |
+
+---
+*Last updated: July 22, 2026*
