@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useSyncEngine } from '../hooks/useSyncEngine';
 import LyricList, { MappedVocabItem } from './LyricList';
-import { Play, Pause, SkipBack, SkipForward, BookOpen, X, ArrowLeft, FolderPlus, Share2 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, BookOpen, X, ArrowLeft, FolderPlus, Share2, ExternalLink } from 'lucide-react';
 import { Button } from './ui/Button';
 import { VocabPopover } from './VocabPopover';
 import { VocabItem } from '@/app/player/[id]/page';
@@ -30,6 +30,16 @@ interface PlayerProps {
   unmappedVocab?: VocabItem[];
   cefrLevel?: string;
   onCefrChange?: (level: string) => void;
+}
+
+function openSpotifyUrlForTrack(
+  uri: string | null,
+  title: string,
+  artist: string
+): string {
+  const m = String(uri || '').match(/^spotify:track:([A-Za-z0-9]+)$/);
+  if (m) return `https://open.spotify.com/track/${m[1]}`;
+  return `https://open.spotify.com/search/${encodeURIComponent(`${artist} ${title}`)}`;
 }
 
 const Player: React.FC<PlayerProps> = ({ 
@@ -66,9 +76,7 @@ const Player: React.FC<PlayerProps> = ({
       /* search fallback */
     }
     if (!spotifyUrl) {
-      spotifyUrl = `https://open.spotify.com/search/${encodeURIComponent(
-        `${track.artist} ${track.title}`
-      )}`;
+      spotifyUrl = openSpotifyUrlForTrack(null, track.title, track.artist);
     }
 
     const shareText = [
@@ -107,6 +115,11 @@ const Player: React.FC<PlayerProps> = ({
   const spotifyPlayer = useSpotifyInAppPlayer();
   const songTimeRef = useRef(0);
 
+  const spotifyOpenUrl = useMemo(
+    () => openSpotifyUrlForTrack(spotifyUri, track.title, track.artist),
+    [spotifyUri, track.title, track.artist]
+  );
+
   const getSongTimeMs = useCallback(() => {
     if (audioSource !== 'spotify') return null;
     return Math.round(songTimeRef.current * 1000);
@@ -143,40 +156,68 @@ const Player: React.FC<PlayerProps> = ({
     onSeekSongSeconds: audioSource === 'spotify' ? onSeekSongSeconds : undefined,
   });
 
-  // Prefer Spotify when connected; otherwise Deezer 30s preview.
+  // Prefer Spotify in-app when SDK is ready; otherwise Deezer 30s preview (+ Open in Spotify).
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      let uri: string | null = null;
+      try {
+        const resolved = await resolveSpotifyPlay({
+          title: track.title,
+          artist: track.artist,
+          song_id: String(track.id),
+          duration_ms: track.duration > 0 ? Math.round(track.duration * 1000) : null,
+        });
+        if (!cancelled) uri = resolved.uri;
+      } catch {
+        /* Open-in-Spotify will use search fallback */
+      }
+      if (cancelled) return;
+      setSpotifyUri(uri);
+
       try {
         const status = await fetchSpotifyStatus();
         if (cancelled) return;
-        if (status.state === 'connected' && status.playback_scopes_ok !== false) {
-          await spotifyPlayer.warmup();
+        if (status.state === 'connected' && status.playback_scopes_ok !== false && uri) {
+          const ready = await spotifyPlayer.warmup();
           if (cancelled) return;
-          const resolved = await resolveSpotifyPlay({
-            title: track.title,
-            artist: track.artist,
-            song_id: String(track.id),
-            duration_ms: track.duration > 0 ? Math.round(track.duration * 1000) : null,
-          });
-          if (cancelled) return;
-          setSpotifyUri(resolved.uri);
-          setAudioSource('spotify');
-          return;
+          if (ready) {
+            setAudioSource('spotify');
+            return;
+          }
+          setAudioError(
+            'Spotify player timed out. Using Deezer 30s preview — open the full track in Spotify.'
+          );
         }
       } catch {
         /* Deezer fallback */
       }
-      if (!cancelled) {
-        setSpotifyUri(null);
-        setAudioSource('deezer');
-      }
+      if (!cancelled) setAudioSource('deezer');
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track.artist, track.duration, track.id, track.title]);
+
+  // If in-app Spotify dies mid-session, fall back to Deezer preview.
+  useEffect(() => {
+    if (audioSource !== 'spotify') return;
+    if (
+      spotifyPlayer.ui === 'error' ||
+      spotifyPlayer.ui === 'premium_required' ||
+      spotifyPlayer.ui === 'reconnect'
+    ) {
+      setAudioSource('deezer');
+      setIsPlaying(false);
+      setSongTimeSec(0);
+      songTimeRef.current = 0;
+      setAudioError(
+        spotifyPlayer.message ||
+          'Spotify playback unavailable. Using Deezer 30s preview.'
+      );
+    }
+  }, [audioSource, spotifyPlayer.message, spotifyPlayer.ui]);
 
   // Poll Spotify position while playing.
   useEffect(() => {
@@ -504,9 +545,21 @@ const Player: React.FC<PlayerProps> = ({
           </Button>
         </div>
 
+        <div className="mt-5 flex justify-center">
+          <a
+            href={spotifyOpenUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-full border border-[#1DB954]/50 bg-[#1DB954]/15 px-4 py-2 text-xs font-bold uppercase tracking-widest text-[#1DB954] transition hover:bg-[#1DB954]/25 hover:text-[#1ed760]"
+          >
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            Open in Spotify
+          </a>
+        </div>
+
         {/* Audio Error Alert */}
         {audioError && (
-          <div className="max-w-xl mx-auto mb-4 p-3 bg-zinc-950 border border-red-950 rounded-lg text-[10px] text-zinc-400 flex items-center justify-between uppercase tracking-widest font-black animate-in fade-in duration-200">
+          <div className="max-w-xl mx-auto mt-4 mb-2 p-3 bg-zinc-950 border border-zinc-800 rounded-lg text-[10px] text-zinc-400 flex items-center justify-between uppercase tracking-widest font-black animate-in fade-in duration-200">
             <span>{audioError}</span>
             <button 
               onClick={() => setAudioError(null)} 
@@ -517,19 +570,9 @@ const Player: React.FC<PlayerProps> = ({
           </div>
         )}
 
-        {spotifyPlayer.message && audioSource === 'spotify' && (
-          <p className="max-w-xl mx-auto mt-3 text-center text-[10px] text-zinc-500 uppercase tracking-widest">
-            {spotifyPlayer.message}
-          </p>
-        )}
-
-        {audioSource === 'deezer' && (
+        {audioSource === 'deezer' && !audioError && (
           <p className="max-w-xl mx-auto mt-3 text-center text-[10px] text-zinc-400 font-medium uppercase tracking-widest">
-            30s Preview Mode ·{' '}
-            <Link href="/settings" className="text-emerald-400 underline hover:text-emerald-300 font-bold">
-              Connect Spotify in Settings
-            </Link>{' '}
-            for full track audio
+            30s preview · use Open in Spotify for the full track
           </p>
         )}
 

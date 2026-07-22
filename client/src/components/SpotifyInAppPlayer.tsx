@@ -381,11 +381,12 @@ export function useSpotifyInAppPlayer(options?: { onReconnectNeeded?: () => void
   }, [onReconnectNeeded, refreshToken]);
 
   /** Pre-connect SDK so the first Hear-it click can unlock audio immediately. */
-  const warmup = useCallback(async () => {
+  const warmup = useCallback(async (): Promise<boolean> => {
     try {
       await ensurePlayer();
+      return Boolean(deviceIdRef.current);
     } catch {
-      /* status / UI already set */
+      return false;
     }
   }, [ensurePlayer]);
 
