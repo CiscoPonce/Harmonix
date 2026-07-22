@@ -46,27 +46,34 @@ const Player: React.FC<PlayerProps> = ({
   const [audioError, setAudioError] = useState<string | null>(null);
 
   const handleShare = async () => {
-    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
-    if (navigator.share) {
+    const songId = String(track?.id ?? '').trim();
+    if (!songId || typeof window === 'undefined') return;
+    // Canonical player deep link — avoid copying dashboard/query junk from location.href.
+    const shareUrl = `${window.location.origin}/player/${encodeURIComponent(songId)}`;
+    const shareText = `Listen to ${track.title} by ${track.artist} on Harmonix\n${shareUrl}`;
+
+    const copyShareUrl = async () => {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    };
+
+    if (typeof navigator.share === 'function') {
       try {
         await navigator.share({
           title: `${track.title} - ${track.artist}`,
-          text: `Listen to ${track.title} by ${track.artist} on Harmonix!`,
+          text: shareText,
           url: shareUrl,
         });
         return;
-      } catch {
-        /* fallback to clipboard copy */
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
       }
     }
-    if (shareUrl) {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        setCopiedLink(true);
-        setTimeout(() => setCopiedLink(false), 2500);
-      } catch {
-        /* ignore */
-      }
+    try {
+      await copyShareUrl();
+    } catch {
+      /* ignore */
     }
   };
   const [audioSource, setAudioSource] = useState<'spotify' | 'deezer' | 'pending'>('deezer');

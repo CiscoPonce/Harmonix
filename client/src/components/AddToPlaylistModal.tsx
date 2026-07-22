@@ -67,15 +67,24 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
 
   if (!isOpen) return null;
 
+  const songId = track?.id != null && String(track.id).trim() !== ''
+    ? String(track.id).trim()
+    : '';
+
   const handleAddSong = async (playlistId: string) => {
+    if (!songId) {
+      setError('song_id is required');
+      return;
+    }
     try {
       setError(null);
       const res = await apiFetch(`/playlists/${playlistId}/songs`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          song_id: String(track.id),
+          song_id: songId,
           track: {
-            id: track.id,
+            id: songId,
             title: track.title,
             artist: track.artist,
             preview: track.preview || '',
@@ -104,6 +113,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
       setError(null);
       const res = await apiFetch('/playlists', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newPlaylistName.trim() }),
       });
 

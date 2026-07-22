@@ -72,6 +72,15 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   if (accessToken) {
     headers.set('Authorization', `Bearer ${accessToken}`);
   }
+  // Express json() only parses when Content-Type is set — without it, body fields
+  // like song_id arrive as undefined and routes return "song_id is required".
+  if (
+    options.body != null &&
+    typeof options.body === 'string' &&
+    !headers.has('Content-Type')
+  ) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   const config: RequestInit = {
     ...options,

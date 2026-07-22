@@ -581,12 +581,19 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
   }
 
   const handleShare = async () => {
-    const shareUrl =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/player/${encodeURIComponent(String(data.song.id))}`
-        : "";
-    const shareText = `Learn “${data.word.text}” with ${data.song.title} by ${data.song.artist} on Harmonix`;
-    if (navigator.share) {
+    const songId = String(data.song?.id || "").trim();
+    if (!songId || typeof window === "undefined") return;
+    // Canonical player deep link (not the dashboard URL).
+    const shareUrl = `${window.location.origin}/player/${encodeURIComponent(songId)}`;
+    const shareText = `Learn "${data.word.text}" with ${data.song.title} by ${data.song.artist} on Harmonix\n${shareUrl}`;
+
+    const copyShareUrl = async () => {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    };
+
+    if (typeof navigator.share === "function") {
       try {
         await navigator.share({
           title: `${data.word.text} · ${data.song.title}`,
@@ -594,18 +601,15 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           url: shareUrl,
         });
         return;
-      } catch {
-        /* fall through to clipboard */
+      } catch (err) {
+        // User dismissed the sheet — don't overwrite with clipboard.
+        if (err instanceof DOMException && err.name === "AbortError") return;
       }
     }
-    if (shareUrl) {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        setCopiedLink(true);
-        setTimeout(() => setCopiedLink(false), 2500);
-      } catch {
-        /* ignore */
-      }
+    try {
+      await copyShareUrl();
+    } catch {
+      /* ignore */
     }
   };
 
