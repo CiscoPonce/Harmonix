@@ -3,12 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Loader2, Play, Plus, Search, TrendingUp } from 'lucide-react';
+import { Loader2, Play, Search } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AppShell } from '@/components/AppShell';
+import { DailyWordCard } from '@/components/DailyWordCard';
 import { apiFetch } from '@/lib/api';
 
-const TAGS = ['#FRENCH_POP', '#JAZZ_LATINO', '#OPERA_REMIX'] as const;
+type RecentWord = {
+  word: { text: string; translation: string | null };
+  song: { id: string; title: string; artist: string } | null;
+};
 
 export default function DiscoverPage() {
   const { user, isLoading, logout } = useAuth();
@@ -18,12 +22,8 @@ export default function DiscoverPage() {
     Array<{ id: number; title: string; artist: { name: string }; album?: { cover_medium?: string } }>
   >([]);
   const [searching, setSearching] = useState(false);
-  const [recent, setRecent] = useState<
-    Array<{
-      word: { text: string; translation: string | null };
-      song: { id: string; title: string; artist: string } | null;
-    }>
-  >([]);
+  const [trending, setTrending] = useState<RecentWord[]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
 
   useEffect(() => {
     if (isLoading) return;
@@ -44,11 +44,32 @@ export default function DiscoverPage() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const q = params.get('q');
-      if (q) {
-        setQuery(q);
-      }
+      if (q) setQuery(q);
     }
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    (async () => {
+      try {
+        setTrendingLoading(true);
+        const res = await apiFetch('/daily-word/recent?days=14');
+        if (!active) return;
+        if (res.ok) {
+          const data = await res.json();
+          setTrending(data.recent || []);
+        }
+      } catch {
+        if (active) setTrending([]);
+      } finally {
+        if (active) setTrendingLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -82,39 +103,23 @@ export default function DiscoverPage() {
 
   return (
     <AppShell userEmail={user.email} onLogout={logout} searchPlaceholder="Search lyrics, artists, or languages...">
-      {/* Hero search */}
-      <section className="relative overflow-hidden rounded-3xl bg-[#0B4D2E] px-6 py-12 text-white sm:px-10 sm:py-16">
-        <h1 className="font-display text-4xl font-bold italic tracking-tight sm:text-5xl">
+      {/* Compact search */}
+      <section className="relative overflow-hidden rounded-3xl bg-[#0B4D2E] px-6 py-8 text-white sm:px-10">
+        <h1 className="font-display text-3xl font-bold italic tracking-tight sm:text-4xl">
           Find your resonance.
         </h1>
-        <div className="relative mt-8 max-w-2xl">
+        <div className="relative mt-6 max-w-2xl">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7A8A80]" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search lyrics, artists, or languages..."
-            className="h-14 w-full rounded-full bg-white pl-12 pr-20 text-base text-[#0C1210] placeholder:text-[#9AABA0] focus:outline-none focus:ring-2 focus:ring-white/40"
+            className="h-12 w-full rounded-full bg-white pl-12 pr-4 text-base text-[#0C1210] placeholder:text-[#9AABA0] focus:outline-none focus:ring-2 focus:ring-white/40"
             aria-label="Discover search"
           />
-          <span className="absolute right-4 top-1/2 hidden -translate-y-1/2 rounded-md bg-[#EEF2EF] px-2 py-1 text-[10px] font-bold text-[#5C6B62] sm:inline">
-            CTRL K
-          </span>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {TAGS.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => setQuery(tag.replace('#', '').replace('_', ' '))}
-              className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold tracking-wide text-[#D7EDE0] ring-1 ring-white/20 hover:bg-white/20"
-            >
-              {tag}
-            </button>
-          ))}
         </div>
       </section>
 
-      {/* Search results */}
       {(searching || results.length > 0) && (
         <section className="mt-8 space-y-3" aria-label="Search results">
           <h2 className="text-sm font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
@@ -153,137 +158,87 @@ export default function DiscoverPage() {
         </section>
       )}
 
-      {/* Global Echo */}
-      <section className="mt-10">
-        <div className="mb-4 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-              Global echo
-            </p>
-            <h2 className="font-display text-2xl font-bold text-[#0C1210] dark:text-[#F2F5F3]">
-              Trending Top 5
-            </h2>
-          </div>
-          <Link
-            href="/dashboard"
-            className="text-xs font-bold uppercase tracking-widest text-[#0B4D2E] hover:underline dark:text-[#3DCF7A]"
+      {/* Priority: Word of the Day flip card */}
+      <section className="mt-10" aria-labelledby="discover-wotd-heading">
+        <div className="mb-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
+            Start here
+          </p>
+          <h2
+            id="discover-wotd-heading"
+            className="font-display text-2xl font-bold text-[#0C1210] dark:text-[#F2F5F3]"
           >
-            View charts →
-          </Link>
+            Word of the Day
+          </h2>
+          <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+            Flip the card, hear it in the song, then share or save it.
+          </p>
         </div>
-
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Link
-            href="/dashboard"
-            className="relative col-span-1 flex min-h-[280px] flex-col justify-end overflow-hidden rounded-3xl bg-[#0B4D2E] p-6 text-white lg:row-span-2"
-          >
-            <span className="absolute left-4 top-4 rounded-full bg-[#3DCF7A] px-3 py-1 text-[10px] font-bold text-[#0B4D2E]">
-              #1 WORLDWIDE
-            </span>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(61,207,122,0.35),transparent_55%)]" />
-            <div className="relative">
-              <h3 className="font-display text-3xl font-bold italic">Word of the Day</h3>
-              <p className="mt-1 text-sm text-[#D7EDE0]">Continue your linguistic resonance practice</p>
-            </div>
-          </Link>
-
-          <div className="rounded-2xl border border-[#E4EBE6] bg-[#F0F3F1] p-5 dark:border-[#2A3530] dark:bg-[#171E1B]">
-            <div className="flex items-start justify-between">
-              <span className="font-display text-4xl font-bold text-[#C5D0C9] dark:text-[#2A3530]">
-                02
-              </span>
-              <TrendingUp className="h-4 w-4 text-[#0B4D2E] dark:text-[#3DCF7A]" />
-            </div>
-            <h3 className="mt-6 text-lg font-bold">Library playlists</h3>
-            <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-              Harmonix + Spotify collections
-            </p>
-            <Link
-              href="/playlists"
-              className="mt-4 inline-block text-sm font-bold text-[#0B4D2E] dark:text-[#3DCF7A]"
-            >
-              Open Library →
-            </Link>
-          </div>
-
-          <div className="rounded-2xl border border-[#E4EBE6] bg-[#F0F3F1] p-5 dark:border-[#2A3530] dark:bg-[#171E1B]">
-            <div className="flex items-start justify-between">
-              <span className="font-display text-4xl font-bold text-[#C5D0C9] dark:text-[#2A3530]">
-                03
-              </span>
-              <TrendingUp className="h-4 w-4 text-[#0B4D2E] dark:text-[#3DCF7A]" />
-            </div>
-            <h3 className="mt-6 text-lg font-bold">SRS Review</h3>
-            <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-              Spaced repetition for lasting vocab
-            </p>
-            <Link
-              href="/review"
-              className="mt-4 inline-block text-sm font-bold text-[#0B4D2E] dark:text-[#3DCF7A]"
-            >
-              Start review →
-            </Link>
-          </div>
-
-          <Link
-            href="/settings"
-            className="flex items-center gap-4 rounded-2xl border border-[#E4EBE6] bg-white p-4 dark:border-[#2A3530] dark:bg-[#171E1B] lg:col-span-2"
-          >
-            <span className="font-display text-2xl font-bold text-[#C5D0C9]">04</span>
-            <div className="min-w-0 flex-1">
-              <p className="font-bold">Connect Spotify</p>
-              <p className="text-sm text-[#5C6B62]">Link playlists from Settings</p>
-            </div>
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0B4D2E] text-white">
-              <Play className="h-4 w-4" />
-            </span>
-          </Link>
+        <div className="mx-auto w-full max-w-3xl">
+          <DailyWordCard
+            onWordChange={() => {
+              void (async () => {
+                try {
+                  const res = await apiFetch('/daily-word/recent?days=14');
+                  if (res.ok) {
+                    const data = await res.json();
+                    setTrending(data.recent || []);
+                  }
+                } catch {
+                  /* keep current shelf */
+                }
+              })();
+            }}
+          />
         </div>
-
-        <button
-          type="button"
-          className="fixed bottom-24 right-6 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-[#0B4D2E] text-white shadow-lg hover:bg-[#093F25] lg:bottom-8"
-          aria-label="Quick add"
-          onClick={() => router.push('/playlists')}
-        >
-          <Plus className="h-6 w-6" />
-        </button>
       </section>
 
-      {/* Personal Resonance */}
-      <section className="mt-12">
+      {/* Trending in other words */}
+      <section className="mt-12" aria-labelledby="trending-words-heading">
         <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-          Personal resonance
+          Trending in other words
         </p>
-        <h2 className="font-display text-xl font-bold">Songs similar to your recent words</h2>
-        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {recent.length === 0 ? (
+        <h2
+          id="trending-words-heading"
+          className="font-display text-xl font-bold text-[#0C1210] dark:text-[#F2F5F3]"
+        >
+          Words you&apos;ve been discovering
+        </h2>
+
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {trendingLoading ? (
+            <div className="col-span-full flex justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-[#0B4D2E] dark:text-[#3DCF7A]" />
+            </div>
+          ) : trending.length === 0 ? (
             <p className="col-span-full text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-              Discover a Word of the Day to seed your resonance shelf.
+              Flip today&apos;s word above — your trending shelf fills as you discover more.
             </p>
           ) : (
-            recent.slice(0, 5).map((item, i) => (
+            trending.slice(0, 8).map((item, i) => (
               <Link
-                key={`${item.word.text}-${i}`}
-                href={item.song?.id ? `/player/${item.song.id}` : '/dashboard'}
+                key={`${item.word.text}-${item.song?.id || i}`}
+                href={item.song?.id ? `/player/${item.song.id}` : '/discover'}
                 className="group"
               >
-                <div className="aspect-square overflow-hidden rounded-2xl bg-[#E8F5EE] transition group-hover:ring-2 group-hover:ring-[#0B4D2E] dark:bg-[#0B4D2E]/35 dark:group-hover:ring-[#3DCF7A]">
-                  <div className="flex h-full items-center justify-center p-4 text-center">
+                <div className="aspect-square overflow-hidden rounded-2xl border border-[#E4EBE6] bg-[#E8F5EE] transition group-hover:ring-2 group-hover:ring-[#0B4D2E] dark:border-[#2A3530] dark:bg-[#0B4D2E]/25 dark:group-hover:ring-[#3DCF7A]">
+                  <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
                     <span className="font-display text-2xl font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">
                       {item.word.text}
                     </span>
+                    {item.word.translation ? (
+                      <span className="line-clamp-2 text-xs text-[#5C6B62] dark:text-[#9AABA0]">
+                        {item.word.translation}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <p className="mt-2 truncate text-sm font-bold">
-                  {item.song?.title || item.word.translation || item.word.text}
+                  {item.song?.title || item.word.text}
                 </p>
                 <p className="truncate text-xs text-[#5C6B62] dark:text-[#9AABA0]">
                   {item.song?.artist || 'Daily Word'}
                 </p>
-                <span className="mt-1 inline-block rounded-full bg-[#E8F5EE] px-2 py-0.5 text-[10px] font-bold text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                  {90 - i * 3}% MATCH
-                </span>
               </Link>
             ))
           )}

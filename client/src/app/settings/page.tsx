@@ -274,7 +274,8 @@ function SettingsContent() {
               </p>
               <h2 className="mt-1 text-base font-bold">What are you learning?</h2>
               <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                Changing your learning language refreshes daily words for that language.
+                You can change home and learning languages here. Genre and difficulty are set once
+                during onboarding and are not editable in profile settings.
               </p>
 
               <div className="mt-4 grid gap-4 sm:grid-cols-2">

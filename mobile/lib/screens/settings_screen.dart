@@ -9,7 +9,6 @@ import '../state/home_navigation_controller.dart';
 import '../state/theme_controller.dart';
 import '../theme/harmonix_theme.dart';
 import '../widgets/spotify_connection_card.dart';
-import 'onboarding_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -186,17 +185,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(fontWeight: FontWeight.w800, color: colors.textPrimary),
             ),
             subtitle: Text(
-              '${user['native_language'] ?? 'en'} → ${user['target_language'] ?? 'fr'} · ${user['cefr_level'] ?? 'B1'}',
+              '${user['native_language'] ?? 'en'} → ${user['target_language'] ?? 'fr'}',
               style: TextStyle(color: colors.textMuted),
             ),
-            trailing: IconButton(
-              icon: Icon(Icons.edit, color: colors.accent),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-                );
-              },
-            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Languages can be changed below. Genre and difficulty are set during onboarding and are not editable here.',
+            style: TextStyle(color: colors.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 12),
           Container(
