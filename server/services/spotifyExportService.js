@@ -44,6 +44,39 @@ function parseTrackJson(raw) {
   }
 }
 
+/**
+ * Harmonix/Deezer `track_json.duration` is seconds; Spotify matching uses ms.
+ * Prefer explicit duration_ms, otherwise convert short second values.
+ */
+function normalizeDurationMs(track = {}) {
+  const msRaw = track.duration_ms;
+  if (msRaw != null && Number.isFinite(Number(msRaw))) {
+    const ms = Number(msRaw);
+    if (ms > 0) return Math.round(ms);
+  }
+  const d = track.duration;
+  if (d == null || !Number.isFinite(Number(d))) return null;
+  const n = Number(d);
+  if (n <= 0) return null;
+  // Full tracks under 10_000 are seconds (e.g. 266); Spotify durations are ~30k–600k ms.
+  if (n < 10_000) return Math.round(n * 1000);
+  return Math.round(n);
+}
+
+function artistFromTrack(track = {}) {
+  if (typeof track.artist === 'string' && track.artist.trim()) return track.artist.trim();
+  if (track.artist && typeof track.artist === 'object' && track.artist.name) {
+    return String(track.artist.name).trim();
+  }
+  if (Array.isArray(track.artists)) {
+    return track.artists
+      .map((a) => (typeof a === 'string' ? a : a?.name))
+      .filter(Boolean)
+      .join(', ');
+  }
+  return '';
+}
+
 function jobToDto(row) {
   if (!row) return null;
   let report = null;
@@ -189,12 +222,14 @@ function createSpotifyExportService(deps = {}) {
     for (let i = 0; i < songs.length; i += 1) {
       const song = songs[i];
       const track = parseTrackJson(song.track_data);
+      const title = String(track.title || track.name || '').trim();
+      const artist = artistFromTrack(track);
       const source = {
         song_id: song.song_id,
         identity: `harmonix:${song.song_id}`,
-        title: track.title || track.name || '',
-        artist: track.artist || (Array.isArray(track.artists) ? track.artists.join(', ') : ''),
-        duration_ms: track.duration_ms ?? track.duration ?? null,
+        title,
+        artist,
+        duration_ms: normalizeDurationMs(track),
         isrc: track.isrc || null,
         explicit: typeof track.explicit === 'boolean' ? track.explicit : null,
       };
@@ -212,6 +247,8 @@ function createSpotifyExportService(deps = {}) {
         acceptedUris.push(result.spotify_uri);
         rows.push({
           source_identity: source.identity,
+          title: title || null,
+          artist: artist || null,
           outcome: result.from_cache || result.cached ? 'cached' : 'matched',
           reason: null,
           spotify_uri: result.spotify_uri,
@@ -220,6 +257,8 @@ function createSpotifyExportService(deps = {}) {
         unmatched += 1;
         rows.push({
           source_identity: source.identity,
+          title: title || null,
+          artist: artist || null,
           outcome: 'unmatched',
           reason: result.reason || 'weak_candidate',
           spotify_uri: null,
@@ -552,6 +591,7 @@ module.exports = {
   runExportJob: (...args) => defaultService.runExportJob(...args),
   getExportJob: (...args) => defaultService.getExportJob(...args),
   getLatestExportJob: (...args) => defaultService.getLatestExportJob(...args),
+  normalizeDurationMs,
   STAGES,
   PARTIAL,
   ADD_BATCH_MAX,

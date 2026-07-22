@@ -23,6 +23,38 @@ function outcomeLabel(outcome: string): string {
   }
 }
 
+function reasonLabel(reason: string | null): string | null {
+  if (!reason) return null;
+  switch (reason) {
+    case 'duration_conflict':
+      return 'Duration didn’t match Spotify’s version closely enough';
+    case 'ambiguous_tie':
+      return 'Several Spotify matches looked equally likely';
+    case 'weak_candidate':
+      return 'No confident Spotify match found';
+    case 'edition_conflict':
+      return 'Edition/version conflict (live, remix, etc.)';
+    case 'missing_title':
+      return 'Missing song title';
+    case 'missing_artist':
+      return 'Missing artist';
+    case 'unavailable':
+      return 'Unavailable in your Spotify market';
+    default:
+      return reason.replace(/_/g, ' ');
+  }
+}
+
+function rowTitle(row: {
+  source_identity: string;
+  title?: string | null;
+  artist?: string | null;
+}): string {
+  if (row.title && row.artist) return `${row.title} — ${row.artist}`;
+  if (row.title) return row.title;
+  return row.source_identity.replace(/^harmonix:/, '');
+}
+
 export function SpotifyMatchReport({ job, onFinish }: SpotifyMatchReportProps) {
   const rows = job.report?.rows ?? [];
   const destination = safeSpotifyUrl(job.destination_url);
@@ -66,10 +98,12 @@ export function SpotifyMatchReport({ job, onFinish }: SpotifyMatchReportProps) {
           >
             <div className="min-w-0">
               <p className="truncate font-medium text-[#121612] dark:text-[#F2F5F3]">
-                {row.source_identity.replace(/^harmonix:/, '')}
+                {rowTitle(row)}
               </p>
-              {row.reason ? (
-                <p className="text-xs text-[#6B756F] dark:text-[#8A9690]">{row.reason}</p>
+              {reasonLabel(row.reason) ? (
+                <p className="text-xs text-[#6B756F] dark:text-[#8A9690]">
+                  {reasonLabel(row.reason)}
+                </p>
               ) : null}
             </div>
             <span className="shrink-0 text-xs font-bold uppercase tracking-wide text-[#0B6B3A] dark:text-[#3DCF7A]">

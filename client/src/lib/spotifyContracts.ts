@@ -106,6 +106,8 @@ export interface SpotifyPlaylistDetailDto {
 
 export interface SpotifyExportReportRowDto {
   source_identity: string;
+  title?: string | null;
+  artist?: string | null;
   outcome: ExportOutcome;
   reason: string | null;
   spotify_uri: string | null;
@@ -628,6 +630,8 @@ export function parseExportReportDto(raw: unknown): SpotifyExportReportDto {
       }
       return {
         source_identity: asStringOrNull(r.source_identity) ?? '',
+        title: asStringOrNull(r.title),
+        artist: asStringOrNull(r.artist),
         outcome: outcome as ExportOutcome,
         reason: asStringOrNull(r.reason),
         spotify_uri: asStringOrNull(r.spotify_uri),

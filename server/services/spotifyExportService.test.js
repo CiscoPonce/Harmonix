@@ -1,10 +1,28 @@
 const { expect } = require('chai');
 const db = require('../db');
 const { encryptToken } = require('./spotifyCrypto');
-const { createSpotifyExportService } = require('./spotifyExportService');
+const {
+  createSpotifyExportService,
+  normalizeDurationMs,
+} = require('./spotifyExportService');
 
 const TEST_KEY = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 const SENTINEL = 'NOT_IMPLEMENTED_SPOTIFY_EXPORT';
+
+describe('normalizeDurationMs', () => {
+  it('keeps explicit duration_ms', () => {
+    expect(normalizeDurationMs({ duration_ms: 266000 })).to.equal(266000);
+  });
+
+  it('converts Deezer/Harmonix duration seconds to ms', () => {
+    expect(normalizeDurationMs({ duration: 266 })).to.equal(266000);
+    expect(normalizeDurationMs({ duration: 175 })).to.equal(175000);
+  });
+
+  it('does not re-scale already-millisecond durations stored as duration', () => {
+    expect(normalizeDurationMs({ duration: 266000 })).to.equal(266000);
+  });
+});
 
 describe('spotify export service contracts', () => {
   let clock;
