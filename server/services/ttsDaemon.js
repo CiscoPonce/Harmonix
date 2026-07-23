@@ -2,6 +2,14 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
+function ttsBaseUrl() {
+  const fromEnv = (process.env.TTS_BASE_URL || "").trim().replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+  const host = (process.env.POCKET_TTS_HOST || "127.0.0.1").trim();
+  const port = process.env.TTS_PORT || "3002";
+  return `http://${host}:${port}`;
+}
+
 function resolvePython() {
   const candidates = [
     process.env.POCKET_TTS_PYTHON,
@@ -51,6 +59,14 @@ const ttsDaemon = {
     if (this._process) return;
 
     this.currentLanguage = language;
+
+    // Docker/Coolify: TTS runs on the host (or another container). Don't spawn.
+    if (process.env.TTS_SKIP_SPAWN === "true" || process.env.TTS_SKIP_SPAWN === "1") {
+      console.log(`[ttsDaemon] TTS_SKIP_SPAWN set — using ${ttsBaseUrl()}`);
+      this._ready = false;
+      return;
+    }
+
     this._ready = false;
 
     const python = resolvePython();
@@ -59,6 +75,8 @@ const ttsDaemon = {
       ...process.env,
       PATH: `/home/ubuntu/.local/bin:/home/ubuntu/pocket-tts/.venv/bin:${process.env.PATH || ""}`,
     };
+    const bindHost = process.env.TTS_BIND_HOST || "127.0.0.1";
+    const bindPort = process.env.TTS_PORT || "3002";
 
     if (hqScript) {
       console.log(
@@ -68,8 +86,8 @@ const ttsDaemon = {
         python,
         [
           hqScript,
-          "--host", "127.0.0.1",
-          "--port", "3002",
+          "--host", bindHost,
+          "--port", bindPort,
           "--language", language,
           "--temperature", process.env.POCKET_TTS_TEMPERATURE || "0.45",
           "--lsd-decode-steps", process.env.POCKET_TTS_LSD_STEPS || "5",
@@ -82,7 +100,7 @@ const ttsDaemon = {
       console.log(`[ttsDaemon] HQ script missing; falling back to ${bin} serve`);
       this._process = spawn(
         bin,
-        ["serve", "--host", "127.0.0.1", "--port", "3002", "--language", language],
+        ["serve", "--host", bindHost, "--port", bindPort, "--language", language],
         { stdio: "pipe", env }
       );
     }
@@ -147,7 +165,7 @@ const ttsDaemon = {
 
   async healthCheck() {
     try {
-      const res = await fetch("http://127.0.0.1:3002/health");
+      const res = await fetch(`${ttsBaseUrl()}/health`);
       if (res.ok) {
         this._ready = true;
         return true;
@@ -155,6 +173,8 @@ const ttsDaemon = {
     } catch {}
     return false;
   },
+
+  baseUrl: ttsBaseUrl,
 };
 
 module.exports = ttsDaemon;

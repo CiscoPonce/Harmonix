@@ -9,6 +9,7 @@ FRONTEND_PORT=3009
 TTS_PORT=3002
 export PATH="/home/ubuntu/.local/bin:/home/ubuntu/pocket-tts/.venv/bin:$PATH"
 export POCKET_TTS_BIN="/home/ubuntu/pocket-tts/.venv/bin/pocket-tts"
+export POCKET_TTS_PYTHON="/home/ubuntu/pocket-tts/.venv/bin/python"
 NGROK_URL="moral-sparrow-nationally.ngrok-free.app"
 
 mkdir -p "$LOG_DIR"

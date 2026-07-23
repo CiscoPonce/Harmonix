@@ -104,6 +104,23 @@ describe('Language constants', () => {
     expect(lyricsMatchTargetLanguage(portuguese, 'pt')).to.equal(true);
   });
 
+  it('accepts Spanish / light-Spanglish lyrics and rejects English-dominant tracks', () => {
+    const { lyricsMatchTargetLanguage } = require('./languages');
+    const echame =
+      'Tengo en esta historia algo que confesar Ya entendí muy bien qué fue lo que pasó ' +
+      'Y aunque duela tanto tengo que aceptar Que te quiero y voy a bailar siempre contigo';
+    const senorita =
+      'I love it when you call me senorita I wish I could pretend I didn\'t need ya ' +
+      'But every touch is true I should be running you keep me coming for you ' +
+      'I love it when you call me senorita I wish I could pretend I didn\'t need ya';
+    const propuesta =
+      'Hola me llaman Romeo Es un placer conocerla Qué bien te ves ' +
+      'Te adelanto no me importa quién sea él Dígame usted si ha hecho algo travieso';
+    expect(lyricsMatchTargetLanguage(echame, 'es')).to.equal(true);
+    expect(lyricsMatchTargetLanguage(propuesta, 'es')).to.equal(true);
+    expect(lyricsMatchTargetLanguage(senorita, 'es')).to.equal(false);
+  });
+
   it('sniffs English lyrics as incompatible with German target', () => {
     const { lyricsMatchTargetLanguage } = require('./languages');
     const windOfChange =

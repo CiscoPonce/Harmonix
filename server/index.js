@@ -221,7 +221,15 @@ app.get('/api/search', async (req, res) => {
   if (!q) return res.status(400).json({ error: 'Query parameter "q" is required' });
 
   try {
-    const response = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}`);
+    const response = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}`, {
+      headers: {
+        'User-Agent': process.env.DEEZER_USER_AGENT || 'Mozilla/5.0 (compatible; Harmonix/1.7; +https://harmonix.app)',
+        Accept: 'application/json',
+      },
+    });
+    if (!response.ok) {
+      return res.status(502).json({ error: `Deezer search failed (${response.status})` });
+    }
     const data = await response.json();
     res.json(data);
   } catch (err) {
@@ -235,7 +243,12 @@ app.get('/api/tracks/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const response = await fetch(`https://api.deezer.com/track/${id}`);
+    const response = await fetch(`https://api.deezer.com/track/${id}`, {
+      headers: {
+        'User-Agent': process.env.DEEZER_USER_AGENT || 'Mozilla/5.0 (compatible; Harmonix/1.7; +https://harmonix.app)',
+        Accept: 'application/json',
+      },
+    });
     if (!response.ok) return res.status(response.status).json({ error: 'Track not found on Deezer' });
     
     const data = await response.json();
@@ -339,13 +352,15 @@ app.get('/share/:id', (req, res, next) => {
 });
 
 // --- Frontend Proxy ---
+// In Docker/Coolify, Next runs as a sibling service (e.g. http://web:3009).
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const frontendTarget = process.env.FRONTEND_PROXY_TARGET || 'http://127.0.0.1:3009';
 app.use('/', createProxyMiddleware({
-  target: 'http://127.0.0.1:3009',
+  target: frontendTarget,
   changeOrigin: true,
   ws: true,
 }));
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT} (frontend proxy → ${frontendTarget})`);
 });

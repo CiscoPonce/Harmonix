@@ -77,7 +77,11 @@ function highlightWord(snippet: string, start: number, end: number) {
   );
 }
 
-export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
+export function DailyWordCard({
+  onWordChange,
+}: {
+  onWordChange?: (payload?: DailyWordPayload) => void;
+}) {
   const { user } = useAuth();
   const [data, setData] = useState<DailyWordPayload | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
@@ -150,7 +154,7 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
     setError(null);
     setRefreshError(null);
     setStatusMessage(null);
-    onWordChange?.();
+    onWordChange?.(payload);
   }, [onWordChange]);
 
   const loadDailyWord = useCallback(async (initial = false) => {
@@ -879,7 +883,9 @@ export function DailyWordCard({ onWordChange }: { onWordChange?: () => void }) {
           preload="metadata"
           onError={(e) => {
             console.error("Audio preview load failed:", e);
-            setRefreshError("Audio preview unavailable in your region.");
+            setRefreshError(
+              "Preview stream failed — reconnect Spotify or tap Next for another song."
+            );
             setIsPlaying(false);
           }}
         />

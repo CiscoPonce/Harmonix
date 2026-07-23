@@ -23,7 +23,9 @@ try {
 
 const dbPath = process.env.NODE_ENV === 'test'
   ? newTestDb
-  : newProdDb;
+  : (process.env.SQLITE_PATH
+    ? path.resolve(process.env.SQLITE_PATH)
+    : newProdDb);
 
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');

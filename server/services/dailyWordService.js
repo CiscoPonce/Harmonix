@@ -240,7 +240,7 @@ function buildPayload(date, suggestion, track, lyricsData, occurrence, langCode 
       genre: suggestion.genre || null,
     },
     audio: {
-      preview_url: deezer.previewProxyPath(String(track.id)),
+      preview_url: deezer.previewProxyPath(String(track.id), track.artist?.name, track.title),
       duration_seconds: duration,
       preview_offset: offset,
       preview_end: offset + 30,
@@ -440,7 +440,9 @@ function candidateRankScore(suggestion, userGenre, userDifficulty, effectiveLeve
   return score;
 }
 
-const VALIDATE_CONCURRENCY = 3;
+const VALIDATE_CONCURRENCY = process.env.VALIDATE_CONCURRENCY
+  ? Math.max(1, parseInt(process.env.VALIDATE_CONCURRENCY, 10) || 3)
+  : 4;
 
 async function runValidationPool(candidates, worker, { isStopped = () => false } = {}) {
   let nextIndex = 0;
@@ -696,6 +698,24 @@ function deliverPayload(userId, payload, { fromQueue = false } = {}) {
 
 function summarizeDailyWordPayload(payload, meta = {}) {
   if (!payload?.word?.text) return null;
+  const song = payload.song
+    ? {
+        id: payload.song.id,
+        title: payload.song.title,
+        artist: payload.song.artist,
+      }
+    : null;
+  const audio = song?.id
+    ? {
+        preview_url: deezer.previewProxyPath(
+          String(song.id),
+          song.artist,
+          song.title
+        ),
+        duration_seconds: payload.audio?.duration_seconds ?? null,
+        preview_offset: payload.audio?.preview_offset ?? 30,
+      }
+    : null;
   return {
     id: meta.id ?? null,
     date: payload.date,
@@ -703,14 +723,25 @@ function summarizeDailyWordPayload(payload, meta = {}) {
     word: {
       text: payload.word.text,
       translation: payload.word.translation || null,
+      pronunciation: payload.word.pronunciation || null,
+      part_of_speech: payload.word.part_of_speech || null,
     },
-    song: payload.song
+    // Top-level aliases so clients always get title + phrase even if they
+    // only read flat fields.
+    title: song?.title || null,
+    phrase: (payload.lyric?.snippet || "").trim() || null,
+    lyric: payload.lyric
       ? {
-          id: payload.song.id,
-          title: payload.song.title,
-          artist: payload.song.artist,
+          snippet: payload.lyric.snippet || "",
+          timestamp: payload.lyric.timestamp || "",
+          timestamp_ms: payload.lyric.timestamp_ms ?? null,
+          char_start: payload.lyric.char_start ?? 0,
+          char_end: payload.lyric.char_end ?? 0,
+          in_preview: payload.lyric.in_preview ?? null,
         }
       : null,
+    song,
+    audio,
   };
 }
 
@@ -1111,7 +1142,11 @@ async function generateNextDailyWord(user, fetchImpl = fetch) {
 function hydratePayloadAudio(payload) {
   if (!payload?.song?.id) return payload;
   if (!payload.audio) payload.audio = {};
-  payload.audio.preview_url = deezer.previewProxyPath(String(payload.song.id));
+  payload.audio.preview_url = deezer.previewProxyPath(
+    String(payload.song.id),
+    payload.song.artist,
+    payload.song.title
+  );
   return payload;
 }
 
@@ -1160,32 +1195,8 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, { 
     );
   }
 
-  const incomplete = items.some((item, i) => wordMetaNeedsEnrichment({
-    text: item.word,
-    translation: glosses[i]?.translation,
-    pronunciation: glosses[i]?.pronunciation,
-  }));
-  if (incomplete && fast) {
-    glosses = await aiService.glossDailyWords(items, languageName, {
-      fast: false,
-      nativeLanguageName,
-      refine: false,
-    });
-    const stillBad = items.some((item, i) => (
-      translationNeedsFix({ text: item.word, translation: glosses[i]?.translation })
-      || aiService.translationLooksSuspicious(item.word, glosses[i]?.translation)
-    ));
-    if (stillBad) {
-      glosses = await aiService.refineGlosses(
-        items,
-        glosses,
-        languageName,
-        nativeLanguageName,
-        { fast: false }
-      );
-    }
-  }
-
+  // Never escalate to the slow (60s NIM) path on user-facing requests — background
+  // polish fills gaps after we return. Slow escalate previously caused 20–30s Next Word.
   return glosses.map((g, i) => ({
     ...g,
     gloss_v: (
@@ -1235,42 +1246,16 @@ async function enrichPayloadWordMeta(payload, user) {
       candidateTranslation = gloss?.translation ?? candidateTranslation;
     }
 
-    if (
-      translationNeedsFix({ text, translation: candidateTranslation })
-      || aiService.translationLooksSuspicious(text, candidateTranslation)
-    ) {
-      glosses = await aiService.glossDailyWords(item, languageName, {
-        fast: false,
-        nativeLanguageName,
-        refine: false,
-      });
-      gloss = glosses[0];
-      candidateTranslation = gloss?.translation ?? candidateTranslation;
-      if (
-        translationNeedsFix({ text, translation: candidateTranslation })
-        || aiService.translationLooksSuspicious(text, candidateTranslation)
-      ) {
-        glosses = await aiService.refineGlosses(
-          item,
-          glosses,
-          languageName,
-          nativeLanguageName,
-          { fast: false }
-        );
-        gloss = glosses[0];
-      }
-    }
-
-    if (!gloss) return payload;
+    if (!gloss && !candidateTranslation) return payload;
     console.log(`daily word enrich gloss: ${text} in ${Date.now() - started}ms`);
-    const nextTranslation = gloss.translation ?? payload.word.translation;
+    const nextTranslation = gloss?.translation ?? candidateTranslation ?? payload.word.translation;
     return {
       ...payload,
       word: {
         ...payload.word,
         translation: nextTranslation,
-        part_of_speech: gloss.part_of_speech ?? payload.word.part_of_speech,
-        pronunciation: gloss.pronunciation ?? payload.word.pronunciation,
+        part_of_speech: gloss?.part_of_speech ?? payload.word.part_of_speech,
+        pronunciation: gloss?.pronunciation ?? payload.word.pronunciation,
         gloss_v: (
           nextTranslation
           && !aiService.translationLooksSuspicious(text, nextTranslation)
@@ -1382,6 +1367,10 @@ async function enrichIfNeeded(payload, user) {
     || w.gloss_v !== prev.gloss_v;
   if (changed && user?.id) {
     saveDailyWord(user.id, enriched.date || todayDate(), enriched);
+  }
+  // If still thin after fast enrich, polish in background — do not block the user.
+  if (wordMetaNeedsEnrichment(enriched.word) || shouldBackgroundPolish(enriched.word)) {
+    scheduleBackgroundGlossPolish(user, enriched);
   }
   return enriched;
 }

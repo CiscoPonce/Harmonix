@@ -125,6 +125,10 @@ describe("Daily Word Service", () => {
     const recent = getRecentDailyWords(userId, 7);
     expect(recent).to.have.lengthOf(2);
     expect(recent.map((entry) => entry.word.text)).to.include.members(["amor", "noche"]);
+    const withLyric = recent.find((e) => e.word.text === "amor");
+    // lyric optional when not stored — smoke that summary shape is stable
+    expect(withLyric).to.have.property("lyric");
+    expect(withLyric).to.have.property("audio");
   });
 
   it("returns cached payload without calling AI", async () => {
@@ -474,8 +478,8 @@ describe("Daily Word Service", () => {
     expect(filtered[0].song.id).to.equal("1");
   });
 
-  it("limits validation concurrency to 3", () => {
-    expect(VALIDATE_CONCURRENCY).to.equal(3);
+  it("limits validation concurrency", () => {
+    expect(VALIDATE_CONCURRENCY).to.be.at.least(3).and.at.most(8);
   });
 
   it("purgeQueueWrongLanguage discards FR queue items when target is DE", () => {

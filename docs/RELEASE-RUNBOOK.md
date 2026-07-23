@@ -1,11 +1,31 @@
 # Harmonix Release Runbook
 
 **Version:** 1.7  
-**Last Updated:** 2026-07-22  
+**Last Updated:** 2026-07-23  
 
 ---
 
-## 1. Production VPS Deployment
+## 0. Fresh start (no DB copy, ngrok or domain)
+
+If you are cutting over **without** copying SQLite, and/or you **do not have a custom domain** yet:
+
+→ Follow **[FRESH-START-MIGRATION.md](./FRESH-START-MIGRATION.md)** and run `bash scripts/fresh-start-migrate.sh`.
+
+Choose **ngrok** to wire `NEXT_PUBLIC_API_URL` / Spotify redirects to `https://YOUR_NGROK_HOST/api`. Switch to **domain** later with the same script.
+
+---
+
+## 0b. Coolify (recommended production path)
+
+Coolify **is already installed** on the Harmonix VPS (Traefik `:80`/`:443`, UI `:8000`).
+
+→ Follow **[COOLIFY-DEPLOY.md](./COOLIFY-DEPLOY.md)** — Docker Compose (`api` + `web`), SQLite volume, host Pocket-TTS, then attach a domain or keep ngrok on the published API port.
+
+Legacy host stack (`run_env.sh`) remains the rollback path until Phase 15 cutover is verified.
+
+---
+
+## 1. Production VPS Deployment (legacy host)
 
 ### Environment Variables (.env)
 Required in `server/.env`:

@@ -1,7 +1,7 @@
 # Harmonix Roadmap
 
-**Last reconciled:** 2026-07-22 — phases 1–14 complete + post-ship polish synced  
-**Live:** https://moral-sparrow-nationally.ngrok-free.app (`main` @ VPS)
+**Last reconciled:** 2026-07-23 — phases 1–14 complete; Phase 15 Coolify deploy started  
+**Live:** https://moral-sparrow-nationally.ngrok-free.app (`main` @ VPS, still via `run_env.sh` until Coolify cutover)
 
 ---
 
@@ -9,21 +9,22 @@
 
 ```text
   Browser / Capacitor WebView          Flutter Android (`mobile/`)
-  Next.js :3009 (prod via run_env)     Discover · Library · Settings
+  Next.js (host :3009 or compose web)  Discover · Library · Settings
               \                         /
                \                       /
                 ▼                     ▼
-           Express API :3001  +  SQLite (harmonix.db)
+           Express API :3001  +  SQLite
                 │
     ┌───────────┼───────────────┬────────────────┐
     ▼           ▼               ▼                ▼
  NVIDIA/OpenRouter   Deezer+LRCLib   Pocket-TTS:3002   Spotify Web API
  (daily-word AI)     (validate)      (pronounce)       (OAuth, lists, play)
                 │
-           ngrok → public HTTPS
+     ngrok (today)  →  Coolify Traefik + domain (Phase 15)
 ```
 
-**Deploy:** `git pull` on VPS → `bash run_env.sh` (backend + `next build/start` + TTS + ngrok).  
+**Deploy (today):** `git pull` on VPS → `bash run_env.sh` (backend + `next build/start` + TTS + ngrok).  
+**Deploy (Phase 15):** Coolify → `docker-compose.yml` (`api` + `web`); TTS on host; see `docs/COOLIFY-DEPLOY.md`.  
 **Auth:** JWT access + httpOnly refresh cookie.  
 **Learning core:** AI song candidates → Deezer match → LRCLib synced lyrics → queue (`user_word_queue`) → Daily Word on unified **Discover** home.  
 **Preferences:** Settings edits home/learning languages, music style (genre), and TTS voice gender; genre change purges the word queue.
@@ -122,9 +123,37 @@ Not a new phase — product refinements after Phase 14 close:
 | Brand | Transparent theme logos; HarmonixWordmark light/dark |
 | Shell | Sidebar pinned full height; Pro Plan restored |
 
+### Ops polish (2026-07-23)
+
+| Area | What shipped |
+|------|----------------|
+| Hear-it | Deezer browser UA + iTunes preview fallback when CDN geo-blocks |
+| Discover shelf | Flip cards with song **title** + lyric **phrase** |
+| Deploy | Dockerfiles + `docker-compose.yml` + Coolify guide (Phase 15) |
+
 ---
 
-## Runtime health notes (2026-07-22)
+## Phase 15 — Coolify production deploy 🚧
+
+**Status:** In progress  
+**Milestone:** v1.8  
+**Goal:** Run Harmonix under Coolify on the existing VPS; stop relying on ad-hoc host `run_env.sh` for production.
+
+| Work | Status |
+|------|--------|
+| Confirm Coolify healthy (Traefik, UI) | Done |
+| `server/Dockerfile`, `client/Dockerfile`, root `docker-compose.yml` | Done |
+| `SQLITE_PATH`, `FRONTEND_PROXY_TARGET`, TTS skip-spawn | Done |
+| Docs: `docs/COOLIFY-DEPLOY.md`, runbook §0b | Done |
+| Create Coolify Docker Compose resource + secrets | Pending |
+| Domain or ngrok retarget; Spotify redirect URIs | Pending |
+| Cut over; verify smoke; keep `run_env.sh` as rollback | Pending |
+
+**Context:** [docs/COOLIFY-DEPLOY.md](../docs/COOLIFY-DEPLOY.md)
+
+---
+
+## Runtime health notes (2026-07-23)
 
 Observed on VPS while live:
 
@@ -137,4 +166,18 @@ Observed on VPS while live:
 
 ## Suggested next
 
-Optional ops only — Phase 14 is complete. Prefer `/gsd-progress` or a new milestone discuss for: production domain, Play Store listing, AI provider hardening, Extended Spotify Quota.
+### Phase 15 — Coolify production deploy (in progress)
+
+Move from host `run_env.sh` + ngrok-only ops to **Coolify-managed Docker Compose** on the same VPS (Coolify 4.1.2 already running). See [docs/COOLIFY-DEPLOY.md](../docs/COOLIFY-DEPLOY.md).
+
+| Step | Status |
+|------|--------|
+| Coolify installed (Traefik 80/443, UI 8000) | Done |
+| `docker-compose.yml` + Dockerfiles (api/web) | Done (repo) |
+| Docker-friendly env (`FRONTEND_PROXY_TARGET`, `SQLITE_PATH`, TTS skip-spawn) | Done (repo) |
+| Coolify resource + secrets + first deploy | Pending |
+| Domain DNS (or keep ngrok → compose port) | Pending |
+| Cut over; retire host Node/Next from `run_env` | Pending |
+| Optional: containerize Pocket-TTS | Later |
+
+Other optional ops (not blocking): Play Store listing, AI provider hardening, Extended Spotify Quota.

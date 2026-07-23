@@ -278,7 +278,7 @@ async function fetchFromPocketTTS(word, voiceUrl) {
   params.append('text', ttsPromptForWord(word));
   params.append('voice_url', voiceUrl);
 
-  const res = await fetch('http://127.0.0.1:3002/tts', {
+  const res = await fetch(`${ttsDaemon.baseUrl()}/tts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: params.toString(),

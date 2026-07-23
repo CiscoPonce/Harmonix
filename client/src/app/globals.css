@@ -336,6 +336,22 @@ html {
   width: 100%;
 }
 
+/* Compact shelf flip cards (Discover recent words) */
+.shelf-word-flip-scene .shelf-word-flip-inner {
+  min-height: 14.5rem;
+  aspect-ratio: auto;
+}
+
+@media (min-width: 640px) {
+  .shelf-word-flip-scene .shelf-word-flip-inner {
+    min-height: 16rem;
+  }
+}
+
+.shelf-word-flip-scene .daily-word-flip-face {
+  border-radius: 1rem;
+}
+
 .daily-word-flip-inner {
   position: relative;
   width: 100%;

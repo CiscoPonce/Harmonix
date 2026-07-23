@@ -203,6 +203,15 @@ function countEnglishLyricMarkers(plain) {
   ) || []).length;
 }
 
+/** Spanish function / content markers — accents optional (LRC often strips them).
+ * Avoid ultra-short tokens (el/la/y/me) that false-positive English hooks like "ooh-la-la".
+ */
+function countSpanishLyricMarkers(plain) {
+  return (plain.match(
+    /[ñ¿¡]|ción|\b(los|las|unos|unas|del|que|qué|como|cómo|por|para|con|sin|sobre|entre|esta|está|están|estoy|estas|estos|mis|tus|sus|nos|les|pero|más|muy|ya|hoy|amor|vida|corazón|noche|día|dias|tiempo|quiero|quiere|tienen|tengo|tiene|tienes|voy|vas|vamos|bailar|reír|llorar|siempre|nunca|ahora|también|tambien|gracias|señor|senor|hola|adiós|adios|porque|cuando|donde|dónde|quien|quién|todo|todos|nada|solo|sólo|aqui|aquí|alli|allí|contigo|contigo|historia|aceptar|confesar|placer|conocerla|aventura|travieso|nena|pedacito|regalar|partiste|problema)\b/gi
+  ) || []).length;
+}
+
 /**
  * Cheap lyric-language sniff to reject wrong-language tracks (EN in DE, ES in PT, etc.).
  * Returns true when lyrics look compatible with the target language.
@@ -224,11 +233,16 @@ function lyricsMatchTargetLanguage(plainLyrics, langCode) {
   }
 
   if (code === 'es') {
-    const esHits = (plain.match(/[ñ]|ción|\btambién\b|\bcorazón\b|\bcómo\b|\bqué\b/gi) || []).length;
+    const esHits = countSpanishLyricMarkers(plain);
     const ptHits = (plain.match(/[ãõ]|ção|ções|\bnão\b|\bvocê\b|\btambém\b/gi) || []).length;
     if (ptHits >= 3 && ptHits > esHits) return false;
     const enHits = countEnglishLyricMarkers(plain);
-    if (enHits >= 8 && enHits > esHits * 2) return false;
+    // Mostly-English tracks with a Spanish title/hook (e.g. Señorita) → reject.
+    // Pure Spanish / light Spanglish (Échame La Culpa, Propuesta Indecente) → accept.
+    if (esHits >= 3 && enHits <= esHits * 3) return true;
+    if (enHits >= 12 && enHits > Math.max(esHits, 1) * 3) return false;
+    if (esHits === 0 && enHits >= 6) return false;
+    // Short Spanish snippets may only hit 1–2 markers — still accept unless English-dominant.
     return true;
   }
 

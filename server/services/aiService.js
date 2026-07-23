@@ -3,16 +3,25 @@ const { difficultyRubric, normalizeDifficulty } = require('../constants/difficul
 require('dotenv').config();
 
 const openai = new OpenAI({
-  apiKey: process.env.NVIDIA_NIM_API_KEY,
+  apiKey: process.env.NVIDIA_NIM_API_KEY || process.env.NVIDIA_API_KEY || process.env.OPENAI_API_KEY || 'missing-nim-key',
   baseURL: process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1',
   timeout: 60000, maxRetries: 0,
+});
+
+// Short-timeout NIM client for user-facing gloss / next-word (avoid 20–60s stalls).
+const openaiFast = new OpenAI({
+  apiKey: process.env.NVIDIA_NIM_API_KEY || process.env.NVIDIA_API_KEY || process.env.OPENAI_API_KEY || 'missing-nim-key',
+  baseURL: process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1',
+  timeout: parseInt(process.env.NIM_FAST_TIMEOUT_MS || '10000', 10),
+  maxRetries: 0,
 });
 
 const openrouter = process.env.OPENROUTER_API_KEY
   ? new OpenAI({
     apiKey: process.env.OPENROUTER_API_KEY,
     baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
-    timeout: 60000,
+    // Free-tier OR models can hang; fail fast so NIM/other fallbacks stay snappy.
+    timeout: parseInt(process.env.OPENROUTER_TIMEOUT_MS || '15000', 10),
     maxRetries: 0,
     defaultHeaders: {
       'HTTP-Referer': process.env.OPENROUTER_REFERER || 'https://harmonix.app',
@@ -40,7 +49,7 @@ const AVAILABLE_MODELS = modelsEnv
     ];
 
 const OPENROUTER_MODELS = (process.env.OPENROUTER_MODELS
-  || 'google/gemma-4-26b-a4b-it:free,poolside/laguna-s-2.1:free,nvidia/nemotron-3-super-120b-a12b:free')
+  || 'nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-26b-a4b-it:free')
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
@@ -72,16 +81,33 @@ function isRetryableError(err) {
 }
 
 function buildModelAttempts(primaryModel, { fast = false } = {}) {
+  const nimClient = fast ? openaiFast : openai;
   const nimChain = fast
-    ? [...new Set([primaryModel, ...FAST_MODELS, ...AVAILABLE_MODELS])]
+    ? [...new Set([primaryModel, ...FAST_MODELS])]
     : [primaryModel, ...AVAILABLE_MODELS.filter((m) => m !== primaryModel)];
 
   const attempts = [];
-  const nimPrimary = nimChain[0];
   const skipNim = isNimInCooldown();
 
+  // User-facing fast path: try working OpenRouter free models first (more reliable
+  // latency on VPS), then short-timeout NIM. Full song generation keeps NIM first.
+  if (fast) {
+    if (openrouter) {
+      for (const model of OPENROUTER_MODELS) {
+        attempts.push({ client: openrouter, provider: 'openrouter', model });
+      }
+    }
+    if (!skipNim) {
+      for (const model of nimChain) {
+        attempts.push({ client: nimClient, provider: 'nvidia', model });
+      }
+    }
+    return attempts;
+  }
+
+  const nimPrimary = nimChain[0];
   if (nimPrimary && !skipNim) {
-    attempts.push({ client: openai, provider: 'nvidia', model: nimPrimary });
+    attempts.push({ client: nimClient, provider: 'nvidia', model: nimPrimary });
   }
 
   if (openrouter) {
@@ -92,11 +118,11 @@ function buildModelAttempts(primaryModel, { fast = false } = {}) {
 
   if (!skipNim) {
     for (const model of nimChain.slice(1)) {
-      attempts.push({ client: openai, provider: 'nvidia', model });
+      attempts.push({ client: nimClient, provider: 'nvidia', model });
     }
   } else if (!openrouter) {
     for (const model of nimChain.slice(1)) {
-      attempts.push({ client: openai, provider: 'nvidia', model });
+      attempts.push({ client: nimClient, provider: 'nvidia', model });
     }
   }
 
@@ -336,8 +362,6 @@ const VERIFIED_SONGS = {
     { song_title: 'Danza Kuduro', artist: 'Don Omar', genre: 'reggaeton' },
     { song_title: 'Pepas', artist: 'Farruko', genre: 'reggaeton' },
     { song_title: 'Hawái', artist: 'Maluma', genre: 'pop' },
-    { song_title: 'Señorita', artist: 'Shawn Mendes', genre: 'pop' },
-    { song_title: 'Taki Taki', artist: 'DJ Snake', genre: 'reggaeton' },
     { song_title: 'A Dios le Pido', artist: 'Juanes', genre: 'rock' },
     { song_title: 'La Camisa Negra', artist: 'Juanes', genre: 'rock' },
     { song_title: 'Color Esperanza', artist: 'Diego Torres', genre: 'pop' },
@@ -547,7 +571,7 @@ function getCuratedSongCandidates(languageCode, genre) {
   return parseCuratedSongs(hits, genre || 'pop');
 }
 
-async function createFastChatCompletion(params, timeoutMs = 20000) {
+async function createFastChatCompletion(params, timeoutMs = 12000) {
   const work = tryChatCompletion(params, { fast: true, label: 'fast ChatCompletion' });
 
   return Promise.race([

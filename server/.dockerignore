@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log*
+harmonix.db
+harmonix.test.db
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+.env
+.env.*
+!.env.example
+logs
+coverage
+.git
+.gitignore
+**/*.test.js
+scripts

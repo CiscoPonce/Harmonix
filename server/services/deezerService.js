@@ -1,5 +1,57 @@
 const DEEZER_TRACK_URL = 'https://api.deezer.com/track';
 const DEEZER_SEARCH_URL = 'https://api.deezer.com/search';
+const ITUNES_SEARCH_URL = 'https://itunes.apple.com/search';
+const ITUNES_LOOKUP_URL = 'https://itunes.apple.com/lookup';
+
+// Some cloud egress IPs get Akamai 403 without a browser-like User-Agent.
+const DEEZER_HEADERS = {
+  'User-Agent':
+    process.env.DEEZER_USER_AGENT
+    || 'Mozilla/5.0 (compatible; Harmonix/1.7; +https://harmonix.app)',
+  Accept: 'application/json',
+};
+
+const PREVIEW_STREAM_HEADERS = {
+  'User-Agent':
+    process.env.DEEZER_USER_AGENT
+    || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  Accept: 'audio/*,*/*;q=0.9',
+};
+
+const ITUNES_ID_PREFIX = 'itunes_';
+
+function isItunesTrackId(trackId) {
+  return String(trackId || '').startsWith(ITUNES_ID_PREFIX);
+}
+
+function itunesTrackIdFromParam(trackId) {
+  const raw = String(trackId || '');
+  if (!raw.startsWith(ITUNES_ID_PREFIX)) return null;
+  const n = Number(raw.slice(ITUNES_ID_PREFIX.length));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Normalize Apple Search/Lookup result into Deezer-shaped track for the rest of the app. */
+function mapItunesResult(result) {
+  if (!result?.trackId || !result.previewUrl) return null;
+  const artwork = result.artworkUrl100
+    ? String(result.artworkUrl100).replace('100x100bb', '300x300bb')
+    : null;
+  return {
+    id: `${ITUNES_ID_PREFIX}${result.trackId}`,
+    title: result.trackName || result.collectionName || 'Unknown',
+    duration: Math.round((result.trackTimeMillis || 0) / 1000) || 30,
+    preview: result.previewUrl,
+    rank: result.trackCount || 0,
+    provider: 'itunes',
+    artist: { name: result.artistName || 'Unknown' },
+    album: {
+      cover: artwork,
+      cover_medium: artwork,
+      cover_big: artwork,
+    },
+  };
+}
 
 function normText(s) {
   return (s || '')
@@ -87,7 +139,7 @@ async function fetchWithTimeout(url, fetchImpl = fetch, timeoutMs = DEEZER_TIMEO
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetchImpl(url, { signal: controller.signal });
+    return await fetchImpl(url, { signal: controller.signal, headers: DEEZER_HEADERS });
   } catch (err) {
     if (err.name === 'AbortError') {
       const timeoutErr = new Error('deezer_timeout');
@@ -105,7 +157,50 @@ async function searchTracks(query, fetchImpl = fetch, limit = 15) {
   const res = await fetchWithTimeout(url, fetchImpl);
   if (!res.ok) throw new Error(`deezer_http_${res.status}`);
   const data = await res.json();
-  return data.data || [];
+  if (data && data.error) throw new Error(`deezer_api_${data.error.code || 'error'}`);
+  // Akamai sometimes returns HTML bodies with a 200 — reject non-arrays.
+  if (!Array.isArray(data?.data)) throw new Error('deezer_bad_payload');
+  return data.data;
+}
+
+async function searchItunesTracks(query, fetchImpl = fetch, limit = 15) {
+  const url =
+    `${ITUNES_SEARCH_URL}?term=${encodeURIComponent(query)}`
+    + `&media=music&entity=song&limit=${limit}`;
+  const res = await fetchWithTimeout(url, fetchImpl);
+  if (!res.ok) throw new Error(`itunes_http_${res.status}`);
+  const data = await res.json();
+  if (!Array.isArray(data?.results)) throw new Error('itunes_bad_payload');
+  return data.results.map(mapItunesResult).filter(Boolean);
+}
+
+async function searchItunesTrack(artist, title, fetchImpl = fetch) {
+  const queries = buildSearchQueries(artist, title);
+  const seen = new Set();
+  const candidates = [];
+
+  for (const query of queries) {
+    let tracks;
+    try {
+      tracks = await searchItunesTracks(query, fetchImpl);
+    } catch {
+      continue;
+    }
+    for (const track of tracks) {
+      if (!track?.id || seen.has(track.id)) continue;
+      seen.add(track.id);
+      candidates.push(track);
+    }
+  }
+
+  if (!candidates.length) return null;
+
+  const ranked = candidates
+    .map((track) => ({ track, score: scoreTrackMatch(track, artist, title) }))
+    .filter(({ track, score }) => track.preview && score >= 2)
+    .sort((a, b) => b.score - a.score);
+
+  return ranked[0]?.track || null;
 }
 
 async function searchTrack(artist, title, fetchImpl = fetch) {
@@ -127,17 +222,48 @@ async function searchTrack(artist, title, fetchImpl = fetch) {
     }
   }
 
-  if (!candidates.length) return null;
+  if (candidates.length) {
+    const ranked = candidates
+      .map((track) => ({ track, score: scoreTrackMatch(track, artist, title) }))
+      .filter(({ track, score }) => track.preview && score >= 2)
+      .sort((a, b) => b.score - a.score || (b.track.rank || 0) - (a.track.rank || 0));
 
-  const ranked = candidates
-    .map((track) => ({ track, score: scoreTrackMatch(track, artist, title) }))
-    .filter(({ track, score }) => track.preview && score >= 2)
-    .sort((a, b) => b.score - a.score || (b.track.rank || 0) - (a.track.rank || 0));
+    if (ranked[0]?.track) return ranked[0].track;
+  }
 
-  return ranked[0]?.track || null;
+  // Deezer often geo-blocks cloud IPs (Akamai 403). Apple iTunes previews remain reachable.
+  return searchItunesTrack(artist, title, fetchImpl);
+}
+
+async function fetchItunesTrack(trackId, fetchImpl = fetch) {
+  const itunesId = itunesTrackIdFromParam(trackId);
+  if (!itunesId) {
+    const err = new Error('track_not_found');
+    err.code = 'track_not_found';
+    throw err;
+  }
+  const res = await fetchWithTimeout(`${ITUNES_LOOKUP_URL}?id=${itunesId}`, fetchImpl);
+  if (!res.ok) {
+    const err = new Error('track_not_found');
+    err.code = 'track_not_found';
+    err.status = res.status;
+    throw err;
+  }
+  const data = await res.json();
+  const mapped = mapItunesResult(data?.results?.[0]);
+  if (!mapped?.preview) {
+    const err = new Error('no_preview');
+    err.code = 'no_preview';
+    throw err;
+  }
+  return mapped;
 }
 
 async function fetchTrack(trackId, fetchImpl = fetch) {
+  if (isItunesTrackId(trackId)) {
+    return fetchItunesTrack(trackId, fetchImpl);
+  }
+
   const res = await fetchWithTimeout(`${DEEZER_TRACK_URL}/${trackId}`, fetchImpl);
   if (!res.ok) {
     const err = new Error('track_not_found');
@@ -157,6 +283,32 @@ async function fetchTrack(trackId, fetchImpl = fetch) {
     throw err;
   }
   return data;
+}
+
+/**
+ * Resolve a streamable preview URL for a track id.
+ * Falls back to song_cache preview, then iTunes search by artist/title.
+ */
+async function resolvePreviewForTrackId(trackId, { artist, title, cachedPreview } = {}, fetchImpl = fetch) {
+  try {
+    const track = await fetchTrack(trackId, fetchImpl);
+    if (track?.preview) return { previewUrl: track.preview, track };
+  } catch {
+    /* try fallbacks */
+  }
+
+  if (cachedPreview && typeof cachedPreview === 'string' && cachedPreview.startsWith('http')) {
+    return { previewUrl: cachedPreview, track: null };
+  }
+
+  if (artist && title) {
+    const itunes = await searchItunesTrack(artist, title, fetchImpl);
+    if (itunes?.preview) return { previewUrl: itunes.preview, track: itunes };
+  }
+
+  const err = new Error('no_preview');
+  err.code = 'no_preview';
+  throw err;
 }
 
 /** Prefer medium Deezer album art; fall back to larger/smaller variants. */
@@ -195,8 +347,13 @@ function extractCoverFromCachedTrack(trackOrJson) {
 }
 
 /** Same-origin path; browser audio tag cannot send JWT headers. */
-function previewProxyPath(trackId) {
-  return `/api/audio/preview/${trackId}`;
+function previewProxyPath(trackId, artist, title) {
+  const base = `/api/audio/preview/${encodeURIComponent(String(trackId))}`;
+  const params = new URLSearchParams();
+  if (artist) params.set('artist', String(artist));
+  if (title) params.set('title', String(title));
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
 }
 
 module.exports = {
@@ -207,8 +364,14 @@ module.exports = {
   buildSearchQueries,
   searchTrack,
   searchTracks,
+  searchItunesTrack,
   fetchTrack,
+  fetchItunesTrack,
+  resolvePreviewForTrackId,
+  isItunesTrackId,
   coverFromDeezerTrack,
   extractCoverFromCachedTrack,
   previewProxyPath,
+  PREVIEW_STREAM_HEADERS,
+  ITUNES_ID_PREFIX,
 };

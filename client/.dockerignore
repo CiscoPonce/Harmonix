@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+build
+.env
+.env.*
+!.env.example
+npm-debug.log*
+.git
+.gitignore
+android
+ios
+coverage
+**/*.test.ts
+**/*.test.tsx

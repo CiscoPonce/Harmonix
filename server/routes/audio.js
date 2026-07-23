@@ -1,20 +1,44 @@
 const express = require('express');
 const { Readable } = require('stream');
 const deezer = require('../services/deezerService');
+const validation = require('../services/validationService');
 
 const router = express.Router();
 
 router.get('/preview/:trackId', async (req, res) => {
   const { trackId } = req.params;
+  const artistQ = typeof req.query.artist === 'string' ? req.query.artist : '';
+  const titleQ = typeof req.query.title === 'string' ? req.query.title : '';
 
   try {
-    const track = await deezer.fetchTrack(trackId);
-    const upstreamHeaders = {};
+    const cached = validation.getCachedSong(String(trackId));
+    const cachedTrack = cached?.track || {};
+    const artist = artistQ || cachedTrack.artist || cachedTrack.artist_name || '';
+    const title = titleQ || cachedTrack.title || cachedTrack.track_name || '';
+    const cachedPreview = cachedTrack.preview || null;
+
+    const { previewUrl } = await deezer.resolvePreviewForTrackId(
+      trackId,
+      { artist, title, cachedPreview }
+    );
+
+    const upstreamHeaders = { ...deezer.PREVIEW_STREAM_HEADERS };
     if (req.headers.range) {
       upstreamHeaders.Range = req.headers.range;
     }
 
-    const audioRes = await fetch(track.preview, { headers: upstreamHeaders });
+    let audioRes = await fetch(previewUrl, { headers: upstreamHeaders });
+
+    // Deezer CDN often geo-blocks cloud IPs; retry via iTunes when we know the song.
+    if (!audioRes.ok && artist && title && !deezer.isItunesTrackId(trackId)) {
+      const itunes = await deezer.searchItunesTrack(artist, title);
+      if (itunes?.preview) {
+        audioRes = await fetch(itunes.preview, {
+          headers: { ...deezer.PREVIEW_STREAM_HEADERS, ...(req.headers.range ? { Range: req.headers.range } : {}) },
+        });
+      }
+    }
+
     if (!audioRes.ok) {
       return res.status(audioRes.status === 404 ? 404 : 502).json({
         error: 'preview_fetch_failed',

@@ -7,14 +7,12 @@ import { Flame, Loader2, Play, Search, Target } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AppShell } from '@/components/AppShell';
 import { DailyWordCard } from '@/components/DailyWordCard';
+import { RecentWordFlipCard, type ShelfWord } from '@/components/RecentWordFlipCard';
 import { ReviewCountBadge } from '@/components/ReviewCountBadge';
 import { BadgeUnlockToast } from '@/components/BadgeUnlockToast';
 import { apiFetch } from '@/lib/api';
 
-type RecentWord = {
-  word: { text: string; translation: string | null };
-  song: { id: string; title: string; artist: string } | null;
-};
+type RecentWord = ShelfWord;
 
 type ProgressStats = {
   streak_days: number;
@@ -66,7 +64,51 @@ export default function DiscoverPage() {
     }
   }, []);
 
-  const refreshHomeData = useCallback(async () => {
+  const refreshHomeData = useCallback(async (fromWord?: {
+    word?: { text?: string; translation?: string | null; pronunciation?: string | null; part_of_speech?: string | null };
+    lyric?: {
+      snippet?: string;
+      timestamp?: string;
+      char_start?: number;
+      char_end?: number;
+    } | null;
+    song?: { id?: string; title?: string; artist?: string } | null;
+    date?: string;
+  } | null) => {
+    // Immediately keep WOTD lyric on the shelf (don't wait for /recent).
+    if (fromWord?.word?.text && fromWord.song?.id) {
+      const shelfItem: RecentWord = {
+        word: {
+          text: fromWord.word.text,
+          translation: fromWord.word.translation ?? null,
+          pronunciation: fromWord.word.pronunciation ?? null,
+          part_of_speech: fromWord.word.part_of_speech ?? null,
+        },
+        title: fromWord.song.title ?? null,
+        phrase: (fromWord.lyric?.snippet || '').trim() || null,
+        lyric: fromWord.lyric?.snippet
+          ? {
+              snippet: fromWord.lyric.snippet,
+              timestamp: fromWord.lyric.timestamp,
+              char_start: fromWord.lyric.char_start,
+              char_end: fromWord.lyric.char_end,
+            }
+          : null,
+        song: {
+          id: String(fromWord.song.id),
+          title: fromWord.song.title || '',
+          artist: fromWord.song.artist || '',
+        },
+      };
+      setTrending((prev) => {
+        const key = `${shelfItem.word.text}|${shelfItem.song?.id}`;
+        const rest = prev.filter(
+          (p) => `${p.word.text}|${p.song?.id}` !== key
+        );
+        return [shelfItem, ...rest].slice(0, 8);
+      });
+    }
+
     try {
       const [statsRes, recentRes] = await Promise.all([
         apiFetch('/progress/stats'),
@@ -82,7 +124,34 @@ export default function DiscoverPage() {
       }
       if (recentRes.ok) {
         const data = await recentRes.json();
-        setTrending(data.recent || []);
+        const recent = (data.recent || []) as RecentWord[];
+        // Prefer server rows, but never drop a richer local phrase if server omits it.
+        setTrending((prev) => {
+          const byKey = new Map<string, RecentWord>(
+            prev.map((p) => [`${p.word.text}|${p.song?.id ?? ''}`, p])
+          );
+          return recent.map((row) => {
+            const key = `${row.word.text}|${row.song?.id ?? ''}`;
+            const local = byKey.get(key);
+            const phrase = (
+              row.phrase || row.lyric?.snippet || local?.phrase || local?.lyric?.snippet || ''
+            ).trim();
+            if (!phrase) return row;
+            return {
+              ...row,
+              phrase,
+              lyric: row.lyric?.snippet
+                ? row.lyric
+                : local?.lyric || {
+                    snippet: phrase,
+                    timestamp: row.lyric?.timestamp,
+                    char_start: row.lyric?.char_start,
+                    char_end: row.lyric?.char_end,
+                  },
+              title: row.title || row.song?.title || local?.title || null,
+            };
+          });
+        });
       }
     } catch {
       /* keep current shelf / stats */
@@ -250,6 +319,16 @@ export default function DiscoverPage() {
       )}
 
       <section className="mt-12" aria-label="Recent words">
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-[#0C1210] dark:text-[#F2F5F3]">
+              Your shelf
+            </h2>
+            <p className="mt-1 text-xs text-[#5C6B62] dark:text-[#9AABA0]">
+              Tap a card to flip — song title and lyric phrase on the back.
+            </p>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {trendingLoading ? (
             <div className="col-span-full flex justify-center py-10">
@@ -261,30 +340,10 @@ export default function DiscoverPage() {
             </p>
           ) : (
             trending.slice(0, 8).map((item, i) => (
-              <Link
-                key={`${item.word.text}-${item.song?.id || i}`}
-                href={item.song?.id ? `/player/${item.song.id}` : '/discover'}
-                className="group"
-              >
-                <div className="aspect-square overflow-hidden rounded-2xl border border-[#E4EBE6] bg-[#E8F5EE] transition group-hover:ring-2 group-hover:ring-[#0B4D2E] dark:border-[#2A3530] dark:bg-[#0B4D2E]/25 dark:group-hover:ring-[#3DCF7A]">
-                  <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
-                    <span className="font-display text-2xl font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">
-                      {item.word.text}
-                    </span>
-                    {item.word.translation ? (
-                      <span className="line-clamp-2 text-xs text-[#5C6B62] dark:text-[#9AABA0]">
-                        {item.word.translation}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-                <p className="mt-2 truncate text-sm font-bold">
-                  {item.song?.title || item.word.text}
-                </p>
-                <p className="truncate text-xs text-[#5C6B62] dark:text-[#9AABA0]">
-                  {item.song?.artist || 'Daily Word'}
-                </p>
-              </Link>
+              <RecentWordFlipCard
+                key={`${item.id ?? item.word.text}-${item.song?.id || i}`}
+                item={item}
+              />
             ))
           )}
         </div>

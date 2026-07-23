@@ -23,6 +23,7 @@ mobile/.flutter-plugins-dependencies
 **/.env.*
 !**/.env.example
 !**/.env*.example
+!.env.compose.example
 cookies.txt
 **/cookies.txt
 *.pem

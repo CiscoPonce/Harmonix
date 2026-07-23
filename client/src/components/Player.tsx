@@ -502,7 +502,7 @@ const Player: React.FC<PlayerProps> = ({
             onError={(e) => {
               if (audioSource === 'spotify') return;
               console.error("Audio preview load failed:", e);
-              setAudioError("Audio preview unavailable in your region. You can still study the lyrics.");
+              setAudioError("Preview unavailable. You can still study the lyrics, or reconnect Spotify.");
             }}
           />
         )}

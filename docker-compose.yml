@@ -1,0 +1,67 @@
+# Harmonix — Docker Compose (Coolify-ready)
+#
+# Public entry → api:3001 (Express). Unmatched routes proxy to web:3009.
+# SQLite on volume `harmonix-data`. Pocket-TTS remains host-side for now.
+#
+# Secrets: set in Coolify UI, or provide `server/.env` / root `.env` (gitignored).
+# Coolify: New Resource → Docker Compose → this file → assign domain on `api`.
+
+services:
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: ./server/.env
+        required: false
+      - path: ./.env
+        required: false
+    environment:
+      PORT: "3001"
+      NODE_ENV: production
+      SQLITE_PATH: /data/harmonix.db
+      FRONTEND_PROXY_TARGET: http://web:3009
+      FORCE_SECURE_COOKIES: ${FORCE_SECURE_COOKIES:-true}
+      TTS_SKIP_SPAWN: ${TTS_SKIP_SPAWN:-true}
+      TTS_BASE_URL: ${TTS_BASE_URL:-http://host.docker.internal:3002}
+      POCKET_TTS_HOST: ${POCKET_TTS_HOST:-host.docker.internal}
+      TTS_PORT: ${TTS_PORT:-3002}
+      VALIDATE_CONCURRENCY: ${VALIDATE_CONCURRENCY:-4}
+    volumes:
+      - harmonix-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - web
+    ports:
+      - "${HARMONIX_API_PORT:-3001}:3001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+
+  web:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3009"
+      HOSTNAME: 0.0.0.0
+    expose:
+      - "3009"
+
+volumes:
+  harmonix-data:

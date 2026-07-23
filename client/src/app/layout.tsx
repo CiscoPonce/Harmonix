@@ -15,7 +15,13 @@ const fraunces = Fraunces({
   subsets: ["latin"],
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
+  "https://moral-sparrow-nationally.ngrok-free.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Harmonix — Learn Words Through Music",
   description:
     "Master vocabulary with every beat. Unlock language through rhythm and melody. Turn your favorite songs into powerful learning tools.",

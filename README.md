@@ -17,6 +17,7 @@ AI-first language learning through real music lyrics — validated against Deeze
 | Item | State |
 |------|--------|
 | Roadmap phases 1–14 | **Complete** (v1.7 Production Parity & Ship) |
+| Phase 15 Coolify deploy | **In progress** — compose/Dockerfiles ready; cutover pending |
 | Web home | Unified **Discover** (Word of the Day + practice + search) |
 | Nav | Discover · Library · Settings |
 | Settings | Languages · music style · voice gender · Spotify |
@@ -55,10 +56,11 @@ server/          Express API + SQLite + Spotify/TTS/daily-word services
 client/          Next.js web + Capacitor Android (`client/android/`)
 mobile/          Flutter Android app (Play Store path)
 releases/        Sideload debug APKs
-docs/            Runbooks (Spotify, mobile, language reliability, releases)
+docs/            Runbooks (Coolify, Spotify, mobile, releases)
 .planning/       ROADMAP, STATE, phase contexts & plans
+docker-compose.yml  Coolify/Docker: api + web (Phase 15)
 logoharmonix.png Brand logo (web: client/public/logo-{light,dark,mark}.png)
-run_env.sh       VPS: backend + Next prod + TTS + ngrok
+run_env.sh       Legacy VPS: backend + Next prod + TTS + ngrok
 deploy.sh        pull → tests → run_env (tests may block; prefer run_env after pull)
 ```
 
