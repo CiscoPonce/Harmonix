@@ -1,7 +1,7 @@
 #!/bin/bash
-# Zero-downtime-ish redeploy for Coolify-managed Harmonix.
-# Builds new images while live traffic continues, brings up a Traefik standby
-# API, then rolls web/api so the public URL stays up through the cutover.
+# Zero-downtime redeploy for Coolify-managed Harmonix.
+# Builds while live, keeps a Traefik standby API, and a web standby with the
+# `web` DNS alias so api→web proxy never 502s during cutover.
 set -euo pipefail
 
 PROJECT="${PROJECT:-/home/ubuntu/lyric}"
@@ -11,7 +11,9 @@ WORKDIR="/data/coolify/services/${UUID}"
 DOMAIN="${PUBLIC_DOMAIN:-harmonix.peeporunclub.co.uk}"
 API="api-${UUID}"
 WEB="web-${UUID}"
-STANDBY="api-${UUID}-standby"
+API_STANDBY="api-${UUID}-standby"
+WEB_STANDBY="web-${UUID}-standby"
+
 run_compose() {
   # Coolify workdir is root-owned
   sudo docker compose --project-directory "$WORKDIR" -f "${WORKDIR}/docker-compose.yml" --project-name "$UUID" "$@"
@@ -34,15 +36,15 @@ wait_https() {
 }
 
 wait_container_http() {
-  local name="$1" tries="${2:-40}"
+  local name="$1" url="$2" tries="${3:-40}"
   local i
   for i in $(seq 1 "$tries"); do
-    if docker exec "$name" node -e "fetch('http://127.0.0.1:3001/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))" 2>/dev/null; then
+    if docker exec "$name" node -e "fetch('${url}').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))" 2>/dev/null; then
       return 0
     fi
     sleep 2
   done
-  echo "ERROR: ${name} did not become ready"
+  echo "ERROR: ${name} did not become ready at ${url}"
   return 1
 }
 
@@ -57,20 +59,21 @@ fix_sqlite_perms() {
     sh -c 'chown -R 999:999 /data; chmod 775 /data; chmod 664 /data/*.db 2>/dev/null || true'
 }
 
-cleanup_standby() {
-  docker rm -f "$STANDBY" >/dev/null 2>&1 || true
+cleanup_standbys() {
+  docker rm -f "$API_STANDBY" >/dev/null 2>&1 || true
+  docker rm -f "$WEB_STANDBY" >/dev/null 2>&1 || true
 }
 
-start_standby() {
-  cleanup_standby
-  log "Starting Traefik standby API (keeps site live during cutover)"
+start_api_standby() {
+  docker rm -f "$API_STANDBY" >/dev/null 2>&1 || true
+  log "Starting Traefik standby API (keeps site live during API cutover)"
   local env_tmp
   env_tmp=$(mktemp)
   sudo cat "${WORKDIR}/.env" > "$env_tmp"
   chmod 600 "$env_tmp"
 
   docker run -d \
-    --name "$STANDBY" \
+    --name "$API_STANDBY" \
     --restart "no" \
     --network "$UUID" \
     --network-alias "api-standby" \
@@ -106,17 +109,42 @@ start_standby() {
     lyric-api:latest >/dev/null
 
   rm -f "$env_tmp"
-  docker network connect coolify "$STANDBY" 2>/dev/null || true
-  wait_container_http "$STANDBY" 40
-  # Wait until Traefik is reliably routing via standby (or primary)
+  docker network connect coolify "$API_STANDBY" 2>/dev/null || true
+  wait_container_http "$API_STANDBY" "http://127.0.0.1:3001/" 40
   sleep 5
   wait_https 200 30
-  # Extra probes so standby is warm in the LB
   local p
   for p in 1 2 3 4 5; do
     curl -s -o /dev/null --max-time 5 "https://${DOMAIN}/" || true
     sleep 1
   done
+}
+
+start_web_standby() {
+  docker rm -f "$WEB_STANDBY" >/dev/null 2>&1 || true
+  log "Starting web standby (DNS alias web — keeps API proxy alive during web cutover)"
+  # Same Compose network + alias `web` so Docker DNS still resolves while
+  # the primary web container is force-recreated.
+  docker run -d \
+    --name "$WEB_STANDBY" \
+    --restart "no" \
+    --network "$UUID" \
+    --network-alias "web" \
+    -e NODE_ENV=production \
+    -e PORT=3009 \
+    -e HOSTNAME=0.0.0.0 \
+    lyric-web:latest >/dev/null
+
+  wait_container_http "$WEB_STANDBY" "http://127.0.0.1:3009/" 40
+  # Primary (and standby) API must resolve web → standby before we tear down primary web
+  local i
+  for i in $(seq 1 30); do
+    if docker exec "$API" node -e "fetch('http://web:3009/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" 2>/dev/null; then
+      break
+    fi
+    sleep 1
+  done
+  wait_https 200 20
 }
 
 cd "$PROJECT"
@@ -135,18 +163,20 @@ log "Building images (live traffic stays on current containers)"
 docker compose build api web
 
 fix_sqlite_perms
-trap cleanup_standby EXIT
+trap cleanup_standbys EXIT
 
-start_standby
+start_api_standby
 
 log "Rolling api (standby serves Traefik; old web still up)"
 run_compose up -d --no-deps --force-recreate api
 ensure_networks
 fix_sqlite_perms
-wait_container_http "$API" 40
+wait_container_http "$API" "http://127.0.0.1:3001/" 40
 wait_https 200 45
 
-log "Rolling web (primary API stays up)"
+start_web_standby
+
+log "Rolling web (web standby keeps http://web:3009 reachable)"
 run_compose up -d --no-deps --force-recreate web
 docker network connect coolify "$WEB" 2>/dev/null || true
 for i in $(seq 1 40); do
@@ -154,7 +184,6 @@ for i in $(seq 1 40); do
   [ "$st" = "healthy" ] || [ "$st" = "running" ] && break
   sleep 2
 done
-# Primary API must reach new web
 for i in $(seq 1 30); do
   if docker exec "$API" node -e "fetch('http://web:3009/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" 2>/dev/null; then
     break
@@ -163,12 +192,11 @@ for i in $(seq 1 30); do
 done
 wait_https 200 45
 
-log "Removing standby"
-cleanup_standby
+log "Removing standbys"
+cleanup_standbys
 trap - EXIT
 
 ensure_networks
-# Brief settle so Traefik drops standby without blipping primary
 sleep 2
 wait_https 200 30
 

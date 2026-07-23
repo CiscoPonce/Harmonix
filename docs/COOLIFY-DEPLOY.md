@@ -108,9 +108,9 @@ bash run_env.sh    # legacy host stack + ngrok
 
 1. Sync `/home/ubuntu/lyric` to `origin/main`
 2. Build images while live traffic stays on current containers
-3. Start a Traefik **standby** API so the public URL stays up during cutover
-4. Roll **api**, then **web** (never both down)
-5. Remove standby and health-check `https://harmonix.peeporunclub.co.uk`
+3. Start a Traefik **standby** API so the public URL stays up during API cutover
+4. Roll **api**, then start a **web** standby (DNS alias `web`) and roll **web**
+5. Remove standbys and health-check `https://harmonix.peeporunclub.co.uk`
 
 This is zero-downtime for push deploys (proxy 502/503 during recreate should not happen). Prefer the Actions path over Coolify UI **Restart**, which can still stop-before-start.
 
