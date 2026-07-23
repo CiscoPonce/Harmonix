@@ -9,7 +9,7 @@ AI-first language learning through real music lyrics — validated against Deeze
 ![Harmonix Logo](./logoharmonix.png)
 
 **Tagline:** Learn Words Through Music  
-**Live:** https://moral-sparrow-nationally.ngrok-free.app  
+**Live:** https://harmonix.peeporunclub.co.uk  
 **Default branch:** `main` (all product work lands here)
 
 ## Status
@@ -17,7 +17,7 @@ AI-first language learning through real music lyrics — validated against Deeze
 | Item | State |
 |------|--------|
 | Roadmap phases 1–14 | **Complete** (v1.7 Production Parity & Ship) |
-| Phase 15 Coolify deploy | **In progress** — compose/Dockerfiles ready; cutover pending |
+| Phase 15 Coolify deploy | **Live on domain** — Compose `api`+`web` + Coolify Traefik HTTPS; Git auto-deploy optional follow-up |
 | Web home | Unified **Discover** (Word of the Day + practice + search) |
 | Nav | Discover · Library · Settings |
 | Settings | Languages · music style · voice gender · Spotify |
@@ -83,11 +83,22 @@ npm run dev            # :3009
 ```
 
 ### Production (VPS)
+
+**Public:** https://harmonix.peeporunclub.co.uk  
+
+Primary path: Docker Compose on the VPS behind Coolify Traefik (see [docs/COOLIFY-DEPLOY.md](./docs/COOLIFY-DEPLOY.md)).
+
 ```bash
+# On the VPS (manual / current ops)
+cd /home/ubuntu/lyric
 git pull origin main
-bash run_env.sh
+docker compose build && docker compose up -d
+# Pocket-TTS stays on the host (:3002); systemd unit harmonix-tts
 ```
-Public tunnel (current): `https://moral-sparrow-nationally.ngrok-free.app`
+
+Legacy rollback: `bash run_env.sh` (host Node + Next + ngrok).
+
+**Git → Coolify auto-deploy:** not enabled yet. Pushing to `main` updates GitHub only until the Coolify resource is linked to this repo with **Deploy on push** (webhook). Until then, redeploy with `docker compose` on the VPS (or Deploy in the Coolify UI).
 
 ## Security
 
@@ -106,7 +117,7 @@ Known env-sensitive failures: Pocket-TTS not running; Spotify `/status` contract
 
 ## Planning
 
-Milestone **v1.7** is complete (Phase 14). Post-ship polish (Discover unify, Settings music style / voice, Library Spotify header) is documented in ROADMAP → *Post-v1.7 polish*. Remaining work is optional ops (AI provider reliability, Play Store listing, domain).
+Milestone **v1.7** is complete (Phase 14). **v1.8 / Phase 15** production URL is live on Coolify Traefik. Remaining optional ops: GitHub auto-deploy webhook, Play Store listing, AI provider hardening, Extended Spotify Quota.
 
 ## Releases
 

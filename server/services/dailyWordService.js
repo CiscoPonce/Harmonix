@@ -95,23 +95,27 @@ function formatTimestamp(ms) {
   return `${min}:${String(sec).padStart(2, "0")}`;
 }
 
-function previewOffset(duration) {
+function previewOffset(duration, provider = "deezer") {
+  if (provider === "itunes" || String(provider).startsWith("itunes")) {
+    // Apple Search previews are typically the opening ~30s.
+    return 0;
+  }
   if (duration > 60) return 30;
   if (duration > 30) return duration - 30;
   return 0;
 }
 
-/** Deezer 30s clip maps to [offset, offset+30) in the full track. */
-function previewWindow(duration) {
-  const offset = previewOffset(duration);
+/** Preview clip maps to [offset, offset+30) in the full track. */
+function previewWindow(duration, provider = "deezer") {
+  const offset = previewOffset(duration, provider);
   return { offset, end: offset + 30, length: 30 };
 }
 
-function isTimestampInPreview(timestampMs, duration) {
-  const { offset, end } = previewWindow(duration);
+function isTimestampInPreview(timestampMs, duration, provider = "deezer") {
+  const { offset, end } = previewWindow(duration, provider);
   const t = Number(timestampMs) / 1000;
-  // Keep a little margin so lead-in/out still fit in the clip.
-  return t >= offset + 0.5 && t <= end - 1.5;
+  // Leave margin so a word-centered ~1s lead-in still fits.
+  return t >= offset + 1.0 && t <= end - 1.5;
 }
 
 function parseLyricLines(lrc) {
@@ -153,11 +157,12 @@ function findWordOccurrence(word, syncedLyrics, plainLyrics = null, options = {}
   if (!occurrences.length) return null;
 
   const duration = typeof options.duration === "number" ? options.duration : null;
+  const provider = options.provider || "deezer";
   let chosen = occurrences[0];
   if (duration != null) {
     const inPreview = occurrences.find((hit) => {
       const line = parsed[hit.line_index];
-      return line && isTimestampInPreview(line.time, duration);
+      return line && isTimestampInPreview(line.time, duration, provider);
     });
     if (inPreview) chosen = inPreview;
   }
@@ -165,7 +170,7 @@ function findWordOccurrence(word, syncedLyrics, plainLyrics = null, options = {}
   const line = parsed[chosen.line_index];
   if (!line) return null;
 
-  const in_preview = duration != null ? isTimestampInPreview(line.time, duration) : null;
+  const in_preview = duration != null ? isTimestampInPreview(line.time, duration, provider) : null;
   const nextLine = parsed[chosen.line_index + 1];
   // Real sung-line length from next LRC stamp (fallback ~4s).
   const line_end_ms =
@@ -211,11 +216,14 @@ async function searchDeezerTrack(artist, title, fetchImpl = fetch) {
 
 function buildPayload(date, suggestion, track, lyricsData, occurrence, langCode = "es") {
   const duration = track.duration;
-  const offset = previewOffset(duration);
+  const provider = track.provider === "itunes" || deezer.isItunesTrackId?.(track.id)
+    ? "itunes"
+    : "deezer";
+  const offset = previewOffset(duration, provider);
   const inPreview =
     typeof occurrence.in_preview === "boolean"
       ? occurrence.in_preview
-      : isTimestampInPreview(occurrence.timestamp_ms, duration);
+      : isTimestampInPreview(occurrence.timestamp_ms, duration, provider);
   return {
     date,
     cached: false,
@@ -244,19 +252,23 @@ function buildPayload(date, suggestion, track, lyricsData, occurrence, langCode 
       duration_seconds: duration,
       preview_offset: offset,
       preview_end: offset + 30,
+      preview_provider: provider,
     },
   };
 }
 
 function persistPayloadSideEffects(payload, track, lyricsData, syncCheck) {
+  const provider =
+    track.provider === "itunes" || deezer.isItunesTrackId?.(track.id) ? "itunes" : "deezer";
   validation.cacheSongData(String(track.id), lyricsData, {
     id: track.id,
     title: track.title,
     artist: track.artist.name,
     preview: track.preview,
     duration: track.duration,
-    preview_offset: previewOffset(track.duration),
     cover: deezer.coverFromDeezerTrack(track),
+    provider,
+    preview_offset: previewOffset(track.duration, provider),
   });
   validation.recordValidation(String(track.id), track.artist.name, track.title, track.duration, syncCheck);
 
@@ -317,10 +329,12 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
       }
 
       const duration = track.duration;
-      const { offset: previewStart, end: previewEnd } = previewWindow(duration);
+      const provider =
+        track.provider === "itunes" || deezer.isItunesTrackId?.(track.id) ? "itunes" : "deezer";
+      const { offset: previewStart, end: previewEnd } = previewWindow(duration, provider);
       const parsedLines = validation.parseLrc(lyricsData.syncedLyrics);
 
-      // Prefer a word whose lyric line sits inside Deezer's 30s preview cut.
+      // Prefer a word whose lyric line sits inside the 30s preview cut.
       let picked = null;
       let occurrence = null;
       const candidates = [];
@@ -329,7 +343,7 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
 
       // Also consider other heuristic candidates from preview-window lines only.
       const previewPlain = parsedLines
-        .filter((line) => isTimestampInPreview(line.time, duration))
+        .filter((line) => isTimestampInPreview(line.time, duration, provider))
         .map((line) => line.text)
         .join("\n");
       if (previewPlain.trim()) {
@@ -348,6 +362,7 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
         if (!wordMatchesTargetLanguage(candidate.word, langCode)) continue;
         const occ = findWordOccurrence(candidate.word, lyricsData.syncedLyrics, plain, {
           duration,
+          provider,
         });
         if (!occ) continue;
         picked = candidate;
@@ -1142,6 +1157,15 @@ async function generateNextDailyWord(user, fetchImpl = fetch) {
 function hydratePayloadAudio(payload) {
   if (!payload?.song?.id) return payload;
   if (!payload.audio) payload.audio = {};
+  const provider =
+    payload.audio.preview_provider
+    || (deezer.isItunesTrackId?.(payload.song.id) ? "itunes" : "deezer");
+  payload.audio.preview_provider = provider;
+  payload.audio.preview_offset = previewOffset(
+    payload.audio.duration_seconds || 0,
+    provider
+  );
+  payload.audio.preview_end = payload.audio.preview_offset + 30;
   payload.audio.preview_url = deezer.previewProxyPath(
     String(payload.song.id),
     payload.song.artist,

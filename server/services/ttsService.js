@@ -36,10 +36,10 @@ const POCKET_LANG_MAP = {
 };
 
 /** Bump to invalidate SQLite pronunciation cache after quality/speed changes. */
-const CACHE_VERSION = 'hq-v8-gender';
+const CACHE_VERSION = 'hq-v9-snappy';
 
 /** Playback tempo (< 1 = slower). Pitch preserved via ffmpeg atempo. */
-const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.75');
+const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.85');
 
 /** Extra linear gain after percentile normalize. */
 const SPEECH_GAIN = Number(process.env.POCKET_TTS_GAIN || '1.25');
@@ -47,9 +47,9 @@ const SPEECH_GAIN = Number(process.env.POCKET_TTS_GAIN || '1.25');
 /** Target level for the 98th-percentile sample (0–1 of full scale). */
 const SPEECH_TARGET_PEAK = Number(process.env.POCKET_TTS_TARGET_PEAK || '0.88');
 
-/** Silence before the word (seconds) — softens ffmpeg start click / bump. */
-const LEAD_SILENCE_SEC = Number(process.env.POCKET_TTS_LEAD_SILENCE || '0.5');
-const TRAIL_SILENCE_SEC = Number(process.env.POCKET_TTS_TRAIL_SILENCE || '0.25');
+/** Silence before the word (seconds) — keep short for snappy UX. */
+const LEAD_SILENCE_SEC = Number(process.env.POCKET_TTS_LEAD_SILENCE || '0.08');
+const TRAIL_SILENCE_SEC = Number(process.env.POCKET_TTS_TRAIL_SILENCE || '0.12');
 
 const SUPPORTED_LANGUAGES = Object.keys(VOICE_MAP);
 
@@ -295,15 +295,31 @@ async function fetchFromPocketTTS(word, voiceUrl) {
 
 async function ensureDaemonLanguage(langCode) {
   const pocketLang = POCKET_LANG_MAP[langCode] || 'english';
+
+  // Fast path: healthy daemon already on the right language.
   if (ttsDaemon.currentLanguage === pocketLang && (await ttsDaemon.healthCheck())) {
     return;
   }
+
+  // Adopt a healthy orphan daemon (API restarted; TTS kept running).
+  // Avoid a multi-second model reload — synthesize with the live model.
+  if (await ttsDaemon.healthCheck()) {
+    if (!ttsDaemon.currentLanguage || ttsDaemon.currentLanguage === pocketLang) {
+      ttsDaemon.currentLanguage = pocketLang;
+      return;
+    }
+    // Different language loaded — must restart to swap model weights.
+  }
+
   await ttsDaemon.restart(pocketLang);
-  const maxRetries = process.env.NODE_ENV === 'test' ? 3 : 30;
-  const pollInterval = process.env.NODE_ENV === 'test' ? 100 : 500;
+  const maxRetries = process.env.NODE_ENV === 'test' ? 3 : 40;
+  const pollInterval = process.env.NODE_ENV === 'test' ? 100 : 400;
   for (let i = 0; i < maxRetries; i++) {
     await new Promise((r) => setTimeout(r, pollInterval));
-    if (await ttsDaemon.healthCheck()) return;
+    if (await ttsDaemon.healthCheck()) {
+      ttsDaemon.currentLanguage = pocketLang;
+      return;
+    }
   }
   const err = new Error('Pocket-TTS daemon failed to become ready');
   err.code = 'tts_unavailable';

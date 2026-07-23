@@ -25,7 +25,10 @@ const {
 const deezer = require('./services/deezerService');
 require('dotenv').config();
 const ttsDaemon = require('./services/ttsDaemon');
-ttsDaemon.start('english');
+// Default to Spanish HQ model — matches most Harmonix learners and avoids a
+// cold english→spanish reload on the first pronunciation click.
+const defaultTtsLang = process.env.POCKET_TTS_DEFAULT_LANGUAGE || 'spanish_24l';
+ttsDaemon.start(defaultTtsLang);
 
 const app = express();
 const PORT = process.env.PORT || 3001;

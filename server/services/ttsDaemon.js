@@ -1,6 +1,7 @@
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 
 function ttsBaseUrl() {
   const fromEnv = (process.env.TTS_BASE_URL || "").trim().replace(/\/$/, "");
@@ -50,6 +51,24 @@ function resolvePocketTtsBin() {
   return "pocket-tts";
 }
 
+function freeTtsPort(port) {
+  try {
+    execSync(`fuser -k ${port}/tcp`, { stdio: "ignore" });
+  } catch {
+    /* fuser missing or nothing listening */
+  }
+  try {
+    execSync(`pkill -f 'pocket_tts_hq_serve.py'`, { stdio: "ignore" });
+  } catch {
+    /* ignore */
+  }
+  try {
+    execSync(`pkill -f 'pocket-tts serve'`, { stdio: "ignore" });
+  } catch {
+    /* ignore */
+  }
+}
+
 const ttsDaemon = {
   _process: null,
   _ready: false,
@@ -67,7 +86,30 @@ const ttsDaemon = {
       return;
     }
 
+    // Adopt an already-healthy daemon (e.g. previous API process left it up).
+    // Avoids a multi-second model reload on every API restart.
     this._ready = false;
+    fetch(`${ttsBaseUrl()}/health`)
+      .then(async (res) => {
+        if (res.ok) {
+          this._ready = true;
+          console.log(
+            `[ttsDaemon] adopting healthy daemon at ${ttsBaseUrl()} language=${language}`
+          );
+        }
+      })
+      .catch(() => {});
+
+    // If something is already listening, don't spawn a second copy.
+    // (Adoption path above; spawn only when health fails after a short wait.)
+    setTimeout(() => {
+      if (this._ready || this._process) return;
+      this._spawn(language);
+    }, 150);
+  },
+
+  _spawn(language) {
+    if (this._process || this._ready) return;
 
     const python = resolvePython();
     const hqScript = resolveHqScript();
@@ -77,10 +119,16 @@ const ttsDaemon = {
     };
     const bindHost = process.env.TTS_BIND_HOST || "127.0.0.1";
     const bindPort = process.env.TTS_PORT || "3002";
+    // Lower LSD steps = faster cold synthesize (quality still good for words).
+    const lsdSteps = process.env.POCKET_TTS_LSD_STEPS || "3";
+    const temperature = process.env.POCKET_TTS_TEMPERATURE || "0.45";
+    const eos = process.env.POCKET_TTS_EOS || "-3.5";
+
+    freeTtsPort(bindPort);
 
     if (hqScript) {
       console.log(
-        `[ttsDaemon] starting HQ server language=${language} via ${hqScript}`
+        `[ttsDaemon] starting HQ server language=${language} via ${hqScript} lsd=${lsdSteps}`
       );
       this._process = spawn(
         python,
@@ -89,9 +137,9 @@ const ttsDaemon = {
           "--host", bindHost,
           "--port", bindPort,
           "--language", language,
-          "--temperature", process.env.POCKET_TTS_TEMPERATURE || "0.45",
-          "--lsd-decode-steps", process.env.POCKET_TTS_LSD_STEPS || "5",
-          "--eos-threshold", process.env.POCKET_TTS_EOS || "-3.5",
+          "--temperature", temperature,
+          "--lsd-decode-steps", lsdSteps,
+          "--eos-threshold", eos,
         ],
         { stdio: "pipe", env }
       );
@@ -134,7 +182,10 @@ const ttsDaemon = {
 
   stop() {
     return new Promise((resolve) => {
-      if (!this._process) return resolve();
+      if (!this._process) {
+        freeTtsPort(process.env.TTS_PORT || "3002");
+        return resolve();
+      }
 
       const proc = this._process;
       this._ready = false;
@@ -159,8 +210,11 @@ const ttsDaemon = {
 
   async restart(language) {
     await this.stop();
-    await new Promise((r) => setTimeout(r, 800));
-    this.start(language);
+    await new Promise((r) => setTimeout(r, 400));
+    this.currentLanguage = language;
+    this._ready = false;
+    this._process = null;
+    this._spawn(language);
   },
 
   async healthCheck() {

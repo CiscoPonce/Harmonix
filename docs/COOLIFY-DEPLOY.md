@@ -1,21 +1,22 @@
 # Coolify / Docker Compose deploy for Harmonix
 
 **Last updated:** 2026-07-23  
-**VPS:** `harmonixinstance` (`79.72.79.7`) — Coolify **4.1.2** is already running (Traefik on `:80`/`:443`, UI on `:8000`).
+**VPS:** `harmonixinstance` (`79.72.79.7`) — Coolify Traefik on `:80`/`:443`, UI on `:8000`.  
+**Live:** https://harmonix.peeporunclub.co.uk (Docker Compose `api`+`web` + Traefik labels; host Pocket-TTS).
 
 ---
 
 ## Current vs target
 
-| Today (legacy) | Target (Coolify) |
-|----------------|------------------|
-| `run_env.sh` starts Node + Next + ngrok on the host | `docker-compose.yml` → Coolify resource |
-| SQLite file in `server/harmonix.db` | Named volume `harmonix-data` (`SQLITE_PATH=/data/harmonix.db`) |
-| Express proxies to `127.0.0.1:3009` | `FRONTEND_PROXY_TARGET=http://web:3009` |
-| Pocket-TTS spawned by API | Host TTS (`TTS_SKIP_SPAWN=true`, `TTS_BASE_URL=http://host.docker.internal:3002`) |
-| Public URL = reserved ngrok | Coolify domain **or** ngrok → published `:3001` until you buy a domain |
+| Legacy (`run_env.sh`) | Now (Compose + Traefik) |
+|-----------------------|-------------------------|
+| Host Node + Next + ngrok | `docker compose up -d` → Traefik → `api:3001` |
+| SQLite `server/harmonix.db` | Volume `lyric_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`) |
+| Express → `127.0.0.1:3009` | `FRONTEND_PROXY_TARGET=http://web:3009` |
+| TTS spawned by API | Host TTS systemd `harmonix-tts` (`TTS_BASE_URL=http://10.0.0.15:3002`) |
+| ngrok URL | **https://harmonix.peeporunclub.co.uk** |
 
-Coolify apps list is currently **empty** — nothing else is competing for Traefik. Ports `80`/`443` are owned by Coolify; Harmonix must not bind them itself.
+Ports `80`/`443` stay with Coolify Traefik; Harmonix publishes `:3001` only as a side channel.
 
 ---
 
@@ -97,6 +98,24 @@ Expect `401`/`400` (API up). Browser via Express proxy: Discover should load.
 ```bash
 docker compose down
 bash run_env.sh    # legacy host stack + ngrok
+```
+
+---
+
+## Git push → auto-deploy?
+
+**Not automatic yet.** Pushing to `main` updates GitHub only.
+
+To make every commit on `main` redeploy live:
+
+1. Coolify → **Harmonix** resource → connect **GitHub source** (`app-harmonix` / `CiscoPonce/Harmonix`), not only local images.
+2. Enable **Automatic Deployment** / webhook on `main`.
+3. Prefer `build:` contexts from the repo (Dockerfiles) over static `lyric-*:latest` tags so each push rebuilds.
+
+Until then, after `git push origin main` on a machine with VPS access:
+
+```bash
+ssh ubuntu@100.97.39.101 'cd /home/ubuntu/lyric && git pull && docker compose build && docker compose up -d'
 ```
 
 ---

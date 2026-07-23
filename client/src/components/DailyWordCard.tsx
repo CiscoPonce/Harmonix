@@ -60,6 +60,7 @@ interface DailyWordPayload {
     duration_seconds: number;
     preview_offset: number;
     preview_end?: number;
+    preview_provider?: string | null;
   };
   queue?: QueueStatus;
 }
@@ -95,6 +96,8 @@ export function DailyWordCard({
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const pronunciationAudioRef = useRef<HTMLAudioElement | null>(null);
+  const pronunciationBlobUrlRef = useRef<string | null>(null);
+  const pronunciationWordRef = useRef<string | null>(null);
   const hearStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioProviderRef = useRef<'spotify' | 'deezer' | null>(null);
   const [hearBusy, setHearBusy] = useState(false);
@@ -156,6 +159,50 @@ export function DailyWordCard({
     setStatusMessage(null);
     onWordChange?.(payload);
   }, [onWordChange]);
+
+  // Prefetch pronunciation so speaker tap is instant (cache hit or in-flight).
+  useEffect(() => {
+    const word = data?.word?.text?.trim();
+    if (!word || !SUPPORTED_PRONUNCIATION_LANGUAGES.includes(user?.target_language || "")) {
+      return;
+    }
+    if (pronunciationWordRef.current === word && pronunciationBlobUrlRef.current) {
+      return;
+    }
+    let cancelled = false;
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const res = await apiFetch(
+          `/daily-word/pronounce?word=${encodeURIComponent(word)}`,
+          { signal: ac.signal }
+        );
+        if (!res.ok || cancelled) return;
+        const blob = await res.blob();
+        if (cancelled) return;
+        if (pronunciationBlobUrlRef.current) {
+          URL.revokeObjectURL(pronunciationBlobUrlRef.current);
+        }
+        pronunciationBlobUrlRef.current = URL.createObjectURL(blob);
+        pronunciationWordRef.current = word;
+      } catch {
+        /* non-fatal — tap will fetch on demand */
+      }
+    })();
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+  }, [data?.word?.text, user?.target_language]);
+
+  useEffect(() => {
+    return () => {
+      if (pronunciationBlobUrlRef.current) {
+        URL.revokeObjectURL(pronunciationBlobUrlRef.current);
+        pronunciationBlobUrlRef.current = null;
+      }
+    };
+  }, []);
 
   const loadDailyWord = useCallback(async (initial = false) => {
     const hasBuffered = (queueStatus?.ready ?? 0) > 0;
@@ -262,64 +309,99 @@ export function DailyWordCard({
 
   const playDeezerClip = useCallback(async () => {
     const audio = audioRef.current;
-    if (!audio || !data) return false;
+    if (!audio || !data?.audio?.preview_url) return false;
     clearHearStopTimer();
 
-    const win = computeDeezerHearWindow({
-      timestamp_ms: data.lyric.timestamp_ms,
-      line_end_ms: data.lyric.line_end_ms,
-      snippet: data.lyric.snippet,
-      char_start: data.lyric.char_start,
-      char_end: data.lyric.char_end,
-      preview_offset: data.audio.preview_offset || 0,
-    });
-
-    if (!win.inWindow) {
-      setRefreshError(
-        `Word is at ${data.lyric.timestamp}; Deezer preview is ${formatPreviewWindowLabel(data.audio.preview_offset || 0)}. Playing the closest available clip.`
-      );
-      window.setTimeout(() => setRefreshError(null), 5500);
-    }
-
     try {
-      if (audio.readyState < 1) {
-        audio.load();
-        await new Promise<void>((resolve, reject) => {
-          const onReady = () => {
-            cleanup();
-            resolve();
-          };
-          const onErr = () => {
-            cleanup();
-            reject(new Error('audio_load_failed'));
-          };
-          const cleanup = () => {
-            audio.removeEventListener('loadedmetadata', onReady);
-            audio.removeEventListener('error', onErr);
-          };
-          audio.addEventListener('loadedmetadata', onReady, { once: true });
-          audio.addEventListener('error', onErr, { once: true });
-        });
+      // Fetch as blob so we can read preview-provider (Deezer vs iTunes fallback)
+      // and seek accurately before play.
+      const res = await fetch(data.audio.preview_url, { credentials: 'include' });
+      if (!res.ok) throw new Error(`preview_http_${res.status}`);
+      const streamedProvider = (
+        res.headers.get('X-Harmonix-Preview-Provider')
+        || data.audio.preview_provider
+        || 'deezer'
+      ).toLowerCase();
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      const prevSrc = audio.src;
+      audio.src = objectUrl;
+      audio.load();
+
+      await new Promise<void>((resolve, reject) => {
+        const onReady = () => {
+          cleanup();
+          resolve();
+        };
+        const onErr = () => {
+          cleanup();
+          reject(new Error('audio_load_failed'));
+        };
+        const cleanup = () => {
+          audio.removeEventListener('loadedmetadata', onReady);
+          audio.removeEventListener('canplay', onReady);
+          audio.removeEventListener('error', onErr);
+        };
+        audio.addEventListener('loadedmetadata', onReady, { once: true });
+        audio.addEventListener('canplay', onReady, { once: true });
+        audio.addEventListener('error', onErr, { once: true });
+        window.setTimeout(() => {
+          cleanup();
+          if (audio.readyState >= 1) resolve();
+          else reject(new Error('audio_load_timeout'));
+        }, 5000);
+      });
+
+      const win = computeDeezerHearWindow({
+        timestamp_ms: data.lyric.timestamp_ms,
+        line_end_ms: data.lyric.line_end_ms,
+        snippet: data.lyric.snippet,
+        char_start: data.lyric.char_start,
+        char_end: data.lyric.char_end,
+        preview_offset: data.audio.preview_offset || 0,
+        preview_provider: streamedProvider,
+        duration_seconds: data.audio.duration_seconds,
+        preview_len: Number.isFinite(audio.duration) && audio.duration > 0
+          ? Math.min(30, audio.duration)
+          : 30,
+      });
+
+      if (!win.inWindow) {
+        setRefreshError(
+          `Word is at ${data.lyric.timestamp}; preview window may not include it. Playing the closest clip.`
+        );
+        window.setTimeout(() => setRefreshError(null), 5500);
       }
 
-      audio.currentTime = win.seekTo;
-      if (Math.abs(audio.currentTime - win.seekTo) > 0.35) {
-        await new Promise<void>((resolve) => {
-          const done = () => {
-            audio.removeEventListener('seeked', done);
-            resolve();
-          };
-          audio.addEventListener('seeked', done, { once: true });
-          window.setTimeout(done, 450);
-        });
-      }
+      const previewLen = Number.isFinite(audio.duration) && audio.duration > 0
+        ? Math.min(30, audio.duration)
+        : 30;
+      const seekTo = Math.max(0, Math.min(win.seekTo, Math.max(0, previewLen - 0.5)));
+      const stopAt = Math.max(seekTo + 1.5, Math.min(win.stopAt, previewLen));
+
+      const seekAccurate = async (t: number) => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          audio.currentTime = t;
+          await new Promise<void>((resolve) => {
+            const done = () => {
+              audio.removeEventListener('seeked', done);
+              resolve();
+            };
+            audio.addEventListener('seeked', done, { once: true });
+            window.setTimeout(done, 350);
+          });
+          if (Math.abs(audio.currentTime - t) <= 0.35) return;
+        }
+      };
+      await seekAccurate(seekTo);
 
       await audio.play();
       audioProviderRef.current = 'deezer';
       setIsPlaying(true);
       if (win.inWindow) setRefreshError(null);
 
-      const playMs = Math.max(1500, (win.stopAt - win.seekTo) * 1000);
+      const playMs = Math.max(1800, (stopAt - seekTo) * 1000);
       hearStopTimerRef.current = setTimeout(() => {
         try {
           audio.pause();
@@ -328,6 +410,12 @@ export function DailyWordCard({
         }
         setIsPlaying(false);
         hearStopTimerRef.current = null;
+        try {
+          URL.revokeObjectURL(objectUrl);
+        } catch {
+          /* ignore */
+        }
+        if (prevSrc) audio.src = prevSrc;
       }, playMs);
       return true;
     } catch (err) {
@@ -504,16 +592,40 @@ export function DailyWordCard({
     setIsSpeaking(true);
     let objectUrl: string | null = null;
     let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+    let ownsUrl = false;
 
     const finish = () => {
       if (safetyTimer) clearTimeout(safetyTimer);
       setIsSpeaking(false);
-      if (objectUrl) {
+      if (ownsUrl && objectUrl) {
         URL.revokeObjectURL(objectUrl);
-        objectUrl = null;
       }
+      objectUrl = null;
       pronunciationAudioRef.current = null;
     };
+
+    const playFromUrl = async (url: string) => {
+      objectUrl = url;
+      const audio = new Audio(url);
+      pronunciationAudioRef.current = audio;
+      audio.addEventListener("ended", finish, { once: true });
+      audio.addEventListener("error", finish, { once: true });
+      safetyTimer = setTimeout(finish, 12000);
+      await audio.play();
+    };
+
+    // Instant path: already prefetched for this word.
+    if (
+      pronunciationBlobUrlRef.current
+      && pronunciationWordRef.current === data?.word?.text?.trim()
+    ) {
+      try {
+        await playFromUrl(pronunciationBlobUrlRef.current);
+        return;
+      } catch {
+        /* fall through to fetch */
+      }
+    }
 
     for (let attempt = 0; attempt <= 1; attempt++) {
       try {
@@ -523,19 +635,17 @@ export function DailyWordCard({
           throw new Error(body.error || "Pronunciation unavailable");
         }
         const blob = await res.blob();
+        if (pronunciationBlobUrlRef.current) {
+          URL.revokeObjectURL(pronunciationBlobUrlRef.current);
+        }
         objectUrl = URL.createObjectURL(blob);
-        const audio = new Audio(objectUrl);
-        pronunciationAudioRef.current = audio;
-
-        audio.addEventListener("ended", finish, { once: true });
-        audio.addEventListener("error", finish, { once: true });
-        // Safety: never leave the button stuck disabled if ended doesn't fire.
-        safetyTimer = setTimeout(finish, Math.max(8000, (blob.size / 48) + 2000));
-
-        await audio.play();
+        ownsUrl = false; // keep in prefetch cache for replay
+        pronunciationBlobUrlRef.current = objectUrl;
+        pronunciationWordRef.current = data!.word.text.trim();
+        await playFromUrl(objectUrl);
         return;
       } catch {
-        if (objectUrl) {
+        if (ownsUrl && objectUrl) {
           URL.revokeObjectURL(objectUrl);
           objectUrl = null;
         }

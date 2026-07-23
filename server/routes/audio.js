@@ -28,6 +28,10 @@ router.get('/preview/:trackId', async (req, res) => {
     }
 
     let audioRes = await fetch(previewUrl, { headers: upstreamHeaders });
+    let provider = deezer.isItunesTrackId(trackId)
+      || (previewUrl && String(previewUrl).includes('itunes.apple.com'))
+      ? 'itunes'
+      : 'deezer';
 
     // Deezer CDN often geo-blocks cloud IPs; retry via iTunes when we know the song.
     if (!audioRes.ok && artist && title && !deezer.isItunesTrackId(trackId)) {
@@ -36,6 +40,7 @@ router.get('/preview/:trackId', async (req, res) => {
         audioRes = await fetch(itunes.preview, {
           headers: { ...deezer.PREVIEW_STREAM_HEADERS, ...(req.headers.range ? { Range: req.headers.range } : {}) },
         });
+        if (audioRes.ok) provider = 'itunes';
       }
     }
 
@@ -51,6 +56,8 @@ router.get('/preview/:trackId', async (req, res) => {
       if (value) res.setHeader(name, value);
     }
     res.setHeader('Cache-Control', 'private, max-age=300');
+    res.setHeader('X-Harmonix-Preview-Provider', provider);
+    res.setHeader('Access-Control-Expose-Headers', 'X-Harmonix-Preview-Provider');
 
     if (!audioRes.body) {
       return res.status(502).json({ error: 'preview_empty' });

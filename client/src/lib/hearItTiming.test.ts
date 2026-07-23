@@ -5,6 +5,7 @@ import {
   computeSpotifyHearClip,
   estimateWordSongTimeSec,
   formatPreviewWindowLabel,
+  resolvePreviewOffsetSec,
 } from './hearItTiming.ts';
 
 describe('hearItTiming', () => {
@@ -27,8 +28,8 @@ describe('hearItTiming', () => {
     assert.ok(wordLater - 55 < 4);
   });
 
-  it('plays a long clip around the lyric line inside Deezer preview', () => {
-    // Preview [30, 60); line at 0:52–0:56
+  it('centers Deezer seek on the sung word inside the preview', () => {
+    // Preview [30, 60); line 0:52–0:56; "creep" near end of line → ~25s into preview
     const win = computeDeezerHearWindow({
       timestamp_ms: 52_000,
       line_end_ms: 56_000,
@@ -36,13 +37,31 @@ describe('hearItTiming', () => {
       char_start: 11,
       char_end: 16,
       preview_offset: 30,
+      preview_provider: 'deezer',
     });
     assert.equal(win.inWindow, true);
-    assert.ok(win.stopAt - win.seekTo >= 8, `clip too short: ${win.stopAt - win.seekTo}`);
-    // Should start before the line (line relative = 22s)
-    assert.ok(win.seekTo <= 22);
-    assert.ok(win.stopAt >= 26);
-    assert.ok(win.seekTo >= 0 && win.stopAt <= 30);
+    assert.ok(win.seekTo >= 22 && win.seekTo <= 26, `seekTo=${win.seekTo}`);
+    assert.ok(win.stopAt > win.relative, `stopAt=${win.stopAt} relative=${win.relative}`);
+    assert.ok(win.stopAt - win.seekTo >= 5);
+    assert.ok(win.seekTo < win.relative);
+  });
+
+  it('uses offset 0 for iTunes previews', () => {
+    assert.equal(
+      resolvePreviewOffsetSec({ preview_provider: 'itunes', preview_offset: 30, duration_seconds: 200 }),
+      0
+    );
+    const win = computeDeezerHearWindow({
+      timestamp_ms: 12_000,
+      line_end_ms: 15_000,
+      snippet: 'hola mundo',
+      char_start: 0,
+      char_end: 4,
+      preview_offset: 30,
+      preview_provider: 'itunes',
+    });
+    assert.equal(win.inWindow, true);
+    assert.ok(win.seekTo < 12);
   });
 
   it('plays the end of the preview when lyric is after the cut', () => {
@@ -57,10 +76,9 @@ describe('hearItTiming', () => {
     assert.equal(win.inWindow, false);
     assert.ok(win.seekTo >= 15);
     assert.equal(win.stopAt, 30);
-    assert.ok(win.stopAt - win.seekTo >= 10);
   });
 
-  it('builds a longer Spotify clip from the line start', () => {
+  it('builds a Spotify clip around the word', () => {
     const clip = computeSpotifyHearClip({
       timestamp_ms: 64_000,
       line_end_ms: 68_000,
@@ -68,8 +86,8 @@ describe('hearItTiming', () => {
       char_start: 18,
       char_end: 24,
     });
-    assert.ok(clip.positionMs <= 64_000 - 2000);
-    assert.ok(clip.stopAfterMs >= 8000 && clip.stopAfterMs <= 18000);
+    assert.ok(clip.positionMs >= 63_000 && clip.positionMs <= 68_000, `pos=${clip.positionMs}`);
+    assert.ok(clip.stopAfterMs >= 5000 && clip.stopAfterMs <= 14000);
   });
 
   it('formats preview window labels', () => {

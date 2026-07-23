@@ -2,8 +2,8 @@
  * Hear-it timing helpers — map lyric lines into Deezer preview / Spotify seek.
  * Pure (no DOM) so it can be unit-tested.
  *
- * Strategy: anchor to the LRC line start (reliable), cover the full line using
- * line_end_ms when present, and play a longer ~12s clip of context.
+ * Strategy: center the clip on the *word* (not just the LRC line start) so
+ * Hear-it plays the sung word in sync with the highlighted phrase — language-agnostic.
  */
 
 export function lineBoundsSec(input: {
@@ -13,17 +13,20 @@ export function lineBoundsSec(input: {
   const lineStartSec = Math.max(0, Number(input.timestamp_ms) / 1000 || 0);
   const rawEnd = input.line_end_ms != null ? Number(input.line_end_ms) / 1000 : NaN;
   const lineEndSec =
-    Number.isFinite(rawEnd) && rawEnd > lineStartSec + 0.4
+    Number.isFinite(rawEnd) && rawEnd > lineStartSec + 0.35
       ? rawEnd
       : lineStartSec + 4;
   return {
     lineStartSec,
     lineEndSec,
-    lineDurSec: Math.max(0.5, lineEndSec - lineStartSec),
+    lineDurSec: Math.max(0.4, lineEndSec - lineStartSec),
   };
 }
 
-/** Estimate when the highlighted word is sung inside the LRC line. */
+/**
+ * Estimate when the highlighted word is sung inside the LRC line.
+ * Uses Unicode code points so accented / non-Latin scripts stay accurate.
+ */
 export function estimateWordSongTimeSec(input: {
   timestamp_ms: number;
   snippet: string;
@@ -32,13 +35,14 @@ export function estimateWordSongTimeSec(input: {
   line_end_ms?: number | null;
 }): number {
   const { lineStartSec, lineDurSec } = lineBoundsSec(input);
-  const len = Math.max(1, String(input.snippet || '').length);
-  const start = Math.max(0, Number(input.char_start) || 0);
-  const end = Math.max(start, Number(input.char_end) || start);
+  const chars = Array.from(String(input.snippet || ''));
+  const len = Math.max(1, chars.length);
+  // Alignment may be UTF-16 indices; clamp into code-point space.
+  const start = Math.max(0, Math.min(Number(input.char_start) || 0, len));
+  const end = Math.max(start, Math.min(Number(input.char_end) || start, len));
   const mid = (start + end) / 2;
   const frac = Math.min(1, Math.max(0, mid / len));
-  // Bias slightly early so we don't start after the word.
-  return lineStartSec + frac * lineDurSec * 0.75;
+  return lineStartSec + frac * lineDurSec;
 }
 
 export function formatPreviewWindowLabel(offsetSec: number, lengthSec = 30): string {
@@ -46,6 +50,26 @@ export function formatPreviewWindowLabel(offsetSec: number, lengthSec = 30): str
   const end = start + lengthSec;
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   return `${fmt(start)}–${fmt(end)}`;
+}
+
+/** Deezer: 30–60s for long tracks. iTunes: usually from 0 (or unknown). */
+export function resolvePreviewOffsetSec(input: {
+  preview_offset?: number | null;
+  preview_provider?: string | null;
+  duration_seconds?: number | null;
+}): number {
+  const provider = String(input.preview_provider || 'deezer').toLowerCase();
+  if (provider === 'itunes' || provider.startsWith('itunes')) {
+    // Apple clips are usually the opening ~30s unless we know otherwise.
+    return 0;
+  }
+  if (typeof input.preview_offset === 'number' && Number.isFinite(input.preview_offset)) {
+    return Math.max(0, input.preview_offset);
+  }
+  const dur = Number(input.duration_seconds) || 0;
+  if (dur > 60) return 30;
+  if (dur > 30) return dur - 30;
+  return 0;
 }
 
 export type DeezerHearWindow = {
@@ -57,60 +81,59 @@ export type DeezerHearWindow = {
 };
 
 /**
- * Map full-song lyric time into the Deezer 30s preview element timeline.
- * Clip is line-anchored and longer (~12s) so the word is clearly heard in context.
+ * Map full-song lyric time into the 30s preview element timeline.
+ * Word-centered: start ~1s before the word so the sung word matches the phrase.
  */
 export function computeDeezerHearWindow(input: {
   timestamp_ms: number;
   snippet: string;
   char_start: number;
   char_end: number;
-  preview_offset: number;
+  preview_offset?: number;
+  preview_provider?: string | null;
+  duration_seconds?: number | null;
   preview_len?: number;
   line_end_ms?: number | null;
 }): DeezerHearWindow {
   const PREVIEW_LEN = input.preview_len ?? 30;
-  const LEAD_IN = 2.5; // start well before the line
-  const TAIL = 5; // keep playing after the line ends
-  const TARGET_CLIP = 12;
-  const MIN_CLIP = 8;
+  const WORD_LEAD = 1.0; // seconds before the sung word
+  const WORD_TAIL = 5.5;
+  const TARGET_CLIP = 8;
+  const MIN_CLIP = 5;
 
-  const { lineStartSec, lineEndSec } = lineBoundsSec(input);
   const wordSongTimeSec = estimateWordSongTimeSec(input);
-  const offset = Number(input.preview_offset) || 0;
-
-  // Anchor seek to the line start (LRC), not the estimated mid-word (more reliable).
-  const relativeLine = lineStartSec - offset;
+  const offset = resolvePreviewOffsetSec(input);
   const relativeWord = wordSongTimeSec - offset;
-  const relativeEnd = lineEndSec - offset;
-  const inWindow = relativeLine >= -0.5 && relativeLine <= PREVIEW_LEN - 1.5;
+  const inWindow = relativeWord >= 0.4 && relativeWord <= PREVIEW_LEN - 0.8;
 
   if (inWindow) {
-    let seekTo = Math.max(0, relativeLine - LEAD_IN);
-    let stopAt = Math.min(PREVIEW_LEN, Math.max(relativeEnd + TAIL, relativeWord + 4));
-    // Prefer a ~12s clip when the preview allows it.
+    let seekTo = Math.max(0, relativeWord - WORD_LEAD);
+    let stopAt = Math.min(PREVIEW_LEN, relativeWord + WORD_TAIL);
     if (stopAt - seekTo < TARGET_CLIP) {
       stopAt = Math.min(PREVIEW_LEN, seekTo + TARGET_CLIP);
     }
     if (stopAt - seekTo < MIN_CLIP) {
       seekTo = Math.max(0, stopAt - MIN_CLIP);
     }
-    // Never start after the word if we can help it.
-    if (seekTo > relativeWord - 0.3 && relativeWord > 0.5) {
-      seekTo = Math.max(0, relativeWord - 1.2);
+    // Keep the word inside the clip with a small margin.
+    if (seekTo > relativeWord - 0.35) {
+      seekTo = Math.max(0, relativeWord - WORD_LEAD);
+    }
+    if (stopAt < relativeWord + 1.5) {
+      stopAt = Math.min(PREVIEW_LEN, relativeWord + WORD_TAIL);
     }
     stopAt = Math.max(stopAt, Math.min(PREVIEW_LEN, seekTo + MIN_CLIP));
     return {
-      seekTo,
-      stopAt,
+      seekTo: Math.round(seekTo * 100) / 100,
+      stopAt: Math.round(stopAt * 100) / 100,
       inWindow: true,
       relative: relativeWord,
       wordSongTimeSec,
     };
   }
 
-  // Outside the Deezer cut — play a longer edge closest to the lyric.
-  if (relativeLine < 0) {
+  // Outside the preview cut — play the nearest edge (honest fallback).
+  if (relativeWord < 0) {
     return {
       seekTo: 0,
       stopAt: Math.min(TARGET_CLIP, PREVIEW_LEN),
@@ -128,7 +151,7 @@ export function computeDeezerHearWindow(input: {
   };
 }
 
-/** Spotify full-track seek: start before the line, play ~12s of context. */
+/** Spotify full-track seek: start just before the word, play a short context clip. */
 export function computeSpotifyHearClip(input: {
   timestamp_ms: number;
   snippet: string;
@@ -136,20 +159,19 @@ export function computeSpotifyHearClip(input: {
   char_end: number;
   line_end_ms?: number | null;
 }): { positionMs: number; stopAfterMs: number; wordSongTimeSec: number } {
-  const LEAD_IN_MS = 2500;
-  const TAIL_MS = 5000;
-  const TARGET_MS = 12000;
-  const MIN_MS = 8000;
+  const WORD_LEAD_MS = 1000;
+  const WORD_TAIL_MS = 5500;
+  const TARGET_MS = 8000;
+  const MIN_MS = 5000;
+  const MAX_MS = 14000;
 
-  const { lineStartSec, lineEndSec } = lineBoundsSec(input);
   const wordSongTimeSec = estimateWordSongTimeSec(input);
-  const positionMs = Math.max(0, Math.round(lineStartSec * 1000) - LEAD_IN_MS);
-  const endMs = Math.round(lineEndSec * 1000) + TAIL_MS;
-  let stopAfterMs = endMs - positionMs;
+  const wordMs = Math.round(wordSongTimeSec * 1000);
+  const positionMs = Math.max(0, wordMs - WORD_LEAD_MS);
+  let stopAfterMs = WORD_LEAD_MS + WORD_TAIL_MS;
   if (stopAfterMs < TARGET_MS) stopAfterMs = TARGET_MS;
   if (stopAfterMs < MIN_MS) stopAfterMs = MIN_MS;
-  // Cap so Hear-it doesn't stream the whole track.
-  stopAfterMs = Math.min(18000, stopAfterMs);
+  stopAfterMs = Math.min(MAX_MS, stopAfterMs);
 
   return {
     positionMs,

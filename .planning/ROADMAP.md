@@ -1,7 +1,7 @@
 # Harmonix Roadmap
 
-**Last reconciled:** 2026-07-23 — phases 1–14 complete; Phase 15 Coolify deploy started  
-**Live:** https://moral-sparrow-nationally.ngrok-free.app (`main` @ VPS, still via `run_env.sh` until Coolify cutover)
+**Last reconciled:** 2026-07-23 — phases 1–14 complete; Phase 15 production domain live  
+**Live:** https://harmonix.peeporunclub.co.uk (Compose `api`+`web` + Coolify Traefik; host Pocket-TTS)
 
 ---
 
@@ -9,22 +9,22 @@
 
 ```text
   Browser / Capacitor WebView          Flutter Android (`mobile/`)
-  Next.js (host :3009 or compose web)  Discover · Library · Settings
+  Next.js (compose web:3009)           Discover · Library · Settings
               \                         /
                \                       /
                 ▼                     ▼
-           Express API :3001  +  SQLite
+           Express API :3001  +  SQLite volume
                 │
     ┌───────────┼───────────────┬────────────────┐
     ▼           ▼               ▼                ▼
  NVIDIA/OpenRouter   Deezer+LRCLib   Pocket-TTS:3002   Spotify Web API
- (daily-word AI)     (validate)      (pronounce)       (OAuth, lists, play)
+ (daily-word AI)     (validate)      (host daemon)     (OAuth, lists, play)
                 │
-     ngrok (today)  →  Coolify Traefik + domain (Phase 15)
+     Coolify Traefik → https://harmonix.peeporunclub.co.uk
 ```
 
-**Deploy (today):** `git pull` on VPS → `bash run_env.sh` (backend + `next build/start` + TTS + ngrok).  
-**Deploy (Phase 15):** Coolify → `docker-compose.yml` (`api` + `web`); TTS on host; see `docs/COOLIFY-DEPLOY.md`.  
+**Deploy (production):** `docker compose` on VPS + Coolify Traefik domain; TTS via host systemd `harmonix-tts`.  
+**Rollback:** `bash run_env.sh` (host Node + Next + ngrok). See `docs/COOLIFY-DEPLOY.md`.  
 **Auth:** JWT access + httpOnly refresh cookie.  
 **Learning core:** AI song candidates → Deezer match → LRCLib synced lyrics → queue (`user_word_queue`) → Daily Word on unified **Discover** home.  
 **Preferences:** Settings edits home/learning languages, music style (genre), and TTS voice gender; genre change purges the word queue.
@@ -46,6 +46,7 @@
 | **12.6** | Spotify in-app playback **(web)** | **Complete** |
 | **13** | Web design system (shell + Discover) | **Complete** |
 | **14** | Production Parity & Ship | **Complete** |
+| **15** | Coolify production deploy | **Complete** (domain live; Git auto-deploy optional) |
 
 ### Phase 12 — Spotify API Integration ✅
 
@@ -133,11 +134,11 @@ Not a new phase — product refinements after Phase 14 close:
 
 ---
 
-## Phase 15 — Coolify production deploy 🚧
+## Phase 15 — Coolify production deploy ✅ (cutover live)
 
-**Status:** In progress  
+**Status:** Production URL live (2026-07-23)  
 **Milestone:** v1.8  
-**Goal:** Run Harmonix under Coolify on the existing VPS; stop relying on ad-hoc host `run_env.sh` for production.
+**Goal:** Run Harmonix under Coolify Traefik on the VPS with a real domain; stop relying on ngrok for public traffic.
 
 | Work | Status |
 |------|--------|
@@ -145,9 +146,11 @@ Not a new phase — product refinements after Phase 14 close:
 | `server/Dockerfile`, `client/Dockerfile`, root `docker-compose.yml` | Done |
 | `SQLITE_PATH`, `FRONTEND_PROXY_TARGET`, TTS skip-spawn | Done |
 | Docs: `docs/COOLIFY-DEPLOY.md`, runbook §0b | Done |
-| Create Coolify Docker Compose resource + secrets | Pending |
-| Domain or ngrok retarget; Spotify redirect URIs | Pending |
-| Cut over; verify smoke; keep `run_env.sh` as rollback | Pending |
+| Domain DNS `harmonix.peeporunclub.co.uk` → `79.72.79.7` | Done |
+| Compose cutover + Let’s Encrypt via Traefik | Done |
+| Spotify redirect URIs for new domain | Done (Dashboard + env) |
+| Coolify UI resource + secrets | Done (resource created; Git webhook auto-deploy still optional) |
+| Keep `run_env.sh` as rollback | Done |
 
 **Context:** [docs/COOLIFY-DEPLOY.md](../docs/COOLIFY-DEPLOY.md)
 
@@ -155,29 +158,21 @@ Not a new phase — product refinements after Phase 14 close:
 
 ## Runtime health notes (2026-07-23)
 
-Observed on VPS while live:
-
-- Stack healthy: API `:3001`, Next `:3009`, TTS `:3002`, ngrok public **200**
-- Spotify resolve-play and status in active use
-- Word queue refill reaches `ready=5/5` after curated fallback
-- NVIDIA primary model often **404**; OpenRouter free models hit **429** → curated Deezer path still delivers words (slow cold path)
+- Public HTTPS **200** on `https://harmonix.peeporunclub.co.uk`
+- Compose `lyric-api-1` / `lyric-web-1` healthy; host TTS `:3002` + systemd `harmonix-tts`
+- Hear-it: word-centered timing + preview provider header (Deezer / iTunes)
+- NVIDIA / OpenRouter free-tier flakiness → curated catalogs still deliver words
 
 ---
 
 ## Suggested next
 
-### Phase 15 — Coolify production deploy (in progress)
-
-Move from host `run_env.sh` + ngrok-only ops to **Coolify-managed Docker Compose** on the same VPS (Coolify 4.1.2 already running). See [docs/COOLIFY-DEPLOY.md](../docs/COOLIFY-DEPLOY.md).
+### Phase 15 follow-ups (optional)
 
 | Step | Status |
 |------|--------|
-| Coolify installed (Traefik 80/443, UI 8000) | Done |
-| `docker-compose.yml` + Dockerfiles (api/web) | Done (repo) |
-| Docker-friendly env (`FRONTEND_PROXY_TARGET`, `SQLITE_PATH`, TTS skip-spawn) | Done (repo) |
-| Coolify resource + secrets + first deploy | Pending |
-| Domain DNS (or keep ngrok → compose port) | Pending |
-| Cut over; retire host Node/Next from `run_env` | Pending |
-| Optional: containerize Pocket-TTS | Later |
+| Link Coolify resource to GitHub + **Deploy on push** webhook | Pending |
+| Coolify UI owns containers (replace manual `docker compose` project) | Pending |
+| Containerize Pocket-TTS | Later |
 
 Other optional ops (not blocking): Play Store listing, AI provider hardening, Extended Spotify Quota.
