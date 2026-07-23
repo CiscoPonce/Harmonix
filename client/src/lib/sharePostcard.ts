@@ -31,7 +31,7 @@ export async function fetchPostcardPng(
       headers['ngrok-skip-browser-warning'] = 'true';
     }
     const res = await fetch(
-      `/api/share/postcards/${encodeURIComponent(id)}/og.png?v=3`,
+      `/api/share/postcards/${encodeURIComponent(id)}/og.png?v=4`,
       { headers, credentials: 'omit' }
     );
     if (!res.ok) return null;

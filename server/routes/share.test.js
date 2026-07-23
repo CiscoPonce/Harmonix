@@ -38,4 +38,24 @@ describe('share postcard helpers', () => {
     expect(card.lyric.snippet).to.equal('hola mundo');
     expect(card.song.artist).to.equal('Artist');
   });
+
+  it('keeps allowlisted cover URLs and drops others', () => {
+    const ok = sanitizePostcardInput({
+      word: { text: 'hola' },
+      song: {
+        id: '1',
+        title: 'Song',
+        artist: 'Artist',
+        cover: 'https://e-cdns-images.dzcdn.net/images/cover/abc/250x250.jpg',
+      },
+    });
+    expect(ok.cover).to.match(/dzcdn\.net/);
+
+    const bad = sanitizePostcardInput({
+      word: { text: 'hola' },
+      song: { id: '1', title: 'Song', artist: 'Artist' },
+      cover: 'https://evil.example/x.jpg',
+    });
+    expect(bad.cover).to.equal(null);
+  });
 });

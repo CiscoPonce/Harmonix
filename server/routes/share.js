@@ -69,6 +69,25 @@ function sanitizePostcardInput(body = {}) {
       title: songTitle,
       artist: songArtist,
     },
+    cover: (() => {
+      const raw = String(body.cover || body.song?.cover || '').trim();
+      if (!raw || raw.length > 500) return null;
+      try {
+        const u = new URL(raw);
+        if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+        const host = u.hostname.toLowerCase();
+        const ok =
+          host.endsWith('dzcdn.net') ||
+          host.endsWith('deezer.com') ||
+          host.endsWith('mzstatic.com') ||
+          host.endsWith('itunes.apple.com') ||
+          host.endsWith('scdn.co') ||
+          host.endsWith('spotifycdn.com');
+        return ok ? raw : null;
+      } catch {
+        return null;
+      }
+    })(),
   };
 }
 
@@ -105,10 +124,39 @@ publicRouter.get('/postcards/:id/og.png', async (req, res) => {
   const card = getPostcardById(id);
   if (!card) return res.status(404).json({ error: 'not_found' });
 
-  // Prefer the Next.js designed OG card when the frontend is up.
+  // Resolve cover at render time if create-time enrichment missed it.
+  if (!card.cover && card.song?.id) {
+    try {
+      const enriched = await ensureTrackCover(card.song.id, {
+        title: card.song.title,
+        artist: card.song.artist,
+      });
+      card.cover = enriched.cover || deezer.extractCoverFromCachedTrack(enriched) || null;
+    } catch {
+      /* optional */
+    }
+  }
+
+  // Local pixel postcard with embedded cover — reliable in Docker (no hop to web).
+  try {
+    const png = await buildPostcardPng(card);
+    res.set({
+      'Content-Type': 'image/png',
+      'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+      'Content-Disposition': `inline; filename="harmonix-${id}.png"`,
+    });
+    return res.send(png);
+  } catch (err) {
+    console.error('OG png error:', err.message);
+  }
+
+  // Fallback: Next.js ImageResponse route (cover embedded as data URL there).
+  const frontendBase = (
+    process.env.FRONTEND_PROXY_TARGET || 'http://127.0.0.1:3009'
+  ).replace(/\/$/, '');
   try {
     const upstream = await fetch(
-      `http://127.0.0.1:3009/share/${encodeURIComponent(id)}/opengraph-image`,
+      `${frontendBase}/share/${encodeURIComponent(id)}/opengraph-image`,
       { signal: AbortSignal.timeout(8000) }
     );
     if (upstream.ok) {
@@ -120,21 +168,10 @@ publicRouter.get('/postcards/:id/og.png', async (req, res) => {
       return res.send(buf);
     }
   } catch {
-    /* fall through to local PNG */
+    /* both paths failed */
   }
 
-  try {
-    const png = buildPostcardPng(card);
-    res.set({
-      'Content-Type': 'image/png',
-      'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
-      'Content-Disposition': `inline; filename="harmonix-${id}.png"`,
-    });
-    return res.send(png);
-  } catch (err) {
-    console.error('OG png error:', err.message);
-    return res.status(500).json({ error: 'og_failed' });
-  }
+  return res.status(500).json({ error: 'og_failed' });
 });
 
 /** GET /api/share/postcards/:id/meta — SEO helpers for the Next share page. */
@@ -149,8 +186,8 @@ protectedRouter.post('/postcards', async (req, res) => {
   try {
     const core = sanitizePostcardInput(req.body);
     const spotifyUrl = await resolveSpotifyShareUrl(req.user.id, core.song);
-    let cover = null;
-    if (core.song?.id) {
+    let cover = core.cover || null;
+    if (!cover && core.song?.id) {
       try {
         const enriched = await ensureTrackCover(core.song.id, {
           title: core.song.title,
@@ -162,7 +199,13 @@ protectedRouter.post('/postcards', async (req, res) => {
       }
     }
     const id = nanoid(12);
-    const payload = { ...core, spotify_url: spotifyUrl, cover };
+    const payload = {
+      word: core.word,
+      lyric: core.lyric,
+      song: core.song,
+      spotify_url: spotifyUrl,
+      cover,
+    };
 
     db.prepare(
       `INSERT INTO shared_postcards (id, user_id, payload_json, spotify_url)

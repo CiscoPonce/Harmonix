@@ -54,6 +54,7 @@ interface DailyWordPayload {
     title: string;
     artist: string;
     genre?: string | null;
+    cover?: string | null;
   };
   audio: {
     preview_url: string;
@@ -715,6 +716,7 @@ export function DailyWordCard({
           word: data.word,
           lyric: data.lyric,
           song: data.song,
+          cover: data.song.cover || null,
         }),
       });
       if (!res.ok) {

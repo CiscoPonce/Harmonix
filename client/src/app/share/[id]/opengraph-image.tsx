@@ -24,7 +24,7 @@ async function loadCard(id: string): Promise<Card | null> {
   }
 }
 
-async function resolveCover(card: Card | null): Promise<string | null> {
+async function resolveCoverUrl(card: Card | null): Promise<string | null> {
   if (card?.cover) return card.cover;
   const songId = card?.song?.id;
   if (!songId) return null;
@@ -41,6 +41,33 @@ async function resolveCover(card: Card | null): Promise<string | null> {
   }
 }
 
+/** Satori often cannot fetch CDN images; embed as a data URL instead. */
+async function coverAsDataUrl(coverUrl: string | null): Promise<string | null> {
+  if (!coverUrl) return null;
+  try {
+    const res = await fetch(coverUrl, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(7000),
+      headers: { Accept: 'image/*' },
+    });
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 32 || buf.length > 2_500_000) return null;
+    const ct = (res.headers.get('content-type') || '').split(';')[0].trim();
+    const mime =
+      ct.startsWith('image/')
+        ? ct
+        : buf[0] === 0xff && buf[1] === 0xd8
+          ? 'image/jpeg'
+          : buf[0] === 0x89 && buf[1] === 0x50
+            ? 'image/png'
+            : 'image/jpeg';
+    return `data:${mime};base64,${buf.toString('base64')}`;
+  } catch {
+    return null;
+  }
+}
+
 export default async function Image({
   params,
 }: {
@@ -48,7 +75,8 @@ export default async function Image({
 }) {
   const { id } = await params;
   const card = await loadCard(id);
-  const cover = await resolveCover(card);
+  const coverUrl = await resolveCoverUrl(card);
+  const cover = await coverAsDataUrl(coverUrl);
   const word = String(card?.word?.text || 'Word').slice(0, 32);
   const meaning = String(card?.word?.translation || '').slice(0, 48);
   const song =

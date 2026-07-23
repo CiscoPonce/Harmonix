@@ -1,7 +1,28 @@
 'use strict';
 
+const jpeg = require('jpeg-js');
+const zlib = require('zlib');
 const db = require('../db');
 const { safeSpotifyExternalUrl } = require('./spotifyService');
+
+/** Allowlist album-art hosts so share payloads cannot pull arbitrary URLs. */
+function isAllowedCoverUrl(url) {
+  try {
+    const u = new URL(String(url || ''));
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+    const host = u.hostname.toLowerCase();
+    return (
+      host.endsWith('dzcdn.net') ||
+      host.endsWith('deezer.com') ||
+      host.endsWith('mzstatic.com') ||
+      host.endsWith('itunes.apple.com') ||
+      host.endsWith('scdn.co') ||
+      host.endsWith('spotifycdn.com')
+    );
+  } catch {
+    return false;
+  }
+}
 
 function isSocialCrawler(userAgent) {
   const ua = String(userAgent || '');
@@ -79,7 +100,7 @@ function buildCrawlerHtml(card, baseUrl) {
   const seo = postcardSeo(card);
   const pageUrl = `${baseUrl}/share/${encodeURIComponent(card.id)}`;
   // Cache-busted image URL helps WhatsApp refetch after OG improvements.
-  const imageUrl = `${baseUrl}/api/share/postcards/${encodeURIComponent(card.id)}/og.png?v=3`;
+  const imageUrl = `${baseUrl}/api/share/postcards/${encodeURIComponent(card.id)}/og.png?v=4`;
   const word = escapeHtml(card.word?.text || '');
   const meaning = escapeHtml(card.word?.translation || '');
   const song = escapeHtml(seo.songLine);
@@ -121,17 +142,167 @@ function buildCrawlerHtml(card, baseUrl) {
 </html>`;
 }
 
+/** Nearest-neighbor scale of RGB buffer to a square cover tile. */
+function scaleRgbNearest(src, srcW, srcH, size) {
+  const out = Buffer.alloc(size * size * 3);
+  for (let y = 0; y < size; y++) {
+    const sy = Math.min(srcH - 1, Math.floor((y * srcH) / size));
+    for (let x = 0; x < size; x++) {
+      const sx = Math.min(srcW - 1, Math.floor((x * srcW) / size));
+      const si = (sy * srcW + sx) * 3;
+      const di = (y * size + x) * 3;
+      out[di] = src[si];
+      out[di + 1] = src[si + 1];
+      out[di + 2] = src[si + 2];
+    }
+  }
+  return out;
+}
+
+/** Decode common album-art PNG (8-bit RGB/RGBA, non-interlaced). */
+function decodePngToRgb(buf) {
+  if (!buf || buf.length < 24) return null;
+  if (buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4e || buf[3] !== 0x47) {
+    return null;
+  }
+  let offset = 8;
+  let width = 0;
+  let height = 0;
+  let bitDepth = 0;
+  let colorType = -1;
+  const idat = [];
+  while (offset + 8 <= buf.length) {
+    const len = buf.readUInt32BE(offset);
+    const type = buf.toString('ascii', offset + 4, offset + 8);
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + len;
+    if (dataEnd + 4 > buf.length) break;
+    if (type === 'IHDR' && len >= 13) {
+      width = buf.readUInt32BE(dataStart);
+      height = buf.readUInt32BE(dataStart + 4);
+      bitDepth = buf[dataStart + 8];
+      colorType = buf[dataStart + 9];
+    } else if (type === 'IDAT') {
+      idat.push(buf.subarray(dataStart, dataEnd));
+    } else if (type === 'IEND') {
+      break;
+    }
+    offset = dataEnd + 4;
+  }
+  if (!width || !height || bitDepth !== 8 || (colorType !== 2 && colorType !== 6)) {
+    return null;
+  }
+  if (width > 2048 || height > 2048) return null;
+  const bpp = colorType === 6 ? 4 : 3;
+  const inflated = zlib.inflateSync(Buffer.concat(idat));
+  const stride = width * bpp;
+  const expected = (stride + 1) * height;
+  if (inflated.length < expected) return null;
+  const rgb = Buffer.alloc(width * height * 3);
+  for (let y = 0; y < height; y++) {
+    const rowStart = y * (stride + 1);
+    const filter = inflated[rowStart];
+    if (filter !== 0) return null; // only none-filter for simplicity
+    for (let x = 0; x < width; x++) {
+      const si = rowStart + 1 + x * bpp;
+      const di = (y * width + x) * 3;
+      rgb[di] = inflated[si];
+      rgb[di + 1] = inflated[si + 1];
+      rgb[di + 2] = inflated[si + 2];
+    }
+  }
+  return { data: rgb, width, height };
+}
+
+function decodeImageToRgb(buf) {
+  if (!buf || buf.length < 4) return null;
+  if (buf[0] === 0xff && buf[1] === 0xd8) {
+    try {
+      const decoded = jpeg.decode(buf, { useTArray: true, formatAsRGBA: false });
+      if (!decoded?.data || !decoded.width || !decoded.height) return null;
+      return {
+        data: Buffer.from(decoded.data),
+        width: decoded.width,
+        height: decoded.height,
+      };
+    } catch {
+      return null;
+    }
+  }
+  return decodePngToRgb(buf);
+}
+
+async function fetchCoverTile(coverUrl, size = 280) {
+  if (!isAllowedCoverUrl(coverUrl)) return null;
+  try {
+    const res = await fetch(coverUrl, {
+      signal: AbortSignal.timeout(7000),
+      headers: { 'User-Agent': 'HarmonixPostcard/1.0', Accept: 'image/*' },
+    });
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    const decoded = decodeImageToRgb(buf);
+    if (!decoded) return null;
+    return scaleRgbNearest(decoded.data, decoded.width, decoded.height, size);
+  } catch {
+    return null;
+  }
+}
+
+function blitCover(pixels, canvasW, canvasH, tile, size, destX, destY) {
+  if (!tile) return;
+  const border = 4;
+  const frameRgb = [61, 207, 122];
+  // Soft shadow
+  for (let y = 0; y < size + 10; y++) {
+    for (let x = 0; x < size + 10; x++) {
+      const px = destX + x + 8;
+      const py = destY + y + 10;
+      if (px < 0 || py < 0 || px >= canvasW || py >= canvasH) continue;
+      const i = (py * canvasW + px) * 3;
+      pixels[i] = Math.floor(pixels[i] * 0.55);
+      pixels[i + 1] = Math.floor(pixels[i + 1] * 0.55);
+      pixels[i + 2] = Math.floor(pixels[i + 2] * 0.55);
+    }
+  }
+  // Frame + cover tile
+  for (let y = -border; y < size + border; y++) {
+    for (let x = -border; x < size + border; x++) {
+      const px = destX + x;
+      const py = destY + y;
+      if (px < 0 || py < 0 || px >= canvasW || py >= canvasH) continue;
+      const onFrame = x < 0 || y < 0 || x >= size || y >= size;
+      const i = (py * canvasW + px) * 3;
+      if (onFrame) {
+        pixels[i] = frameRgb[0];
+        pixels[i + 1] = frameRgb[1];
+        pixels[i + 2] = frameRgb[2];
+      } else {
+        const ti = (y * size + x) * 3;
+        pixels[i] = tile[ti];
+        pixels[i + 1] = tile[ti + 1];
+        pixels[i + 2] = tile[ti + 2];
+      }
+    }
+  }
+}
+
 /**
  * Build a real PNG (1200×630) without native deps — uncompressed truecolor + tEXt-free.
- * Enough for WhatsApp / iMessage OG previews.
+ * Composites Deezer/Apple album art when `card.cover` is available.
  */
-function buildPostcardPng(card) {
+async function buildPostcardPng(card) {
   const width = 1200;
   const height = 630;
   const word = String(card?.word?.text || 'Word').slice(0, 28);
   const meaning = String(card?.word?.translation || '').slice(0, 40);
+  const coverUrl = isAllowedCoverUrl(card?.cover) ? String(card.cover) : null;
+  const coverSize = 280;
+  const coverX = 840;
+  const coverY = 175;
+  const songMax = coverUrl ? 36 : 48;
   const song = card?.song?.title && card?.song?.artist
-    ? `${card.song.title} — ${card.song.artist}`.slice(0, 48)
+    ? `${card.song.title} — ${card.song.artist}`.slice(0, songMax)
     : '';
 
   // Pixel buffer RGB
@@ -233,6 +404,13 @@ function buildPostcardPng(card) {
     }
   }
 
+  if (coverUrl) {
+    const tile = await fetchCoverTile(coverUrl, coverSize);
+    if (tile) {
+      blitCover(pixels, width, height, tile, coverSize, coverX, coverY);
+    }
+  }
+
   const wordScale = word.length > 12 ? 6 : word.length > 8 ? 8 : word.length > 5 ? 9 : 11;
   drawText('HARMONIX  WORD POSTCARD', 80, 64, 3, [120, 220, 160]);
   drawText(word.toUpperCase(), 80, 170, wordScale, [255, 255, 255]);
@@ -275,7 +453,6 @@ function rgbToPng(rgb, width, height) {
     raw[y * (stride + 1)] = 0;
     rgb.copy(raw, y * (stride + 1) + 1, y * stride, y * stride + stride);
   }
-  const zlib = require('zlib');
   const compressed = zlib.deflateSync(raw, { level: 9 });
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
   const ihdr = Buffer.alloc(13);
@@ -302,4 +479,8 @@ module.exports = {
   buildCrawlerHtml,
   buildPostcardPng,
   escapeHtml,
+  isAllowedCoverUrl,
+  scaleRgbNearest,
+  decodeImageToRgb,
+  blitCover,
 };

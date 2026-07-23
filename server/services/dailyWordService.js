@@ -246,6 +246,7 @@ function buildPayload(date, suggestion, track, lyricsData, occurrence, langCode 
       title: track.title,
       artist: track.artist.name,
       genre: suggestion.genre || null,
+      cover: deezer.coverFromDeezerTrack(track),
     },
     audio: {
       preview_url: deezer.previewProxyPath(String(track.id), track.artist?.name, track.title),
@@ -718,6 +719,12 @@ function summarizeDailyWordPayload(payload, meta = {}) {
         id: payload.song.id,
         title: payload.song.title,
         artist: payload.song.artist,
+        cover:
+          payload.song.cover ||
+          payload.song.cover_medium ||
+          payload.song.album?.cover_medium ||
+          payload.song.album?.cover ||
+          null,
       }
     : null;
   const audio = song?.id
