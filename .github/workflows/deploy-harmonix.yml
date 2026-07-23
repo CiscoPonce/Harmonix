@@ -24,4 +24,9 @@ jobs:
           command_timeout: 40m
           script: |
             set -euo pipefail
-            bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh
+            # Pull before invoking redeploy so we never run a stale script inode
+            # (git reset mid-script left bash executing the old stop-before-start path).
+            cd /home/ubuntu/lyric
+            git fetch origin main
+            git reset --hard origin/main
+            HARMONIX_REDEPLOY_BOOTED=1 bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh

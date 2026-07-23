@@ -121,9 +121,15 @@ start_standby() {
 
 cd "$PROJECT"
 
-log "Syncing ${PROJECT} to origin/main"
-git fetch origin main
-git reset --hard origin/main
+# Pull first, then re-exec so this process never keeps running an outdated
+# script after git reset replaces the file on disk (bash keeps the old inode).
+if [ "${HARMONIX_REDEPLOY_BOOTED:-}" != "1" ]; then
+  log "Syncing ${PROJECT} to origin/main"
+  git fetch origin main
+  git reset --hard origin/main
+  export HARMONIX_REDEPLOY_BOOTED=1
+  exec bash "${PROJECT}/scripts/coolify-redeploy.sh" "$@"
+fi
 
 log "Building images (live traffic stays on current containers)"
 docker compose build api web
