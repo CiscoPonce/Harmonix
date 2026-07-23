@@ -36,7 +36,7 @@ const POCKET_LANG_MAP = {
 };
 
 /** Bump to invalidate SQLite pronunciation cache after quality/speed changes. */
-const CACHE_VERSION = 'hq-v9-snappy';
+const CACHE_VERSION = 'hq-v10-ffmpeg';
 
 /** Playback tempo (< 1 = slower). Pitch preserved via ffmpeg atempo. */
 const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.85');

@@ -13,6 +13,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    ffmpeg \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd -r harmonix && useradd -r -g harmonix harmonix
 COPY --from=deps /app/node_modules ./node_modules
