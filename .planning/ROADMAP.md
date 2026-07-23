@@ -46,7 +46,7 @@
 | **12.6** | Spotify in-app playback **(web)** | **Complete** |
 | **13** | Web design system (shell + Discover) | **Complete** |
 | **14** | Production Parity & Ship | **Complete** |
-| **15** | Coolify production deploy | **Complete** (domain live; Git auto-deploy optional) |
+| **15** | Coolify production deploy | **Complete** (domain + GH Actions zero-downtime deploy) |
 
 ### Phase 12 — Spotify API Integration ✅
 
@@ -149,7 +149,8 @@ Not a new phase — product refinements after Phase 14 close:
 | Domain DNS `harmonix.peeporunclub.co.uk` → `79.72.79.7` | Done |
 | Compose cutover + Let’s Encrypt via Traefik | Done |
 | Spotify redirect URIs for new domain | Done (Dashboard + env) |
-| Coolify UI resource + secrets | Done (resource created; Git webhook auto-deploy still optional) |
+| Coolify UI resource + secrets | Done |
+| GitHub Actions push → `coolify-redeploy.sh` (zero-downtime) | Done — prefer over Coolify UI Restart |
 | Keep `run_env.sh` as rollback | Done |
 
 **Context:** [docs/COOLIFY-DEPLOY.md](../docs/COOLIFY-DEPLOY.md)
@@ -159,7 +160,8 @@ Not a new phase — product refinements after Phase 14 close:
 ## Runtime health notes (2026-07-23)
 
 - Public HTTPS **200** on `https://harmonix.peeporunclub.co.uk`
-- Compose `lyric-api-1` / `lyric-web-1` healthy; host TTS `:3002` + systemd `harmonix-tts`
+- Coolify containers `api-rxwdj…` / `web-rxwdj…` healthy; host TTS `:3002` + systemd `harmonix-tts`; API has **ffmpeg**
+- Deploy: push `main` only — Coolify UI **Restart** causes downtime (stop-before-start)
 - Hear-it: word-centered timing + preview provider header (Deezer / iTunes)
 - NVIDIA / OpenRouter free-tier flakiness → curated catalogs still deliver words
 
@@ -171,8 +173,8 @@ Not a new phase — product refinements after Phase 14 close:
 
 | Step | Status |
 |------|--------|
-| Link Coolify resource to GitHub + **Deploy on push** webhook | Pending |
-| Coolify UI owns containers (replace manual `docker compose` project) | Pending |
+| Coolify Git “Deploy on push” webhook | **Skipped** — GH Actions owns deploys |
+| Coolify UI owns containers | Done |
 | Containerize Pocket-TTS | Later |
 
 Other optional ops (not blocking): Play Store listing, AI provider hardening, Extended Spotify Quota.

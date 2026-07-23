@@ -112,15 +112,24 @@ bash run_env.sh    # legacy host stack + ngrok
 4. Roll **api**, then start a **web** standby (DNS alias `web`) and roll **web**
 5. Remove standbys and health-check `https://harmonix.peeporunclub.co.uk`
 
-This is zero-downtime for push deploys (proxy 502/503 during recreate should not happen). Prefer the Actions path over Coolify UI **Restart**, which can still stop-before-start.
+This is zero-downtime for push deploys (proxy 502/503 during recreate should not happen).
+
+**Deploy rules**
+
+| Do | Don’t |
+|----|--------|
+| `git push origin main` (GitHub Actions) | Coolify UI **Restart** / stop-before-start |
+| `bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh` on the VPS | Manual `docker compose down` on the live project |
+| Use Coolify UI for env, domain, and health status | Rely on a Coolify “Deploy on push” webhook (Actions already owns deploys) |
 
 Repo secrets: `HARMONIX_DEPLOY_HOST`, `HARMONIX_DEPLOY_USER`, `HARMONIX_DEPLOY_SSH_KEY`.
 
 **Production topology**
 
 - **Edge:** Coolify Traefik → `harmonix.peeporunclub.co.uk`
-- **App:** Coolify-managed containers `api-rxwdj…` / `web-rxwdj…`
-- **TTS:** host systemd `harmonix-tts` (`:3002`)
+- **App:** Coolify service UUID `rxwdj1k3qu51fqf8uwtal389` → containers `api-rxwdj…` / `web-rxwdj…`
+- **Volume:** `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (SQLite, UID 999)
+- **TTS:** host systemd `harmonix-tts` (`:3002`, `TTS_BASE_URL=http://10.0.0.15:3002`)
 - **Old VPS (`agent-midas`):** Harmonix stopped
 
 Manual: `bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh` on the VPS.

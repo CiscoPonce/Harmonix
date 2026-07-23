@@ -17,7 +17,7 @@ AI-first language learning through real music lyrics — validated against Deeze
 | Item | State |
 |------|--------|
 | Roadmap phases 1–14 | **Complete** (v1.7 Production Parity & Ship) |
-| Phase 15 Coolify deploy | **Live on domain** — Compose `api`+`web` + Coolify Traefik HTTPS; Git auto-deploy optional follow-up |
+| Phase 15 Coolify deploy | **Live** — Traefik HTTPS + GH Actions zero-downtime deploy on `main` push |
 | Web home | Unified **Discover** (Word of the Day + practice + search) |
 | Nav | Discover · Library · Settings |
 | Settings | Languages · music style · voice gender · Spotify |

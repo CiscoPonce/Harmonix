@@ -14,13 +14,16 @@
 → Full guide: **[COOLIFY-DEPLOY.md](./COOLIFY-DEPLOY.md)**
 
 ### Automatic (preferred)
-Push to `main` on GitHub. Workflow **Deploy Harmonix (Coolify VPS)** rebuilds images and restarts the Coolify **Harmonix** service.
+Push to `main` on GitHub. Workflow **Deploy Harmonix (Coolify VPS)** SSHs to the VPS and runs [`scripts/coolify-redeploy.sh`](../scripts/coolify-redeploy.sh) (Traefik standbys → zero-downtime cutover).
 
-### Manual on VPS
+### Manual on VPS (same zero-downtime path)
 ```bash
 ssh ubuntu@79.72.79.7   # or Tailscale 100.97.39.101
 bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh
 ```
+
+### Do not use Coolify UI **Restart**
+Coolify’s Restart / StartService often **stop-before-start**, which drops Traefik backends and causes public 502/503s. Always deploy via **push to `main`** or `coolify-redeploy.sh`. Use the Coolify UI for env/secrets and status only.
 
 ### Required env (Coolify UI or `server/.env`)
 - `JWT_SECRET` / `JWT_REFRESH_SECRET`
