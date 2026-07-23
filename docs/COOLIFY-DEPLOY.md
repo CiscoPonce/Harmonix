@@ -104,19 +104,23 @@ bash run_env.sh    # legacy host stack + ngrok
 
 ## Git push → auto-deploy?
 
-**Not automatic yet.** Pushing to `main` updates GitHub only.
+**Yes (GitHub Actions).** Pushing to `main` runs [`.github/workflows/deploy-harmonix.yml`](../.github/workflows/deploy-harmonix.yml), which SSHs to the production VPS and runs [`scripts/coolify-redeploy.sh`](../scripts/coolify-redeploy.sh):
 
-To make every commit on `main` redeploy live:
+1. Sync `/home/ubuntu/lyric` to `origin/main`
+2. `docker compose build` (`lyric-api` / `lyric-web`)
+3. Restart Coolify service **Harmonix**
+4. Health-check `https://harmonix.peeporunclub.co.uk`
 
-1. Coolify → **Harmonix** resource → connect **GitHub source** (`app-harmonix` / `CiscoPonce/Harmonix`), not only local images.
-2. Enable **Automatic Deployment** / webhook on `main`.
-3. Prefer `build:` contexts from the repo (Dockerfiles) over static `lyric-*:latest` tags so each push rebuilds.
+Repo secrets: `HARMONIX_DEPLOY_HOST`, `HARMONIX_DEPLOY_USER`, `HARMONIX_DEPLOY_SSH_KEY`.
 
-Until then, after `git push origin main` on a machine with VPS access:
+**Production topology**
 
-```bash
-ssh ubuntu@100.97.39.101 'cd /home/ubuntu/lyric && git pull && docker compose build && docker compose up -d'
-```
+- **Edge:** Coolify Traefik → `harmonix.peeporunclub.co.uk`
+- **App:** Coolify-managed containers `api-rxwdj…` / `web-rxwdj…`
+- **TTS:** host systemd `harmonix-tts` (`:3002`)
+- **Old VPS (`agent-midas`):** Harmonix stopped
+
+Manual: `bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh` on the VPS, or restart in Coolify UI.
 
 ---
 

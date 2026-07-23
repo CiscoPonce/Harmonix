@@ -1,0 +1,27 @@
+name: Deploy Harmonix (Coolify VPS)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-harmonix-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HARMONIX_DEPLOY_HOST }}
+          username: ${{ secrets.HARMONIX_DEPLOY_USER }}
+          key: ${{ secrets.HARMONIX_DEPLOY_SSH_KEY }}
+          script_stop: true
+          command_timeout: 40m
+          script: |
+            set -euo pipefail
+            bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh

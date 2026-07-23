@@ -98,7 +98,7 @@ docker compose build && docker compose up -d
 
 Legacy rollback: `bash run_env.sh` (host Node + Next + ngrok).
 
-**Git → Coolify auto-deploy:** not enabled yet. Pushing to `main` updates GitHub only until the Coolify resource is linked to this repo with **Deploy on push** (webhook). Until then, redeploy with `docker compose` on the VPS (or Deploy in the Coolify UI).
+**Git → production deploy:** pushes to `main` trigger GitHub Actions → SSH → `scripts/coolify-redeploy.sh` (rebuild images + restart Coolify **Harmonix**).
 
 ## Security
 
