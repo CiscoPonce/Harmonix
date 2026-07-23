@@ -18,7 +18,7 @@ const fraunces = Fraunces({
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
-  "https://moral-sparrow-nationally.ngrok-free.app";
+  "https://harmonix.peeporunclub.co.uk";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

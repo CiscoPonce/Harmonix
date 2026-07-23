@@ -1,8 +1,9 @@
 # Harmonix Android — Capacitor (Option B)
 
-Wraps the live Harmonix web app in a native Android shell. The WebView loads the VPS via ngrok — no custom domain required for debug/testing.
+Wraps the live Harmonix web app in a native Android shell. The WebView loads production HTTPS — no custom Capacitor API layer required for debug/testing.
 
-**Phase:** 10-00A / 10-01  
+**Production URL:** https://harmonix.peeporunclub.co.uk  
+**Phase:** 10-00A / 10-01 (legacy Capacitor path)  
 **Package:** `com.harmonix.app`
 
 ---
@@ -13,15 +14,15 @@ Wraps the live Harmonix web app in a native Android shell. The WebView loads the
 Android APK (Capacitor WebView)
         │
         ▼
-https://moral-sparrow-nationally.ngrok-free.app  (ngrok)
+https://harmonix.peeporunclub.co.uk  (Coolify Traefik)
         │
         ▼
-Express :3001  ──proxy──►  Next.js :3009
+Express api  ──proxy──►  Next.js web
         │
         └── /api/*  (auth, daily word, player, etc.)
 ```
 
-Same-origin cookies and `/api` calls work because ngrok hits Express, which proxies the frontend and serves the API.
+Same-origin cookies and `/api` calls work because the public URL hits Express, which proxies the frontend and serves the API.
 
 ---
 
@@ -33,7 +34,7 @@ Same-origin cookies and `/api` calls work because ngrok hits Express, which prox
 | **JDK 17+** | Bundled with Android Studio (`Settings → Build → Gradle JDK`) |
 | **Node.js 20+** | For Capacitor CLI |
 | **Physical Android phone** | USB debugging enabled (recommended over emulator for audio) |
-| **VPS running** | `bash run_env.sh` on server — ngrok must be up |
+| **Production up** | https://harmonix.peeporunclub.co.uk reachable |
 
 ---
 
@@ -44,7 +45,7 @@ Same-origin cookies and `/api` calls work because ngrok hits Express, which prox
 | `CAPACITOR_SERVER_URL` | `client/env.capacitor.example` | Remote URL the WebView loads |
 | `NEXT_PUBLIC_API_URL` | unset in Capacitor mode | Defaults to `/api` (same origin) |
 
-When ngrok URL changes, update `client/capacitor.config.ts` or set `CAPACITOR_SERVER_URL` before `npm run cap:sync`.
+Default server URL is the production domain. Override `CAPACITOR_SERVER_URL` only for local experiments.
 
 ---
 
@@ -98,15 +99,15 @@ npm run android:install
 2. Transfer `Harmonix-debug.apk` from [`releases/`](../releases/) (or your local build) via USB, Drive, WhatsApp, email, etc..
 3. On the phone: **Settings → Security → Install unknown apps** (allow your file manager).
 4. Open the APK and install.
-5. Launch **Harmonix** — should load the ngrok URL automatically.
+5. Launch **Harmonix** — should load https://harmonix.peeporunclub.co.uk automatically.
 
 **Note:** Debug APKs expire after 7 days on some OEMs; rebuild as needed.
 
 ---
 
-## ngrok interstitial
+## Legacy ngrok interstitial
 
-Free ngrok shows a browser warning page. `MainActivity.java` reloads with the `ngrok-skip-browser-warning` header automatically. If you still see the warning, tap **Visit Site** once.
+Only relevant if you temporarily point Capacitor at an ngrok URL. Free ngrok shows a browser warning; `MainActivity.java` may reload with `ngrok-skip-browser-warning`. Prefer the production domain.
 
 ---
 
@@ -122,14 +123,13 @@ npm run android:sync
 
 ---
 
-## VPS production frontend
+## Production frontend
 
-`run_env.sh` serves a **production** Next.js build (`next build && next start`) instead of dev mode — more stable for WebView.
-
-Restart after deploy:
+Production is Coolify (Traefik → api → web). Redeploy:
 
 ```bash
-bash /home/ubuntu/lyric/run_env.sh
+bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh
+# or: git push origin main
 ```
 
 ---
@@ -149,11 +149,11 @@ bash /home/ubuntu/lyric/run_env.sh
 
 | Issue | Fix |
 |-------|-----|
-| Blank white screen | Confirm ngrok URL loads in phone browser first |
-| API 401 loop | Clear app data; cookies require same ngrok origin |
+| Blank white screen | Confirm https://harmonix.peeporunclub.co.uk loads in phone browser first |
+| API 401 loop | Clear app data; cookies require same HTTPS origin |
 | Gradle sync fails | Set JDK 17 in Android Studio Gradle settings |
 | `adb` not found | Add `~/Android/Sdk/platform-tools` to PATH |
-| ngrok URL changed | Update `capacitor.config.ts`, run `npm run android:sync`, rebuild |
+| Wrong host | Update `capacitor.config.ts` / `CAPACITOR_SERVER_URL`, `npm run android:sync`, rebuild |
 
 ---
 
@@ -166,7 +166,7 @@ Minimal watch UI at **`/watch`** — Daily Word only, large tap targets, round-s
 1. Enable **Developer options** + **Wireless debugging** (you already did this).
 2. Sideload `Harmonix-debug.apk` (Easy Fire Tools / Bugjaeger / `adb install`).
 3. Open **Harmonix** on the watch — very small screens auto-redirect to `/watch`.
-4. Or open directly: `https://<your-ngrok-host>/watch` in the watch browser.
+4. Or open directly: `https://harmonix.peeporunclub.co.uk/watch` in the watch browser.
 5. Sign in at `/watch/login`, then use **Hear it** / **Next word**.
 
 ### What you get
@@ -182,7 +182,7 @@ This is a **preview**, not the final Flutter Wear companion (Phase 10+).
 
 ```bash
 adb connect <watch-ip>:<port>
-adb shell am start -a android.intent.action.VIEW -d "https://moral-sparrow-nationally.ngrok-free.app/watch"
+adb shell am start -a android.intent.action.VIEW -d "https://harmonix.peeporunclub.co.uk/watch"
 ```
 
 ---

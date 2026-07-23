@@ -1,27 +1,27 @@
 # Phase 15 — Coolify production deploy
 
-**Status:** In progress (2026-07-23)  
+**Status:** Complete (2026-07-23)  
 **Milestone:** v1.8
 
 ## Goal
 
-Run Harmonix as a Coolify Docker Compose resource on `harmonixinstance`, replacing host-managed `run_env.sh` for API + Next while keeping Pocket-TTS on the host initially.
+Run Harmonix under Coolify Traefik on `harmonixinstance` with a real domain; stop relying on host `run_env.sh` + ngrok for production.
 
 ## Done
 
-- Confirmed Coolify 4.1.2 + Traefik healthy; no existing app resources
-- Added `docker-compose.yml`, `server/Dockerfile`, `client/Dockerfile`
-- `FRONTEND_PROXY_TARGET`, `SQLITE_PATH`, `TTS_SKIP_SPAWN` / `TTS_BASE_URL`
-- Docs: `docs/COOLIFY-DEPLOY.md`, runbook §0b, ROADMAP/STATE
+- Coolify 4.1.2 + Traefik healthy
+- `docker-compose.yml`, Dockerfiles, `SQLITE_PATH` / `FRONTEND_PROXY_TARGET` / host TTS
+- Domain: **https://harmonix.peeporunclub.co.uk**
+- Coolify service **Harmonix** (`api` + `web`) healthy
+- Old VPS `agent-midas` Harmonix stopped
+- GitHub Actions push → `scripts/coolify-redeploy.sh`
+- Docs: `docs/COOLIFY-DEPLOY.md`, runbook, README, ROADMAP/STATE
 
-## Remaining
+## Follow-ups (optional)
 
-1. Create Coolify Docker Compose resource (Git or server directory)
-2. Paste secrets; set Spotify redirects for chosen public URL
-3. Deploy; smoke test; point ngrok or domain at `api`
-4. Stop host Node/Next; keep TTS + Coolify
-5. Optional later: TTS container
+- Containerize Pocket-TTS
+- Native Coolify Git webhook (vs GitHub Actions SSH) if desired
 
 ## Rollback
 
-`docker compose down` then `bash run_env.sh`
+Stop Coolify Harmonix containers, then `bash run_env.sh` (emergency only).

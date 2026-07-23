@@ -1,7 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-# Standard VPS deploy: pull latest code, run tests, restart full stack via run_env.sh
+# Legacy / emergency deploy: pull, optional tests, host stack via run_env.sh
+# Production path: push to main (GitHub Actions) or:
+#   bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_ROOT"
 
@@ -16,5 +18,12 @@ else
   npm test
 fi
 
-echo "=== run_env.sh (backend + frontend build + ngrok) ==="
+if [[ "${1:-}" == "--coolify" || "${2:-}" == "--coolify" ]]; then
+  echo "=== coolify-redeploy.sh ==="
+  bash "$PROJECT_ROOT/scripts/coolify-redeploy.sh"
+  exit 0
+fi
+
+echo "=== run_env.sh (LEGACY host stack + ngrok) ==="
+echo "Tip: for production use --coolify or push to main."
 bash "$PROJECT_ROOT/run_env.sh"

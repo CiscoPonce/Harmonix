@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const serverUrl =
   process.env.CAPACITOR_SERVER_URL ||
-  'https://moral-sparrow-nationally.ngrok-free.app';
+  'https://harmonix.peeporunclub.co.uk';
 
 const config: CapacitorConfig = {
   appId: 'com.harmonix.app',

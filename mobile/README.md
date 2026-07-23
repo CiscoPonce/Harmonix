@@ -3,28 +3,22 @@
 Native Android client for Harmonix. Consumes the same Express `/api/*` as the web app.
 
 **Nav:** Discover · Library · Settings (Learn folded into Discover)  
-**Roadmap:** Android Play Store first → production domain live → iOS / App Store.  
-**Planning:** [`.planning/ROADMAP.md`](../.planning/ROADMAP.md) · [`.planning/STATE.md`](../.planning/STATE.md)
+**API (production):** https://harmonix.peeporunclub.co.uk/api  
+**Roadmap:** Android Play Store · [`.planning/ROADMAP.md`](../.planning/ROADMAP.md)
 
 ## Setup
 
 ```bash
 cd mobile
 flutter pub get
-flutter run --dart-define=API_BASE=https://moral-sparrow-nationally.ngrok-free.app/api
-```
-
-When your domain is live:
-
-```bash
-flutter run --dart-define=API_BASE=https://YOUR_DOMAIN/api
+flutter run --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
 ```
 
 ## Build debug APK
 
 ```bash
 flutter build apk --debug \
-  --dart-define=API_BASE=https://moral-sparrow-nationally.ngrok-free.app/api
+  --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
 ```
 
 ## Build Play Store release (AAB)
@@ -33,7 +27,7 @@ See **[PLAY-STORE.md](PLAY-STORE.md)** for keystore setup, Data safety answers, 
 
 ```bash
 # Requires android/key.properties + upload-keystore.jks
-flutter build appbundle --release --dart-define=API_BASE=https://YOUR_DOMAIN/api
+flutter build appbundle --release --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
 ```
 
 ## QA checklist

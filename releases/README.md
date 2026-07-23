@@ -15,7 +15,7 @@ Download the latest APK from the GitHub Release (recommended):
 2. Enable **Install unknown apps** for your file manager or browser.
 3. Open the APK and install.
 
-Requires internet. API default in this build: ngrok Harmonix backend. After your domain is live, rebuild with `--dart-define=API_BASE=https://YOUR_DOMAIN/api`.
+Requires internet. API default for new builds: `https://harmonix.peeporunclub.co.uk/api`.
 
 ## Build Flutter (Option C)
 
@@ -23,7 +23,7 @@ Requires internet. API default in this build: ngrok Harmonix backend. After your
 cd mobile
 export PATH="$HOME/flutter/bin:$PATH"
 flutter build apk --debug \
-  --dart-define=API_BASE=https://moral-sparrow-nationally.ngrok-free.app/api
+  --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
 ```
 
 Copy output to `releases/Harmonix-001.apk` (or bump the name for the next build).
