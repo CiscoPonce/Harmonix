@@ -107,9 +107,12 @@ bash run_env.sh    # legacy host stack + ngrok
 **Yes (GitHub Actions).** Pushing to `main` runs [`.github/workflows/deploy-harmonix.yml`](../.github/workflows/deploy-harmonix.yml), which SSHs to the production VPS and runs [`scripts/coolify-redeploy.sh`](../scripts/coolify-redeploy.sh):
 
 1. Sync `/home/ubuntu/lyric` to `origin/main`
-2. `docker compose build` (`lyric-api` / `lyric-web`)
-3. Restart Coolify service **Harmonix**
-4. Health-check `https://harmonix.peeporunclub.co.uk`
+2. Build images while live traffic stays on current containers
+3. Start a Traefik **standby** API so the public URL stays up during cutover
+4. Roll **api**, then **web** (never both down)
+5. Remove standby and health-check `https://harmonix.peeporunclub.co.uk`
+
+This is zero-downtime for push deploys (proxy 502/503 during recreate should not happen). Prefer the Actions path over Coolify UI **Restart**, which can still stop-before-start.
 
 Repo secrets: `HARMONIX_DEPLOY_HOST`, `HARMONIX_DEPLOY_USER`, `HARMONIX_DEPLOY_SSH_KEY`.
 
@@ -120,7 +123,7 @@ Repo secrets: `HARMONIX_DEPLOY_HOST`, `HARMONIX_DEPLOY_USER`, `HARMONIX_DEPLOY_S
 - **TTS:** host systemd `harmonix-tts` (`:3002`)
 - **Old VPS (`agent-midas`):** Harmonix stopped
 
-Manual: `bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh` on the VPS, or restart in Coolify UI.
+Manual: `bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh` on the VPS.
 
 ---
 
