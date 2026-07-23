@@ -117,7 +117,7 @@ Known env-sensitive failures: Pocket-TTS not running; Spotify `/status` contract
 
 ## Planning
 
-Milestone **v1.7** is complete (Phase 14). **v1.8 / Phase 15** production URL is live on Coolify Traefik. Remaining optional ops: GitHub auto-deploy webhook, Play Store listing, AI provider hardening, Extended Spotify Quota.
+Milestone **v1.7** is complete (Phase 14). **v1.8 / Phase 15** is live on Coolify Traefik with GH Actions zero-downtime deploy. Remaining optional ops: Play Store listing, AI provider hardening, Extended Spotify Quota.
 
 ## Releases
 
