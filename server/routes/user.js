@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const { VALID_LANGUAGE_CODES } = require('../constants/languages');
 const wordQueue = require('../services/wordQueueService');
+const dailyWordService = require('../services/dailyWordService');
 
 const VALID_VOICE_GENDERS = ['female', 'male'];
 const VALID_GENRES = ['any', 'pop', 'rock', 'hip-hop', 'reggaeton'];
@@ -92,6 +93,10 @@ router.patch('/preferences', (req, res) => {
     const languageChanged =
       target_language !== undefined && target_language !== current?.target_language;
     if (languageChanged || genreChanged) {
+      // Stop in-flight refill of the old catalog, drop queued mismatches,
+      // and invalidate any in-flight generate/deliver for the previous style.
+      dailyWordService.abortRefill(userId);
+      dailyWordService.bumpPreferenceEpoch(userId);
       wordQueue.purgeAll(userId);
     }
     const user = db.prepare(preferencesSelect()).get(userId);

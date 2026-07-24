@@ -72,13 +72,22 @@ describe("Daily Word Service", () => {
     expect(previewOffset(25)).to.equal(0);
   });
 
-  it("prefers opening-window occurrences (iTunes-compatible) over mid-track Deezer window", () => {
+  it("prefers Deezer mid-preview occurrences over opening lines", () => {
     const { isTimestampInPreview } = require("./dailyWordService");
     expect(isTimestampInPreview(45000, 180)).to.equal(true); // 0:45 in [30,60]
     expect(isTimestampInPreview(10000, 180)).to.equal(false); // 0:10 outside Deezer mid window
     const lrc =
       "[00:10.00] Early word forever\n[00:45.00] Later word forever in chorus";
-    const hit = findWordOccurrence("forever", lrc, null, { duration: 180 });
+    const hit = findWordOccurrence("forever", lrc, null, { duration: 180, provider: "deezer" });
+    expect(hit).to.not.be.null;
+    expect(hit.timestamp).to.equal("0:45");
+    expect(hit.in_preview).to.equal(true);
+  });
+
+  it("prefers opening-window hits for iTunes previews", () => {
+    const lrc =
+      "[00:10.00] Early word forever\n[00:45.00] Later word forever in chorus";
+    const hit = findWordOccurrence("forever", lrc, null, { duration: 180, provider: "itunes" });
     expect(hit).to.not.be.null;
     expect(hit.timestamp).to.equal("0:10");
     expect(hit.in_preview).to.equal(true);
@@ -145,10 +154,11 @@ describe("Daily Word Service", () => {
     const today = new Date().toISOString().slice(0, 10);
     saveDailyWord(userId, today, {
       date: today,
+      preferred_genre: "pop",
       word: { text: "cached-word", translation: "cached" },
-      lyric: { snippet: "line", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 5 },
-      song: { id: "1", title: "Song", artist: "Artist" },
-      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      lyric: { snippet: "line", timestamp: "0:45", timestamp_ms: 45000, line_index: 0, char_start: 0, char_end: 5 },
+      song: { id: "1", title: "Song", artist: "Artist", genre: "pop" },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30, preview_provider: "deezer" },
     });
 
     const original = aiService.generateDailyWord;
@@ -184,12 +194,83 @@ describe("Daily Word Service", () => {
     expect(aiService.normalizeGenre("hip-hop")).to.equal("hip-hop");
     expect(aiService.normalizeGenre("hiphop")).to.equal("hip-hop");
     expect(aiService.genresCompatible("hip-hop", "pop")).to.equal(false);
-    expect(aiService.genresCompatible("reggaeton", "hip-hop")).to.equal(true);
+    expect(aiService.genresCompatible("reggaeton", "hip-hop")).to.equal(false);
+    expect(aiService.genresCompatible(null, "rock")).to.equal(false);
+    expect(aiService.genresCompatible("salsa", "pop")).to.equal(false);
     const verified = aiService.getVerifiedSongCandidates("es", "hip-hop");
     expect(verified.length).to.be.greaterThan(0);
     expect(verified.every((s) => aiService.genresCompatible(s.genre, "hip-hop"))).to.equal(true);
     const rock = aiService.getVerifiedSongCandidates("es", "rock");
     expect(rock.every((s) => s.genre === "rock")).to.equal(true);
+  });
+
+  it("does not fall back to curated when verified genre pool is empty", () => {
+    // French verified catalog has no hip-hop rows — must stay empty (no pop relabel).
+    const verified = aiService.getVerifiedSongCandidates("fr", "hip-hop");
+    expect(verified).to.deep.equal([]);
+  });
+
+  it("keeps Despacito out of Spanish pop curated picks", () => {
+    const curated = aiService.getCuratedSongCandidates("es", "pop");
+    const keys = curated.map(
+      (s) => `${s.artist.toLowerCase()}|${s.song_title.toLowerCase()}`
+    );
+    expect(keys).to.not.include("luis fonsi|despacito");
+    expect(curated.every((s) => aiService.genresCompatible(s.genre, "pop"))).to.equal(true);
+  });
+
+  it("rejects AI songs that only match via forged user genre stamp", async () => {
+    const original = aiService.openai.chat.completions.create;
+    aiService.openai.chat.completions.create = async () => ({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            candidates: [
+              { song_title: "Despacito", artist: "Luis Fonsi", genre: "pop" },
+              { song_title: "Bailando", artist: "Enrique Iglesias", genre: "pop" },
+              { song_title: "Gasolina", artist: "Daddy Yankee", genre: "pop" },
+            ],
+          }),
+        },
+      }],
+    });
+    try {
+      const songs = await aiService.generateDailyWordSongs({
+        languageName: "Spanish",
+        languageCode: "es",
+        genre: "pop",
+        difficulty: "medium",
+      });
+      const keys = songs.map(
+        (s) => `${s.artist.toLowerCase()}|${s.song_title.toLowerCase()}`
+      );
+      expect(keys).to.not.include("luis fonsi|despacito");
+      expect(keys).to.not.include("daddy yankee|gasolina");
+      expect(keys).to.include("enrique iglesias|bailando");
+      expect(songs.every((s) => s.genre === "pop")).to.equal(true);
+    } finally {
+      aiService.openai.chat.completions.create = original;
+    }
+  });
+
+  it("getCuratedCandidatesForBatch stays inside the requested genre", () => {
+    const batch = getCuratedCandidatesForBatch(userId, "es", "rock");
+    expect(batch.length).to.be.greaterThan(0);
+    expect(batch.every((s) => aiService.genresCompatible(s.genre, "rock"))).to.equal(true);
+  });
+
+  it("skips cached daily word when genre no longer matches", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    saveDailyWord(userId, today, {
+      date: today,
+      preferred_genre: "pop",
+      word: { text: "amor", translation: "love" },
+      lyric: { snippet: "amor", timestamp: "0:45", timestamp_ms: 45000, line_index: 0, char_start: 0, char_end: 4 },
+      song: { id: "1", title: "Song", artist: "Artist", genre: "pop" },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+    });
+    expect(getCachedDailyWord(userId, today, "es", "pop").word.text).to.equal("amor");
+    expect(getCachedDailyWord(userId, today, "es", "rock")).to.equal(null);
   });
 
   it("generates a validated daily word with mocked externals", async () => {
@@ -219,7 +300,7 @@ describe("Daily Word Service", () => {
           ok: true,
           status: 200,
           json: async () => ({
-            syncedLyrics: "[00:10.00] El amor es fuerte\n[00:20.00] Siempre brilla\n[00:30.00] Para ti",
+            syncedLyrics: "[00:35.00] El amor es fuerte\n[00:42.00] Siempre brilla\n[00:50.00] Para ti",
             plainLyrics: "El amor es fuerte",
           }),
         };
@@ -271,7 +352,7 @@ describe("Daily Word Service", () => {
         return {
           ok: true,
           json: async () => ({
-            syncedLyrics: "[00:10.00] Brilla el sol hoy\n[00:20.00] Siempre fuerte\n[00:30.00] Para ti",
+            syncedLyrics: "[00:35.00] Brilla el sol hoy\n[00:42.00] Siempre fuerte\n[00:50.00] Para ti",
             plainLyrics: "Brilla el sol hoy\nSiempre fuerte\nPara ti",
           }),
         };
@@ -308,7 +389,7 @@ describe("Daily Word Service", () => {
           ok: true,
           status: 200,
           json: async () => ({
-            syncedLyrics: "[00:10.00] El amor y la noche brillan\n[00:20.00] Siempre juntos\n[00:30.00] Para ti",
+            syncedLyrics: "[00:35.00] El amor y la noche brillan\n[00:42.00] Siempre juntos\n[00:50.00] Para ti",
             plainLyrics: "El amor y la noche brillan",
           }),
         };
@@ -372,7 +453,7 @@ describe("Daily Word Service", () => {
           ok: true,
           status: 200,
           json: async () => ({
-            syncedLyrics: "[00:10.00] El amor y la noche brillan\n[00:20.00] Siempre juntos\n[00:30.00] Para ti",
+            syncedLyrics: "[00:35.00] El amor y la noche brillan\n[00:42.00] Siempre juntos\n[00:50.00] Para ti",
             plainLyrics: "El amor y la noche brillan",
           }),
         };
@@ -421,17 +502,19 @@ describe("Daily Word Service", () => {
     const englishPayload = {
       date: today,
       language_code: "es",
+      preferred_genre: "pop",
       word: { text: "screaming", translation: "screaming" },
       lyric: { snippet: "screaming", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 9 },
-      song: { id: "99", title: "Song", artist: "Artist" },
+      song: { id: "99", title: "Song", artist: "Artist", genre: "pop" },
       audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
     };
     const spanishPayload = {
       date: today,
       language_code: "es",
+      preferred_genre: "pop",
       word: { text: "tranquila", translation: "calm" },
       lyric: { snippet: "tranquila", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 9 },
-      song: { id: "55", title: "Song", artist: "Artist" },
+      song: { id: "55", title: "Song", artist: "Artist", genre: "pop" },
       audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
     };
     wordQueue.enqueuePayloads(userId, [englishPayload, spanishPayload]);
@@ -449,9 +532,10 @@ describe("Daily Word Service", () => {
     const payload = {
       date: today,
       language_code: "es",
+      preferred_genre: "pop",
       word: { text: "cola", translation: "queue" },
       lyric: { snippet: "cola", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 4 },
-      song: { id: "55", title: "Song", artist: "Artist" },
+      song: { id: "55", title: "Song", artist: "Artist", genre: "pop" },
       audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
     };
     wordQueue.enqueuePayloads(userId, [payload]);
@@ -473,17 +557,19 @@ describe("Daily Word Service", () => {
       {
         date: today,
         language_code: "es",
+        preferred_genre: "pop",
         word: { text: "amor", translation: "love" },
         lyric: { snippet: "amor", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 4 },
-        song: { id: "2", title: "Song B", artist: "Artist B" },
+        song: { id: "2", title: "Song B", artist: "Artist B", genre: "pop" },
         audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
       },
       {
         date: today,
         language_code: "es",
+        preferred_genre: "pop",
         word: { text: "noche", translation: "night" },
         lyric: { snippet: "noche", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 5 },
-        song: { id: "3", title: "Song C", artist: "Artist C" },
+        song: { id: "3", title: "Song C", artist: "Artist C", genre: "pop" },
         audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
       },
     ]);
@@ -504,17 +590,19 @@ describe("Daily Word Service", () => {
       {
         date: today,
         language_code: "es",
+        preferred_genre: "pop",
         word: { text: "corazon", translation: "heart" },
         lyric: { snippet: "corazon", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 7 },
-        song: { id: "1", title: "Song A", artist: "Artist A" },
+        song: { id: "1", title: "Song A", artist: "Artist A", genre: "pop" },
         audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
       },
       {
         date: today,
         language_code: "es",
+        preferred_genre: "pop",
         word: { text: "noche", translation: "night" },
         lyric: { snippet: "noche", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 5 },
-        song: { id: "3", title: "Song C", artist: "Artist C" },
+        song: { id: "3", title: "Song C", artist: "Artist C", genre: "pop" },
         audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
       },
     ]);

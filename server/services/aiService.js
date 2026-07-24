@@ -510,37 +510,54 @@ function normalizeGenre(genre) {
   return allowed.has(g) ? g : 'pop';
 }
 
+/** Candidate genre for matching — unknown labels fail closed (do not collapse to pop). */
+function normalizeCandidateGenre(genre) {
+  if (genre == null || String(genre).trim() === '') return null;
+  const g = String(genre).toLowerCase().trim();
+  if (g === 'hiphop' || g === 'hip hop' || g === 'rap') return 'hip-hop';
+  if (g === 'latin' || g === 'urbano' || g === 'urban') return 'reggaeton';
+  const allowed = new Set(['pop', 'rock', 'hip-hop', 'reggaeton']);
+  return allowed.has(g) ? g : null;
+}
+
 function genresCompatible(candidateGenre, userGenre) {
   const u = normalizeGenre(userGenre);
   if (u === 'any') return true;
-  const c = normalizeGenre(candidateGenre || u);
-  if (c === u) return true;
-  // Soft adjacency only for urban Latin styles
-  if ((u === 'reggaeton' && c === 'hip-hop') || (u === 'hip-hop' && c === 'reggaeton')) {
-    return true;
+  const c = normalizeCandidateGenre(candidateGenre);
+  if (!c) return false;
+  return c === u;
+}
+
+function songCandidateKey(song) {
+  return `${String(song.artist || '').toLowerCase()}|${String(song.song_title || song.title || '').toLowerCase()}`;
+}
+
+/** Verified catalog genre index for a language (single source of truth). */
+function verifiedGenreIndex(languageCode) {
+  const map = new Map();
+  for (const s of VERIFIED_SONGS[normalizeLanguageCode(languageCode)] || []) {
+    const genre = normalizeCandidateGenre(s.genre);
+    if (genre) map.set(songCandidateKey(s), genre);
   }
-  return false;
+  return map;
 }
 
 function getVerifiedSongCandidates(languageCode, genre) {
   const langCode = normalizeLanguageCode(languageCode);
   const list = VERIFIED_SONGS[langCode] || [];
-  if (!list.length) return getCuratedSongCandidates(languageCode, genre);
   const g = normalizeGenre(genre);
   if (g === 'any') return list.slice();
-  const matched = list.filter((s) => genresCompatible(s.genre, g));
-  // Never dump the full mixed catalog — genre fidelity is the product pitch.
-  if (matched.length) return matched;
-  return getCuratedSongCandidates(languageCode, g);
+  // Empty when this style has no verified songs — never fall back to mislabeled curated.
+  return list.filter((s) => genresCompatible(s.genre, g));
 }
 
 const GENRE_HIT_EXAMPLES = {
   es: {
     reggaeton: 'Gasolina (Daddy Yankee), Despacito (Luis Fonsi), Dákiti (Bad Bunny), Tití Me Preguntó (Bad Bunny), Con Calma (Daddy Yankee), Me Porto Bonito (Bad Bunny), Yo Perreo Sola (Bad Bunny), Pepas (Farruko), Danza Kuduro (Don Omar), Taki Taki (DJ Snake), Mi Gente (J Balvin), Tusa (Karol G), El Perdón (Nicky Jam), Caramelo (Ozuna)',
-    pop: 'Despacito (Luis Fonsi), Bailando (Enrique Iglesias), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives), Propuesta Indecente (Romeo Santos), Felices los 4 (Maluma), Hawái (Maluma), Échame La Culpa (Luis Fonsi), Color Esperanza (Diego Torres), Sofía (Alvaro Soler), Fuiste Tú (Ricardo Arjona), Creo En Ti (Reik)',
+    pop: 'Bailando (Enrique Iglesias), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives), Propuesta Indecente (Romeo Santos), Color Esperanza (Diego Torres), Sofía (Alvaro Soler), Fuiste Tú (Ricardo Arjona), Creo En Ti (Reik), Espacio Sideral (Jesse & Joy)',
     rock: 'A Dios le Pido (Juanes), La Camisa Negra (Juanes), En El Muelle de San Blas (Maná), Clavado en Un Bar (Maná), Rayando el Sol (Maná), Labios Compartidos (Maná), Flaca (Andrés Calamaro), Cuando Pase El Temblor (Soda Stereo)',
     'hip-hop': 'Latinoamérica (Calle 13), Atrévete-te-te (Calle 13), Pa\'l Norte (Calle 13), 1977 (Ana Tijoux), Mírala Miralo (Control Machete)',
-    any: 'Despacito (Luis Fonsi), Gasolina (Daddy Yankee), Vivir Mi Vida (Marc Anthony), Bailando (Enrique Iglesias), La Bicicleta (Carlos Vives), Propuesta Indecente (Romeo Santos)',
+    any: 'Bailando (Enrique Iglesias), Gasolina (Daddy Yankee), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives), Propuesta Indecente (Romeo Santos)',
   },
   en: {
     pop: 'Bad Guy (Billie Eilish), Shallow (Lady Gaga), Rolling in the Deep (Adele), Heat Waves (Glass Animals), Someone You Loved (Lewis Capaldi), Hello (Adele), Stay With Me (Sam Smith)',
@@ -551,13 +568,13 @@ const GENRE_HIT_EXAMPLES = {
   fr: {
     pop: 'Formidable (Stromae), On écrit sur les murs (Kids United), Tourner dans le vide (Indila), Je veux (Zaz), Avant nous (Soprano), Dernière Danse (Indila), Papaoutai (Stromae)',
     rock: 'Mistral gagnant (Renaud), Comme des enfants (Cœur de pirate), Homme Contant (Noir Désir), Le vent nous portera (Noir Désir), Dis-moi (BB Brunes)',
-    'hip-hop': 'Alors on danse (Stromae), Carmen (Stromae), Aicha (Khaled), Tous les mêmes (Stromae)',
+    'hip-hop': 'Ailleurs (Orelsan), Basique (Orelsan), Tout va bien (Orelsan), Feu (Nekfeu), J\'suis pas bon (Nekfeu)',
     any: 'Formidable (Stromae), Je veux (Zaz), Mistral gagnant (Renaud), Tourner dans le vide (Indila)',
   },
   de: {
     pop: 'Atemlos durch die Nacht (Helene Fischer), Männer (Herbert Grönemeyer), 99 Luftballons (Nena), Auf uns (Andreas Bourani), Das Beste (Silbermond), Perfekte Welle (Juli)',
     rock: 'Du hast (Rammstein), Durch den Monsun (Tokio Hotel), Engel (Rammstein), Tage wie diese (Die Toten Hosen), Nur ein Wort (Wir sind Helden)',
-    'hip-hop': 'Nur noch kurz die Welt retten (Tim Bendzko), Willst Du (Alligatoah), Fremdgehen (Alligatoah)',
+    'hip-hop': 'Willst Du (Alligatoah), Fremdgehen (Alligatoah), Du bist schön (Alligatoah), Traurig (Apache 207), Roller (Apache 207)',
     any: 'Atemlos durch die Nacht (Helene Fischer), Männer (Herbert Grönemeyer), 99 Luftballons (Nena), Du hast (Rammstein), Das Beste (Silbermond)',
   },
   pt: {
@@ -569,7 +586,7 @@ const GENRE_HIT_EXAMPLES = {
   it: {
     pop: 'Più bella cosa (Eros Ramazzotti), Sere nere (Tiziano Ferro), Guerriero (Marco Mengoni), Con te partirò (Andrea Bocelli), Sarà perché ti amo (Ricchi e Poveri), Gloria (Umberto Tozzi), Laura non c\'è (Nek)',
     rock: 'Zitti e buoni (Måneskin), Certe Notti (Ligabue), Bello e impossibile (Gianna Nannini), Urlando contro il cielo (Ligabue), Meraviglioso (Negramaro)',
-    'hip-hop': 'Chiamami ancora amore (Roberto Vecchioni), L\'italiano (Toto Cutugno)',
+    'hip-hop': 'Starboy (Sfera Ebbasta), Pablo (Sfera Ebbasta), Madonna (Sfera Ebbasta), Cosa nostra (Marracash), Brutti e cattivi (Guè)',
     any: 'Zitti e buoni (Måneskin), Più bella cosa (Eros Ramazzotti), Sere nere (Tiziano Ferro), Guerriero (Marco Mengoni)',
   },
 };
@@ -608,7 +625,17 @@ function getCuratedSongCandidates(languageCode, genre) {
     // Thin genre×language — return empty rather than mislabeled "any" songs.
     return [];
   }
-  return parseCuratedSongs(hits, g === 'any' ? 'pop' : g);
+  const verified = verifiedGenreIndex(langCode);
+  const parsed = parseCuratedSongs(hits, g === 'any' ? 'pop' : g);
+  return parsed.filter((song) => {
+    const known = verified.get(songCandidateKey(song));
+    if (known) {
+      // Verified catalog wins — never serve a song under the wrong style stamp.
+      song.genre = known;
+      return g === 'any' || known === g;
+    }
+    return g === 'any' || genresCompatible(song.genre, g);
+  });
 }
 
 async function createFastChatCompletion(params, timeoutMs = 12000) {
@@ -707,13 +734,32 @@ Reply with ONLY JSON:
         lastErr = new Error('invalid_ai_daily_word_response');
         continue;
       }
-      return parsed
+      // Catalog genre is the source of truth — never stamp the user's preference onto
+      // whatever the model returned (that made every AI pick look "on style").
+      const verified = verifiedGenreIndex(langCode);
+      const kept = parsed
         .filter((c) => c.song_title && c.artist)
-        .filter((c) => genresCompatible(c.genre || genreNorm, genreNorm))
-        .map((c) => ({
-          ...c,
-          genre: genreNorm === 'any' ? (c.genre || 'pop') : genreNorm,
-        }));
+        .map((c) => {
+          const key = songCandidateKey(c);
+          const known = verified.get(key);
+          if (known) {
+            if (genreNorm !== 'any' && known !== genreNorm) return null;
+            return { ...c, genre: known };
+          }
+          const selfGenre = normalizeCandidateGenre(c.genre);
+          if (genreNorm === 'any') {
+            return { ...c, genre: selfGenre || 'pop' };
+          }
+          // Untagged or mismatched AI genre → reject (do not forge).
+          if (!selfGenre || selfGenre !== genreNorm) return null;
+          return { ...c, genre: selfGenre };
+        })
+        .filter(Boolean);
+      if (!kept.length) {
+        lastErr = new Error('invalid_ai_daily_word_response');
+        continue;
+      }
+      return kept;
     } catch (err) {
       if (isRateLimitError(err)) {
         const e = new Error('ai_rate_limit');
@@ -1118,7 +1164,10 @@ module.exports = {
   getCuratedSongCandidates,
   getVerifiedSongCandidates,
   normalizeGenre,
+  normalizeCandidateGenre,
   genresCompatible,
+  songCandidateKey,
+  verifiedGenreIndex,
   glossDailyWords,
   refineGlosses,
   sanitizeGloss,

@@ -16,6 +16,7 @@ import '../services/api_client.dart';
 import '../spotify/spotify_open.dart';
 import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
+import '../utils/hear_it_timing.dart';
 import '../widgets/add_to_playlist_sheet.dart';
 import '../widgets/word_flip_card.dart';
 import 'review_screen.dart';
@@ -44,7 +45,9 @@ class _LearnScreenState extends State<LearnScreen> {
   bool _searching = false;
   String? _error;
   String? _trackedLang;
+  String? _trackedGenre;
   AuthState? _auth;
+  Timer? _hearStopTimer;
 
   @override
   void initState() {
@@ -53,6 +56,7 @@ class _LearnScreenState extends State<LearnScreen> {
       if (!mounted) return;
       _auth = context.read<AuthState>();
       _trackedLang = _auth?.user?['target_language']?.toString();
+      _trackedGenre = _auth?.user?['genre']?.toString();
       _auth?.addListener(_onAuthChanged);
       _load();
     });
@@ -60,14 +64,16 @@ class _LearnScreenState extends State<LearnScreen> {
 
   void _onAuthChanged() {
     final lang = _auth?.user?['target_language']?.toString();
-    if (lang != _trackedLang) {
-      _trackedLang = lang;
-      if (mounted) _load();
-    }
+    final genre = _auth?.user?['genre']?.toString();
+    final changed = lang != _trackedLang || genre != _trackedGenre;
+    _trackedLang = lang;
+    _trackedGenre = genre;
+    if (changed && mounted) _load();
   }
 
   @override
   void dispose() {
+    _hearStopTimer?.cancel();
     _auth?.removeListener(_onAuthChanged);
     _searchQuery.dispose();
     _previewPlayer.dispose();
@@ -271,21 +277,51 @@ class _LearnScreenState extends State<LearnScreen> {
     final api = context.read<ApiClient>();
     final audio = _word?['audio'] as Map<String, dynamic>?;
     final lyric = _word?['lyric'] as Map<String, dynamic>?;
+    final word = _word?['word'] as Map<String, dynamic>?;
     final url = audio?['preview_url'] as String?;
-    if (url == null) return;
+    if (url == null || lyric == null) return;
     final resolved = api.resolveMediaUrl(url);
+    final win = computeDeezerHearWindow(
+      timestampMs: (lyric['timestamp_ms'] as num?) ?? 0,
+      lineEndMs: lyric['line_end_ms'] as num?,
+      snippet: lyric['snippet']?.toString() ?? '',
+      charStart: (lyric['char_start'] as num?) ?? 0,
+      charEnd: (lyric['char_end'] as num?) ?? 0,
+      previewOffset: audio?['preview_offset'] as num?,
+      previewProvider: audio?['preview_provider']?.toString(),
+      durationSeconds: audio?['duration_seconds'] as num?,
+    );
+    if (!win.shouldPlay || !win.inWindow) {
+      if (!mounted) return;
+      final label = word?['text']?.toString() ?? 'this word';
+      final stamp = lyric['timestamp']?.toString() ?? '';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            stamp.isEmpty
+                ? 'This preview doesn’t include “$label”. Try Open in Spotify.'
+                : 'This preview doesn’t include “$label” at $stamp. Try Open in Spotify.',
+          ),
+        ),
+      );
+      return;
+    }
     try {
+      _hearStopTimer?.cancel();
       try {
         await _pronouncePlayer.stop();
       } catch (_) {}
       await _previewPlayer.setUrl(resolved);
       await _previewPlayer.setVolume(1.0);
-      final offset = (audio?['preview_offset'] as num?)?.toDouble() ?? 0;
-      final tsMs = (lyric?['timestamp_ms'] as num?)?.toDouble() ?? 0;
-      // Preview element timeline: lyric song-time minus preview offset (not plus).
-      final start = (tsMs / 1000 - offset - 2).clamp(0.0, 25.0);
-      await _previewPlayer.seek(Duration(milliseconds: (start * 1000).round()));
+      final startMs = (win.seekTo * 1000).round();
+      await _previewPlayer.seek(Duration(milliseconds: startMs));
       await _previewPlayer.play();
+      final playMs = ((win.stopAt - win.seekTo) * 1000).clamp(1800, 14000).round();
+      _hearStopTimer = Timer(Duration(milliseconds: playMs), () async {
+        try {
+          await _previewPlayer.pause();
+        } catch (_) {}
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
