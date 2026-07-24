@@ -189,11 +189,11 @@ Other optional ops (not blocking): Play Store listing, AI provider hardening, Ex
 
 | Workstream | Status |
 |------------|--------|
-| Settings: music style + voice gender + language list | In progress |
-| Discover home (practice strip, review, shelf) | Pending |
-| Hear-it + WOTD actions | Pending |
-| Library Spotify header chip | Pending |
-| Visual tokens (Phase 13 greens + Fraunces/DM Sans) | In progress |
+| Settings: music style + voice gender + language list | Done |
+| Discover home (practice strip, review, shelf) | Done |
+| Hear-it + WOTD actions | Done (labels + Open in Spotify; Add to playlist later) |
+| Library Spotify header chip | Done |
+| Visual tokens (Phase 13 greens + Fraunces/DM Sans) | Done |
 | Dual-frontend QA refresh + Capacitor smoke | Pending |
 
 **Context:** [`.planning/phases/16-flutter-web-parity/16-CONTEXT.md`](./phases/16-flutter-web-parity/16-CONTEXT.md)  

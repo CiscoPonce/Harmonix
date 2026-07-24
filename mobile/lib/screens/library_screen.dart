@@ -21,6 +21,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   List<Map<String, dynamic>> _recent = [];
   String? _spotifyError;
   String? _onwardUrl;
+  String? _spotifyDisplayName;
+  String _spotifyState = 'connect';
   bool _harmonixLoading = true;
   bool _spotifyLoading = true;
   bool _recentLoading = true;
@@ -99,6 +101,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
       try {
         final status = await api.spotifyStatus();
         if (!mounted) return;
+        setState(() {
+          _spotifyState = status.state;
+          _spotifyDisplayName = status.displayName;
+        });
         if (status.state == 'connect' || status.state == 'disconnected') {
           setState(() {
             _spotify = [];
@@ -224,11 +230,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = HarmonixColors.of(context);
     if (_loading && _harmonix.isEmpty && _spotify.isEmpty && _recent.isEmpty) {
       return Center(
-        child: CircularProgressIndicator(color: HarmonixColors.of(context).accent),
+        child: CircularProgressIndicator(color: colors.accent),
       );
     }
+
+    final chipLabel = switch (_spotifyState) {
+      'connected' when (_spotifyDisplayName?.isNotEmpty ?? false) =>
+        'Spotify · $_spotifyDisplayName',
+      'connected' => 'Spotify · Connected',
+      'reconnect' => 'Spotify · Reconnect',
+      _ => 'Connect Spotify',
+    };
 
     return SpotifyLibraryList(
       harmonixPlaylists: _harmonix,
@@ -242,6 +257,35 @@ class _LibraryScreenState extends State<LibraryScreen> {
       onOpenPlaylist: _openPlaylist,
       onOpenSettings: _openSettings,
       onCreatePlaylist: _createPlaylist,
+      header: Row(
+        children: [
+          Text(
+            'Library',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: colors.textPrimary,
+                ),
+          ),
+          const Spacer(),
+          ActionChip(
+            avatar: Icon(Icons.music_note, size: 16, color: colors.accent),
+            label: Text(
+              chipLabel,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              ),
+            ),
+            onPressed: _openSettings,
+            side: BorderSide(color: colors.border),
+            backgroundColor: colors.surface,
+          ),
+          IconButton(
+            onPressed: _createPlaylist,
+            icon: Icon(Icons.add_circle, color: colors.accent),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -309,6 +309,12 @@ class ApiClient {
 
   Future<Map<String, dynamic>> progressStats() => request('GET', '/progress/stats');
 
+  Future<Map<String, dynamic>> progressDue({int limit = 20}) =>
+      request('GET', '/progress/due', query: {'limit': '$limit'});
+
+  Future<Map<String, dynamic>> progressReview(List<Map<String, dynamic>> results) =>
+      request('POST', '/progress/review', body: {'results': results});
+
   Future<List<dynamic>> searchSongs(String q) async {
     final data = await request('GET', '/search', query: {'q': q});
     final items = data['data'] ?? data['items'] ?? data['results'];

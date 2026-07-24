@@ -13,8 +13,10 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_client.dart';
+import '../spotify/spotify_open.dart';
 import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
+import 'review_screen.dart';
 
 class LearnScreen extends StatefulWidget {
   const LearnScreen({super.key});
@@ -30,6 +32,9 @@ class _LearnScreenState extends State<LearnScreen> {
   final _searchQuery = TextEditingController();
   Map<String, dynamic>? _word;
   Map<String, dynamic>? _queue;
+  Map<String, dynamic>? _stats;
+  List<Map<String, dynamic>> _shelf = [];
+  int _dueCount = 0;
   List<dynamic> _searchResults = [];
   bool _loading = true;
   bool _nexting = false;
@@ -81,13 +86,34 @@ class _LearnScreenState extends State<LearnScreen> {
     try {
       final payload = next ? await api.nextDailyWord() : await api.getDailyWord();
       Map<String, dynamic>? queue;
+      Map<String, dynamic>? stats;
+      List<Map<String, dynamic>> shelf = [];
+      var dueCount = 0;
       try {
         queue = await api.queueStatus();
+      } catch (_) {}
+      try {
+        stats = await api.progressStats();
+      } catch (_) {}
+      try {
+        final recent = await api.recentDailyWords(days: 14);
+        final raw = recent['recent'] as List? ?? [];
+        shelf = raw
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      } catch (_) {}
+      try {
+        final due = await api.progressDue(limit: 1);
+        dueCount = (due['count'] as num?)?.toInt() ?? 0;
       } catch (_) {}
       if (!mounted) return;
       setState(() {
         _word = payload;
         _queue = queue ?? payload['queue'] as Map<String, dynamic>?;
+        _stats = stats;
+        _shelf = shelf;
+        _dueCount = dueCount;
       });
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -110,6 +136,27 @@ class _LearnScreenState extends State<LearnScreen> {
           _nexting = false;
         });
       }
+    }
+  }
+
+  Future<void> _openReview() async {
+    final refreshed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const ReviewScreen()),
+    );
+    if (refreshed == true && mounted) _load();
+  }
+
+  Future<void> _openInSpotify() async {
+    final song = _word?['song'] as Map<String, dynamic>?;
+    if (song == null) return;
+    final url = spotifyOpenUrlForSong(
+      artist: song['artist']?.toString() ?? '',
+      title: song['title']?.toString() ?? '',
+      uri: song['spotify_uri']?.toString() ?? song['uri']?.toString(),
+    );
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -221,16 +268,6 @@ class _LearnScreenState extends State<LearnScreen> {
           SnackBar(content: Text('Preview unavailable: $e')),
         );
       }
-    }
-  }
-
-  Future<void> _openPlayer() async {
-    final song = _word?['song'] as Map<String, dynamic>?;
-    final id = song?['id']?.toString();
-    if (id == null) return;
-    final uri = Uri.parse(context.read<ApiClient>().playerUrlForSongId(id));
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -414,21 +451,24 @@ class _LearnScreenState extends State<LearnScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _RoundAction(
+              _LabeledRoundAction(
                 filled: true,
                 icon: Icons.play_arrow,
+                label: 'Hear it',
                 onTap: _playPreview,
               ),
-              const SizedBox(width: 20),
-              _RoundAction(
+              const SizedBox(width: 16),
+              _LabeledRoundAction(
                 filled: false,
-                icon: Icons.headphones,
-                onTap: _openPlayer,
+                icon: Icons.open_in_new,
+                label: 'Spotify',
+                onTap: _openInSpotify,
               ),
-              const SizedBox(width: 20),
-              _RoundAction(
+              const SizedBox(width: 16),
+              _LabeledRoundAction(
                 filled: false,
                 icon: Icons.ios_share,
+                label: 'Share',
                 onTap: _share,
               ),
             ],
@@ -447,19 +487,76 @@ class _LearnScreenState extends State<LearnScreen> {
             const SizedBox(height: 12),
             Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
           ],
-          const SizedBox(height: 32),
-          TextField(
-            controller: _searchQuery,
-            decoration: InputDecoration(
-              hintText: 'Search songs, artists…',
-              suffixIcon: IconButton(
-                onPressed: _searching ? null : _search,
-                icon: _searching
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.search),
-              ),
+          const SizedBox(height: 24),
+          if (_stats != null || _dueCount > 0) ...[
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                if (_stats != null)
+                  _PracticeChip(
+                    icon: Icons.local_fire_department,
+                    label:
+                        '${_stats!['streak_days'] ?? 0} day${(_stats!['streak_days'] == 1) ? '' : 's'}',
+                  ),
+                if (_stats != null)
+                  _GoalChip(
+                    today: (_stats!['today_words'] as num?)?.toInt() ?? 0,
+                    goal: (_stats!['daily_goal'] as num?)?.toInt() ?? 1,
+                    met: _stats!['today_goal_met'] == true,
+                  ),
+                if (_dueCount > 0)
+                  ActionChip(
+                    avatar: Icon(Icons.replay, size: 16, color: colors.accent),
+                    label: Text(
+                      '$_dueCount ${_dueCount == 1 ? 'word' : 'words'} to review →',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    onPressed: _openReview,
+                    side: BorderSide(color: colors.border),
+                    backgroundColor: colors.surface,
+                  ),
+              ],
             ),
-            onSubmitted: (_) => _search(),
+            const SizedBox(height: 24),
+          ],
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: HarmonixColors.brand,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: TextField(
+              controller: _searchQuery,
+              style: const TextStyle(color: Color(0xFF0C1210)),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white,
+                hintText: 'Search lyrics, artists, or languages…',
+                hintStyle: const TextStyle(color: Color(0xFF9AABA0)),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF7A8A80)),
+                suffixIcon: IconButton(
+                  onPressed: _searching ? null : _search,
+                  icon: _searching
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.arrow_forward, color: HarmonixColors.brand),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onSubmitted: (_) => _search(),
+            ),
           ),
           const SizedBox(height: 12),
           ..._searchResults.map((raw) {
@@ -478,13 +575,61 @@ class _LearnScreenState extends State<LearnScreen> {
               onTap: id == null
                   ? null
                   : () async {
-                      final uri = Uri.parse(context.read<ApiClient>().playerUrlForSongId(id));
+                      final url = spotifyOpenUrlForSong(
+                        artist: artist ?? '',
+                        title: title,
+                      );
+                      final uri = Uri.parse(url);
                       if (await canLaunchUrl(uri)) {
                         await launchUrl(uri, mode: LaunchMode.externalApplication);
                       }
                     },
             );
           }),
+          if (_shelf.isNotEmpty) ...[
+            const SizedBox(height: 28),
+            Text('YOUR SHELF', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 150,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _shelf.length.clamp(0, 14),
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, i) {
+                  final item = _shelf[i];
+                  final w = item['word'] is Map
+                      ? Map<String, dynamic>.from(item['word'] as Map)
+                      : <String, dynamic>{'text': item['word']?.toString()};
+                  final song = item['song'] is Map
+                      ? Map<String, dynamic>.from(item['song'] as Map)
+                      : <String, dynamic>{
+                          'title': item['title']?.toString(),
+                          'artist': item['artist']?.toString(),
+                        };
+                  final text = (w['text'] ?? item['text'] ?? '—').toString();
+                  final translation = (w['translation'] ?? item['translation'] ?? '').toString();
+                  return _ShelfCard(
+                    word: text,
+                    translation: translation,
+                    songTitle: song['title']?.toString() ?? '',
+                    artist: song['artist']?.toString() ?? '',
+                    onOpenSpotify: () async {
+                      final url = spotifyOpenUrlForSong(
+                        artist: song['artist']?.toString() ?? '',
+                        title: song['title']?.toString() ?? '',
+                        uri: song['spotify_uri']?.toString(),
+                      );
+                      final uri = Uri.parse(url);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -597,36 +742,213 @@ class _LyricCard extends StatelessWidget {
   }
 }
 
-class _RoundAction extends StatelessWidget {
-  const _RoundAction({required this.filled, required this.icon, required this.onTap});
+class _LabeledRoundAction extends StatelessWidget {
+  const _LabeledRoundAction({
+    required this.filled,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   final bool filled;
   final IconData icon;
+  final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = HarmonixColors.of(context);
-    return Material(
-      color: filled ? colors.accent : colors.surface,
-      shape: const CircleBorder(),
-      elevation: filled ? 2 : 0,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Container(
-          width: filled ? 64 : 56,
-          height: filled ? 64 : 56,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: filled ? null : Border.all(color: colors.textPrimary, width: 1.5),
-          ),
-          child: Icon(
-            icon,
-            color: filled ? colors.onAccent : colors.textPrimary,
-            size: filled ? 32 : 24,
+    return Column(
+      children: [
+        Material(
+          color: filled ? colors.accent : colors.surface,
+          shape: const CircleBorder(),
+          elevation: filled ? 2 : 0,
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: Container(
+              width: filled ? 64 : 56,
+              height: filled ? 64 : 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: filled ? null : Border.all(color: colors.textPrimary, width: 1.5),
+              ),
+              child: Icon(
+                icon,
+                color: filled ? colors.onAccent : colors.textPrimary,
+                size: filled ? 32 : 24,
+              ),
+            ),
           ),
         ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: colors.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PracticeChip extends StatelessWidget {
+  const _PracticeChip({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = HarmonixColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: colors.accent),
+          const SizedBox(width: 6),
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+              color: colors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoalChip extends StatelessWidget {
+  const _GoalChip({required this.today, required this.goal, required this.met});
+  final int today;
+  final int goal;
+  final bool met;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = HarmonixColors.of(context);
+    final pct = goal <= 0 ? 0.0 : (today / goal).clamp(0.0, 1.0);
+    return Container(
+      width: 148,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.flag_outlined, size: 12, color: colors.textMuted),
+              const SizedBox(width: 4),
+              Text(
+                'TODAY',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: colors.textMuted),
+              ),
+              const Spacer(),
+              Text(
+                '$today/$goal',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: colors.textMuted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 4,
+              backgroundColor: colors.border,
+              color: met ? colors.accent : colors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShelfCard extends StatelessWidget {
+  const _ShelfCard({
+    required this.word,
+    required this.translation,
+    required this.songTitle,
+    required this.artist,
+    required this.onOpenSpotify,
+  });
+
+  final String word;
+  final String translation;
+  final String songTitle;
+  final String artist;
+  final VoidCallback onOpenSpotify;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = HarmonixColors.of(context);
+    return Container(
+      width: 160,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            word.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+              color: colors.textPrimary,
+            ),
+          ),
+          if (translation.isNotEmpty)
+            Text(
+              translation,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12, color: colors.textMuted),
+            ),
+          const Spacer(),
+          Text(
+            [artist, songTitle].where((s) => s.isNotEmpty).join(' · '),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 11, color: colors.textMuted),
+          ),
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: onOpenSpotify,
+            child: Text(
+              'Open in Spotify',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: colors.accent,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
