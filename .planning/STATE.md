@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: coolify-production-deploy
 status: complete
-stopped_at: "Phase 15 complete; GH Actions zero-downtime deploy + postcard cover + TTS ffmpeg live"
-last_updated: "2026-07-23T23:55:00.000Z"
+stopped_at: "Phase 15 cutover re-verified; .com NXDOMAIN; live domain .co.uk"
+last_updated: "2026-07-24T17:00:00.000Z"
 progress:
   total_phases: 15
   completed_phases: 15
@@ -50,5 +50,5 @@ Push main → GitHub Actions SSH → coolify-redeploy.sh
 
 ## Session
 
-**Last session:** 2026-07-23  
+**Last session:** 2026-07-24 — Coolify domain cutover plan closed out against live `.co.uk` (`.com` still NXDOMAIN).  
 **Default branch:** `main`

@@ -1,6 +1,6 @@
 # Harmonix Roadmap
 
-**Last reconciled:** 2026-07-23 — phases 1–14 complete; Phase 15 production domain live  
+**Last reconciled:** 2026-07-24 — phases 1–15 complete; production `harmonix.peeporunclub.co.uk` (`.com` NXDOMAIN)  
 **Live:** https://harmonix.peeporunclub.co.uk (Compose `api`+`web` + Coolify Traefik; host Pocket-TTS)
 
 ---

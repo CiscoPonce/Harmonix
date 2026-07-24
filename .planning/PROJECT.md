@@ -23,7 +23,7 @@ Contextual language learning through real music lyrics with 100% accurate, AI-pe
 
 ### Active / optional ops
 
-- [ ] Production domain (replace ngrok for public release)
+- [x] Production domain (Coolify Traefik — **https://harmonix.peeporunclub.co.uk**; ngrok = rollback only)
 - [ ] Play Store listing + Extended Spotify Quota for non-allowlisted users
 - [ ] AI provider hardening (reduce NIM 404 / OpenRouter 429 cold-path latency)
 

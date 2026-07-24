@@ -1,11 +1,12 @@
 # Harmonix Release Runbook
 
 **Version:** 1.8  
-**Last Updated:** 2026-07-23  
+**Last Updated:** 2026-07-24  
 
 **Production URL:** https://harmonix.peeporunclub.co.uk  
 **VPS:** `harmonixinstance` (`79.72.79.7`) — Coolify Traefik + Compose  
-**Old VPS:** `agent-midas` — Harmonix **retired** (do not restart lyric stack there)
+**Old VPS:** `agent-midas` — Harmonix **retired** (do not restart lyric stack there)  
+**Note:** `harmonix.peeporunclub.com` is NXDOMAIN — do not point clients or Spotify at `.com` until DNS exists.
 
 ---
 
@@ -36,7 +37,7 @@ Coolify’s Restart / StartService often **stop-before-start**, which drops Trae
 - `TTS_SKIP_SPAWN=true` / `TTS_BASE_URL=http://10.0.0.15:3002`
 - `NVIDIA_NIM_API_KEY` / `OPENROUTER_API_KEY`
 
-Host TTS: systemd `harmonix-tts` on `:3002`.
+Host TTS: systemd `harmonix-tts` on `:3002` (install from [`scripts/systemd/harmonix-tts.service`](../scripts/systemd/harmonix-tts.service)).
 
 ---
 

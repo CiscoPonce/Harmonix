@@ -1,8 +1,10 @@
 # Coolify / Docker Compose deploy for Harmonix
 
-**Last updated:** 2026-07-23  
+**Last updated:** 2026-07-24  
 **VPS:** `harmonixinstance` (`79.72.79.7`) — Coolify Traefik on `:80`/`:443`, UI on `:8000`.  
 **Live:** https://harmonix.peeporunclub.co.uk (Docker Compose `api`+`web` + Traefik labels; host Pocket-TTS).
+
+> **Domain note:** `harmonix.peeporunclub.com` is still **NXDOMAIN** on public DNS. Production uses **`harmonix.peeporunclub.co.uk`** → `79.72.79.7` (Let’s Encrypt via Coolify Traefik). Do not cut traffic to `.com` until that zone is registered and delegated.
 
 ---
 
@@ -10,13 +12,13 @@
 
 | Legacy (`run_env.sh`) | Now (Compose + Traefik) |
 |-----------------------|-------------------------|
-| Host Node + Next + ngrok | `docker compose up -d` → Traefik → `api:3001` |
-| SQLite `server/harmonix.db` | Volume `lyric_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`) |
+| Host Node + Next + ngrok | Coolify Compose → Traefik → `api:3001` |
+| SQLite `server/harmonix.db` | Volume `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`) |
 | Express → `127.0.0.1:3009` | `FRONTEND_PROXY_TARGET=http://web:3009` |
 | TTS spawned by API | Host TTS systemd `harmonix-tts` (`TTS_BASE_URL=http://10.0.0.15:3002`) |
 | ngrok URL | **https://harmonix.peeporunclub.co.uk** |
 
-Ports `80`/`443` stay with Coolify Traefik; Harmonix publishes `:3001` only as a side channel.
+Ports `80`/`443` stay with Coolify Traefik. Host Node/Next/ngrok must stay stopped on production.
 
 ---
 
@@ -24,8 +26,32 @@ Ports `80`/`443` stay with Coolify Traefik; Harmonix publishes `:3001` only as a
 
 1. Code with `docker-compose.yml`, `server/Dockerfile`, `client/Dockerfile` on the branch Coolify builds (usually `main`).
 2. Secrets ready (same as `server/.env`): `JWT_SECRET`, Spotify, NIM/OpenRouter, etc.
-3. Pocket-TTS still running on the host on `:3002` (bind `0.0.0.0` or at least reachable via `host.docker.internal`).
-4. **Domain (recommended):** point DNS A record to `79.72.79.7`, then attach it in Coolify. Without a domain, keep ngrok pointed at the compose-published API port.
+3. Pocket-TTS on the host via systemd (see below) — bind `0.0.0.0:3002` so Docker can reach it (`TTS_BASE_URL=http://10.0.0.15:3002`).
+4. **Domain:** A record `harmonix.peeporunclub.co.uk` → `79.72.79.7`, attached in Coolify with HTTPS.
+
+### Host Pocket-TTS (systemd)
+
+Unit file in-repo: [`scripts/systemd/harmonix-tts.service`](../scripts/systemd/harmonix-tts.service).
+
+```bash
+sudo cp /home/ubuntu/lyric/scripts/systemd/harmonix-tts.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now harmonix-tts
+curl -sf http://127.0.0.1:3002/health   # expect 200
+# From a test container / api: curl -sf http://10.0.0.15:3002/health
+```
+
+Keep `TTS_SKIP_SPAWN=true` on the Coolify `api` service so containers never fight the host daemon.
+
+### SQLite seed (one-time cutover)
+
+```bash
+# Brief write pause: stop Coolify api (or use a maintenance window)
+sudo cp -a /home/ubuntu/lyric/server/harmonix.db /home/ubuntu/backups/harmonix.db.$(date +%Y%m%d)
+# Copy into the Coolify volume as /data/harmonix.db (UID 999), then start api
+```
+
+Production volume: `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (already seeded).
 
 ---
 
