@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Music2, RotateCw } from 'lucide-react';
+import { ExternalLink, Music2, RotateCw } from 'lucide-react';
 import { spotifyOpenUrlForSong } from '@/lib/spotifyOpen';
 
 export type ShelfWord = {
@@ -51,6 +51,8 @@ export function RecentWordFlipCard({ item }: { item: ShelfWord }) {
   const title = (item.title || item.song?.title || '').trim();
   const artist = item.song?.artist?.trim() || '';
   const canFlip = Boolean(phrase || title);
+  const spotifyHref =
+    title || artist ? spotifyOpenUrlForSong(artist, title) : null;
 
   const toggle = () => {
     if (!canFlip) return;
@@ -116,7 +118,7 @@ export function RecentWordFlipCard({ item }: { item: ShelfWord }) {
             )}
           </button>
 
-          {/* Back — song title + lyric phrase */}
+          {/* Back — song title + lyric phrase (no links inside 3D face — hit-testing breaks) */}
           <div
             className="daily-word-flip-face daily-word-flip-back flex h-full w-full cursor-pointer flex-col rounded-2xl border border-[#E4EBE6] bg-white p-4 text-left shadow-sm dark:border-[#2A3530] dark:bg-[#171E1B]"
             onClick={toggle}
@@ -180,21 +182,22 @@ export function RecentWordFlipCard({ item }: { item: ShelfWord }) {
                 </p>
               )}
             </div>
-
-            {title || artist ? (
-              <a
-                href={spotifyOpenUrlForSong(artist, title)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="mt-3 inline-flex text-[10px] font-bold uppercase tracking-widest text-[#0B4D2E] underline-offset-2 hover:underline dark:text-[#3DCF7A]"
-              >
-                Open on Spotify →
-              </a>
-            ) : null}
           </div>
         </div>
       </div>
+
+      {/* Outside the 3D flip — same pattern as Word of the Day actions */}
+      {spotifyHref ? (
+        <a
+          href={spotifyHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-[#0B4D2E] bg-[#0B4D2E] px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-[#093d25] dark:border-[#3DCF7A] dark:bg-[#3DCF7A] dark:text-[#0C1210] dark:hover:bg-[#2FB86A]"
+        >
+          <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+          Open in Spotify
+        </a>
+      ) : null}
     </article>
   );
 }

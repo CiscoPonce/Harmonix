@@ -17,7 +17,8 @@ import {
   postcardFileName,
   type PostcardSharePayload,
 } from "@/lib/sharePostcard";
-import { FolderPlus, Loader2, Music2, Play, Pause, RefreshCw, Share2, Sparkles, RotateCw, Volume2 } from "lucide-react";
+import { FolderPlus, Loader2, Music2, Play, Pause, RefreshCw, Share2, Sparkles, RotateCw, Volume2, ExternalLink } from "lucide-react";
+import { spotifyOpenUrlForSong } from "@/lib/spotifyOpen";
 
 const SUPPORTED_PRONUNCIATION_LANGUAGES = ["es", "fr", "de", "pt", "en", "it"];
 
@@ -986,6 +987,15 @@ export function DailyWordCard({
             <FolderPlus className="w-4 h-4" />
             Add to my playlist
           </Button>
+          <a
+            href={spotifyOpenUrlForSong(data.song.artist, data.song.title)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#0B4D2E] bg-[#0B4D2E] px-4 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-[#093d25] dark:border-[#3DCF7A] dark:bg-[#3DCF7A] dark:text-[#0C1210] dark:hover:bg-[#2FB86A]"
+          >
+            <ExternalLink className="h-4 w-4" aria-hidden />
+            Open in Spotify
+          </a>
         </div>
       </div>
 
