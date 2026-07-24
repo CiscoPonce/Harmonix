@@ -81,32 +81,41 @@ const LYRIC_STOPWORDS_BY_LANG = {
     'que', 'de', 'la', 'el', 'en', 'y', 'a', 'los', 'las', 'un', 'una', 'por', 'con',
     'no', 'es', 'se', 'te', 'lo', 'le', 'da', 'su', 'yo', 'tu', 'mi', 'ya', 'si',
     'bien', 'muy', 'mas', 'más', 'del', 'al', 'les', 'nos', 'me', 'fue', 'ser',
+    // Lyric filler / particles — not teachable vocabulary
+    'oh', 'ooh', 'ah', 'ay', 'eh', 'uh', 'mm', 'na', 'nenene', 'lalala', 'yeah', 'yea',
+    'hey', 'ey', 'yo', 'bam', 'pum', 'pa', 'ra', 'tra', 'tum', 'dun', 'bom', 'bidi',
   ]),
   en: new Set([
     'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
     'is', 'are', 'was', 'were', 'be', 'been', 'i', 'you', 'he', 'she', 'it', 'we', 'they',
     'my', 'your', 'his', 'her', 'our', 'their', 'this', 'that', 'not', 'no', 'yes',
+    'oh', 'ooh', 'ah', 'uh', 'mm', 'na', 'la', 'da', 'yeah', 'yea', 'hey', 'woah', 'whoa',
+    'baby', 'oohh', 'mmm', 'huh', 'ha', 'haha',
   ]),
   fr: new Set([
     'le', 'la', 'les', 'un', 'une', 'des', 'de', 'du', 'et', 'en', 'à', 'a', 'au', 'aux',
     'je', 'tu', 'il', 'elle', 'nous', 'vous', 'ils', 'elles', 'me', 'te', 'se', 'mon',
     'ton', 'son', 'ma', 'ta', 'sa', 'mes', 'tes', 'ses', 'ne', 'pas', 'que', 'qui', 'est',
+    'oh', 'ah', 'eh', 'hein', 'na', 'la', 'yeah', 'hey',
   ]),
   de: new Set([
     'der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einer', 'einem', 'einen',
     'und', 'oder', 'aber', 'in', 'im', 'an', 'am', 'auf', 'zu', 'zum', 'zur', 'mit',
     'ich', 'du', 'er', 'sie', 'es', 'wir', 'ihr', 'mein', 'dein', 'sein', 'nicht', 'ist',
+    'oh', 'ah', 'na', 'ja', 'hey', 'yeah',
   ]),
   pt: new Set([
     'o', 'a', 'os', 'as', 'um', 'uma', 'uns', 'umas', 'de', 'do', 'da', 'dos', 'das',
     'e', 'em', 'no', 'na', 'nos', 'nas', 'por', 'para', 'com', 'que', 'não', 'nao',
     'eu', 'tu', 'ele', 'ela', 'nós', 'nos', 'vocês', 'eles', 'elas', 'me', 'te', 'se',
     'meu', 'minha', 'seu', 'sua', 'é', 'ser',
+    'oh', 'ah', 'eh', 'uai', 'né', 'na', 'la', 'yeah', 'hey',
   ]),
   it: new Set([
     'il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'uno', 'una', 'di', 'del', 'della', 'dei',
     'e', 'ed', 'in', 'a', 'da', 'per', 'con', 'su', 'che', 'non', 'mi', 'ti', 'si',
     'io', 'tu', 'lui', 'lei', 'noi', 'voi', 'loro', 'mio', 'mia', 'tuo', 'tua', 'è', 'sono',
+    'oh', 'ah', 'eh', 'na', 'la', 'yeah', 'hey',
   ]),
 };
 

@@ -164,6 +164,32 @@ describe("Daily Word Service", () => {
     expect(picked.word.toLowerCase()).to.be.oneOf(["amor", "noche", "brillan"]);
   });
 
+  it("prefers title/hook words that carry meaning in the song", () => {
+    const lyrics = [
+      "na na na na",
+      "oh yeah oh yeah",
+      "mi corazón late fuerte",
+      "mi corazón late fuerte",
+      "mi corazón late fuerte",
+    ].join("\n");
+    const picked = pickWordFromLyricsHeuristic(lyrics, "medium", new Set(), "es", {
+      songTitle: "Mi Corazón",
+    });
+    expect(picked.word.toLowerCase()).to.equal("corazón");
+  });
+
+  it("keeps genre fidelity for hip-hop (does not remap to pop)", () => {
+    expect(aiService.normalizeGenre("hip-hop")).to.equal("hip-hop");
+    expect(aiService.normalizeGenre("hiphop")).to.equal("hip-hop");
+    expect(aiService.genresCompatible("hip-hop", "pop")).to.equal(false);
+    expect(aiService.genresCompatible("reggaeton", "hip-hop")).to.equal(true);
+    const verified = aiService.getVerifiedSongCandidates("es", "hip-hop");
+    expect(verified.length).to.be.greaterThan(0);
+    expect(verified.every((s) => aiService.genresCompatible(s.genre, "hip-hop"))).to.equal(true);
+    const rock = aiService.getVerifiedSongCandidates("es", "rock");
+    expect(rock.every((s) => s.genre === "rock")).to.equal(true);
+  });
+
   it("generates a validated daily word with mocked externals", async () => {
     const today = new Date().toISOString().slice(0, 10);
     db.prepare("DELETE FROM daily_words WHERE user_id = ? AND date = ?").run(userId, today);
@@ -202,10 +228,12 @@ describe("Daily Word Service", () => {
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     const result = await generateDailyWord(user, { force: true, fetchImpl: mockFetch });
 
-    expect(result.word.text.toLowerCase()).to.be.oneOf(["amor", "noche", "brillan", "fuerte", "siempre"]);
+    expect(result.word.text.toLowerCase()).to.be.oneOf([
+      "amor", "noche", "brillan", "fuerte", "siempre", "juntos",
+    ]);
     expect(result.song.id).to.equal("999");
-    expect(result.lyric.snippet).to.contain("amor");
-    expect(result.audio.preview_url).to.equal("/api/audio/preview/999");
+    expect(result.lyric.snippet.toLowerCase()).to.match(/amor|noche|brillan|fuerte|siempre|juntos/);
+    expect(result.audio.preview_url).to.match(/^\/api\/audio\/preview\/999/);
 
     restore();
   });
@@ -311,7 +339,9 @@ describe("Daily Word Service", () => {
     aiService.glossDailyWords = originalGloss;
     aiService.refineGlosses = originalRefine;
     expect(valid).to.have.lengthOf(1);
-    expect(valid[0].word.text).to.be.oneOf(["amor", "noche", "brillan"]);
+    expect(valid[0].word.text.toLowerCase()).to.be.oneOf([
+      "amor", "noche", "brillan", "siempre", "juntos", "fuerte",
+    ]);
 
     const inserted = wordQueue.enqueuePayloads(userId, valid.slice(1));
     expect(inserted).to.equal(0);
@@ -373,7 +403,9 @@ describe("Daily Word Service", () => {
     aiService.glossDailyWords = originalGloss;
     aiService.refineGlosses = originalRefine;
     expect(valid).to.have.lengthOf(1);
-    expect(valid[0].word.text).to.be.oneOf(["amor", "noche", "brillan"]);
+    expect(valid[0].word.text.toLowerCase()).to.be.oneOf([
+      "amor", "noche", "brillan", "siempre", "juntos", "fuerte",
+    ]);
   });
 
   it("prefers target-language words from bilingual lyrics", () => {

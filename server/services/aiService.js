@@ -386,6 +386,12 @@ const VERIFIED_SONGS = {
     { song_title: 'Sofía', artist: 'Alvaro Soler', genre: 'pop' },
     { song_title: 'La Gozadera', artist: 'Marc Anthony', genre: 'pop' },
     { song_title: 'Vivir Así Es Morir de Amor', artist: 'Camilo Sesto', genre: 'pop' },
+    { song_title: 'Latinoamérica', artist: 'Calle 13', genre: 'hip-hop' },
+    { song_title: 'Atrévete-te-te', artist: 'Calle 13', genre: 'hip-hop' },
+    { song_title: 'Pa\'l Norte', artist: 'Calle 13', genre: 'hip-hop' },
+    { song_title: '1977', artist: 'Ana Tijoux', genre: 'hip-hop' },
+    { song_title: 'Labios Compartidos', artist: 'Maná', genre: 'rock' },
+    { song_title: 'Flaca', artist: 'Andrés Calamaro', genre: 'rock' },
   ],
   // Proven LRCLib hits first; secondary titles are fallbacks for pool size.
   en: [
@@ -409,6 +415,10 @@ const VERIFIED_SONGS = {
     { song_title: 'Blinding Lights', artist: 'The Weeknd', genre: 'pop' },
     { song_title: 'Someone Like You', artist: 'Adele', genre: 'pop' },
     { song_title: 'Counting Stars', artist: 'OneRepublic', genre: 'pop' },
+    { song_title: 'Lose Yourself', artist: 'Eminem', genre: 'hip-hop' },
+    { song_title: 'Not Afraid', artist: 'Eminem', genre: 'hip-hop' },
+    { song_title: 'Stronger', artist: 'Kanye West', genre: 'hip-hop' },
+    { song_title: 'In Da Club', artist: '50 Cent', genre: 'hip-hop' },
   ],
   fr: [
     { song_title: 'Formidable', artist: 'Stromae', genre: 'pop' },
@@ -493,9 +503,23 @@ const VERIFIED_SONGS = {
 };
 
 function normalizeGenre(genre) {
-  const g = String(genre || 'pop').toLowerCase();
-  if (g === 'hip-hop' || g === 'hiphop') return 'pop';
-  return g;
+  const g = String(genre || 'pop').toLowerCase().trim();
+  if (g === 'hiphop' || g === 'hip hop' || g === 'rap') return 'hip-hop';
+  if (g === 'latin' || g === 'urbano' || g === 'urban') return 'reggaeton';
+  const allowed = new Set(['any', 'pop', 'rock', 'hip-hop', 'reggaeton']);
+  return allowed.has(g) ? g : 'pop';
+}
+
+function genresCompatible(candidateGenre, userGenre) {
+  const u = normalizeGenre(userGenre);
+  if (u === 'any') return true;
+  const c = normalizeGenre(candidateGenre || u);
+  if (c === u) return true;
+  // Soft adjacency only for urban Latin styles
+  if ((u === 'reggaeton' && c === 'hip-hop') || (u === 'hip-hop' && c === 'reggaeton')) {
+    return true;
+  }
+  return false;
 }
 
 function getVerifiedSongCandidates(languageCode, genre) {
@@ -503,40 +527,49 @@ function getVerifiedSongCandidates(languageCode, genre) {
   const list = VERIFIED_SONGS[langCode] || [];
   if (!list.length) return getCuratedSongCandidates(languageCode, genre);
   const g = normalizeGenre(genre);
-  const matched = list.filter((s) => s.genre === g || g === 'any');
-  return matched.length >= 5 ? matched : list;
+  if (g === 'any') return list.slice();
+  const matched = list.filter((s) => genresCompatible(s.genre, g));
+  // Never dump the full mixed catalog — genre fidelity is the product pitch.
+  if (matched.length) return matched;
+  return getCuratedSongCandidates(languageCode, g);
 }
 
 const GENRE_HIT_EXAMPLES = {
   es: {
     reggaeton: 'Gasolina (Daddy Yankee), Despacito (Luis Fonsi), Dákiti (Bad Bunny), Tití Me Preguntó (Bad Bunny), Con Calma (Daddy Yankee), Me Porto Bonito (Bad Bunny), Yo Perreo Sola (Bad Bunny), Pepas (Farruko), Danza Kuduro (Don Omar), Taki Taki (DJ Snake), Mi Gente (J Balvin), Tusa (Karol G), El Perdón (Nicky Jam), Caramelo (Ozuna)',
     pop: 'Despacito (Luis Fonsi), Bailando (Enrique Iglesias), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives), Propuesta Indecente (Romeo Santos), Felices los 4 (Maluma), Hawái (Maluma), Échame La Culpa (Luis Fonsi), Color Esperanza (Diego Torres), Sofía (Alvaro Soler), Fuiste Tú (Ricardo Arjona), Creo En Ti (Reik)',
-    rock: 'A Dios le Pido (Juanes), La Camisa Negra (Juanes), En El Muelle de San Blas (Maná), Clavado en Un Bar (Maná), Rayando el Sol (Maná)',
+    rock: 'A Dios le Pido (Juanes), La Camisa Negra (Juanes), En El Muelle de San Blas (Maná), Clavado en Un Bar (Maná), Rayando el Sol (Maná), Labios Compartidos (Maná), Flaca (Andrés Calamaro), Cuando Pase El Temblor (Soda Stereo)',
+    'hip-hop': 'Latinoamérica (Calle 13), Atrévete-te-te (Calle 13), Pa\'l Norte (Calle 13), 1977 (Ana Tijoux), Mírala Miralo (Control Machete)',
     any: 'Despacito (Luis Fonsi), Gasolina (Daddy Yankee), Vivir Mi Vida (Marc Anthony), Bailando (Enrique Iglesias), La Bicicleta (Carlos Vives), Propuesta Indecente (Romeo Santos)',
   },
   en: {
     pop: 'Bad Guy (Billie Eilish), Shallow (Lady Gaga), Rolling in the Deep (Adele), Heat Waves (Glass Animals), Someone You Loved (Lewis Capaldi), Hello (Adele), Stay With Me (Sam Smith)',
-    rock: 'Mr. Brightside (The Killers), Demons (Imagine Dragons), Radioactive (Imagine Dragons), Yellow (Coldplay), Believer (Imagine Dragons)',
+    rock: 'Mr. Brightside (The Killers), Demons (Imagine Dragons), Radioactive (Imagine Dragons), Yellow (Coldplay), Believer (Imagine Dragons), Viva La Vida (Coldplay)',
+    'hip-hop': 'Lose Yourself (Eminem), Not Afraid (Eminem), HUMBLE. (Kendrick Lamar), God\'s Plan (Drake), Stronger (Kanye West), In Da Club (50 Cent), Empire State of Mind (Jay-Z)',
     any: 'Bad Guy (Billie Eilish), Rolling in the Deep (Adele), Heat Waves (Glass Animals), Mr. Brightside (The Killers)',
   },
   fr: {
     pop: 'Formidable (Stromae), On écrit sur les murs (Kids United), Tourner dans le vide (Indila), Je veux (Zaz), Avant nous (Soprano), Dernière Danse (Indila), Papaoutai (Stromae)',
-    rock: 'Mistral gagnant (Renaud), Comme des enfants (Cœur de pirate)',
+    rock: 'Mistral gagnant (Renaud), Comme des enfants (Cœur de pirate), Homme Contant (Noir Désir), Le vent nous portera (Noir Désir), Dis-moi (BB Brunes)',
+    'hip-hop': 'Alors on danse (Stromae), Carmen (Stromae), Aicha (Khaled), Tous les mêmes (Stromae)',
     any: 'Formidable (Stromae), Je veux (Zaz), Mistral gagnant (Renaud), Tourner dans le vide (Indila)',
   },
   de: {
     pop: 'Atemlos durch die Nacht (Helene Fischer), Männer (Herbert Grönemeyer), 99 Luftballons (Nena), Auf uns (Andreas Bourani), Das Beste (Silbermond), Perfekte Welle (Juli)',
     rock: 'Du hast (Rammstein), Durch den Monsun (Tokio Hotel), Engel (Rammstein), Tage wie diese (Die Toten Hosen), Nur ein Wort (Wir sind Helden)',
+    'hip-hop': 'Nur noch kurz die Welt retten (Tim Bendzko), Willst Du (Alligatoah), Fremdgehen (Alligatoah)',
     any: 'Atemlos durch die Nacht (Helene Fischer), Männer (Herbert Grönemeyer), 99 Luftballons (Nena), Du hast (Rammstein), Das Beste (Silbermond)',
   },
   pt: {
     pop: 'Ai Se Eu Te Pego (Michel Teló), Envolver (Anitta), Garota de Ipanema (Tom Jobim), Balada (Gusttavo Lima), Olha a Explosão (MC Kevinho), Evidências (Chitãozinho & Xororó), Show das Poderosas (Anitta), Infiel (Marília Mendonça)',
-    rock: 'Eduardo e Mônica (Legião Urbana)',
+    rock: 'Eduardo e Mônica (Legião Urbana), Tempo Perdido (Legião Urbana), Pais e Filhos (Legião Urbana), Anna Júlia (Los Hermanos), É Preciso Saber Viver (Titãs)',
+    'hip-hop': 'Rap é Compromisso (Racionais MC\'s), Diário de um Detento (Racionais MC\'s), Negro Drama (Racionais MC\'s)',
     any: 'Ai Se Eu Te Pego (Michel Teló), Envolver (Anitta), Garota de Ipanema (Tom Jobim), Balada (Gusttavo Lima), Olha a Explosão (MC Kevinho)',
   },
   it: {
     pop: 'Più bella cosa (Eros Ramazzotti), Sere nere (Tiziano Ferro), Guerriero (Marco Mengoni), Con te partirò (Andrea Bocelli), Sarà perché ti amo (Ricchi e Poveri), Gloria (Umberto Tozzi), Laura non c\'è (Nek)',
-    rock: 'Zitti e buoni (Måneskin), Certe Notti (Ligabue), Bello e impossibile (Gianna Nannini)',
+    rock: 'Zitti e buoni (Måneskin), Certe Notti (Ligabue), Bello e impossibile (Gianna Nannini), Urlando contro il cielo (Ligabue), Meraviglioso (Negramaro)',
+    'hip-hop': 'Chiamami ancora amore (Roberto Vecchioni), L\'italiano (Toto Cutugno)',
     any: 'Zitti e buoni (Måneskin), Più bella cosa (Eros Ramazzotti), Sere nere (Tiziano Ferro), Guerriero (Marco Mengoni)',
   },
 };
@@ -548,7 +581,8 @@ function normalizeLanguageCode(code) {
 function genreExamplesForLanguage(languageCode, genre) {
   const byLang = GENRE_HIT_EXAMPLES[normalizeLanguageCode(languageCode)] || GENRE_HIT_EXAMPLES.es;
   const g = normalizeGenre(genre);
-  return byLang[g] || byLang.any;
+  if (g === 'any') return byLang.any || '';
+  return byLang[g] || '';
 }
 
 function parseCuratedSongs(hitsString, genre) {
@@ -567,8 +601,14 @@ function parseCuratedSongs(hitsString, genre) {
 
 function getCuratedSongCandidates(languageCode, genre) {
   const langCode = normalizeLanguageCode(languageCode);
-  const hits = genreExamplesForLanguage(langCode, genre);
-  return parseCuratedSongs(hits, genre || 'pop');
+  const g = normalizeGenre(genre);
+  const byLang = GENRE_HIT_EXAMPLES[langCode] || GENRE_HIT_EXAMPLES.es;
+  const hits = byLang[g] || (g === 'any' ? byLang.any : '');
+  if (!hits) {
+    // Thin genre×language — return empty rather than mislabeled "any" songs.
+    return [];
+  }
+  return parseCuratedSongs(hits, g === 'any' ? 'pop' : g);
 }
 
 async function createFastChatCompletion(params, timeoutMs = 12000) {
@@ -588,7 +628,8 @@ async function createFastChatCompletion(params, timeoutMs = 12000) {
 
 async function generateDailyWordSongs({ languageName, languageCode, genre, difficulty, avoidSongs = [] }) {
   const langCode = normalizeLanguageCode(languageCode);
-  const hits = genreExamplesForLanguage(langCode, genre);
+  const genreNorm = normalizeGenre(genre);
+  const hits = genreExamplesForLanguage(langCode, genreNorm);
   const avoidList = avoidSongs.length
     ? `NEVER pick these already-used songs: ${avoidSongs.map((k) => k.replace("|", " - ")).join("; ")}.`
     : "";
@@ -605,8 +646,12 @@ async function generateDailyWordSongs({ languageName, languageCode, genre, diffi
             ? `\n11. CRITICAL for Italian: Songs MUST be sung in Italian. NEVER pick English covers (Beggin' by Måneskin). Prefer Eros Ramazzotti, Tiziano Ferro, Bocelli Italian tracks, Ligabue, Nek.`
             : '';
 
+  const genreGuard = genreNorm === 'any'
+    ? `\n12. Genre may vary — still pick mainstream ${languageName} hits.`
+    : `\n12. GENRE LOCK: every song MUST be unmistakably "${genreNorm}" (not a different style). Reject cross-genre picks. genre field in JSON MUST be exactly "${genreNorm}".`;
+
   const systemPrompt = `You are a music curator for ${languageName} language learners.
-Pick 5 DIFFERENT globally famous songs sung primarily in ${languageName} in the "${genre}" genre.
+Pick 5 DIFFERENT globally famous songs sung primarily in ${languageName}${genreNorm === 'any' ? '' : ` in the "${genreNorm}" genre`}.
 
 Difficulty context: ${difficulty} — choose well-known hits learners likely recognize.
 
@@ -620,7 +665,7 @@ STRICT RULES:
 7. song_title must NOT be a single rare word — use the real commercial track name.
 8. Each song MUST be different from every other song you pick.
 9. ${avoidList}
-10. Prefer songs like: ${hits}${languageConfusionGuard}
+10. Prefer songs like: ${hits || '(famous catalog hits)'}${languageConfusionGuard}${genreGuard}
 
 Reply with ONLY JSON:
 {
@@ -628,7 +673,7 @@ Reply with ONLY JSON:
     {
       "song_title": "Real Song Title",
       "artist": "Artist Name",
-      "genre": "${genre}"
+      "genre": "${genreNorm === 'any' ? 'pop' : genreNorm}"
     }
   ]
 }`;
@@ -640,7 +685,7 @@ Reply with ONLY JSON:
         createChatCompletion({
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: `List 5 famous ${languageName}-language ${genre} songs for a word-of-the-day playlist. Songs must be sung in ${languageName}. Return JSON only.` },
+            { role: 'user', content: `List 5 famous ${languageName}-language ${genreNorm} songs for a word-of-the-day playlist. Songs must be sung in ${languageName}. Return JSON only.` },
           ],
           response_format: { type: 'json_object' },
           max_tokens: 1200,
@@ -662,7 +707,13 @@ Reply with ONLY JSON:
         lastErr = new Error('invalid_ai_daily_word_response');
         continue;
       }
-      return parsed.filter((c) => c.song_title && c.artist);
+      return parsed
+        .filter((c) => c.song_title && c.artist)
+        .filter((c) => genresCompatible(c.genre || genreNorm, genreNorm))
+        .map((c) => ({
+          ...c,
+          genre: genreNorm === 'any' ? (c.genre || 'pop') : genreNorm,
+        }));
     } catch (err) {
       if (isRateLimitError(err)) {
         const e = new Error('ai_rate_limit');
@@ -872,6 +923,7 @@ module.exports = {
   getCuratedSongCandidates,
   getVerifiedSongCandidates,
   normalizeGenre,
+  genresCompatible,
   glossDailyWords,
   refineGlosses,
   sanitizeGloss,

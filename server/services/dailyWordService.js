@@ -43,17 +43,32 @@ function plainFromLyricsData(lyricsData) {
   return validation.parseLrc(lyricsData.syncedLyrics).map((p) => p.text).join('\n');
 }
 
-function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new Set(), langCode = "es") {
+function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new Set(), langCode = "es", options = {}) {
   const diff = normalizeDifficulty(difficulty);
   const minLen = diff === 'easy' ? 3 : diff === 'hard' ? 7 : 4;
   const maxLen = diff === 'easy' ? 7 : diff === 'hard' ? 24 : 12;
   const targetLen = diff === 'easy' ? 4 : diff === 'hard' ? 9 : 6;
   const stopwords = getLyricStopwords(langCode);
+  const songTitle = String(options.songTitle || '');
+  const titleTokens = new Set(
+    (songTitle.match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜàâäçéèêëîïôùûüãõßàèéìòù]+/gu) || [])
+      .map((t) => t.toLowerCase())
+      .filter((t) => t.length >= 3 && !stopwords.has(t))
+  );
 
   const lines = String(plainLyrics || '')
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean);
+
+  const freq = new Map();
+  for (const line of lines) {
+    const tokens = line.match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜàâäçéèêëîïôùûüãõßàèéìòù]+/gu) || [];
+    for (const token of tokens) {
+      const lower = token.toLowerCase();
+      freq.set(lower, (freq.get(lower) || 0) + 1);
+    }
+  }
 
   const candidates = [];
   for (const line of lines) {
@@ -64,23 +79,33 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
       if (stopwords.has(lower)) continue;
       if (avoidWords.has(lower)) continue;
       if (!wordMatchesTargetLanguage(token, langCode)) continue;
+      // Reject pure lyric filler / onomatopoeia
+      if (/^(la|na|da|pa|ra|ta|bam|bum|pum|dun|tum)+$/i.test(lower)) continue;
+      if (/^(oh+|ah+|uh+|mm+|hey+|yeah+|yea+)$/i.test(lower)) continue;
+
+      let score = 0;
+      // Prefer words that carry the song (title / hook repetition)
+      if (titleTokens.has(lower)) score += 40;
+      const count = freq.get(lower) || 1;
+      if (count >= 4) score += 18;
+      else if (count >= 2) score += 10;
+
       // Prefer language-marked tokens (Portuguese ãõç, Spanish ñ, etc.)
-      let accentBoost = 0;
-      if (langCode === 'pt' && /[ãõç]/i.test(token)) accentBoost = -2;
-      else if (langCode === 'es' && /[ñ]/i.test(token)) accentBoost = -2;
-      else if (langCode === 'de' && /[äöüß]/i.test(token)) accentBoost = -2;
-      else if (langCode === 'de' && /(ung|heit|keit|lich|schaft)$/i.test(token)) accentBoost = -1;
-      else if (/[àâäçéèêëîïôùûüÿœæãõñáíóúüßàèìòù]/i.test(token)) accentBoost = -1;
-      candidates.push({ word: token, line, accentBoost });
+      if (langCode === 'pt' && /[ãõç]/i.test(token)) score += 8;
+      else if (langCode === 'es' && /[ñ]/i.test(token)) score += 8;
+      else if (langCode === 'de' && /[äöüß]/i.test(token)) score += 8;
+      else if (langCode === 'de' && /(ung|heit|keit|lich|schaft)$/i.test(token)) score += 4;
+      else if (/[àâäçéèêëîïôùûüÿœæãõñáíóúüßàèìòù]/i.test(token)) score += 3;
+
+      // Prefer content-length near difficulty target
+      score -= Math.abs(token.length - targetLen);
+
+      candidates.push({ word: token, line, score, count });
     }
   }
 
   if (!candidates.length) return null;
-  candidates.sort(
-    (a, b) =>
-      (a.accentBoost - b.accentBoost)
-      || Math.abs(a.word.length - targetLen) - Math.abs(b.word.length - targetLen)
-  );
+  candidates.sort((a, b) => b.score - a.score || b.count - a.count);
   return candidates[0];
 }
 
@@ -354,17 +379,30 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
         track.provider === "itunes" || deezer.isItunesTrackId?.(track.id) ? "itunes" : "deezer";
       const { offset: previewStart, end: previewEnd } = previewWindow(duration, provider);
       const parsedLines = validation.parseLrc(lyricsData.syncedLyrics);
+      const pickOpts = {
+        songTitle: suggestion.song_title || track.title || "",
+      };
 
-      // Prefer a word whose lyric line sits inside the 30s preview cut.
+      // Prefer a word whose lyric line sits inside the 30s preview cut —
+      // and that is meaningful in the song (title/hook), not filler.
       let picked = null;
       let occurrence = null;
       const candidates = [];
-      const firstPick = pickWordFromLyricsHeuristic(plain, user.difficulty || "medium", avoidWords, langCode);
+      const firstPick = pickWordFromLyricsHeuristic(
+        plain,
+        user.difficulty || "medium",
+        avoidWords,
+        langCode,
+        pickOpts
+      );
       if (firstPick) candidates.push(firstPick);
 
-      // Also consider other heuristic candidates from preview-window lines only.
       const previewPlain = parsedLines
-        .filter((line) => isTimestampInPreview(line.time, duration, provider))
+        .filter(
+          (line) =>
+            isTimestampInOpeningPreview(line.time) ||
+            isTimestampInPreview(line.time, duration, provider)
+        )
         .map((line) => line.text)
         .join("\n");
       if (previewPlain.trim()) {
@@ -372,7 +410,8 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
           previewPlain,
           user.difficulty || "medium",
           avoidWords,
-          langCode
+          langCode,
+          pickOpts
         );
         if (previewPick && (!firstPick || previewPick.word.toLowerCase() !== firstPick.word.toLowerCase())) {
           candidates.unshift(previewPick); // prefer preview-window word
@@ -460,18 +499,20 @@ async function tryValidateSuggestion(suggestion, date, fetchImpl = fetch) {
 }
 
 function genreBoostScore(genre, userGenre) {
-  if (!genre || !userGenre || userGenre === "any") return 0;
+  if (!userGenre || userGenre === "any") return 0;
+  if (!genre) return -1;
   const g = String(genre).toLowerCase();
   const u = String(userGenre).toLowerCase();
-  if (g.includes(u) || u.includes(g)) return 2;
-  return 0;
+  if (aiService.genresCompatible(g, u)) return 8;
+  if (g.includes(u) || u.includes(g)) return 4;
+  return -6;
 }
 
 function candidateRankScore(suggestion, userGenre, userDifficulty, effectiveLevel) {
   let score = genreBoostScore(suggestion.genre, userGenre);
   score += difficultyMatchScore(suggestion.difficulty, userDifficulty);
   if (suggestion.cefr_level && effectiveLevel) {
-    if (cefrWithinBand(suggestion.cefr_level, effectiveLevel, userDifficulty)) score += +2;
+    if (cefrWithinBand(suggestion.cefr_level, effectiveLevel, userDifficulty)) score += 2;
     else score -= 1;
   }
   return score;
@@ -518,13 +559,28 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
     return true;
   });
 
+  const effectiveLevel = user.cefr_level || "B1";
+  // Hard genre gate for the pitch: drop clear mismatches before expensive Deezer/LRC work.
+  const genreFiltered =
+    userGenre === "any"
+      ? uniqueCandidates
+      : uniqueCandidates.filter((s) => {
+          if (!s.genre) return true; // allow untagged; rank will prefer tagged matches
+          return aiService.genresCompatible(s.genre, userGenre);
+        });
+  const ranked = (genreFiltered.length ? genreFiltered : uniqueCandidates).slice().sort(
+    (a, b) =>
+      candidateRankScore(b, userGenre, userDifficulty, effectiveLevel) -
+      candidateRankScore(a, userGenre, userDifficulty, effectiveLevel)
+  );
+
   const partials = [];
   const usedWords = new Set();
   let resolveEarly = null;
   const earlyDone = new Promise((resolve) => { resolveEarly = resolve; });
   let stopped = false;
 
-  const poolPromise = runValidationPool(uniqueCandidates, async (suggestion) => {
+  const poolPromise = runValidationPool(ranked, async (suggestion) => {
     const result = await tryValidateSongCandidate(
       suggestion, user, date, avoidWords, fetchImpl, seenSongIds, { allowSongReuse: relaxSongReuse }
     );
@@ -546,7 +602,7 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
     return result;
   }, { isStopped: () => stopped });
 
-  if (stopAfter < uniqueCandidates.length) {
+  if (stopAfter < ranked.length) {
     await Promise.race([earlyDone, poolPromise]);
   } else {
     await poolPromise;
