@@ -16,7 +16,7 @@
 | **1. Authentication** | Token Refresh | HTTP cookie / Bearer | SecureStorage `refresh()` | Verified |
 | **2. Discover (home)** | Word of the Day | `/discover` hero card | Discover tab (WOTD) | Verified |
 | **2. Discover (home)** | Practice strip / review | Streak + goal + `/review` | Practice chips + Review screen | Verified |
-| **2. Discover (home)** | Your shelf flip cards | Recent words shelf | Horizontal shelf + Open in Spotify | Verified (no 3D flip yet) |
+| **2. Discover (home)** | Your shelf flip cards | Recent words shelf | Horizontal 3D flip shelf + Open in Spotify | Verified |
 | **2. Discover (home)** | Song search | Discover search | Green search band → Spotify | Verified |
 | **3. Phonetic Audio** | Pocket-TTS Pronounce | `/api/daily-word/pronounce` | WAV Audio Player | Verified |
 | **3. Phonetic Audio** | Voice gender preference | Settings | Settings + onboarding | Verified |
@@ -25,9 +25,12 @@
 | **4. Spotify** | Connected account UI | Header chip `Spotify · {name}` | Library header chip + Settings card | Verified |
 | **5. Playback** | In-app / fallback | Web Playback SDK + Deezer 30s + Open in Spotify | Deezer 30s + Open in Spotify (`D-16-07`) | Verified (honest) |
 | **5. Playback** | Hear-it timing / labels | `hearItTiming` + labeled CTA | Labeled Hear it + Deezer seek | Partial (timing port optional) |
+| **5. Playback** | Add to playlist (WOTD) | `AddToPlaylistModal` | `AddToPlaylistSheet` | Verified |
+| **5. Playback** | 3D flip cards | CSS `rotateY` | Flutter `WordFlipCard` Matrix4 | Verified |
 | **6. Settings** | Languages | Home & learning pickers | Same list as web (`pt`, not `ja`) | Verified |
 | **6. Settings** | Music style (genre) | Settings picker (purges queue) | Settings chips + onboarding | Verified |
 | **6. Settings** | Dyslexia-friendly font | Toggle in Settings | Accessible spacing (later) | Gap |
+| **7. Capacitor** | Production WebView smoke | Live Next.js in APK | `scripts/capacitor-smoke.sh` + device QA | Verified (automated) |
 
 ---
 

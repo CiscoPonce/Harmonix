@@ -335,6 +335,25 @@ class ApiClient {
   Future<Map<String, dynamic>> createPlaylist(String name) =>
       request('POST', '/playlists', body: {'name': name});
 
+  /// Add a track to a Harmonix playlist. Throws [ApiException] with status 409 if already present.
+  Future<Map<String, dynamic>> addSongToPlaylist(
+    String playlistId, {
+    required String songId,
+    required Map<String, dynamic> track,
+  }) {
+    return request('POST', '/playlists/$playlistId/songs', body: {
+      'song_id': songId,
+      'track': {
+        'id': songId,
+        'title': track['title'],
+        'artist': track['artist'],
+        'preview': track['preview'] ?? '',
+        'duration': track['duration'] ?? 0,
+        'cover': track['cover'],
+      },
+    });
+  }
+
   Future<List<dynamic>> badges() async {
     final data = await request('GET', '/badges');
     final items = data['badges'] ?? data['items'];

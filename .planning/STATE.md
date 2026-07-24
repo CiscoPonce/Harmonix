@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: flutter-web-parity
 status: in_progress
-stopped_at: "Phase 16 Flutter Discover/Settings/Library parity shipped on branch"
-last_updated: "2026-07-24T17:30:00.000Z"
+stopped_at: "Phase 16 required: Add to playlist, 3D flips, Capacitor smoke"
+last_updated: "2026-07-24T17:20:00.000Z"
 progress:
   total_phases: 16
   completed_phases: 15

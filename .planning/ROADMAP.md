@@ -191,10 +191,11 @@ Other optional ops (not blocking): Play Store listing, AI provider hardening, Ex
 |------------|--------|
 | Settings: music style + voice gender + language list | Done |
 | Discover home (practice strip, review, shelf) | Done |
-| Hear-it + WOTD actions | Done (labels + Open in Spotify; Add to playlist later) |
+| Hear-it + WOTD actions (incl. Add to playlist) | Done |
 | Library Spotify header chip | Done |
 | Visual tokens (Phase 13 greens + Fraunces/DM Sans) | Done |
-| Dual-frontend QA refresh + Capacitor smoke | Pending |
+| 3D flip cards (WOTD + shelf) | Done |
+| Dual-frontend QA + Capacitor smoke | Done (`scripts/capacitor-smoke.sh`) |
 
 **Context:** [`.planning/phases/16-flutter-web-parity/16-CONTEXT.md`](./phases/16-flutter-web-parity/16-CONTEXT.md)  
 **Parity matrix:** [`docs/DUAL-FRONTEND-QA.md`](../docs/DUAL-FRONTEND-QA.md)
