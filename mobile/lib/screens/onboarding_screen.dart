@@ -1,17 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/learning_prefs.dart';
 import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
-
-const languages = [
-  ('en', 'English'),
-  ('es', 'Spanish'),
-  ('fr', 'French'),
-  ('de', 'German'),
-  ('pt', 'Portuguese'),
-  ('it', 'Italian'),
-];
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -25,6 +17,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String? _target;
   String _genre = 'pop';
   String _difficulty = 'medium';
+  String _voice = 'female';
   bool _busy = false;
   String? _error;
   bool _seeded = false;
@@ -38,8 +31,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (user == null) return;
     _native = user['native_language'] as String?;
     _target = user['target_language'] as String?;
-    _genre = (user['genre'] as String?) ?? 'pop';
+    _genre = normalizeGenre(user['genre'] as String?);
     _difficulty = (user['difficulty'] as String?) ?? 'medium';
+    _voice = normalizeVoiceGender(user['voice_gender'] as String?);
   }
 
   Future<void> _save() async {
@@ -61,6 +55,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         'target_language': _target!,
         'genre': _genre,
         'difficulty': _difficulty,
+        'voice_gender': _voice,
       });
       if (mounted && Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
@@ -79,38 +74,49 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            Text('Set your languages', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: HarmonixColors.of(context).textPrimary)),
+            Text(
+              'Set your languages',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: HarmonixColors.of(context).textPrimary,
+                  ),
+            ),
             const SizedBox(height: 8),
             Text('Choose native and target languages', style: Theme.of(context).textTheme.bodyLarge),
             const SizedBox(height: 24),
             DropdownButtonFormField<String>(
               initialValue: _native,
               decoration: const InputDecoration(labelText: 'Native language'),
-              items: languages
-                  .map((l) => DropdownMenuItem(value: l.$1, child: Text(l.$2)))
-                  .toList(),
+              items: [
+                for (final l in kLanguages) DropdownMenuItem(value: l.$1, child: Text(l.$2)),
+              ],
               onChanged: (v) => setState(() => _native = v),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _target,
               decoration: const InputDecoration(labelText: 'Target language'),
-              items: languages
-                  .map((l) => DropdownMenuItem(value: l.$1, child: Text(l.$2)))
-                  .toList(),
+              items: [
+                for (final l in kLanguages) DropdownMenuItem(value: l.$1, child: Text(l.$2)),
+              ],
               onChanged: (v) => setState(() => _target = v),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _genre,
-              decoration: const InputDecoration(labelText: 'Genre'),
-              items: const [
-                DropdownMenuItem(value: 'pop', child: Text('Pop')),
-                DropdownMenuItem(value: 'rock', child: Text('Rock')),
-                DropdownMenuItem(value: 'reggaeton', child: Text('Reggaeton')),
-                DropdownMenuItem(value: 'any', child: Text('Any')),
+              decoration: const InputDecoration(labelText: 'Music style'),
+              items: [
+                for (final s in kMusicStyles) DropdownMenuItem(value: s.$1, child: Text(s.$2)),
               ],
               onChanged: (v) => setState(() => _genre = v ?? 'pop'),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _voice,
+              decoration: const InputDecoration(labelText: 'Pronunciation voice'),
+              items: [
+                for (final v in kVoiceGenders) DropdownMenuItem(value: v.$1, child: Text(v.$2)),
+              ],
+              onChanged: (v) => setState(() => _voice = v ?? 'female'),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
@@ -130,8 +136,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _busy ? null : _save,
-              style: FilledButton.styleFrom(backgroundColor: HarmonixColors.brand),
-              child: Text(_busy ? 'Saving…' : 'Start learning'),
+              child: Text(_busy ? 'Saving…' : 'Continue'),
             ),
           ],
         ),

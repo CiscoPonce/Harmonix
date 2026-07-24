@@ -716,12 +716,41 @@ function filterUnusedSongCandidates(userId, candidates) {
   });
 }
 
+/** True when this user still has unused curated/verified songs for lang (+ optional genre expand). */
+function hasUnusedSongCandidates(userId, langCode, genre) {
+  const pools = [
+    getFullSongCandidatePool(langCode, genre || "pop"),
+  ];
+  if (genre && genre !== "any") {
+    pools.push(getFullSongCandidatePool(langCode, "any"));
+  }
+  for (const pool of pools) {
+    if (filterUnusedSongCandidates(userId, pool).length > 0) return true;
+  }
+  return false;
+}
+
 function getCuratedCandidatesForBatch(userId, langCode, genre) {
   const verified = shuffleInPlace([...aiService.getVerifiedSongCandidates(langCode, genre)]);
-  const all = aiService.getCuratedSongCandidates(langCode, genre);
-  const fresh = filterUnusedSongCandidates(userId, all);
-  const secondary = fresh.length >= 5 ? fresh : all;
-  const merged = mergeCandidateLists(verified, secondary);
+  const curated = aiService.getCuratedSongCandidates(langCode, genre);
+  const freshVerified = filterUnusedSongCandidates(userId, verified);
+  const freshCurated = filterUnusedSongCandidates(userId, curated);
+  let merged = mergeCandidateLists(freshVerified, freshCurated);
+
+  // If this genre is thin, pull unused songs from the broader "any" catalog —
+  // still never reintroduce already-used songs while unused ones remain.
+  if (merged.length < 5 && genre && genre !== "any") {
+    const anyVerified = filterUnusedSongCandidates(
+      userId,
+      aiService.getVerifiedSongCandidates(langCode, "any")
+    );
+    const anyCurated = filterUnusedSongCandidates(
+      userId,
+      aiService.getCuratedSongCandidates(langCode, "any")
+    );
+    merged = mergeCandidateLists(merged, mergeCandidateLists(anyVerified, anyCurated));
+  }
+
   return shuffleInPlace(merged);
 }
 
@@ -734,13 +763,28 @@ function getFullSongCandidatePool(langCode, genre) {
 function filterUniquePayloads(userId, payloads) {
   const history = getUserDiscoveryHistory(userId);
   const seenWords = new Set(history.words);
+  const seenSongIds = new Set(history.songIds);
+  const seenSongKeys = new Set(history.songKeys);
   const unique = [];
 
   for (const payload of payloads || []) {
     const word = payload?.word?.text?.toLowerCase();
     if (!word) continue;
     if (seenWords.has(word)) continue;
+
+    const songId = payload?.song?.id != null ? String(payload.song.id) : null;
+    const songKey =
+      payload?.song?.artist && payload?.song?.title
+        ? `${String(payload.song.artist).toLowerCase()}|${String(payload.song.title).toLowerCase()}`
+        : null;
+
+    // Prefer a new song for every new word until the unused catalog is gone.
+    if (songId && seenSongIds.has(songId)) continue;
+    if (songKey && seenSongKeys.has(songKey)) continue;
+
     seenWords.add(word);
+    if (songId) seenSongIds.add(songId);
+    if (songKey) seenSongKeys.add(songKey);
     unique.push(payload);
   }
 
@@ -936,7 +980,7 @@ async function fetchAiCandidates(user) {
   const genre = user.genre || "pop";
   const difficulty = user.difficulty || "medium";
   const history = getUserDiscoveryHistory(user.id);
-  const avoidSongs = [...history.songKeys].slice(0, 40);
+  const avoidSongs = [...history.songKeys];
 
   try {
     const aiResult = await aiService.generateDailyWordSongs({
@@ -946,7 +990,9 @@ async function fetchAiCandidates(user) {
       difficulty,
       avoidSongs,
     });
-    return Array.isArray(aiResult) ? aiResult : [aiResult];
+    const list = Array.isArray(aiResult) ? aiResult : [aiResult];
+    // Hard filter: never feed already-used songs into validation while unused remain.
+    return filterUnusedSongCandidates(user.id, list);
   } catch (err) {
     if (err.code === "ai_rate_limit") throw err;
     const curated = getCuratedCandidatesForBatch(user.id, langCode, genre);
@@ -1040,8 +1086,15 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
   };
 
   let result = await runOnce(false);
-  if (!result.valid.length) {
+  // Only reuse known songs when this user has exhausted unused catalog songs.
+  // Otherwise "Next word" keeps returning different words from the same track.
+  if (!result.valid.length && !hasUnusedSongCandidates(user.id, langCode, genre)) {
+    console.log(`daily word batch: unused catalog exhausted for ${langCode}/${genre} — allowing song reuse`);
     result = await runOnce(true);
+  } else if (!result.valid.length) {
+    console.warn(
+      `daily word batch: no valid unused songs this round for ${langCode}/${genre} (catalog still has unused — not reusing songs)`
+    );
   }
   return result;
 }
@@ -1221,6 +1274,21 @@ async function consumeNextDailyWord(user, fetchImpl = fetch) {
     const word = String(queued.word?.text || "").toLowerCase();
     if (word && history.words.has(word)) {
       console.warn(`daily word skip: duplicate queued word "${queued.word?.text}"`);
+      continue;
+    }
+
+    const songId = queued.song?.id != null ? String(queued.song.id) : null;
+    const songKey =
+      queued.song?.artist && queued.song?.title
+        ? `${String(queued.song.artist).toLowerCase()}|${String(queued.song.title).toLowerCase()}`
+        : null;
+    if (
+      (songId && history.songIds.has(songId)) ||
+      (songKey && history.songKeys.has(songKey))
+    ) {
+      console.warn(
+        `daily word skip: duplicate queued song "${queued.song?.artist} — ${queued.song?.title}"`
+      );
       continue;
     }
 
@@ -1541,6 +1609,8 @@ module.exports = {
   getUserDiscoveryHistory,
   filterUniquePayloads,
   filterUnusedSongCandidates,
+  hasUnusedSongCandidates,
+  getCuratedCandidatesForBatch,
   purgeQueueWrongLanguage,
   payloadMatchesUserLanguage,
   VALIDATE_CONCURRENCY,

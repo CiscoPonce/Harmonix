@@ -1,0 +1,29 @@
+[Unit]
+Description=Harmonix Pocket-TTS (host daemon for Coolify api)
+Documentation=https://github.com/CiscoPonce/Harmonix/blob/main/docs/COOLIFY-DEPLOY.md
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/lyric
+# Bind 0.0.0.0 so Docker bridge / host-gateway (10.0.0.15) can reach TTS.
+# Prefer UFW allow from Docker networks only if the VPS has a public :3002 exposure risk.
+Environment=PATH=/home/ubuntu/pocket-tts/.venv/bin:/home/ubuntu/.local/bin:/usr/bin
+ExecStart=/home/ubuntu/pocket-tts/.venv/bin/python \
+  /home/ubuntu/lyric/server/scripts/pocket_tts_hq_serve.py \
+  --host 0.0.0.0 \
+  --port 3002 \
+  --language es \
+  --temperature 0.45 \
+  --lsd-decode-steps 3 \
+  --eos-threshold -3.5
+Restart=on-failure
+RestartSec=5
+# Model load can take a while on cold boot
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

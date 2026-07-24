@@ -10,7 +10,7 @@ import '../spotify/spotify_contracts.dart';
 /// `flutter run --dart-define=API_BASE=https://your-domain/api`
 const String kApiBase = String.fromEnvironment(
   'API_BASE',
-  defaultValue: 'https://moral-sparrow-nationally.ngrok-free.app/api',
+  defaultValue: 'https://harmonix.peeporunclub.co.uk/api',
 );
 
 class ApiException implements Exception {
@@ -309,6 +309,12 @@ class ApiClient {
 
   Future<Map<String, dynamic>> progressStats() => request('GET', '/progress/stats');
 
+  Future<Map<String, dynamic>> progressDue({int limit = 20}) =>
+      request('GET', '/progress/due', query: {'limit': '$limit'});
+
+  Future<Map<String, dynamic>> progressReview(List<Map<String, dynamic>> results) =>
+      request('POST', '/progress/review', body: {'results': results});
+
   Future<List<dynamic>> searchSongs(String q) async {
     final data = await request('GET', '/search', query: {'q': q});
     final items = data['data'] ?? data['items'] ?? data['results'];
@@ -328,6 +334,25 @@ class ApiClient {
 
   Future<Map<String, dynamic>> createPlaylist(String name) =>
       request('POST', '/playlists', body: {'name': name});
+
+  /// Add a track to a Harmonix playlist. Throws [ApiException] with status 409 if already present.
+  Future<Map<String, dynamic>> addSongToPlaylist(
+    String playlistId, {
+    required String songId,
+    required Map<String, dynamic> track,
+  }) {
+    return request('POST', '/playlists/$playlistId/songs', body: {
+      'song_id': songId,
+      'track': {
+        'id': songId,
+        'title': track['title'],
+        'artist': track['artist'],
+        'preview': track['preview'] ?? '',
+        'duration': track['duration'] ?? 0,
+        'cover': track['cover'],
+      },
+    });
+  }
 
   Future<List<dynamic>> badges() async {
     final data = await request('GET', '/badges');

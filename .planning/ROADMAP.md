@@ -1,6 +1,6 @@
 # Harmonix Roadmap
 
-**Last reconciled:** 2026-07-23 — phases 1–14 complete; Phase 15 production domain live  
+**Last reconciled:** 2026-07-24 — phases 1–15 complete; production `harmonix.peeporunclub.co.uk` (`.com` NXDOMAIN)  
 **Live:** https://harmonix.peeporunclub.co.uk (Compose `api`+`web` + Coolify Traefik; host Pocket-TTS)
 
 ---
@@ -178,3 +178,24 @@ Not a new phase — product refinements after Phase 14 close:
 | Containerize Pocket-TTS | Later |
 
 Other optional ops (not blocking): Play Store listing, AI provider hardening, Extended Spotify Quota.
+
+---
+
+## Phase 16 — Flutter + Capacitor web parity 🚧
+
+**Status:** In progress (2026-07-24)  
+**Milestone:** v1.9  
+**Goal:** Flutter Android matches web design language and learning functionality; Capacitor remains legacy web-shell fallback.
+
+| Workstream | Status |
+|------------|--------|
+| Settings: music style + voice gender + language list | Done |
+| Discover home (practice strip, review, shelf) | Done |
+| Hear-it + WOTD actions (incl. Add to playlist) | Done |
+| Library Spotify header chip | Done |
+| Visual tokens (Phase 13 greens + Fraunces/DM Sans) | Done |
+| 3D flip cards (WOTD + shelf) | Done |
+| Dual-frontend QA + Capacitor smoke | Done (`scripts/capacitor-smoke.sh`) |
+
+**Context:** [`.planning/phases/16-flutter-web-parity/16-CONTEXT.md`](./phases/16-flutter-web-parity/16-CONTEXT.md)  
+**Parity matrix:** [`docs/DUAL-FRONTEND-QA.md`](../docs/DUAL-FRONTEND-QA.md)

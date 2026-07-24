@@ -10,6 +10,7 @@ Core Value: Personalizing language learning through real music lyrics with 100% 
 - **Library:** Harmonix + Spotify playlists; Spotify account chip in **header only**
 - **Settings:** Languages, music style, voice gender, Spotify Connect
 - **Live:** https://harmonix.peeporunclub.co.uk · branch `main`
+- **Current work:** Phase 16 — Flutter + Capacitor web parity (v1.9)
 
 ## Tech Stack
 - Backend: Node.js (Express) + SQLite
@@ -30,7 +31,7 @@ Core Value: Personalizing language learning through real music lyrics with 100% 
 ## Workflow (GSD)
 - Follow the Phased Roadmap in `.planning/ROADMAP.md`.
 - Track state in `.planning/STATE.md`.
-- Phases 1–15 are **complete**; next work starts with a new milestone discuss.
+- Phases 1–15 are **complete**; **Phase 16** (Flutter web parity) is in progress — see `.planning/ROADMAP.md`.
 - Use `/gsd:progress` to check status.
 - **Production deploy:** `git push origin main` (Actions → `scripts/coolify-redeploy.sh`). Manual: SSH VPS and run that script. Legacy rollback only: `bash run_env.sh`.
 

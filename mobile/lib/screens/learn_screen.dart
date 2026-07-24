@@ -13,8 +13,12 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_client.dart';
+import '../spotify/spotify_open.dart';
 import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
+import '../widgets/add_to_playlist_sheet.dart';
+import '../widgets/word_flip_card.dart';
+import 'review_screen.dart';
 
 class LearnScreen extends StatefulWidget {
   const LearnScreen({super.key});
@@ -30,6 +34,9 @@ class _LearnScreenState extends State<LearnScreen> {
   final _searchQuery = TextEditingController();
   Map<String, dynamic>? _word;
   Map<String, dynamic>? _queue;
+  Map<String, dynamic>? _stats;
+  List<Map<String, dynamic>> _shelf = [];
+  int _dueCount = 0;
   List<dynamic> _searchResults = [];
   bool _loading = true;
   bool _nexting = false;
@@ -81,13 +88,34 @@ class _LearnScreenState extends State<LearnScreen> {
     try {
       final payload = next ? await api.nextDailyWord() : await api.getDailyWord();
       Map<String, dynamic>? queue;
+      Map<String, dynamic>? stats;
+      List<Map<String, dynamic>> shelf = [];
+      var dueCount = 0;
       try {
         queue = await api.queueStatus();
+      } catch (_) {}
+      try {
+        stats = await api.progressStats();
+      } catch (_) {}
+      try {
+        final recent = await api.recentDailyWords(days: 14);
+        final raw = recent['recent'] as List? ?? [];
+        shelf = raw
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      } catch (_) {}
+      try {
+        final due = await api.progressDue(limit: 1);
+        dueCount = (due['count'] as num?)?.toInt() ?? 0;
       } catch (_) {}
       if (!mounted) return;
       setState(() {
         _word = payload;
         _queue = queue ?? payload['queue'] as Map<String, dynamic>?;
+        _stats = stats;
+        _shelf = shelf;
+        _dueCount = dueCount;
       });
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -111,6 +139,49 @@ class _LearnScreenState extends State<LearnScreen> {
         });
       }
     }
+  }
+
+  Future<void> _openReview() async {
+    final refreshed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const ReviewScreen()),
+    );
+    if (refreshed == true && mounted) _load();
+  }
+
+  Future<void> _openInSpotify() async {
+    final song = _word?['song'] as Map<String, dynamic>?;
+    if (song == null) return;
+    final url = spotifyOpenUrlForSong(
+      artist: song['artist']?.toString() ?? '',
+      title: song['title']?.toString() ?? '',
+      uri: song['spotify_uri']?.toString() ?? song['uri']?.toString(),
+    );
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _addToPlaylist() async {
+    final song = _word?['song'] as Map<String, dynamic>?;
+    final audio = _word?['audio'] as Map<String, dynamic>?;
+    final id = song?['id']?.toString();
+    if (id == null || id.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No song to add yet')),
+      );
+      return;
+    }
+    await AddToPlaylistSheet.show(
+      context,
+      songId: id,
+      title: song?['title']?.toString() ?? 'Track',
+      artist: song?['artist']?.toString() ?? '',
+      preview: audio?['preview_url']?.toString(),
+      duration: audio?['duration_seconds'] as num?,
+      cover: song?['cover']?.toString() ?? song?['album_cover']?.toString(),
+    );
   }
 
   Future<void> _speakWord(String text) async {
@@ -221,16 +292,6 @@ class _LearnScreenState extends State<LearnScreen> {
           SnackBar(content: Text('Preview unavailable: $e')),
         );
       }
-    }
-  }
-
-  Future<void> _openPlayer() async {
-    final song = _word?['song'] as Map<String, dynamic>?;
-    final id = song?['id']?.toString();
-    if (id == null) return;
-    final uri = Uri.parse(context.read<ApiClient>().playerUrlForSongId(id));
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -374,61 +435,119 @@ class _LearnScreenState extends State<LearnScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          Text(
-            (word['text'] as String? ?? '—').toUpperCase(),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.displayLarge,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            word['translation'] as String? ?? '',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (ipaLabel.isNotEmpty)
-                Text(ipaLabel, style: Theme.of(context).textTheme.bodyLarge),
-              IconButton(
-                onPressed: word['text'] == null ? null : () => _speakWord(word['text'] as String),
-                icon: Icon(
-                  _speaking ? Icons.volume_up : Icons.volume_up_outlined,
-                  size: 20,
-                  color: colors.textMuted,
+          WordFlipCard(
+            height: 300,
+            canFlip: (lyric['snippet']?.toString().trim().isNotEmpty ?? false) ||
+                (song['title']?.toString().trim().isNotEmpty ?? false),
+            front: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  (word['text'] as String? ?? '—').toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                        color: colors.accent,
+                        fontSize: 40,
+                      ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(
+                  word['translation'] as String? ?? '',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const Spacer(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (ipaLabel.isNotEmpty)
+                      Text(ipaLabel, style: Theme.of(context).textTheme.bodyLarge),
+                    IconButton(
+                      onPressed: word['text'] == null
+                          ? null
+                          : () => _speakWord(word['text'] as String),
+                      icon: Icon(
+                        _speaking ? Icons.volume_up : Icons.volume_up_outlined,
+                        size: 20,
+                        color: colors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                if ((word['part_of_speech']?.toString() ?? '').isNotEmpty)
+                  Text(
+                    word['part_of_speech'].toString().toUpperCase(),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+              ],
+            ),
+            back: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Found in ${song['title'] ?? '—'} · ${song['artist'] ?? ''}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Expanded(
+                  child: Text.rich(
+                    highlightLyricSpan(
+                      snippet: lyric['snippet'] as String? ?? '',
+                      colors: colors,
+                      highlightWord: word['text'] as String?,
+                      charStart: (lyric['char_start'] as num?)?.toInt(),
+                      charEnd: (lyric['char_end'] as num?)?.toInt(),
+                    ),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontStyle: FontStyle.italic,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+                if ((lyric['timestamp']?.toString() ?? '').isNotEmpty)
+                  Text(
+                    lyric['timestamp'].toString(),
+                    style: TextStyle(color: colors.textMuted, fontSize: 12),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 20),
-          _LyricCard(
-            snippet: lyric['snippet'] as String? ?? '',
-            highlight: word['text'] as String? ?? '',
-            artist: song['artist'] as String? ?? '',
-            title: song['title'] as String? ?? '',
-            charStart: (lyric['char_start'] as num?)?.toInt(),
-            charEnd: (lyric['char_end'] as num?)?.toInt(),
-          ),
-          const SizedBox(height: 28),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
             children: [
-              _RoundAction(
+              _LabeledRoundAction(
                 filled: true,
                 icon: Icons.play_arrow,
+                label: 'Hear it',
                 onTap: _playPreview,
               ),
-              const SizedBox(width: 20),
-              _RoundAction(
+              _LabeledRoundAction(
                 filled: false,
-                icon: Icons.headphones,
-                onTap: _openPlayer,
+                icon: Icons.playlist_add,
+                label: 'Playlist',
+                onTap: _addToPlaylist,
               ),
-              const SizedBox(width: 20),
-              _RoundAction(
+              _LabeledRoundAction(
+                filled: false,
+                icon: Icons.open_in_new,
+                label: 'Spotify',
+                onTap: _openInSpotify,
+              ),
+              _LabeledRoundAction(
                 filled: false,
                 icon: Icons.ios_share,
+                label: 'Share',
                 onTap: _share,
               ),
             ],
@@ -447,19 +566,76 @@ class _LearnScreenState extends State<LearnScreen> {
             const SizedBox(height: 12),
             Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
           ],
-          const SizedBox(height: 32),
-          TextField(
-            controller: _searchQuery,
-            decoration: InputDecoration(
-              hintText: 'Search songs, artists…',
-              suffixIcon: IconButton(
-                onPressed: _searching ? null : _search,
-                icon: _searching
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.search),
-              ),
+          const SizedBox(height: 24),
+          if (_stats != null || _dueCount > 0) ...[
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                if (_stats != null)
+                  _PracticeChip(
+                    icon: Icons.local_fire_department,
+                    label:
+                        '${_stats!['streak_days'] ?? 0} day${(_stats!['streak_days'] == 1) ? '' : 's'}',
+                  ),
+                if (_stats != null)
+                  _GoalChip(
+                    today: (_stats!['today_words'] as num?)?.toInt() ?? 0,
+                    goal: (_stats!['daily_goal'] as num?)?.toInt() ?? 1,
+                    met: _stats!['today_goal_met'] == true,
+                  ),
+                if (_dueCount > 0)
+                  ActionChip(
+                    avatar: Icon(Icons.replay, size: 16, color: colors.accent),
+                    label: Text(
+                      '$_dueCount ${_dueCount == 1 ? 'word' : 'words'} to review →',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    onPressed: _openReview,
+                    side: BorderSide(color: colors.border),
+                    backgroundColor: colors.surface,
+                  ),
+              ],
             ),
-            onSubmitted: (_) => _search(),
+            const SizedBox(height: 24),
+          ],
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: HarmonixColors.brand,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: TextField(
+              controller: _searchQuery,
+              style: const TextStyle(color: Color(0xFF0C1210)),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white,
+                hintText: 'Search lyrics, artists, or languages…',
+                hintStyle: const TextStyle(color: Color(0xFF9AABA0)),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF7A8A80)),
+                suffixIcon: IconButton(
+                  onPressed: _searching ? null : _search,
+                  icon: _searching
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.arrow_forward, color: HarmonixColors.brand),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onSubmitted: (_) => _search(),
+            ),
           ),
           const SizedBox(height: 12),
           ..._searchResults.map((raw) {
@@ -478,155 +654,306 @@ class _LearnScreenState extends State<LearnScreen> {
               onTap: id == null
                   ? null
                   : () async {
-                      final uri = Uri.parse(context.read<ApiClient>().playerUrlForSongId(id));
+                      final url = spotifyOpenUrlForSong(
+                        artist: artist ?? '',
+                        title: title,
+                      );
+                      final uri = Uri.parse(url);
                       if (await canLaunchUrl(uri)) {
                         await launchUrl(uri, mode: LaunchMode.externalApplication);
                       }
                     },
             );
           }),
-        ],
-      ),
-    );
-  }
-}
-
-class _LyricCard extends StatelessWidget {
-  const _LyricCard({
-    required this.snippet,
-    required this.highlight,
-    required this.artist,
-    required this.title,
-    this.charStart,
-    this.charEnd,
-  });
-
-  final String snippet;
-  final String highlight;
-  final String artist;
-  final String title;
-  final int? charStart;
-  final int? charEnd;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = HarmonixColors.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border(
-          left: BorderSide(color: colors.accent, width: 4),
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Align(
-            alignment: Alignment.topRight,
-            child: Icon(Icons.format_quote, color: colors.border, size: 36),
-          ),
-          Text.rich(
-            _buildSnippet(colors),
-            style: TextStyle(
-              fontSize: 18,
-              fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.w700,
-              color: colors.textPrimary,
+          if (_shelf.isNotEmpty) ...[
+            const SizedBox(height: 28),
+            Text('YOUR SHELF', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 240,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _shelf.length.clamp(0, 14),
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, i) {
+                  final item = _shelf[i];
+                  final w = item['word'] is Map
+                      ? Map<String, dynamic>.from(item['word'] as Map)
+                      : <String, dynamic>{'text': item['word']?.toString()};
+                  final songMap = item['song'] is Map
+                      ? Map<String, dynamic>.from(item['song'] as Map)
+                      : <String, dynamic>{
+                          'title': item['title']?.toString(),
+                          'artist': item['artist']?.toString(),
+                        };
+                  final lyricMap = item['lyric'] is Map
+                      ? Map<String, dynamic>.from(item['lyric'] as Map)
+                      : <String, dynamic>{};
+                  final text = (w['text'] ?? item['text'] ?? '—').toString();
+                  final translation =
+                      (w['translation'] ?? item['translation'] ?? '').toString();
+                  final phrase = (item['phrase'] ?? lyricMap['snippet'] ?? '').toString();
+                  final title =
+                      (item['title'] ?? songMap['title'] ?? '').toString();
+                  final artist = (songMap['artist'] ?? '').toString();
+                  final pos = (w['part_of_speech'] ?? '').toString();
+                  final canFlip = phrase.trim().isNotEmpty || title.trim().isNotEmpty;
+                  return SizedBox(
+                    width: 180,
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: WordFlipCard(
+                            height: 190,
+                            compact: true,
+                            showHint: false,
+                            canFlip: canFlip,
+                            front: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    if (pos.isNotEmpty)
+                                      Text(
+                                        pos.toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: colors.accent,
+                                        ),
+                                      ),
+                                    const Spacer(),
+                                    if (canFlip)
+                                      Icon(Icons.flip, size: 12, color: colors.textMuted),
+                                  ],
+                                ),
+                                const Spacer(),
+                                Text(
+                                  text.toUpperCase(),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 22,
+                                    color: colors.accent,
+                                  ),
+                                ),
+                                if (translation.isNotEmpty)
+                                  Text(
+                                    translation,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 12, color: colors.textMuted),
+                                  ),
+                              ],
+                            ),
+                            back: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  [artist, title].where((s) => s.isNotEmpty).join(' · '),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: colors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Expanded(
+                                  child: Text.rich(
+                                    highlightLyricSpan(
+                                      snippet: phrase,
+                                      colors: colors,
+                                      highlightWord: text,
+                                      charStart: (lyricMap['char_start'] as num?)?.toInt(),
+                                      charEnd: (lyricMap['char_end'] as num?)?.toInt(),
+                                    ),
+                                    maxLines: 5,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontStyle: FontStyle.italic,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            final url = spotifyOpenUrlForSong(
+                              artist: artist,
+                              title: title,
+                              uri: songMap['spotify_uri']?.toString(),
+                            );
+                            final uri = Uri.parse(url);
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            }
+                          },
+                          child: Text(
+                            'Open in Spotify',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: colors.accent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: colors.accent,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Icon(Icons.music_note, size: 14, color: colors.onAccent),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '${artist.toUpperCase()} • ${title.toUpperCase()}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-              ),
-            ],
-          ),
+          ],
         ],
       ),
     );
   }
-
-  TextSpan _buildSnippet(HarmonixColors colors) {
-    if (charStart != null && charEnd != null && charStart! >= 0 && charEnd! <= snippet.length && charStart! < charEnd!) {
-      return TextSpan(children: [
-        TextSpan(text: snippet.substring(0, charStart!)),
-        TextSpan(
-          text: snippet.substring(charStart!, charEnd!),
-          style: TextStyle(color: colors.accent),
-        ),
-        TextSpan(text: snippet.substring(charEnd!)),
-      ]);
-    }
-    final lower = snippet.toLowerCase();
-    final needle = highlight.toLowerCase();
-    final idx = lower.indexOf(needle);
-    if (idx < 0) return TextSpan(text: '"$snippet"');
-    return TextSpan(children: [
-      TextSpan(text: '"${snippet.substring(0, idx)}'),
-      TextSpan(
-        text: snippet.substring(idx, idx + highlight.length),
-        style: TextStyle(color: colors.accent),
-      ),
-      TextSpan(text: '${snippet.substring(idx + highlight.length)}"'),
-    ]);
-  }
 }
 
-class _RoundAction extends StatelessWidget {
-  const _RoundAction({required this.filled, required this.icon, required this.onTap});
+class _LabeledRoundAction extends StatelessWidget {
+  const _LabeledRoundAction({
+    required this.filled,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   final bool filled;
   final IconData icon;
+  final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = HarmonixColors.of(context);
-    return Material(
-      color: filled ? colors.accent : colors.surface,
-      shape: const CircleBorder(),
-      elevation: filled ? 2 : 0,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Container(
-          width: filled ? 64 : 56,
-          height: filled ? 64 : 56,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: filled ? null : Border.all(color: colors.textPrimary, width: 1.5),
-          ),
-          child: Icon(
-            icon,
-            color: filled ? colors.onAccent : colors.textPrimary,
-            size: filled ? 32 : 24,
+    return Column(
+      children: [
+        Material(
+          color: filled ? colors.accent : colors.surface,
+          shape: const CircleBorder(),
+          elevation: filled ? 2 : 0,
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: Container(
+              width: filled ? 64 : 56,
+              height: filled ? 64 : 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: filled ? null : Border.all(color: colors.textPrimary, width: 1.5),
+              ),
+              child: Icon(
+                icon,
+                color: filled ? colors.onAccent : colors.textPrimary,
+                size: filled ? 32 : 24,
+              ),
+            ),
           ),
         ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: colors.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PracticeChip extends StatelessWidget {
+  const _PracticeChip({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = HarmonixColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: colors.accent),
+          const SizedBox(width: 6),
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+              color: colors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoalChip extends StatelessWidget {
+  const _GoalChip({required this.today, required this.goal, required this.met});
+  final int today;
+  final int goal;
+  final bool met;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = HarmonixColors.of(context);
+    final pct = goal <= 0 ? 0.0 : (today / goal).clamp(0.0, 1.0);
+    return Container(
+      width: 148,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.flag_outlined, size: 12, color: colors.textMuted),
+              const SizedBox(width: 4),
+              Text(
+                'TODAY',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: colors.textMuted),
+              ),
+              const Spacer(),
+              Text(
+                '$today/$goal',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: colors.textMuted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 4,
+              backgroundColor: colors.border,
+              color: met ? colors.accent : colors.textMuted,
+            ),
+          ),
+        ],
       ),
     );
   }

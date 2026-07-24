@@ -11,6 +11,9 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * unify Discover and Learn into one home (`/discover`; Learn nav removed)
 * Settings music style (genre) for daily-word personalization
 * Settings voice gender for Pocket-TTS pronunciation
+* Flutter Settings: music style chips + voice gender (Phase 16 parity with web)
+* Flutter Discover: practice strip, review, shelf, labeled Hear it / Open in Spotify
+* Flutter WOTD: 3D flip cards + Add to playlist sheet; Capacitor production smoke script
 * theme-aware Harmonix logos (light / dark / mark)
 * Library header shows Spotify account when connected (`Spotify · {name}`)
 * player: Open in Spotify when Web Playback SDK is unavailable
@@ -20,6 +23,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ### Bug Fixes
 
+* daily-word: prefer a new song for every new word (no same-track repeats until catalog exhausted)
 * Library: keep Spotify status in header only (no duplicate Connected CTA)
 * sidebar: pin full height and restore Pro Plan card
 * player: fall back to Deezer 30s when Spotify SDK times out
@@ -29,6 +33,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 ### Documentation
 
 * sync ROADMAP, STATE, README, PROJECT, REQUIREMENTS, and ops docs with v1.7 + post-ship polish
+* Phase 15 Coolify cutover re-verified on `harmonix.peeporunclub.co.uk`; add host TTS systemd unit template
 
 ## [0.0.2](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.1...harmonix-v0.0.2) (2026-07-21)
 

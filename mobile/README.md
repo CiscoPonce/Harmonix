@@ -33,8 +33,12 @@ flutter build appbundle --release --dart-define=API_BASE=https://harmonix.peepor
 ## QA checklist
 
 - [ ] Register / login / session restore after kill
-- [ ] Onboarding: languages, genre, difficulty → prefs saved
+- [ ] Onboarding: languages, music style (incl. hip-hop), voice, difficulty → prefs saved
+- [ ] Settings: change music style / voice gender / languages (queue refreshes on language/style)
 - [ ] Language / genre switch clears stale queue (no wrong-language WOTD)
+- [ ] Discover: flip WOTD + shelf cards; Hear it / Playlist / Spotify / Share
+- [ ] Add to playlist from WOTD (create + add); song appears in Library
+- [ ] Capacitor: `bash scripts/capacitor-smoke.sh` then device login → flip → playlist
 - [ ] Discover: Word of the Day, definition, IPA, lyric highlight, Play preview, Share, Next word
 - [ ] Speaker uses Pocket-TTS `/daily-word/pronounce` (fallback device TTS only on failure)
 - [ ] Queue badge updates (`N ready`)

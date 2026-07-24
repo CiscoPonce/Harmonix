@@ -93,6 +93,19 @@ npm run android:install
 
 ---
 
+## Capacitor smoke (required — Phase 16)
+
+Automated (no device):
+
+```bash
+bash scripts/capacitor-smoke.sh
+```
+
+Checks production HTTPS, Capacitor config, flip CSS, Add-to-playlist web modal, Android project, APK artifact, and Flutter parity widgets.
+
+**On device (still required):** login → Discover WOTD flip → Add to playlist → Library shows track → Next word → logout.
+---
+
 ## Sideload on team phones (no Play Store)
 
 1. Build debug APK (above).
