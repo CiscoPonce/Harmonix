@@ -513,13 +513,10 @@ function normalizeGenre(genre) {
 function genresCompatible(candidateGenre, userGenre) {
   const u = normalizeGenre(userGenre);
   if (u === 'any') return true;
-  const c = normalizeGenre(candidateGenre || u);
-  if (c === u) return true;
-  // Soft adjacency only for urban Latin styles
-  if ((u === 'reggaeton' && c === 'hip-hop') || (u === 'hip-hop' && c === 'reggaeton')) {
-    return true;
-  }
-  return false;
+  // Untagged candidates are not a match when the user picked a style.
+  if (candidateGenre == null || String(candidateGenre).trim() === '') return false;
+  const c = normalizeGenre(candidateGenre);
+  return c === u;
 }
 
 function getVerifiedSongCandidates(languageCode, genre) {

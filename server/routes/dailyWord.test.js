@@ -128,16 +128,23 @@ describe("Daily Word Routes", () => {
 
   it("POST /next serves instantly from queue when stocked", async () => {
     db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
+    db.prepare(`
+      UPDATE users
+      SET native_language = 'en', target_language = 'es', genre = 'pop'
+      WHERE id = ?
+    `).run(userId);
     const today = new Date().toISOString().slice(0, 10);
     db.prepare(`
       INSERT INTO user_word_queue (user_id, word_json, expires_at)
       VALUES (?, ?, datetime('now', '+7 days'))
     `).run(userId, JSON.stringify({
       date: today,
+      language_code: "es",
+      preferred_genre: "pop",
       word: { text: "instant", translation: "fast" },
-      lyric: { snippet: "instant", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 7 },
-      song: { id: "9", title: "Song", artist: "Artist" },
-      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      lyric: { snippet: "instant", timestamp: "0:45", timestamp_ms: 45000, line_index: 0, char_start: 0, char_end: 7 },
+      song: { id: "9", title: "Song", artist: "Artist", genre: "pop" },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30, preview_provider: "deezer" },
     }));
 
     const handler = dailyWordRouter.stack.find((s) => s.route.path === "/next").route.stack[0].handle;

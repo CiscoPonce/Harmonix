@@ -191,19 +191,14 @@ function findWordOccurrence(word, syncedLyrics, plainLyrics = null, options = {}
   const provider = options.provider || "deezer";
   let chosen = occurrences[0];
   if (duration != null) {
-    // Prefer opening-window hits first (iTunes / Coolify fallback), then provider preview.
-    const inOpening = occurrences.find((hit) => {
+    // Prefer hits inside the *actual* preview provider window (Deezer mid-track vs iTunes opening).
+    // Do not prefer opening lines when the streamed clip is Deezer's 30–60s cut — that desyncs Hear-it.
+    const inProvider = occurrences.find((hit) => {
       const line = parsed[hit.line_index];
-      return line && isTimestampInOpeningPreview(line.time);
+      return line && isTimestampInPreview(line.time, duration, provider);
     });
-    if (inOpening) {
-      chosen = inOpening;
-    } else {
-      const inPreview = occurrences.find((hit) => {
-        const line = parsed[hit.line_index];
-        return line && isTimestampInPreview(line.time, duration, provider);
-      });
-      if (inPreview) chosen = inPreview;
+    if (inProvider) {
+      chosen = inProvider;
     }
   }
 
@@ -211,11 +206,7 @@ function findWordOccurrence(word, syncedLyrics, plainLyrics = null, options = {}
   if (!line) return null;
 
   const in_preview =
-    duration != null
-      ? isTimestampInOpeningPreview(line.time) ||
-        isTimestampInPreview(line.time, duration, provider) ||
-        isTimestampInPreview(line.time, duration, "itunes")
-      : null;
+    duration != null ? isTimestampInPreview(line.time, duration, provider) : null;
   const nextLine = parsed[chosen.line_index + 1];
   // Real sung-line length from next LRC stamp (fallback ~4s).
   const line_end_ms =
@@ -293,6 +284,7 @@ function buildPayload(date, suggestion, track, lyricsData, occurrence, langCode 
       genre: suggestion.genre || null,
       cover: deezer.coverFromDeezerTrack(track),
     },
+    preferred_genre: suggestion.genre || null,
     audio: {
       preview_url: deezer.previewProxyPath(String(track.id), track.artist?.name, track.title),
       duration_seconds: duration,
@@ -398,11 +390,7 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
       if (firstPick) candidates.push(firstPick);
 
       const previewPlain = parsedLines
-        .filter(
-          (line) =>
-            isTimestampInOpeningPreview(line.time) ||
-            isTimestampInPreview(line.time, duration, provider)
-        )
+        .filter((line) => isTimestampInPreview(line.time, duration, provider))
         .map((line) => line.text)
         .join("\n");
       if (previewPlain.trim()) {
@@ -560,15 +548,12 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
   });
 
   const effectiveLevel = user.cefr_level || "B1";
-  // Hard genre gate for the pitch: drop clear mismatches before expensive Deezer/LRC work.
+  // Hard genre gate: never fall back to the mixed catalog when the user picked a style.
   const genreFiltered =
     userGenre === "any"
       ? uniqueCandidates
-      : uniqueCandidates.filter((s) => {
-          if (!s.genre) return true; // allow untagged; rank will prefer tagged matches
-          return aiService.genresCompatible(s.genre, userGenre);
-        });
-  const ranked = (genreFiltered.length ? genreFiltered : uniqueCandidates).slice().sort(
+      : uniqueCandidates.filter((s) => aiService.genresCompatible(s.genre, userGenre));
+  const ranked = genreFiltered.slice().sort(
     (a, b) =>
       candidateRankScore(b, userGenre, userDifficulty, effectiveLevel) -
       candidateRankScore(a, userGenre, userDifficulty, effectiveLevel)
@@ -724,18 +709,10 @@ function filterUnusedSongCandidates(userId, candidates) {
   });
 }
 
-/** True when this user still has unused curated/verified songs for lang (+ optional genre expand). */
+/** True when this user still has unused curated/verified songs for their chosen genre. */
 function hasUnusedSongCandidates(userId, langCode, genre) {
-  const pools = [
-    getFullSongCandidatePool(langCode, genre || "pop"),
-  ];
-  if (genre && genre !== "any") {
-    pools.push(getFullSongCandidatePool(langCode, "any"));
-  }
-  for (const pool of pools) {
-    if (filterUnusedSongCandidates(userId, pool).length > 0) return true;
-  }
-  return false;
+  const pool = getFullSongCandidatePool(langCode, genre || "pop");
+  return filterUnusedSongCandidates(userId, pool).length > 0;
 }
 
 function getCuratedCandidatesForBatch(userId, langCode, genre) {
@@ -743,23 +720,8 @@ function getCuratedCandidatesForBatch(userId, langCode, genre) {
   const curated = aiService.getCuratedSongCandidates(langCode, genre);
   const freshVerified = filterUnusedSongCandidates(userId, verified);
   const freshCurated = filterUnusedSongCandidates(userId, curated);
-  let merged = mergeCandidateLists(freshVerified, freshCurated);
-
-  // If this genre is thin, pull unused songs from the broader "any" catalog —
-  // still never reintroduce already-used songs while unused ones remain.
-  if (merged.length < 5 && genre && genre !== "any") {
-    const anyVerified = filterUnusedSongCandidates(
-      userId,
-      aiService.getVerifiedSongCandidates(langCode, "any")
-    );
-    const anyCurated = filterUnusedSongCandidates(
-      userId,
-      aiService.getCuratedSongCandidates(langCode, "any")
-    );
-    merged = mergeCandidateLists(merged, mergeCandidateLists(anyVerified, anyCurated));
-  }
-
-  return shuffleInPlace(merged);
+  // Stay inside the user's genre — never expand to mixed "any" while they have a style set.
+  return shuffleInPlace(mergeCandidateLists(freshVerified, freshCurated));
 }
 
 function getFullSongCandidatePool(langCode, genre) {
@@ -810,7 +772,14 @@ function payloadMatchesUserLanguage(payload, langCode) {
   return wordMatchesTargetLanguage(payload.word.text, expected);
 }
 
-function getCachedDailyWord(userId, date, langCode = "es") {
+function payloadMatchesUserGenre(payload, userGenre) {
+  const u = aiService.normalizeGenre(userGenre || "pop");
+  if (u === "any") return true;
+  const stamped = payload?.preferred_genre || payload?.song?.genre;
+  return aiService.genresCompatible(stamped, u);
+}
+
+function getCachedDailyWord(userId, date, langCode = "es", userGenre = "any") {
   const row = db.prepare(
     `SELECT word_json FROM daily_words
      WHERE user_id = ? AND date = ?
@@ -821,6 +790,7 @@ function getCachedDailyWord(userId, date, langCode = "es") {
   try {
     const payload = JSON.parse(row.word_json);
     if (!payloadMatchesUserLanguage(payload, langCode)) return null;
+    if (!payloadMatchesUserGenre(payload, userGenre)) return null;
     return { ...payload, cached: true };
   } catch {
     return null;
@@ -1260,9 +1230,21 @@ function purgeQueueWrongLanguage(userId, langCode) {
   }
 }
 
+function purgeQueueWrongGenre(userId, userGenre) {
+  const expected = aiService.normalizeGenre(userGenre || "pop");
+  if (expected === "any") return;
+  for (const item of wordQueue.listReadyItems(userId)) {
+    if (!payloadMatchesUserGenre(item.payload, expected)) {
+      wordQueue.discard(item.id);
+    }
+  }
+}
+
 async function consumeNextDailyWord(user, fetchImpl = fetch) {
   const langCode = normalizeLangCode(user.target_language || "es");
+  const userGenre = user.genre || "pop";
   purgeQueueWrongLanguage(user.id, langCode);
+  purgeQueueWrongGenre(user.id, userGenre);
   const maxSkips = wordQueue.QUEUE_MAX + 5;
 
   for (let i = 0; i < maxSkips; i++) {
@@ -1271,6 +1253,14 @@ async function consumeNextDailyWord(user, fetchImpl = fetch) {
 
     if (!payloadMatchesUserLanguage(item.payload, langCode)) {
       console.warn(`daily word skip: wrong language for "${item.payload.word?.text}" (want ${langCode})`);
+      wordQueue.discard(item.id);
+      continue;
+    }
+
+    if (!payloadMatchesUserGenre(item.payload, userGenre)) {
+      console.warn(
+        `daily word skip: wrong genre for "${item.payload.song?.title}" (want ${userGenre}, got ${item.payload.song?.genre || item.payload.preferred_genre || "untagged"})`
+      );
       wordQueue.discard(item.id);
       continue;
     }
@@ -1603,7 +1593,13 @@ async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}
 
   if (!force) {
     purgeQueueWrongLanguage(user.id, user.target_language || "es");
-    const cached = getCachedDailyWord(user.id, date, user.target_language || "es");
+    purgeQueueWrongGenre(user.id, user.genre || "pop");
+    const cached = getCachedDailyWord(
+      user.id,
+      date,
+      user.target_language || "es",
+      user.genre || "pop"
+    );
     if (cached) {
       scheduleRefill(user, fetchImpl);
       return enrichIfNeeded(cached, user);
@@ -1659,6 +1655,9 @@ module.exports = {
   hasUnusedSongCandidates,
   getCuratedCandidatesForBatch,
   purgeQueueWrongLanguage,
+  purgeQueueWrongGenre,
   payloadMatchesUserLanguage,
+  payloadMatchesUserGenre,
+  abortRefill,
   VALIDATE_CONCURRENCY,
 };
