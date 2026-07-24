@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { Music2, RotateCw } from 'lucide-react';
+import { spotifyOpenUrlForSong } from '@/lib/spotifyOpen';
 
 export type ShelfWord = {
   id?: number | string | null;
@@ -181,14 +181,16 @@ export function RecentWordFlipCard({ item }: { item: ShelfWord }) {
               )}
             </div>
 
-            {item.song?.id ? (
-              <Link
-                href={`/player/${item.song.id}`}
+            {title || artist ? (
+              <a
+                href={spotifyOpenUrlForSong(artist, title)}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
                 className="mt-3 inline-flex text-[10px] font-bold uppercase tracking-widest text-[#0B4D2E] underline-offset-2 hover:underline dark:text-[#3DCF7A]"
               >
-                Open song →
-              </Link>
+                Open on Spotify →
+              </a>
             ) : null}
           </div>
         </div>

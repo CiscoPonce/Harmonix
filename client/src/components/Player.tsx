@@ -12,6 +12,7 @@ import { fetchSpotifyStatus, resolveSpotifyPlay } from '@/lib/api';
 import { useSpotifyInAppPlayer } from '@/components/SpotifyInAppPlayer';
 import { AddToPlaylistModal } from './AddToPlaylistModal';
 import { CoverArt } from './CoverArt';
+import { spotifyOpenUrlForSong } from '@/lib/spotifyOpen';
 
 interface TrackMetadata {
   id: number;
@@ -30,16 +31,6 @@ interface PlayerProps {
   unmappedVocab?: VocabItem[];
   cefrLevel?: string;
   onCefrChange?: (level: string) => void;
-}
-
-function openSpotifyUrlForTrack(
-  uri: string | null,
-  title: string,
-  artist: string
-): string {
-  const m = String(uri || '').match(/^spotify:track:([A-Za-z0-9]+)$/);
-  if (m) return `https://open.spotify.com/track/${m[1]}`;
-  return `https://open.spotify.com/search/${encodeURIComponent(`${artist} ${title}`)}`;
 }
 
 const Player: React.FC<PlayerProps> = ({ 
@@ -76,7 +67,7 @@ const Player: React.FC<PlayerProps> = ({
       /* search fallback */
     }
     if (!spotifyUrl) {
-      spotifyUrl = openSpotifyUrlForTrack(null, track.title, track.artist);
+      spotifyUrl = spotifyOpenUrlForSong(track.artist, track.title);
     }
 
     const shareText = [
@@ -116,7 +107,7 @@ const Player: React.FC<PlayerProps> = ({
   const songTimeRef = useRef(0);
 
   const spotifyOpenUrl = useMemo(
-    () => openSpotifyUrlForTrack(spotifyUri, track.title, track.artist),
+    () => spotifyOpenUrlForSong(track.artist, track.title, spotifyUri),
     [spotifyUri, track.title, track.artist]
   );
 

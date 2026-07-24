@@ -241,11 +241,32 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// Deezer Track Metadata + Offset Calculation
+// Track Metadata + Offset Calculation (Deezer numeric ids or itunes_* fallback ids)
 app.get('/api/tracks/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
+    // iTunes-sourced daily words use itunes_* ids — resolve via deezerService, not Deezer /track/:id
+    if (deezer.isItunesTrackId?.(id)) {
+      const track = await deezer.fetchTrack(id);
+      if (!track?.preview) {
+        return res.status(404).json({ error: 'No audio preview available for this track' });
+      }
+      const duration = track.duration || 0;
+      let previewOffset = 0;
+      if (duration > 60) previewOffset = 30;
+      else if (duration > 30) previewOffset = duration - 30;
+      return res.json({
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        preview: deezer.previewProxyPath(track.id, track.artist, track.title),
+        duration,
+        preview_offset: previewOffset,
+        cover: track.cover || null,
+      });
+    }
+
     const response = await fetch(`https://api.deezer.com/track/${id}`, {
       headers: {
         'User-Agent': process.env.DEEZER_USER_AGENT || 'Mozilla/5.0 (compatible; Harmonix/1.7; +https://harmonix.app)',
