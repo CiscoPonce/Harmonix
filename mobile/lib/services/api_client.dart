@@ -10,7 +10,7 @@ import '../spotify/spotify_contracts.dart';
 /// `flutter run --dart-define=API_BASE=https://your-domain/api`
 const String kApiBase = String.fromEnvironment(
   'API_BASE',
-  defaultValue: 'https://moral-sparrow-nationally.ngrok-free.app/api',
+  defaultValue: 'https://harmonix.peeporunclub.co.uk/api',
 );
 
 class ApiException implements Exception {

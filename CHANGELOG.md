@@ -11,6 +11,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * unify Discover and Learn into one home (`/discover`; Learn nav removed)
 * Settings music style (genre) for daily-word personalization
 * Settings voice gender for Pocket-TTS pronunciation
+* Flutter Settings: music style chips + voice gender (Phase 16 parity with web)
 * theme-aware Harmonix logos (light / dark / mark)
 * Library header shows Spotify account when connected (`Spotify · {name}`)
 * player: Open in Spotify when Web Playback SDK is unavailable

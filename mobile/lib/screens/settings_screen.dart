@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../constants/learning_prefs.dart';
 import '../services/api_client.dart';
 import '../spotify/spotify_contracts.dart';
 import '../state/auth_state.dart';
@@ -21,6 +22,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, dynamic>? _stats;
   List<dynamic> _badges = [];
   bool _loading = true;
+  bool _prefsSaving = false;
+  String? _prefsMessage;
 
   String _spotifyState = 'connect';
   String? _spotifyDisplayName;
@@ -152,12 +155,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _savePrefs(Map<String, String> patch, {String? successHint}) async {
+    if (_prefsSaving) return;
+    final auth = context.read<AuthState>();
+    final api = context.read<ApiClient>();
+    setState(() {
+      _prefsSaving = true;
+      _prefsMessage = null;
+    });
+    try {
+      await api.patchPreferences(patch);
+      await auth.refreshUser();
+      if (!mounted) return;
+      setState(() {
+        _prefsMessage = successHint ?? 'Saved';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save preferences: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _prefsSaving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthState>();
     final themeCtrl = context.watch<ThemeController>();
     final colors = HarmonixColors.of(context);
     final user = auth.user ?? {};
+    final nativeLang = normalizeLanguage(user['native_language']?.toString(), fallback: 'en');
+    final targetLang = normalizeLanguage(user['target_language']?.toString(), fallback: 'fr');
+    final genre = normalizeGenre(user['genre']?.toString());
+    final voice = normalizeVoiceGender(user['voice_gender']?.toString());
 
     if (_loading) {
       return Center(child: CircularProgressIndicator(color: colors.accent));
@@ -185,15 +217,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(fontWeight: FontWeight.w800, color: colors.textPrimary),
             ),
             subtitle: Text(
-              '${user['native_language'] ?? 'en'} → ${user['target_language'] ?? 'fr'}',
+              '$nativeLang → $targetLang · $genre · $voice',
               style: TextStyle(color: colors.textMuted),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Languages can be changed below. Genre and difficulty are set during onboarding and are not editable here.',
-            style: TextStyle(color: colors.textMuted, fontSize: 12),
-          ),
+          if (_prefsMessage != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              _prefsMessage!,
+              style: TextStyle(color: colors.accent, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ],
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(16),
@@ -215,70 +249,115 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
-                        value: (user['native_language']?.toString().isNotEmpty == true)
-                            ? user['native_language'].toString()
-                            : 'en',
+                        value: nativeLang,
                         decoration: const InputDecoration(
                           labelText: 'Home Language',
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         ),
-                        items: const [
-                          DropdownMenuItem(value: 'en', child: Text('English')),
-                          DropdownMenuItem(value: 'es', child: Text('Spanish')),
-                          DropdownMenuItem(value: 'fr', child: Text('French')),
-                          DropdownMenuItem(value: 'de', child: Text('German')),
-                          DropdownMenuItem(value: 'it', child: Text('Italian')),
-                          DropdownMenuItem(value: 'ja', child: Text('Japanese')),
+                        items: [
+                          for (final l in kLanguages)
+                            DropdownMenuItem(value: l.$1, child: Text(l.$2)),
                         ],
-                        onChanged: (val) async {
-                          if (val != null) {
-                            try {
-                              final api = context.read<ApiClient>();
-                              await api.patchPreferences({'native_language': val});
-                              await auth.refreshUser();
-                            } catch (_) {}
-                          }
-                        },
+                        onChanged: _prefsSaving
+                            ? null
+                            : (val) {
+                                if (val != null) {
+                                  _savePrefs({'native_language': val}, successHint: 'Home language saved');
+                                }
+                              },
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
-                        value: (user['target_language']?.toString().isNotEmpty == true)
-                            ? user['target_language'].toString()
-                            : 'fr',
+                        value: targetLang,
                         decoration: const InputDecoration(
                           labelText: 'Learning',
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         ),
-                        items: const [
-                          DropdownMenuItem(value: 'fr', child: Text('French')),
-                          DropdownMenuItem(value: 'es', child: Text('Spanish')),
-                          DropdownMenuItem(value: 'de', child: Text('German')),
-                          DropdownMenuItem(value: 'it', child: Text('Italian')),
-                          DropdownMenuItem(value: 'ja', child: Text('Japanese')),
-                          DropdownMenuItem(value: 'en', child: Text('English')),
+                        items: [
+                          for (final l in kLanguages)
+                            DropdownMenuItem(value: l.$1, child: Text(l.$2)),
                         ],
-                        onChanged: (val) async {
-                          if (val != null) {
-                            try {
-                              final api = context.read<ApiClient>();
-                              await api.patchPreferences({'target_language': val});
-                              await auth.refreshUser();
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Target language updated to $val')),
-                                );
-                              }
-                            } catch (_) {}
-                          }
-                        },
+                        onChanged: _prefsSaving
+                            ? null
+                            : (val) {
+                                if (val != null) {
+                                  _savePrefs(
+                                    {'target_language': val},
+                                    successHint: 'Learning language saved — word queue refreshed',
+                                  );
+                                }
+                              },
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'MUSIC STYLE',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: colors.accent),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Prefer songs in this style when picking words. Changing style refreshes your word queue.',
+                  style: TextStyle(color: colors.textMuted, fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final s in kMusicStyles)
+                      ChoiceChip(
+                        label: Text(s.$2),
+                        selected: genre == s.$1,
+                        selectedColor: colors.accent.withValues(alpha: 0.22),
+                        labelStyle: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: genre == s.$1 ? colors.accent : colors.textPrimary,
+                        ),
+                        side: BorderSide(color: genre == s.$1 ? colors.accent : colors.border),
+                        onSelected: _prefsSaving
+                            ? null
+                            : (_) => _savePrefs(
+                                  {'genre': s.$1},
+                                  successHint: 'Music style saved — word queue refreshed',
+                                ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'VOICE',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: colors.accent),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Pocket-TTS pronunciation voice for daily words.',
+                  style: TextStyle(color: colors.textMuted, fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+                SegmentedButton<String>(
+                  segments: [
+                    for (final v in kVoiceGenders)
+                      ButtonSegment(value: v.$1, label: Text(v.$2), icon: Icon(
+                        v.$1 == 'female' ? Icons.record_voice_over : Icons.record_voice_over_outlined,
+                      )),
+                  ],
+                  selected: {voice},
+                  onSelectionChanged: _prefsSaving
+                      ? null
+                      : (next) {
+                          if (next.isEmpty) return;
+                          _savePrefs(
+                            {'voice_gender': next.first},
+                            successHint: 'Voice saved',
+                          );
+                        },
                 ),
               ],
             ),

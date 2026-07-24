@@ -21,8 +21,8 @@ class HarmonixColors {
   final Color border;
   final Color onAccent;
 
-  /// Brand green (light theme primary). Use `of(context).accent` in widgets.
-  static const brand = Color(0xFF0B6B3A);
+  /// Brand green (light theme primary). Matches web Phase 13 `#0B4D2E`.
+  static const brand = Color(0xFF0B4D2E);
 
   static const _light = HarmonixColors._(
     background: Color(0xFFF4F7F5),
@@ -72,30 +72,30 @@ ThemeData buildHarmonixTheme({required Brightness brightness}) {
   );
 
   return base.copyWith(
-    textTheme: GoogleFonts.interTextTheme(base.textTheme).copyWith(
-      displayLarge: GoogleFonts.inter(
+    textTheme: GoogleFonts.dmSansTextTheme(base.textTheme).copyWith(
+      displayLarge: GoogleFonts.fraunces(
         fontSize: 48,
         fontWeight: FontWeight.w900,
         fontStyle: FontStyle.italic,
         color: colors.textPrimary,
       ),
-      headlineMedium: GoogleFonts.inter(
+      headlineMedium: GoogleFonts.fraunces(
         fontSize: 22,
         fontWeight: FontWeight.w800,
         fontStyle: FontStyle.italic,
         color: colors.accent,
       ),
-      titleSmall: GoogleFonts.inter(
+      titleSmall: GoogleFonts.dmSans(
         fontSize: 12,
         fontWeight: FontWeight.w700,
         letterSpacing: 1.6,
         color: colors.textMuted,
       ),
-      bodyLarge: GoogleFonts.inter(
+      bodyLarge: GoogleFonts.dmSans(
         fontSize: 16,
         color: colors.textMuted,
       ),
-      bodyMedium: GoogleFonts.inter(
+      bodyMedium: GoogleFonts.dmSans(
         fontSize: 14,
         color: colors.textPrimary,
       ),

@@ -178,3 +178,23 @@ Not a new phase — product refinements after Phase 14 close:
 | Containerize Pocket-TTS | Later |
 
 Other optional ops (not blocking): Play Store listing, AI provider hardening, Extended Spotify Quota.
+
+---
+
+## Phase 16 — Flutter + Capacitor web parity 🚧
+
+**Status:** In progress (2026-07-24)  
+**Milestone:** v1.9  
+**Goal:** Flutter Android matches web design language and learning functionality; Capacitor remains legacy web-shell fallback.
+
+| Workstream | Status |
+|------------|--------|
+| Settings: music style + voice gender + language list | In progress |
+| Discover home (practice strip, review, shelf) | Pending |
+| Hear-it + WOTD actions | Pending |
+| Library Spotify header chip | Pending |
+| Visual tokens (Phase 13 greens + Fraunces/DM Sans) | In progress |
+| Dual-frontend QA refresh + Capacitor smoke | Pending |
+
+**Context:** [`.planning/phases/16-flutter-web-parity/16-CONTEXT.md`](./phases/16-flutter-web-parity/16-CONTEXT.md)  
+**Parity matrix:** [`docs/DUAL-FRONTEND-QA.md`](../docs/DUAL-FRONTEND-QA.md)
