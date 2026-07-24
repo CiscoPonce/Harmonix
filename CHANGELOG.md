@@ -20,6 +20,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ### Bug Fixes
 
+* daily-word: prefer a new song for every new word (no same-track repeats until catalog exhausted)
 * Library: keep Spotify status in header only (no duplicate Connected CTA)
 * sidebar: pin full height and restore Pro Plan card
 * player: fall back to Deezer 30s when Spotify SDK times out
