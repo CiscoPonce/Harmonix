@@ -1,0 +1,28 @@
+name: Check Harmonix production
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Production status over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HARMONIX_DEPLOY_HOST }}
+          username: ${{ secrets.HARMONIX_DEPLOY_USER }}
+          key: ${{ secrets.HARMONIX_DEPLOY_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            echo "HOST=$(hostname)"
+            echo "=== containers ==="
+            docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' | head -30
+            echo "=== tts ==="
+            systemctl is-active harmonix-tts || true
+            curl -sf --max-time 3 http://127.0.0.1:3002/health; echo
+            echo "=== repo ==="
+            cd /home/ubuntu/lyric && git rev-parse --short HEAD && git status -sb | head -5
+            echo "=== https ==="
+            curl -s -o /dev/null -w "home:%{http_code}\n" --max-time 8 https://harmonix.peeporunclub.co.uk/
+            curl -s -o /dev/null -w "login:%{http_code}\n" --max-time 8 -X POST https://harmonix.peeporunclub.co.uk/api/auth/login -H 'Content-Type: application/json' -d '{}'
