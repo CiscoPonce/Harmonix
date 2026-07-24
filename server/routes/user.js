@@ -93,8 +93,10 @@ router.patch('/preferences', (req, res) => {
     const languageChanged =
       target_language !== undefined && target_language !== current?.target_language;
     if (languageChanged || genreChanged) {
-      // Stop in-flight refill of the old catalog, drop queued mismatches.
+      // Stop in-flight refill of the old catalog, drop queued mismatches,
+      // and invalidate any in-flight generate/deliver for the previous style.
       dailyWordService.abortRefill(userId);
+      dailyWordService.bumpPreferenceEpoch(userId);
       wordQueue.purgeAll(userId);
     }
     const user = db.prepare(preferencesSelect()).get(userId);

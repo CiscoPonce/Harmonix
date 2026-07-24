@@ -284,7 +284,7 @@ export function DailyWordCard({
     loadDailyWord(true);
     fetchQueueStatus();
     return () => loadAbortRef.current?.abort();
-  }, [user?.target_language, user?.native_language]);
+  }, [user?.target_language, user?.native_language, user?.genre]);
 
   // Poll while stocking OR while cold-generating so the "ready" badge updates live.
   useEffect(() => {

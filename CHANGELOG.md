@@ -25,7 +25,9 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 * daily-word: reject wrong-word glosses (e.g. COLOR→hope) and fall back to curated/dictionary translations
 * daily-word: Settings music style hard-gates song picks (no mixed-catalog fallback; cache/queue honor genre)
+* daily-word: stop forging AI/curated genre stamps; catalog genre is source of truth
 * daily-word: Hear-it seeks the real preview window (provider-aware) on web + Flutter
+* Discover: reload Word of the Day when Settings music style changes
 * daily-word: prefer a new song for every new word (no same-track repeats until catalog exhausted)
 * Library: keep Spotify status in header only (no duplicate Connected CTA)
 * sidebar: pin full height and restore Pro Plan card

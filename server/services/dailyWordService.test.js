@@ -196,11 +196,61 @@ describe("Daily Word Service", () => {
     expect(aiService.genresCompatible("hip-hop", "pop")).to.equal(false);
     expect(aiService.genresCompatible("reggaeton", "hip-hop")).to.equal(false);
     expect(aiService.genresCompatible(null, "rock")).to.equal(false);
+    expect(aiService.genresCompatible("salsa", "pop")).to.equal(false);
     const verified = aiService.getVerifiedSongCandidates("es", "hip-hop");
     expect(verified.length).to.be.greaterThan(0);
     expect(verified.every((s) => aiService.genresCompatible(s.genre, "hip-hop"))).to.equal(true);
     const rock = aiService.getVerifiedSongCandidates("es", "rock");
     expect(rock.every((s) => s.genre === "rock")).to.equal(true);
+  });
+
+  it("does not fall back to curated when verified genre pool is empty", () => {
+    // French verified catalog has no hip-hop rows — must stay empty (no pop relabel).
+    const verified = aiService.getVerifiedSongCandidates("fr", "hip-hop");
+    expect(verified).to.deep.equal([]);
+  });
+
+  it("keeps Despacito out of Spanish pop curated picks", () => {
+    const curated = aiService.getCuratedSongCandidates("es", "pop");
+    const keys = curated.map(
+      (s) => `${s.artist.toLowerCase()}|${s.song_title.toLowerCase()}`
+    );
+    expect(keys).to.not.include("luis fonsi|despacito");
+    expect(curated.every((s) => aiService.genresCompatible(s.genre, "pop"))).to.equal(true);
+  });
+
+  it("rejects AI songs that only match via forged user genre stamp", async () => {
+    const original = aiService.openai.chat.completions.create;
+    aiService.openai.chat.completions.create = async () => ({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            candidates: [
+              { song_title: "Despacito", artist: "Luis Fonsi", genre: "pop" },
+              { song_title: "Bailando", artist: "Enrique Iglesias", genre: "pop" },
+              { song_title: "Gasolina", artist: "Daddy Yankee", genre: "pop" },
+            ],
+          }),
+        },
+      }],
+    });
+    try {
+      const songs = await aiService.generateDailyWordSongs({
+        languageName: "Spanish",
+        languageCode: "es",
+        genre: "pop",
+        difficulty: "medium",
+      });
+      const keys = songs.map(
+        (s) => `${s.artist.toLowerCase()}|${s.song_title.toLowerCase()}`
+      );
+      expect(keys).to.not.include("luis fonsi|despacito");
+      expect(keys).to.not.include("daddy yankee|gasolina");
+      expect(keys).to.include("enrique iglesias|bailando");
+      expect(songs.every((s) => s.genre === "pop")).to.equal(true);
+    } finally {
+      aiService.openai.chat.completions.create = original;
+    }
   });
 
   it("getCuratedCandidatesForBatch stays inside the requested genre", () => {

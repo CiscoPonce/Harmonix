@@ -24,10 +24,20 @@ const USER_DELIVER_STOP_AFTER = 1;
 const batchGenerationInProgress = new Set();
 const batchGenerationWaiters = new Map();
 const refillAbortControllers = new Map();
+/** Bumped when language/genre preferences change so in-flight batches cannot deliver stale style. */
+const preferenceEpochByUser = new Map();
 
 function abortRefill(userId) {
   const controller = refillAbortControllers.get(userId);
   if (controller) controller.abort();
+}
+
+function bumpPreferenceEpoch(userId) {
+  preferenceEpochByUser.set(userId, (preferenceEpochByUser.get(userId) || 0) + 1);
+}
+
+function currentPreferenceEpoch(userId) {
+  return preferenceEpochByUser.get(userId) || 0;
 }
 
 function shuffleInPlace(list) {
@@ -639,6 +649,12 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
 
   const finishBackground = async () => {
     await poolPromise;
+    const fresh = db.prepare(
+      "SELECT genre, target_language FROM users WHERE id = ?"
+    ).get(user.id);
+    const expectedGenre = fresh?.genre || user.genre || "pop";
+    const expectedLang = fresh?.target_language || user.target_language || "es";
+
     const extraPartials = partials.slice(glossTarget.length);
     if (!extraPartials.length) return { queued: 0 };
 
@@ -652,7 +668,11 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
         toLang: normalizeLangCode(user.native_language || "en"),
       }
     );
-    const extraResults = buildResults(extraPartials, extraGlosses);
+    const extraResults = buildResults(extraPartials, extraGlosses)
+      .filter((effect) => (
+        payloadMatchesUserLanguage(effect.payload, expectedLang) &&
+        payloadMatchesUserGenre(effect.payload, expectedGenre)
+      ));
     for (const effect of extraResults) {
       persistPayloadSideEffects(effect.payload, effect.track, effect.lyricsData, effect.syncCheck);
     }
@@ -1083,18 +1103,47 @@ async function persistBatchSideEffects(sideEffects) {
   }
 }
 
-async function deliverFromBatch(user, batch, fetchImpl, { fromQueue = false } = {}) {
-  await persistBatchSideEffects(batch.sideEffects);
-  const [first, ...rest] = batch.valid;
+async function deliverFromBatch(user, batch, fetchImpl, { fromQueue = false, preferenceEpoch = null } = {}) {
+  const fresh = db.prepare(
+    "SELECT genre, target_language FROM users WHERE id = ?"
+  ).get(user.id);
+  const expectedGenre = fresh?.genre || user.genre || "pop";
+  const expectedLang = fresh?.target_language || user.target_language || "es";
+  if (
+    preferenceEpoch != null &&
+    preferenceEpoch !== currentPreferenceEpoch(user.id)
+  ) {
+    const err = new Error("daily_word_stale_preferences");
+    err.code = "stale_preferences";
+    throw err;
+  }
+
+  // batch.valid is an array of payloads (see validateAllCandidates).
+  const matching = (batch.valid || []).filter((payload) => (
+    payloadMatchesUserLanguage(payload, expectedLang) &&
+    payloadMatchesUserGenre(payload, expectedGenre)
+  ));
+  if (!matching.length) {
+    const err = new Error("daily_word_stale_preferences");
+    err.code = "stale_preferences";
+    throw err;
+  }
+
+  await persistBatchSideEffects(
+    (batch.sideEffects || []).filter((effect) =>
+      matching.some((payload) => payload === effect.payload)
+    )
+  );
+  const [first, ...rest] = matching;
   if (rest.length) {
     const uniqueRest = filterUniquePayloads(user.id, rest);
     const inserted = wordQueue.enqueuePayloads(user.id, uniqueRest);
     if (uniqueRest.length < rest.length) {
       console.log(`daily word batch: skipped ${rest.length - uniqueRest.length} duplicate queued words`);
     }
-    console.log(`daily word batch: delivered 1, queued ${inserted}/${uniqueRest.length} (${batch.valid.length}/${batch.candidateCount} validated)`);
+    console.log(`daily word batch: delivered 1, queued ${inserted}/${uniqueRest.length} (${matching.length}/${batch.candidateCount} validated)`);
   } else {
-    console.log(`daily word batch: delivered 1 (${batch.valid.length}/${batch.candidateCount} validated)`);
+    console.log(`daily word batch: delivered 1 (${matching.length}/${batch.candidateCount} validated)`);
   }
   if (batch.finishBackground) {
     setImmediate(() => {
@@ -1134,12 +1183,18 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
     const started = Date.now();
     const deadline = started + maxMs;
     let lastError = "unknown";
+    const preferenceEpoch = currentPreferenceEpoch(user.id);
 
     for (let attempt = 0; attempt < maxAttempts && Date.now() < deadline; attempt++) {
+      if (preferenceEpoch !== currentPreferenceEpoch(user.id)) {
+        const err = new Error("daily_word_stale_preferences");
+        err.code = "stale_preferences";
+        throw err;
+      }
       const batch = await generateValidatedBatch(user, fetchImpl, { stopAfter: USER_DELIVER_STOP_AFTER });
       if (batch.valid.length) {
         console.log(`daily word batch: first valid in ${Date.now() - started}ms (attempt ${attempt + 1})`);
-        return deliverFromBatch(user, batch, fetchImpl);
+        return deliverFromBatch(user, batch, fetchImpl, { preferenceEpoch });
       }
       lastError = batch.lastError || "unknown";
       console.warn(
@@ -1659,5 +1714,6 @@ module.exports = {
   payloadMatchesUserLanguage,
   payloadMatchesUserGenre,
   abortRefill,
+  bumpPreferenceEpoch,
   VALIDATE_CONCURRENCY,
 };
