@@ -368,11 +368,18 @@ export function DailyWordCard({
           : 30,
       });
 
-      if (!win.inWindow) {
+      if (!win.shouldPlay || !win.inWindow) {
+        try {
+          URL.revokeObjectURL(objectUrl);
+        } catch {
+          /* ignore */
+        }
+        if (prevSrc) audio.src = prevSrc;
         setRefreshError(
-          `Word is at ${data.lyric.timestamp}; preview window may not include it. Playing the closest clip.`
+          `This preview doesn’t include “${data.word.text}” at ${data.lyric.timestamp}. Try Spotify Hear-it or tap Next word.`
         );
-        window.setTimeout(() => setRefreshError(null), 5500);
+        window.setTimeout(() => setRefreshError(null), 7000);
+        return false;
       }
 
       const previewLen = Number.isFinite(audio.duration) && audio.duration > 0
@@ -400,7 +407,7 @@ export function DailyWordCard({
       await audio.play();
       audioProviderRef.current = 'deezer';
       setIsPlaying(true);
-      if (win.inWindow) setRefreshError(null);
+      setRefreshError(null);
 
       const playMs = Math.max(1800, (stopAt - seekTo) * 1000);
       hearStopTimerRef.current = setTimeout(() => {

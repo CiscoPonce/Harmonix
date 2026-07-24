@@ -74,8 +74,18 @@ describe('hearItTiming', () => {
       preview_offset: 30,
     });
     assert.equal(win.inWindow, false);
-    assert.ok(win.seekTo >= 15);
-    assert.equal(win.stopAt, 30);
+    assert.equal(win.shouldPlay, false);
+  });
+
+  it('keeps word estimate near line start when LRC gap is huge', () => {
+    const t = estimateWordSongTimeSec({
+      timestamp_ms: 40_000,
+      snippet: 'hola mundo',
+      char_start: 5,
+      char_end: 10,
+      line_end_ms: 80_000, // 40s sparse gap
+    });
+    assert.ok(t >= 40 && t <= 46, `t=${t}`);
   });
 
   it('builds a Spotify clip around the word', () => {

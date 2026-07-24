@@ -6,6 +6,9 @@
  * Hear-it plays the sung word in sync with the highlighted phrase — language-agnostic.
  */
 
+/** Cap sparse LRC gaps so word estimates stay near the stamped line start. */
+const MAX_LINE_DUR_FOR_WORD_EST_SEC = 5;
+
 export function lineBoundsSec(input: {
   timestamp_ms: number;
   line_end_ms?: number | null;
@@ -26,6 +29,8 @@ export function lineBoundsSec(input: {
 /**
  * Estimate when the highlighted word is sung inside the LRC line.
  * Uses Unicode code points so accented / non-Latin scripts stay accurate.
+ * Line duration is capped so sparse LRC (long instrumental gaps) cannot shove
+ * the seek many seconds past the real sung moment.
  */
 export function estimateWordSongTimeSec(input: {
   timestamp_ms: number;
@@ -35,6 +40,7 @@ export function estimateWordSongTimeSec(input: {
   line_end_ms?: number | null;
 }): number {
   const { lineStartSec, lineDurSec } = lineBoundsSec(input);
+  const effectiveDur = Math.min(lineDurSec, MAX_LINE_DUR_FOR_WORD_EST_SEC);
   const chars = Array.from(String(input.snippet || ''));
   const len = Math.max(1, chars.length);
   // Alignment may be UTF-16 indices; clamp into code-point space.
@@ -42,7 +48,8 @@ export function estimateWordSongTimeSec(input: {
   const end = Math.max(start, Math.min(Number(input.char_end) || start, len));
   const mid = (start + end) / 2;
   const frac = Math.min(1, Math.max(0, mid / len));
-  return lineStartSec + frac * lineDurSec;
+  // Bias toward line start: small char fraction on a capped window.
+  return lineStartSec + frac * effectiveDur;
 }
 
 export function formatPreviewWindowLabel(offsetSec: number, lengthSec = 30): string {
@@ -76,6 +83,8 @@ export type DeezerHearWindow = {
   seekTo: number;
   stopAt: number;
   inWindow: boolean;
+  /** False when the preview bytes cannot contain the lyric — do not play a misleading edge clip. */
+  shouldPlay: boolean;
   relative: number;
   wordSongTimeSec: number;
 };
@@ -127,25 +136,18 @@ export function computeDeezerHearWindow(input: {
       seekTo: Math.round(seekTo * 100) / 100,
       stopAt: Math.round(stopAt * 100) / 100,
       inWindow: true,
+      shouldPlay: true,
       relative: relativeWord,
       wordSongTimeSec,
     };
   }
 
-  // Outside the preview cut — play the nearest edge (honest fallback).
-  if (relativeWord < 0) {
-    return {
-      seekTo: 0,
-      stopAt: Math.min(TARGET_CLIP, PREVIEW_LEN),
-      inWindow: false,
-      relative: relativeWord,
-      wordSongTimeSec,
-    };
-  }
+  // Outside the preview cut — do not play a random edge (that lied to users).
   return {
-    seekTo: Math.max(0, PREVIEW_LEN - TARGET_CLIP),
-    stopAt: PREVIEW_LEN,
+    seekTo: 0,
+    stopAt: 0,
     inWindow: false,
+    shouldPlay: false,
     relative: relativeWord,
     wordSongTimeSec,
   };

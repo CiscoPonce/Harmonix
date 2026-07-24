@@ -199,13 +199,22 @@ function SettingsContent() {
     }
   };
 
-  const handleSaveProfilePrefs = async () => {
+  const handleSaveProfilePrefs = async (override?: {
+    nativeLanguage?: string;
+    targetLanguage?: string;
+    musicStyle?: string;
+    voiceGender?: 'female' | 'male';
+  }) => {
     if (langSaving) return;
-    if (!nativeLanguage || !targetLanguage) {
+    const nextNative = override?.nativeLanguage ?? nativeLanguage;
+    const nextTarget = override?.targetLanguage ?? targetLanguage;
+    const nextStyle = override?.musicStyle ?? musicStyle;
+    const nextVoice = override?.voiceGender ?? voiceGender;
+    if (!nextNative || !nextTarget) {
       setLangError('Select both your home language and the language you are learning.');
       return;
     }
-    if (nativeLanguage === targetLanguage) {
+    if (nextNative === nextTarget) {
       setLangError('Home and learning languages must be different.');
       return;
     }
@@ -218,10 +227,10 @@ function SettingsContent() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          native_language: nativeLanguage,
-          target_language: targetLanguage,
-          genre: musicStyle,
-          voice_gender: voiceGender,
+          native_language: nextNative,
+          target_language: nextTarget,
+          genre: nextStyle,
+          voice_gender: nextVoice,
         }),
       });
       if (!res.ok) {
@@ -237,6 +246,17 @@ function SettingsContent() {
       setLangSaving(false);
     }
   };
+
+  // Auto-save when languages / style / voice change (Save button is a visible backup).
+  useEffect(() => {
+    if (!user || !languagesDirty || langSaving) return;
+    if (!nativeLanguage || !targetLanguage || nativeLanguage === targetLanguage) return;
+    const timer = window.setTimeout(() => {
+      void handleSaveProfilePrefs();
+    }, 450);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- save when dirty fields change
+  }, [nativeLanguage, targetLanguage, musicStyle, voiceGender, languagesDirty]);
 
   if (authLoading || !user) {
     return (
@@ -440,6 +460,7 @@ function SettingsContent() {
             <Button
               type="button"
               variant="primary"
+              className="bg-[#0B4D2E] text-white hover:bg-[#093d25] border-[#0B4D2E] disabled:opacity-60 dark:bg-[#3DCF7A] dark:text-[#0C1210] dark:border-[#3DCF7A] dark:hover:bg-[#2FB86A]"
               onClick={() => void handleSaveProfilePrefs()}
               disabled={langSaving || !languagesDirty}
             >
@@ -448,8 +469,10 @@ function SettingsContent() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving…
                 </>
-              ) : (
+              ) : languagesDirty ? (
                 'Save changes'
+              ) : (
+                'Saved'
               )}
             </Button>
             {languagesDirty && (
@@ -468,6 +491,9 @@ function SettingsContent() {
                 Reset
               </button>
             )}
+            <p className="w-full text-xs text-[#5C6B62] dark:text-[#9AABA0]">
+              Changes save automatically. Use Save if you want to apply immediately.
+            </p>
           </div>
         </section>
 

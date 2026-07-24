@@ -70,13 +70,21 @@ describe("Daily Word Service", () => {
     expect(previewOffset(25)).to.equal(0);
   });
 
-  it("prefers word occurrences inside the Deezer preview window", () => {
+  it("prefers opening-window occurrences (iTunes-compatible) over mid-track Deezer window", () => {
     const { isTimestampInPreview } = require("./dailyWordService");
     expect(isTimestampInPreview(45000, 180)).to.equal(true); // 0:45 in [30,60]
-    expect(isTimestampInPreview(10000, 180)).to.equal(false); // 0:10 outside
+    expect(isTimestampInPreview(10000, 180)).to.equal(false); // 0:10 outside Deezer mid window
     const lrc =
       "[00:10.00] Early word forever\n[00:45.00] Later word forever in chorus";
     const hit = findWordOccurrence("forever", lrc, null, { duration: 180 });
+    expect(hit).to.not.be.null;
+    expect(hit.timestamp).to.equal("0:10");
+    expect(hit.in_preview).to.equal(true);
+  });
+
+  it("falls back to Deezer mid-preview when no opening-window hit exists", () => {
+    const lrc = "[00:45.00] Later word forever in chorus\n[01:20.00] after the bridge";
+    const hit = findWordOccurrence("forever", lrc, null, { duration: 180, provider: "deezer" });
     expect(hit).to.not.be.null;
     expect(hit.timestamp).to.equal("0:45");
     expect(hit.in_preview).to.equal(true);

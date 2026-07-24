@@ -118,6 +118,12 @@ function isTimestampInPreview(timestampMs, duration, provider = "deezer") {
   return t >= offset + 1.0 && t <= end - 1.5;
 }
 
+/** Opening ~30s — matches iTunes previews and Deezer short-track previews (Coolify often falls back to iTunes). */
+function isTimestampInOpeningPreview(timestampMs) {
+  const t = Number(timestampMs) / 1000;
+  return t >= 1.0 && t <= 28.5;
+}
+
 function parseLyricLines(lrc) {
   if (!lrc) return [];
   return lrc
@@ -160,17 +166,31 @@ function findWordOccurrence(word, syncedLyrics, plainLyrics = null, options = {}
   const provider = options.provider || "deezer";
   let chosen = occurrences[0];
   if (duration != null) {
-    const inPreview = occurrences.find((hit) => {
+    // Prefer opening-window hits first (iTunes / Coolify fallback), then provider preview.
+    const inOpening = occurrences.find((hit) => {
       const line = parsed[hit.line_index];
-      return line && isTimestampInPreview(line.time, duration, provider);
+      return line && isTimestampInOpeningPreview(line.time);
     });
-    if (inPreview) chosen = inPreview;
+    if (inOpening) {
+      chosen = inOpening;
+    } else {
+      const inPreview = occurrences.find((hit) => {
+        const line = parsed[hit.line_index];
+        return line && isTimestampInPreview(line.time, duration, provider);
+      });
+      if (inPreview) chosen = inPreview;
+    }
   }
 
   const line = parsed[chosen.line_index];
   if (!line) return null;
 
-  const in_preview = duration != null ? isTimestampInPreview(line.time, duration, provider) : null;
+  const in_preview =
+    duration != null
+      ? isTimestampInOpeningPreview(line.time) ||
+        isTimestampInPreview(line.time, duration, provider) ||
+        isTimestampInPreview(line.time, duration, "itunes")
+      : null;
   const nextLine = parsed[chosen.line_index + 1];
   // Real sung-line length from next LRC stamp (fallback ~4s).
   const line_end_ms =
@@ -378,9 +398,10 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
 
       if (!occurrence.in_preview) {
         console.warn(
-          `daily word warn: lyric outside preview window ${label} ` +
+          `daily word reject: lyric outside preview window ${label} ` +
             `(t=${occurrence.timestamp} window=${formatTimestamp(previewStart * 1000)}-${formatTimestamp(previewEnd * 1000)})`
         );
+        return { error: "lyric_outside_preview" };
       }
 
       return {

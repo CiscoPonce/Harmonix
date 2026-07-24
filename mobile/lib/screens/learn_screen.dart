@@ -211,7 +211,8 @@ class _LearnScreenState extends State<LearnScreen> {
       await _previewPlayer.setVolume(1.0);
       final offset = (audio?['preview_offset'] as num?)?.toDouble() ?? 0;
       final tsMs = (lyric?['timestamp_ms'] as num?)?.toDouble() ?? 0;
-      final start = (offset + tsMs / 1000 - 2).clamp(0, 25);
+      // Preview element timeline: lyric song-time minus preview offset (not plus).
+      final start = (tsMs / 1000 - offset - 2).clamp(0.0, 25.0);
       await _previewPlayer.seek(Duration(milliseconds: (start * 1000).round()));
       await _previewPlayer.play();
     } catch (e) {
