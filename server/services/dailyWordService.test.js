@@ -13,6 +13,8 @@ const {
   generateDailyWord,
   pickWordFromLyricsHeuristic,
   filterUniquePayloads,
+  filterUnusedSongCandidates,
+  getCuratedCandidatesForBatch,
   getUserDiscoveryHistory,
   purgeQueueWrongLanguage,
   VALIDATE_CONCURRENCY,
@@ -491,6 +493,38 @@ describe("Daily Word Service", () => {
     expect(result.word.text).to.equal("noche");
   });
 
+  it("skips queued items that reuse a song already in history", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    saveDailyWord(userId, today, {
+      date: today,
+      word: { text: "amor" },
+      song: { id: "1", title: "Song A", artist: "Artist A" },
+    });
+    wordQueue.enqueuePayloads(userId, [
+      {
+        date: today,
+        language_code: "es",
+        word: { text: "corazon", translation: "heart" },
+        lyric: { snippet: "corazon", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 7 },
+        song: { id: "1", title: "Song A", artist: "Artist A" },
+        audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      },
+      {
+        date: today,
+        language_code: "es",
+        word: { text: "noche", translation: "night" },
+        lyric: { snippet: "noche", timestamp: "0:01", timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 5 },
+        song: { id: "3", title: "Song C", artist: "Artist C" },
+        audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      },
+    ]);
+
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const result = await consumeNextDailyWord(user);
+    expect(result.word.text).to.equal("noche");
+    expect(String(result.song.id)).to.equal("3");
+  });
+
   it("tracks full discovery history for dedupe", () => {
     saveDailyWord(userId, "2026-06-01", {
       date: "2026-06-01",
@@ -502,7 +536,7 @@ describe("Daily Word Service", () => {
     expect(history.songIds.has("1")).to.equal(true);
   });
 
-  it("filterUniquePayloads drops duplicate words", () => {
+  it("filterUniquePayloads drops duplicate words and songs", () => {
     saveDailyWord(userId, "2026-06-01", {
       date: "2026-06-01",
       word: { text: "amor" },
@@ -511,11 +545,55 @@ describe("Daily Word Service", () => {
     const filtered = filterUniquePayloads(userId, [
       { word: { text: "amor" }, song: { id: "2", title: "Song B", artist: "Artist B" } },
       { word: { text: "noche" }, song: { id: "1", title: "Song A", artist: "Artist A" } },
-      { word: { text: "noche" }, song: { id: "3", title: "Song C", artist: "Artist C" } },
+      { word: { text: "luz" }, song: { id: "3", title: "Song C", artist: "Artist C" } },
+      { word: { text: "sol" }, song: { id: "3", title: "Song C", artist: "Artist C" } },
     ]);
     expect(filtered).to.have.lengthOf(1);
-    expect(filtered[0].word.text).to.equal("noche");
-    expect(filtered[0].song.id).to.equal("1");
+    expect(filtered[0].word.text).to.equal("luz");
+    expect(filtered[0].song.id).to.equal("3");
+  });
+
+  it("filterUnusedSongCandidates keeps only unused artist|title keys", () => {
+    saveDailyWord(userId, "2026-06-01", {
+      date: "2026-06-01",
+      word: { text: "amor" },
+      song: { id: "1", title: "Song A", artist: "Artist A" },
+    });
+    const fresh = filterUnusedSongCandidates(userId, [
+      { artist: "Artist A", song_title: "Song A" },
+      { artist: "Artist B", song_title: "Song B" },
+    ]);
+    expect(fresh).to.have.lengthOf(1);
+    expect(fresh[0].song_title).to.equal("Song B");
+  });
+
+  it("getCuratedCandidatesForBatch never reintroduces used songs while unused remain", () => {
+    const catalog = [
+      { artist: "Artist A", song_title: "Song A", genre: "pop" },
+      { artist: "Artist B", song_title: "Song B", genre: "pop" },
+      { artist: "Artist C", song_title: "Song C", genre: "pop" },
+    ];
+    const originalCurated = aiService.getCuratedSongCandidates;
+    const originalVerified = aiService.getVerifiedSongCandidates;
+    aiService.getCuratedSongCandidates = () => catalog;
+    aiService.getVerifiedSongCandidates = () => [];
+    try {
+      saveDailyWord(userId, "2026-06-01", {
+        date: "2026-06-01",
+        word: { text: "amor" },
+        song: { id: "1", title: "Song A", artist: "Artist A" },
+      });
+      // Even with fewer than 5 fresh songs, used Song A must stay out.
+      const batch = getCuratedCandidatesForBatch(userId, "es", "pop");
+      const keys = batch.map(
+        (c) => `${c.artist.toLowerCase()}|${c.song_title.toLowerCase()}`
+      );
+      expect(keys).to.not.include("artist a|song a");
+      expect(keys.length).to.be.at.least(1);
+    } finally {
+      aiService.getCuratedSongCandidates = originalCurated;
+      aiService.getVerifiedSongCandidates = originalVerified;
+    }
   });
 
   it("limits validation concurrency", () => {
