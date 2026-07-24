@@ -620,7 +620,11 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
     glossTarget.map((p) => ({ word: p.picked.word, line: p.picked.line })),
     languageName,
     nativeLanguageName,
-    { fast: stopAfter <= USER_DELIVER_STOP_AFTER }
+    {
+      fast: stopAfter <= USER_DELIVER_STOP_AFTER,
+      fromLang: normalizeLangCode(user.target_language || "es"),
+      toLang: normalizeLangCode(user.native_language || "en"),
+    }
   );
 
   const buildResults = (items, glossList) => items.map((p, i) => {
@@ -657,7 +661,11 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
       extraPartials.map((p) => ({ word: p.picked.word, line: p.picked.line })),
       languageName,
       nativeLanguageName,
-      { fast: false }
+      {
+        fast: false,
+        fromLang: normalizeLangCode(user.target_language || "es"),
+        toLang: normalizeLangCode(user.native_language || "en"),
+      }
     );
     const extraResults = buildResults(extraPartials, extraGlosses);
     for (const effect of extraResults) {
@@ -1349,17 +1357,23 @@ function shouldBackgroundPolish(word) {
     && !wordMetaNeedsEnrichment(word);
 }
 
-async function glossWithCompleteness(items, languageName, nativeLanguageName, { fast = false } = {}) {
+async function glossWithCompleteness(items, languageName, nativeLanguageName, {
+  fast = false,
+  fromLang = null,
+  toLang = null,
+} = {}) {
   if (!items?.length) return [];
   let glosses = await aiService.glossDailyWords(items, languageName, {
     fast,
     nativeLanguageName,
     refine: false,
+    fromLang,
+    toLang,
   });
 
   const needsRefine = items.some((item, i) => (
     translationNeedsFix({ text: item.word, translation: glosses[i]?.translation })
-    || aiService.translationLooksSuspicious(item.word, glosses[i]?.translation)
+    || aiService.translationLooksSuspicious(item.word, glosses[i]?.translation, item.line)
   ));
   if (needsRefine) {
     glosses = await aiService.refineGlosses(
@@ -1369,6 +1383,23 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, { 
       nativeLanguageName,
       { fast }
     );
+    // After refine, still rescue with dictionary if needed.
+    if (fromLang && toLang) {
+      glosses = await Promise.all(glosses.map(async (g, i) => {
+        const item = items[i];
+        if (g?.translation
+          && !aiService.translationLooksSuspicious(item.word, g.translation, item.line)) {
+          return g;
+        }
+        const fb = await aiService.dictionaryGlossFallback(item.word, fromLang, toLang);
+        if (!fb) return { ...(g || {}), translation: null };
+        return aiService.sanitizeGloss(item.word, {
+          translation: fb,
+          part_of_speech: g?.part_of_speech,
+          pronunciation: g?.pronunciation,
+        }, item.line);
+      }));
+    }
   }
 
   // Never escalate to the slow (60s NIM) path on user-facing requests — background
@@ -1377,7 +1408,7 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, { 
     ...g,
     gloss_v: (
       g?.translation
-      && !aiService.translationLooksSuspicious(items[i].word, g.translation)
+      && !aiService.translationLooksSuspicious(items[i].word, g.translation, items[i].line)
     ) ? 2 : 1,
   }));
 }
@@ -1398,13 +1429,15 @@ async function enrichPayloadWordMeta(payload, user) {
       fast: true,
       nativeLanguageName,
       refine: false,
+      fromLang: normalizeLangCode(user.target_language || "es"),
+      toLang: normalizeLangCode(user.native_language || "en"),
     });
     let gloss = glosses[0];
     let candidateTranslation = gloss?.translation ?? payload.word.translation;
 
     if (
       translationNeedsFix({ text, translation: candidateTranslation })
-      || aiService.translationLooksSuspicious(text, candidateTranslation)
+      || aiService.translationLooksSuspicious(text, candidateTranslation, line)
       || !gloss?.pronunciation
     ) {
       glosses = await aiService.refineGlosses(
@@ -1422,19 +1455,37 @@ async function enrichPayloadWordMeta(payload, user) {
       candidateTranslation = gloss?.translation ?? candidateTranslation;
     }
 
+    if (
+      translationNeedsFix({ text, translation: candidateTranslation })
+      || aiService.translationLooksSuspicious(text, candidateTranslation, line)
+    ) {
+      const fb = await aiService.dictionaryGlossFallback(
+        text,
+        normalizeLangCode(user.target_language || "es"),
+        normalizeLangCode(user.native_language || "en")
+      );
+      if (fb) candidateTranslation = fb;
+      else if (aiService.translationLooksSuspicious(text, candidateTranslation, line)) {
+        candidateTranslation = null;
+      }
+    }
+
     if (!gloss && !candidateTranslation) return payload;
     console.log(`daily word enrich gloss: ${text} in ${Date.now() - started}ms`);
     const nextTranslation = gloss?.translation ?? candidateTranslation ?? payload.word.translation;
+    const safeTranslation = aiService.translationLooksSuspicious(text, nextTranslation, line)
+      ? null
+      : nextTranslation;
     return {
       ...payload,
       word: {
         ...payload.word,
-        translation: nextTranslation,
+        translation: safeTranslation,
         part_of_speech: gloss?.part_of_speech ?? payload.word.part_of_speech,
         pronunciation: gloss?.pronunciation ?? payload.word.pronunciation,
         gloss_v: (
-          nextTranslation
-          && !aiService.translationLooksSuspicious(text, nextTranslation)
+          safeTranslation
+          && !aiService.translationLooksSuspicious(text, safeTranslation, line)
         ) ? 2 : 1,
       },
     };
@@ -1450,12 +1501,13 @@ function scheduleBackgroundGlossPolish(user, payload) {
     (async () => {
       try {
         const text = payload.word.text;
+        const line = payload.lyric?.snippet || null;
         const translation = payload.word.translation;
         // Healthy glosses: stamp gloss_v without another AI call.
         if (
           translation
           && !translationNeedsFix(payload.word)
-          && !aiService.translationLooksSuspicious(text, translation)
+          && !aiService.translationLooksSuspicious(text, translation, line)
         ) {
           if (Number(payload.word.gloss_v || 0) < 2) {
             saveDailyWord(user.id, payload.date || todayDate(), {
@@ -1468,23 +1520,18 @@ function scheduleBackgroundGlossPolish(user, payload) {
 
         const languageName = languageNameFromCode(user.target_language || "es");
         const nativeLanguageName = languageNameFromCode(user.native_language || "en", "English");
-        const item = [{ word: text, line: payload.lyric?.snippet }];
+        const item = [{ word: text, line }];
         if (!item[0].line) return;
-        let glosses = [{
-          translation: payload.word.translation,
-          part_of_speech: payload.word.part_of_speech,
-          pronunciation: payload.word.pronunciation,
-        }];
-        glosses = await aiService.refineGlosses(
-          item,
-          glosses,
-          languageName,
+        const glosses = await aiService.glossDailyWords(item, languageName, {
+          fast: true,
           nativeLanguageName,
-          { fast: true }
-        );
+          refine: true,
+          fromLang: normalizeLangCode(user.target_language || "es"),
+          toLang: normalizeLangCode(user.native_language || "en"),
+        });
         const gloss = glosses[0];
         if (!gloss?.translation) return;
-        if (aiService.translationLooksSuspicious(text, gloss.translation)) return;
+        if (aiService.translationLooksSuspicious(text, gloss.translation, line)) return;
         const enriched = {
           ...payload,
           word: {
