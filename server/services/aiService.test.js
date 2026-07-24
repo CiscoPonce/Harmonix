@@ -102,11 +102,47 @@ describe('AI Service', () => {
   });
 
   it('flags idiom calques like brings → hace caer as suspicious', () => {
-    const { translationLooksSuspicious, sanitizeGloss } = require('./aiService');
+    const { translationLooksSuspicious, sanitizeGloss, commonGlossLookup } = require('./aiService');
     expect(translationLooksSuspicious('brings', 'hace caer')).to.equal(true);
     expect(translationLooksSuspicious('brings', 'trae')).to.equal(false);
     expect(translationLooksSuspicious('make', 'hacer')).to.equal(false);
+    expect(translationLooksSuspicious('color', 'hope', 'paint the color of hope')).to.equal(true);
+    expect(translationLooksSuspicious('color', 'hope EN')).to.equal(false); // suffix stripped → hope; no line
     expect(sanitizeGloss('brings', { translation: 'brings' }).translation).to.equal(null);
     expect(sanitizeGloss('brings', { translation: 'trae' }).translation).to.equal('trae');
+    expect(sanitizeGloss('color', { translation: 'hope EN' }, 'color of hope').translation).to.equal(null);
+    expect(sanitizeGloss('color', { translation: 'hope EN' }).translation).to.equal('hope');
+    expect(commonGlossLookup('color', 'es', 'en')).to.equal('colour');
+    expect(commonGlossLookup('esperanza', 'es', 'en')).to.equal('hope');
+  });
+
+  it('prefers curated gloss over conflicting AI neighbor-word mixup', async () => {
+    const { glossDailyWords } = require('./aiService');
+    const originalCreate = openai.chat.completions.create;
+    openai.chat.completions.create = async () => ({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            words: [{ word: 'color', translation: 'hope', part_of_speech: 'noun', pronunciation: '/ko.lor/' }],
+          }),
+        },
+      }],
+    });
+    try {
+      const glosses = await glossDailyWords(
+        [{ word: 'color', line: 'el color de la vida' }],
+        'Spanish',
+        {
+          fast: true,
+          nativeLanguageName: 'English',
+          fromLang: 'es',
+          toLang: 'en',
+          fetchImpl: async () => ({ ok: false }),
+        }
+      );
+      expect(glosses[0].translation).to.equal('colour');
+    } finally {
+      openai.chat.completions.create = originalCreate;
+    }
   });
 });

@@ -727,12 +727,21 @@ Reply with ONLY JSON:
   throw lastErr || new Error('invalid_ai_daily_word_response');
 }
 
-function sanitizeGloss(word, gloss) {
+function sanitizeGloss(word, gloss, line = null) {
   if (!gloss) return { translation: null, part_of_speech: null, pronunciation: null };
-  const raw = String(gloss.translation || "").trim();
+  let raw = String(gloss.translation || "").trim();
+  // Models sometimes append a language tag: "hope EN", "amour (FR)".
+  raw = raw
+    .replace(/\s*[\(\[]?\b(en|es|fr|de|it|pt|eng|spa|fre|ger|ita|por)\b[\)\]]?\s*$/i, "")
+    .replace(/\s*[-–—]\s*(english|spanish|french|german|italian|portuguese)\s*$/i, "")
+    .trim();
   const sameWord = raw.toLowerCase() === String(word || "").toLowerCase();
+  let translation = raw && !sameWord ? raw : null;
+  if (translation && translationLooksSuspicious(word, translation, line)) {
+    translation = null;
+  }
   return {
-    translation: raw && !sameWord ? raw : null,
+    translation,
     part_of_speech: gloss.part_of_speech || null,
     pronunciation: gloss.pronunciation || null,
   };
@@ -741,10 +750,14 @@ function sanitizeGloss(word, gloss) {
 /**
  * Heuristic: models often map a whole lyric idiom onto one word
  * (e.g. "brings" in "brings me down" → "hace caer"). Flag for re-check.
+ * Also catch "glossed the wrong word from the line" (color → hope when both appear).
  */
-function translationLooksSuspicious(word, translation) {
+function translationLooksSuspicious(word, translation, line = null) {
   const w = String(word || "").trim().toLowerCase();
-  const t = String(translation || "").trim().toLowerCase();
+  let t = String(translation || "").trim().toLowerCase();
+  t = t
+    .replace(/\s*[\(\[]?\b(en|es|fr|de|it|pt|eng|spa|fre|ger|ita|por)\b[\)\]]?\s*$/i, "")
+    .trim();
   if (!w || !t) return true;
   if (t === w) return true;
   const tokens = t.split(/\s+/).filter(Boolean);
@@ -756,7 +769,121 @@ function translationLooksSuspicious(word, translation) {
   ) {
     return true;
   }
+  // If the translation is another distinct token already in the lyric, the model
+  // almost certainly glossed the wrong word (e.g. COLOR → "hope" from the same line).
+  if (line) {
+    const lineTokens = String(line)
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}']+/u)
+      .filter(Boolean);
+    if (lineTokens.includes(w) && lineTokens.includes(t) && t !== w) {
+      return true;
+    }
+  }
   return false;
+}
+
+/** Small high-confidence glosses for frequent learner words (target → native). */
+const COMMON_GLOSS_TABLE = {
+  "es|en": {
+    color: "colour",
+    amor: "love",
+    corazon: "heart",
+    corazón: "heart",
+    vida: "life",
+    tiempo: "time",
+    noche: "night",
+    dia: "day",
+    día: "day",
+    luz: "light",
+    fuego: "fire",
+    esperanza: "hope",
+    pendiente: "earring",
+  },
+  "en|es": {
+    color: "color",
+    colour: "color",
+    love: "amor",
+    heart: "corazón",
+    hope: "esperanza",
+    night: "noche",
+    light: "luz",
+  },
+  "fr|en": {
+    amour: "love",
+    coeur: "heart",
+    cœur: "heart",
+    nuit: "night",
+    jour: "day",
+    espoir: "hope",
+    couleur: "colour",
+  },
+  "de|en": {
+    liebe: "love",
+    herz: "heart",
+    nacht: "night",
+    hoffnung: "hope",
+    farbe: "colour",
+  },
+  "it|en": {
+    amore: "love",
+    cuore: "heart",
+    notte: "night",
+    speranza: "hope",
+    colore: "colour",
+  },
+  "pt|en": {
+    amor: "love",
+    coracao: "heart",
+    coração: "heart",
+    noite: "night",
+    esperanca: "hope",
+    esperança: "hope",
+    cor: "colour",
+  },
+};
+
+function commonGlossLookup(word, fromLang, toLang) {
+  const key = `${String(fromLang || "").toLowerCase()}|${String(toLang || "").toLowerCase()}`;
+  const table = COMMON_GLOSS_TABLE[key];
+  if (!table) return null;
+  const hit = table[String(word || "").trim().toLowerCase()];
+  return hit || null;
+}
+
+/**
+ * Deterministic single-word gloss via MyMemory (no API key).
+ * Used when AI returns null/suspicious translations so learners never see "COLOR → hope".
+ */
+async function dictionaryGlossFallback(word, fromLang, toLang, fetchImpl = fetch) {
+  const text = String(word || "").trim();
+  const from = String(fromLang || "").toLowerCase();
+  const to = String(toLang || "").toLowerCase();
+  if (!text || !from || !to || from === to) return null;
+
+  const common = commonGlossLookup(text, from, to);
+  if (common) return common;
+
+  try {
+    const url =
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}` +
+      `&langpair=${encodeURIComponent(from)}|${encodeURIComponent(to)}`;
+    const res = await fetchImpl(url, { signal: AbortSignal.timeout(4000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    let translated = String(data?.responseData?.translatedText || "").trim();
+    translated = translated
+      .replace(/\s*[\(\[]?\b(en|es|fr|de|it|pt)\b[\)\]]?\s*$/i, "")
+      .trim();
+    if (!translated) return null;
+    if (translated.toLowerCase() === text.toLowerCase()) return null;
+    // MyMemory sometimes returns multi-sentence junk for single tokens.
+    if (translated.split(/\s+/).length > 4) return null;
+    if (/MYMEMORY WARNING/i.test(translated)) return null;
+    return translated;
+  } catch {
+    return null;
+  }
 }
 
 async function refineGlosses(items, glosses, languageName, nativeLanguageName, { fast = false } = {}) {
@@ -770,18 +897,20 @@ async function refineGlosses(items, glosses, languageName, nativeLanguageName, {
     pronunciation: glosses?.[i]?.pronunciation || null,
   }));
 
-  const needsCheck = pairs.some((p) => translationLooksSuspicious(p.word, p.translation));
+  const needsCheck = pairs.some((p) => translationLooksSuspicious(p.word, p.translation, p.line));
   // Never spend an AI round-trip when glosses already look fine (keeps Next Word snappy).
   if (!needsCheck) return glosses;
 
   const refinePrompt = `You are checking vocabulary glosses for language learners.
 For each item, the translation MUST be a short, accurate ${nativeLanguageName} meaning of ONLY the single ${languageName} word — as that word is used in the lyric line.
 Do NOT translate the whole line, idiom, or neighboring words onto this word.
+Do NOT return a translation of a different word that also appears in the line.
 
 Wrong example: word "brings", line "…brings me down…", translation "hace caer" or "derriba" → FIX to "trae" (or "lleva").
 Wrong example: word "pressure", line "under pressure", translation "bajo presión" as if the word meant the whole phrase → FIX to "presión".
+Wrong example: word "color", line "…color…hope…", translation "hope" → FIX to the real meaning of "color" (or leave empty if cognate).
 
-Keep translations to 1–3 everyday words in ${nativeLanguageName}. Never repeat the ${languageName} word.
+Keep translations to 1–3 everyday words in ${nativeLanguageName}. Never repeat the ${languageName} word. Never append a language code.
 Keep or improve part_of_speech and pronunciation (IPA or readable phonetic for the ${languageName} word).
 
 Items: ${JSON.stringify(pairs)}
@@ -819,26 +948,39 @@ Reply JSON only: { "words": [ { "word": "...", "translation": "...", "part_of_sp
     const list = raw?.words || raw?.items || [];
     const byWord = new Map(list.map((w) => [String(w.word || '').toLowerCase(), w]));
 
-    return pairs.map((pair) => {
+    return pairs.map((pair, idx) => {
       const hit = byWord.get(String(pair.word || '').toLowerCase());
+      const ordered = list[idx];
+      const candidate = hit || (
+        ordered && String(ordered.word || '').toLowerCase() === String(pair.word || '').toLowerCase()
+          ? ordered
+          : null
+      );
       const merged = sanitizeGloss(pair.word, {
-        translation: hit?.translation ?? pair.translation,
-        part_of_speech: hit?.part_of_speech ?? pair.part_of_speech,
-        pronunciation: hit?.pronunciation ?? pair.pronunciation,
-      });
-      // Prefer refined translation unless sanitizer wiped it
-      if (!merged.translation && pair.translation) {
-        return sanitizeGloss(pair.word, pair);
+        translation: candidate?.translation ?? pair.translation,
+        part_of_speech: candidate?.part_of_speech ?? pair.part_of_speech,
+        pronunciation: candidate?.pronunciation ?? pair.pronunciation,
+      }, pair.line);
+      if (!merged.translation && pair.translation
+          && !translationLooksSuspicious(pair.word, pair.translation, pair.line)) {
+        return sanitizeGloss(pair.word, pair, pair.line);
       }
       return merged;
     });
   } catch (err) {
     console.warn(`daily word gloss refine failed: ${err.message || err}`);
-    return glosses || pairs.map((p) => sanitizeGloss(p.word, p));
+    return glosses || pairs.map((p) => sanitizeGloss(p.word, p, p.line));
   }
 }
 
-async function glossDailyWords(items, languageName, { fast = false, nativeLanguageName = "English", refine = false } = {}) {
+async function glossDailyWords(items, languageName, {
+  fast = false,
+  nativeLanguageName = "English",
+  refine = false,
+  fromLang = null,
+  toLang = null,
+  fetchImpl = fetch,
+} = {}) {
   if (!items?.length) return [];
 
   const glossUserPrompt = `For each item, translate ONLY the single target "word" into ${nativeLanguageName}.
@@ -850,7 +992,9 @@ Hard rules:
 3. Never repeat the ${languageName} word as the translation.
 4. Do not invent meanings from surrounding words (WRONG: "brings" → "hace caer" because the line says "brings me down"; RIGHT: "trae").
 5. Ambiguous words must match the line (e.g. Spanish "pendiente" in "Un pendiente de oro" → "earring", not "pending").
-6. Also give part_of_speech and pronunciation (IPA or readable phonetic for how to say the ${languageName} word).
+6. Never translate a DIFFERENT word from the same line (WRONG: word "color", line has "hope", translation "hope").
+7. Never append a language code (WRONG: "hope EN").
+8. Also give part_of_speech and pronunciation (IPA or readable phonetic for how to say the ${languageName} word).
 
 Items: ${JSON.stringify(items)}
 
@@ -862,7 +1006,7 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
         messages: [
           {
             role: 'system',
-            content: `You translate single ${languageName} words into ${nativeLanguageName} for learners. Use lyric context only to disambiguate sense — never paraphrase the whole line. Return JSON only.`,
+            content: `You translate single ${languageName} words into ${nativeLanguageName} for learners. Use lyric context only to disambiguate sense — never paraphrase the whole line or borrow a neighbor word's meaning. Return JSON only.`,
           },
           {
             role: 'user',
@@ -877,7 +1021,7 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
         messages: [
           {
             role: 'system',
-            content: `You translate single ${languageName} words into ${nativeLanguageName} for learners. Use lyric context only to disambiguate sense — never paraphrase the whole line. Return JSON only.`,
+            content: `You translate single ${languageName} words into ${nativeLanguageName} for learners. Use lyric context only to disambiguate sense — never paraphrase the whole line or borrow a neighbor word's meaning. Return JSON only.`,
           },
           {
             role: 'user',
@@ -890,20 +1034,65 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
       }));
 
     const raw = parseJsonContent(response.choices?.[0]?.message?.content);
-    const list = raw?.words || raw?.items || [];
-    const byWord = new Map(list.map((w) => [String(w.word || '').toLowerCase(), w]));
+    const list = Array.isArray(raw?.words) ? raw.words
+      : Array.isArray(raw?.items) ? raw.items
+        : [];
+    const byWord = new Map(
+      list
+        .filter((w) => w && w.word)
+        .map((w) => [String(w.word || '').toLowerCase(), w])
+    );
 
-    const glosses = items.map((item) => {
-      const hit = byWord.get(String(item.word || '').toLowerCase());
+    let glosses = items.map((item, i) => {
+      const key = String(item.word || '').toLowerCase();
+      const byKey = byWord.get(key);
+      const ordered = list[i];
+      let hit = byKey;
+      if (!hit && ordered) {
+        const orderedWord = String(ordered.word || '').toLowerCase();
+        if (!orderedWord || orderedWord === key) hit = ordered;
+      }
       return sanitizeGloss(item.word, {
         translation: hit?.translation,
         part_of_speech: hit?.part_of_speech,
         pronunciation: hit?.pronunciation,
-      });
+      }, item.line);
     });
 
-    if (!refine) return glosses;
-    return refineGlosses(items, glosses, languageName, nativeLanguageName, { fast });
+    if (refine) {
+      glosses = await refineGlosses(items, glosses, languageName, nativeLanguageName, { fast });
+    }
+
+    if (fromLang && toLang) {
+      glosses = await Promise.all(glosses.map(async (g, i) => {
+        const item = items[i];
+        const common = commonGlossLookup(item.word, fromLang, toLang);
+        // Curated table beats a conflicting AI gloss (e.g. color → "hope").
+        if (common && g?.translation) {
+          const a = common.toLowerCase();
+          const b = String(g.translation).toLowerCase();
+          if (a !== b && !a.includes(b) && !b.includes(a)) {
+            return sanitizeGloss(item.word, {
+              translation: common,
+              part_of_speech: g.part_of_speech,
+              pronunciation: g.pronunciation,
+            }, item.line);
+          }
+        }
+        const bad = !g?.translation
+          || translationLooksSuspicious(item.word, g.translation, item.line);
+        if (!bad) return g;
+        const fb = common || await dictionaryGlossFallback(item.word, fromLang, toLang, fetchImpl);
+        if (!fb) return { ...g, translation: null };
+        return sanitizeGloss(item.word, {
+          translation: fb,
+          part_of_speech: g?.part_of_speech,
+          pronunciation: g?.pronunciation,
+        }, item.line);
+      }));
+    }
+
+    return glosses;
   };
 
   if (!fast) return runGloss();
@@ -912,7 +1101,13 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
     return await runGloss();
   } catch (err) {
     console.warn(`daily word gloss fallback: ${err.message || err}`);
-    return items.map((item) => sanitizeGloss(item.word, null));
+    if (fromLang && toLang) {
+      return Promise.all(items.map(async (item) => {
+        const fb = await dictionaryGlossFallback(item.word, fromLang, toLang, fetchImpl);
+        return sanitizeGloss(item.word, fb ? { translation: fb } : null, item.line);
+      }));
+    }
+    return items.map((item) => sanitizeGloss(item.word, null, item.line));
   }
 }
 
@@ -928,6 +1123,8 @@ module.exports = {
   refineGlosses,
   sanitizeGloss,
   translationLooksSuspicious,
+  dictionaryGlossFallback,
+  commonGlossLookup,
   createChatCompletion,
   createFastChatCompletion,
   AVAILABLE_MODELS,
