@@ -280,38 +280,47 @@ class _LearnScreenState extends State<LearnScreen> {
     final word = _word?['word'] as Map<String, dynamic>?;
     final url = audio?['preview_url'] as String?;
     if (url == null || lyric == null) return;
-    final resolved = api.resolveMediaUrl(url);
-    final win = computeDeezerHearWindow(
-      timestampMs: (lyric['timestamp_ms'] as num?) ?? 0,
-      lineEndMs: lyric['line_end_ms'] as num?,
-      snippet: lyric['snippet']?.toString() ?? '',
-      charStart: (lyric['char_start'] as num?) ?? 0,
-      charEnd: (lyric['char_end'] as num?) ?? 0,
-      previewOffset: audio?['preview_offset'] as num?,
-      previewProvider: audio?['preview_provider']?.toString(),
-      durationSeconds: audio?['duration_seconds'] as num?,
-    );
-    if (!win.shouldPlay || !win.inWindow) {
-      if (!mounted) return;
-      final label = word?['text']?.toString() ?? 'this word';
-      final stamp = lyric['timestamp']?.toString() ?? '';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            stamp.isEmpty
-                ? 'This preview doesn’t include “$label”. Try Open in Spotify.'
-                : 'This preview doesn’t include “$label” at $stamp. Try Open in Spotify.',
-          ),
-        ),
-      );
-      return;
-    }
     try {
       _hearStopTimer?.cancel();
       try {
         await _pronouncePlayer.stop();
       } catch (_) {}
-      await _previewPlayer.setUrl(resolved);
+
+      // Fetch bytes so we can read X-Harmonix-Preview-Provider (iTunes fallback).
+      final fetched = await api.fetchPreviewWithProvider(
+        url,
+        payloadProvider: audio?['preview_provider']?.toString(),
+      );
+      final win = computeDeezerHearWindow(
+        timestampMs: (lyric['timestamp_ms'] as num?) ?? 0,
+        lineEndMs: lyric['line_end_ms'] as num?,
+        snippet: lyric['snippet']?.toString() ?? '',
+        charStart: (lyric['char_start'] as num?) ?? 0,
+        charEnd: (lyric['char_end'] as num?) ?? 0,
+        previewOffset: audio?['preview_offset'] as num?,
+        previewProvider: fetched.provider,
+        durationSeconds: audio?['duration_seconds'] as num?,
+      );
+      if (!win.shouldPlay || !win.inWindow) {
+        if (!mounted) return;
+        final label = word?['text']?.toString() ?? 'this word';
+        final stamp = lyric['timestamp']?.toString() ?? '';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              stamp.isEmpty
+                  ? 'This preview doesn’t include “$label”. Try Open in Spotify.'
+                  : 'This preview doesn’t include “$label” at $stamp. Try Open in Spotify.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/hearit_preview.mp3');
+      await file.writeAsBytes(fetched.bytes, flush: true);
+      await _previewPlayer.setFilePath(file.path);
       await _previewPlayer.setVolume(1.0);
       final startMs = (win.seekTo * 1000).round();
       await _previewPlayer.seek(Duration(milliseconds: startMs));
@@ -470,6 +479,13 @@ class _LearnScreenState extends State<LearnScreen> {
               ],
             ],
           ),
+          if (_word?['style_relaxed'] == true) ...[
+            const SizedBox(height: 8),
+            Text(
+              "Couldn't find more ${(_word?['style_relaxed_from'] ?? 'that').toString().replaceAll('-', ' ')} tracks — showing a close match.",
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.textMuted),
+            ),
+          ],
           const SizedBox(height: 20),
           WordFlipCard(
             height: 300,

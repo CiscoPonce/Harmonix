@@ -43,6 +43,19 @@ String friendlyDailyWordError({
     case 'daily_word_generation_failed':
     case 'generation_failed':
       return "Couldn't find a new word in a song right now. Please try again shortly.";
+    case 'song_already_used':
+      return "We're finding a fresh song match — tap New word again in a moment.";
+    case 'lyrics_not_found':
+    case 'deezer_not_found':
+    case 'lyrics_validation_failed':
+    case 'lyric_outside_preview':
+    case 'no_suitable_word':
+      return "Couldn't match a song with synced lyrics right now. Try again shortly.";
+    case 'lyrics_wrong_language':
+      return 'That song didn\'t match your learning language. Trying another…';
+    case 'stale_preferences':
+    case 'daily_word_stale_preferences':
+      return 'Your learning preferences changed — loading a new word…';
     case 'ai_rate_limit':
       return 'AI is busy (rate limit). Please wait a minute and try again.';
     case 'cooldown_active':
@@ -55,8 +68,30 @@ String friendlyDailyWordError({
       if (reason != null && reason.contains('429')) {
         return 'AI is busy (rate limit). Please wait a minute and try again.';
       }
-      return fallback ?? reason ?? 'Could not load daily word';
+      // Never surface raw snake_case codes to the user.
+      if (reason != null && RegExp(r'^[a-z0-9_]+$').hasMatch(reason)) {
+        return "Couldn't load a new word right now. Please try again.";
+      }
+      return fallback ?? "Couldn't load a new word right now. Please try again.";
   }
+}
+
+/// Prefer live audio-proxy header over payload stamp (Coolify may fall back to iTunes).
+String resolveStreamedPreviewProvider({
+  Map<String, String>? responseHeaders,
+  String? payloadProvider,
+}) {
+  String? header;
+  if (responseHeaders != null) {
+    for (final entry in responseHeaders.entries) {
+      if (entry.key.toLowerCase() == 'x-harmonix-preview-provider') {
+        header = entry.value;
+        break;
+      }
+    }
+  }
+  final streamed = (header ?? payloadProvider ?? 'deezer').trim().toLowerCase();
+  return streamed.isEmpty ? 'deezer' : streamed;
 }
 
 class ApiClient {
@@ -366,6 +401,23 @@ class ApiClient {
     final root = kApiBase.replaceAll(RegExp(r'/api/?$'), '');
     if (pathOrUrl.startsWith('/')) return '$root$pathOrUrl';
     return '$root/$pathOrUrl';
+  }
+
+  /// Fetch preview bytes + live provider header (Deezer vs iTunes fallback).
+  Future<({List<int> bytes, String provider})> fetchPreviewWithProvider(
+    String pathOrUrl, {
+    String? payloadProvider,
+  }) async {
+    final resolved = resolveMediaUrl(pathOrUrl);
+    final res = await _client.get(Uri.parse(resolved), headers: _headers(accept: '*/*'));
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException('Preview unavailable (${res.statusCode})');
+    }
+    final provider = resolveStreamedPreviewProvider(
+      responseHeaders: res.headers,
+      payloadProvider: payloadProvider,
+    );
+    return (bytes: res.bodyBytes, provider: provider);
   }
 
   String playerUrlForSongId(String id) {

@@ -23,6 +23,11 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ### Bug Fixes
 
+* daily-word: relax reuse when unused catalog keys collide on used Deezer IDs (`song_already_used`)
+* daily-word: after true on-style exhaustion, widen honestly (`style_relaxed`) instead of 503
+* daily-word: never show raw generation codes (e.g. `song_already_used`) on web or Flutter
+* Discover: home-language chip separated from translation gloss (no more “when EN”)
+* Flutter Hear-it: honor live `X-Harmonix-Preview-Provider` (iTunes fallback seek)
 * daily-word: reject wrong-word glosses (e.g. COLOR→hope) and fall back to curated/dictionary translations
 * daily-word: Settings music style hard-gates song picks (no mixed-catalog fallback; cache/queue honor genre)
 * daily-word: stop forging AI/curated genre stamps; catalog genre is source of truth
