@@ -7,6 +7,7 @@ import {
   computeSpotifyHearClip,
   formatPreviewWindowLabel,
 } from "@/lib/hearItTiming";
+import { friendlyDailyWordReason } from "@/lib/dailyWordErrors";
 import { useAuth } from "@/hooks/useAuth";
 import { useSpotifyInAppPlayer } from "@/components/SpotifyInAppPlayer";
 import { Button } from "./ui/Button";
@@ -64,6 +65,8 @@ interface DailyWordPayload {
     preview_end?: number;
     preview_provider?: string | null;
   };
+  style_relaxed?: boolean;
+  style_relaxed_from?: string | null;
   queue?: QueueStatus;
 }
 
@@ -239,20 +242,12 @@ export function DailyWordCard({
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         if (body.queue) setQueueStatus(body.queue);
-        let msg = body.reason || "Could not load daily word";
-        if (body.reason === "invalid_ai_daily_word_response") {
-          msg = "Couldn't find a new word in a song right now. Your song library may be exhausted — try again in a minute.";
-        } else if (body.reason === "daily_word_generation_failed" || body.reason === "generation_failed") {
-          msg = "Couldn't find a new word in a song right now. Please try again shortly.";
-        } else if (body.reason === "ai_rate_limit" || body.reason?.includes("429")) {
-          msg = "AI is busy (rate limit). Please wait a minute and try again.";
-        } else if (body.reason === "cooldown_active") {
-          msg = body.retryAfterSec
-            ? `Please wait ${body.retryAfterSec} seconds before requesting another word.`
-            : "Please wait a moment before requesting another word.";
-        } else if (body.reason === "batch_in_progress") {
-          msg = "Still generating your word — please wait a moment.";
+        if (body.reason) {
+          console.warn("daily-word unavailable:", body.reason);
         }
+        const msg = friendlyDailyWordReason(body.reason, {
+          retryAfterSec: body.retryAfterSec,
+        });
         throw new Error(msg);
       }
       applyPayload(await res.json());
@@ -854,6 +849,13 @@ export function DailyWordCard({
         {readyCount > 0
           ? `${readyCount} buffered — Next word is instant.`
           : "Request a new word anytime. Buffered words appear instantly; cold generate runs in the background."}
+        {data.style_relaxed && (
+          <span className="mt-1 block text-zinc-400 dark:text-zinc-500">
+            Couldn&apos;t find more{" "}
+            {(data.style_relaxed_from || user?.genre || "that").toString().replace("-", " ")}{" "}
+            tracks — showing a close match.
+          </span>
+        )}
       </p>
 
       <div className="p-5 sm:p-8 md:p-10">
@@ -900,9 +902,15 @@ export function DailyWordCard({
                   {showMeaning && (
                     <span className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white break-words">
                       {meaning}
-                      <span className="ml-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-                        {homeLanguage}
-                      </span>
+                    </span>
+                  )}
+                  {showMeaning && (
+                    <span
+                      className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-400 shrink-0"
+                      aria-label={`Translation language: ${homeLanguage}`}
+                      title={`Shown in your home language (${homeLanguage})`}
+                    >
+                      {homeLanguage}
                     </span>
                   )}
                 </div>

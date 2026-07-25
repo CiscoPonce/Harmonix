@@ -59,6 +59,12 @@ describe("Daily Word Service", () => {
     db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
     db.prepare("DELETE FROM user_word_queue WHERE user_id = ?").run(userId);
     db.prepare("DELETE FROM user_queue_refill WHERE user_id = ?").run(userId);
+    // Avoid stale LRC from prior runs (preview-window checks depend on timestamps).
+    try {
+      db.prepare("DELETE FROM song_lyrics_snapshot").run();
+    } catch {
+      /* table may not exist in older DBs */
+    }
   });
 
   it("formats timestamps as m:ss", () => {
@@ -686,6 +692,88 @@ describe("Daily Word Service", () => {
 
   it("limits validation concurrency", () => {
     expect(VALIDATE_CONCURRENCY).to.be.at.least(3).and.at.most(8);
+  });
+
+  it("relaxes song reuse when unused pass only hits song_already_used", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    db.prepare("DELETE FROM daily_words WHERE user_id = ? AND date = ?").run(userId, today);
+    // History already used Deezer id 100 (backdate so force cooldown does not fire)
+    saveDailyWord(userId, today, {
+      date: today,
+      preferred_genre: "pop",
+      word: { text: "ayer", translation: "yesterday" },
+      song: { id: "100", title: "Old Hit", artist: "Old Artist", genre: "pop" },
+      lyric: { snippet: "ayer", timestamp: "0:45", timestamp_ms: 45000, line_index: 0, char_start: 0, char_end: 4 },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+    });
+    db.prepare(
+      "UPDATE daily_words SET generated_at = datetime('now', '-1 day') WHERE user_id = ?"
+    ).run(userId);
+
+    const originalCurated = aiService.getCuratedSongCandidates;
+    const originalVerified = aiService.getVerifiedSongCandidates;
+    // Unused keys remain in the "catalog" so hasUnusedSongCandidates stays true
+    aiService.getCuratedSongCandidates = () => [
+      { artist: "Fresh Artist", song_title: "Fresh Unused", genre: "pop" },
+      { artist: "Test Artist", song_title: "Test Song", genre: "pop" },
+    ];
+    aiService.getVerifiedSongCandidates = () => [];
+    const restore = stubSongPipeline([
+      { song_title: "Test Song", artist: "Test Artist", genre: "pop" },
+    ]);
+
+    const mockFetch = async (url) => {
+      if (url.includes("deezer.com/search")) {
+        // Every search resolves to the already-used Deezer id — unused pass fails with song_already_used
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: [{
+              id: 100,
+              title: "Test Song",
+              duration: 200,
+              preview: "https://cdn.example/preview.mp3",
+              artist: { name: "Test Artist" },
+            }],
+          }),
+        };
+      }
+      if (url.includes("lrclib.net")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            syncedLyrics: "[00:35.00] El amor es fuerte\n[00:42.00] Siempre brilla\n[00:50.00] Para ti",
+            plainLyrics: "El amor es fuerte\nSiempre brilla\nPara ti",
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    try {
+      const result = await generateDailyWord(user, { force: true, fetchImpl: mockFetch });
+      expect(result.word.text).to.be.a("string").and.not.empty;
+      expect(String(result.song.id)).to.equal("100");
+    } finally {
+      restore();
+      aiService.getCuratedSongCandidates = originalCurated;
+      aiService.getVerifiedSongCandidates = originalVerified;
+    }
+  });
+
+  it("payloadMatchesUserGenre accepts style_relaxed only for the widened-from style", () => {
+    const { payloadMatchesUserGenre } = require("./dailyWordService");
+    const payload = {
+      style_relaxed: true,
+      style_relaxed_from: "rock",
+      song: { genre: "pop" },
+      preferred_genre: "pop",
+    };
+    expect(payloadMatchesUserGenre(payload, "rock")).to.equal(true);
+    expect(payloadMatchesUserGenre(payload, "hip-hop")).to.equal(false);
   });
 
   it("purgeQueueWrongLanguage discards FR queue items when target is DE", () => {

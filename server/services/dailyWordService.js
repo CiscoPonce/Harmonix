@@ -795,6 +795,12 @@ function payloadMatchesUserLanguage(payload, langCode) {
 function payloadMatchesUserGenre(payload, userGenre) {
   const u = aiService.normalizeGenre(userGenre || "pop");
   if (u === "any") return true;
+  // Honest widen after on-style exhaustion — accept only while user still has that style.
+  if (payload?.style_relaxed === true) {
+    const from = payload.style_relaxed_from || payload.requested_genre;
+    if (!from) return true;
+    return aiService.normalizeGenre(from) === u;
+  }
   const stamped = payload?.preferred_genre || payload?.song?.genre;
   return aiService.genresCompatible(stamped, u);
 }
@@ -1086,8 +1092,15 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
   let result = await runOnce(false);
   // Only reuse known songs when this user has exhausted unused catalog songs.
   // Otherwise "Next word" keeps returning different words from the same track.
+  // Also relax when unused *keys* remain but every resolve hits a used Deezer id
+  // (`song_already_used`) — otherwise cold Next/New 503s forever on thin pools.
   if (!result.valid.length && !hasUnusedSongCandidates(user.id, langCode, genre)) {
     console.log(`daily word batch: unused catalog exhausted for ${langCode}/${genre} — allowing song reuse`);
+    result = await runOnce(true);
+  } else if (!result.valid.length && result.lastError === "song_already_used") {
+    console.log(
+      `daily word batch: unused pass yielded only song_already_used for ${langCode}/${genre} — allowing song reuse for new words`
+    );
     result = await runOnce(true);
   } else if (!result.valid.length) {
     console.warn(
@@ -1178,12 +1191,36 @@ async function withUserBatchLock(userId, fn) {
   return run;
 }
 
+function markStyleRelaxed(batch, fromGenre) {
+  const from = aiService.normalizeGenre(fromGenre || "pop");
+  if (from === "any") return batch;
+  const valid = (batch.valid || []).map((payload) => ({
+    ...payload,
+    style_relaxed: true,
+    style_relaxed_from: from,
+    requested_genre: from,
+  }));
+  const sideEffects = (batch.sideEffects || []).map((effect) => ({
+    ...effect,
+    payload: effect.payload
+      ? {
+          ...effect.payload,
+          style_relaxed: true,
+          style_relaxed_from: from,
+          requested_genre: from,
+        }
+      : effect.payload,
+  }));
+  return { ...batch, valid, sideEffects };
+}
+
 async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 2, maxMs = 75000 } = {}) {
   return withUserBatchLock(user.id, async () => {
     const started = Date.now();
     const deadline = started + maxMs;
     let lastError = "unknown";
     const preferenceEpoch = currentPreferenceEpoch(user.id);
+    const requestedGenre = aiService.normalizeGenre(user.genre || "pop");
 
     for (let attempt = 0; attempt < maxAttempts && Date.now() < deadline; attempt++) {
       if (preferenceEpoch !== currentPreferenceEpoch(user.id)) {
@@ -1200,6 +1237,27 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
       console.warn(
         `daily word batch attempt ${attempt + 1}/${maxAttempts}: 0/${batch.candidateCount || 5} passed (${lastError})`
       );
+    }
+
+    // On-style pool truly failed — one honest widen to mixed catalog (UI shows style_relaxed).
+    if (requestedGenre !== "any" && Date.now() < deadline) {
+      if (preferenceEpoch !== currentPreferenceEpoch(user.id)) {
+        const err = new Error("daily_word_stale_preferences");
+        err.code = "stale_preferences";
+        throw err;
+      }
+      console.log(
+        `daily word batch: on-style exhausted for ${requestedGenre} — widening to any (honest match)`
+      );
+      const widenedUser = { ...user, genre: "any" };
+      const wideBatch = await generateValidatedBatch(widenedUser, fetchImpl, {
+        stopAfter: USER_DELIVER_STOP_AFTER,
+      });
+      if (wideBatch.valid.length) {
+        const marked = markStyleRelaxed(wideBatch, requestedGenre);
+        return deliverFromBatch(user, marked, fetchImpl, { preferenceEpoch });
+      }
+      lastError = wideBatch.lastError || lastError;
     }
 
     const err = new Error("daily_word_generation_failed");

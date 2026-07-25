@@ -24,7 +24,7 @@
 | **4. Spotify** | Library sync & export | `/playlists` | Library screen | Verified |
 | **4. Spotify** | Connected account UI | Header chip `Spotify · {name}` | Library header chip + Settings card | Verified |
 | **5. Playback** | In-app / fallback | Web Playback SDK + Deezer 30s + Open in Spotify | Deezer 30s + Open in Spotify (`D-16-07`) | Verified (honest) |
-| **5. Playback** | Hear-it timing / labels | `hearItTiming` + labeled CTA | Labeled Hear it + Deezer seek | Partial (timing port optional) |
+| **5. Playback** | Hear-it timing / labels | `hearItTiming` + labeled CTA | Labeled Hear it + provider-aware seek (`X-Harmonix-Preview-Provider`) | Verified (code) — confirm on device |
 | **5. Playback** | Add to playlist (WOTD) | `AddToPlaylistModal` | `AddToPlaylistSheet` | Verified |
 | **5. Playback** | 3D flip cards | CSS `rotateY` | Flutter `WordFlipCard` Matrix4 | Verified |
 | **6. Settings** | Languages | Home & learning pickers | Same list as web (`pt`, not `ja`) | Verified |
