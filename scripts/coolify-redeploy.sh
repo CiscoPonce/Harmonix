@@ -60,12 +60,12 @@ fix_sqlite_perms() {
 }
 
 cleanup_standbys() {
-  docker rm -f "$API_STANDBY" >/dev/null 2>&1 || true
-  docker rm -f "$WEB_STANDBY" >/dev/null 2>&1 || true
+  sudo docker rm -f "$API_STANDBY" >/dev/null 2>&1 || true
+  sudo docker rm -f "$WEB_STANDBY" >/dev/null 2>&1 || true
 }
 
 start_api_standby() {
-  docker rm -f "$API_STANDBY" >/dev/null 2>&1 || true
+  sudo docker rm -f "$API_STANDBY" >/dev/null 2>&1 || true
   log "Starting Traefik standby API (keeps site live during API cutover)"
   local env_tmp
   env_tmp=$(mktemp)
@@ -121,7 +121,7 @@ start_api_standby() {
 }
 
 start_web_standby() {
-  docker rm -f "$WEB_STANDBY" >/dev/null 2>&1 || true
+  sudo docker rm -f "$WEB_STANDBY" >/dev/null 2>&1 || true
   log "Starting web standby (DNS alias web — keeps API proxy alive during web cutover)"
   # Same Compose network + alias `web` so Docker DNS still resolves while
   # the primary web container is force-recreated.
