@@ -67,7 +67,7 @@ flutter build apk --release --dart-define=API_BASE=https://harmonix.peeporunclub
 
 1. **Create Application**:
    - Open [Google Play Console](https://play.google.com/console) -> Click **Create app**.
-   - App Name: `Harmonix` | Default Language: `English (US)` | Type: `App` | Price: `Free`.
+   - App Name: `Harmonix` | Default Language: `English (UK)` | Type: `App` | Price: `Free`.
 
 2. **Main Store Listing Assets**:
    - **App Icon**: Upload `mobile/assets/app_icon.png` (512x512 PNG, transparent background).
