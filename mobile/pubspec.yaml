@@ -1,7 +1,7 @@
 name: harmonix_mobile
 description: Harmonix Flutter Android client — learn vocabulary through song lyrics.
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: ^3.12.2
@@ -29,8 +29,20 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/app_icon.png"
+  adaptive_icon_background: "#00000000"
+  adaptive_icon_foreground: "assets/emblem_only.png"
 
 flutter:
   uses-material-design: true
   assets:
     - assets/spotify-logo.svg
+    - assets/app_icon.png
+    - assets/emblem_only.png
+    - assets/logo.png
+
