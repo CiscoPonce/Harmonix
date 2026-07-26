@@ -24,11 +24,18 @@ val hasReleaseKeystore = keystoreProperties.isNotEmpty()
 android {
     namespace = "com.harmonix.harmonix_mobile"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    packaging {
+        jniLibs {
+            keepDebugSymbols.add("**/*.so")
+            doNotStrip.add("**/*.so")
+        }
     }
 
     defaultConfig {
@@ -57,6 +64,9 @@ android {
             } else {
                 // Local fallback only — Play uploads require key.properties + upload-keystore.jks
                 signingConfigs.getByName("debug")
+            }
+            ndk {
+                debugSymbolLevel = "NONE"
             }
         }
     }

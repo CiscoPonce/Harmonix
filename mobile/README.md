@@ -14,19 +14,19 @@ flutter pub get
 flutter run --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
 ```
 
-## Build debug APK
+## Build release APK
 
 ```bash
-flutter build apk --debug \
+flutter build apk --release \
   --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
 ```
 
 ## Build Play Store release (AAB)
 
-See **[PLAY-STORE.md](PLAY-STORE.md)** for keystore setup, Data safety answers, and Console checklist.
+See **[PLAY_STORE_PUBLISH_GUIDE.md](../PLAY_STORE_PUBLISH_GUIDE.md)** and **[PLAY-STORE.md](PLAY-STORE.md)** for Android Studio `cmdline-tools` setup, keystore setup, Data safety answers, and Play Console checklist.
 
 ```bash
-# Requires android/key.properties + upload-keystore.jks
+# Requires Android Studio SDK Command-line Tools (latest) + android/key.properties
 flutter build appbundle --release --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
 ```
 
