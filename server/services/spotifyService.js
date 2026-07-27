@@ -29,6 +29,8 @@ const DEFAULT_SCOPES = [
   'user-read-private',
   'user-modify-playback-state',
   'user-read-playback-state',
+  'user-top-read',
+  'user-read-recently-played',
 ].join(' ');
 
 const PLAYBACK_REQUIRED_SCOPES = [

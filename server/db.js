@@ -41,11 +41,24 @@ db.exec(`
  )
 `);
 
-// Migration: Add cefr_level to users
+// Migration: Add cefr_level and is_admin to users
 const usersColumns = db.prepare("PRAGMA table_info(users)").all();
 if (!usersColumns.some(col => col.name === 'cefr_level')) {
- db.exec("ALTER TABLE users ADD COLUMN cefr_level TEXT DEFAULT 'B1'");
+  db.exec("ALTER TABLE users ADD COLUMN cefr_level TEXT DEFAULT 'B1'");
 }
+if (!usersColumns.some(col => col.name === 'is_admin')) {
+  db.exec("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0");
+}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_spotify_profiles (
+    user_id TEXT PRIMARY KEY,
+    top_genres_json TEXT,
+    top_artists_json TEXT,
+    last_synced_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
 
 
 // Migration: user learning preferences

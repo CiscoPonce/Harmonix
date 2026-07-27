@@ -338,6 +338,7 @@ app.get('/api/lyrics', async (req, res) => {
 app.use('/api/audio', audioRouter);
 
 // --- Vocabulary Endpoints ---
+const adminRouter = require('./routes/admin');
 app.use('/api/vocab', authenticateToken, vocabRouter);
 app.use('/api/study', authenticateToken, studyRouter);
 app.use('/api/progress', authenticateToken, progressRouter);
@@ -346,6 +347,7 @@ app.use('/api/daily-word', authenticateToken, dailyWordRouter);
 app.use('/api/playlists', authenticateToken, playlistsRouter);
 app.use('/api/badges', authenticateToken, badgesRouter);
 app.use('/api/user', authenticateToken, userRouter);
+app.use('/api/admin', authenticateToken, adminRouter);
 
 // Public word postcards (no account) + authenticated create
 app.use('/api/share', sharePublicRouter);
