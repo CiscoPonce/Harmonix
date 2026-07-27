@@ -63,7 +63,7 @@ async function refreshAccessToken() {
   return null;
 }
 
-export async function apiFetch(endpoint: string, options: RequestInit = {}) {
+export async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
   const url = `${API_URL}${endpoint}`;
   console.log(`[apiFetch] Requesting: ${url}`);
 

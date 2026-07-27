@@ -17,7 +17,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/Button';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, parseJsonResponse } from '@/lib/api';
 
 interface AdminMetrics {
   total_users: number;
@@ -71,10 +71,15 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const [mRes, uRes] = await Promise.all([
-        apiFetch<AdminMetrics>('/api/admin/metrics'),
-        apiFetch<{ users: UserRow[] }>('/api/admin/users'),
+      const [mResRaw, uResRaw] = await Promise.all([
+        apiFetch('/admin/metrics'),
+        apiFetch('/admin/users'),
       ]);
+      if (!mResRaw.ok || !uResRaw.ok) {
+        throw new Error('Admin access required or endpoint returned error');
+      }
+      const mRes = await parseJsonResponse<AdminMetrics>(mResRaw);
+      const uRes = await parseJsonResponse<{ users: UserRow[] }>(uResRaw);
       setMetrics(mRes);
       setUsers(uRes.users || []);
     } catch (err: any) {
@@ -89,9 +94,11 @@ export default function AdminPage() {
     setSyncingProfile(true);
     setSyncMsg(null);
     try {
-      const res = await apiFetch<{ synced: boolean; top_genres?: string[] }>('/api/admin/sync-spotify-profile', {
+      const resRaw = await apiFetch('/admin/sync-spotify-profile', {
         method: 'POST',
       });
+      if (!resRaw.ok) throw new Error('Failed to sync profile');
+      const res = await parseJsonResponse<{ synced: boolean; top_genres?: string[] }>(resRaw);
       if (res.synced) {
         setSyncMsg(`Synced profile! Genres: ${(res.top_genres || []).slice(0, 5).join(', ')}`);
       } else {
@@ -124,7 +131,7 @@ export default function AdminPage() {
               Access Denied
             </div>
             <p className="mt-2 text-sm">{error}</p>
-            <Button onClick={() => router.push('/discover')} className="mt-4" variant="outline">
+            <Button onClick={() => router.push('/discover')} className="mt-4" variant="secondary">
               Return to Home
             </Button>
           </div>
@@ -151,7 +158,7 @@ export default function AdminPage() {
             <Button
               onClick={handleSyncProfile}
               disabled={syncingProfile}
-              variant="outline"
+              variant="secondary"
               className="gap-2 text-sm"
             >
               {syncingProfile ? (
@@ -162,7 +169,7 @@ export default function AdminPage() {
               Sync My Spotify Profile
             </Button>
 
-            <Button onClick={loadData} variant="outline" className="gap-2 text-sm">
+            <Button onClick={loadData} variant="secondary" className="gap-2 text-sm">
               <RefreshCw className="h-4 w-4" />
               Refresh Metrics
             </Button>
