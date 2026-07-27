@@ -31,12 +31,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    packaging {
-        jniLibs {
-            keepDebugSymbols.add("**/*.so")
-            doNotStrip.add("**/*.so")
-        }
-    }
 
     defaultConfig {
         applicationId = "com.harmonix.app"
