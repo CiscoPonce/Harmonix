@@ -189,6 +189,7 @@ class _LearnScreenState extends State<LearnScreen> {
   Future<void> _speakWord(String text) async {
     try {
       await _pronouncePlayer.stop();
+      await _pronouncePlayer.release();
       await _previewPlayer.stop();
     } catch (_) {}
     if (mounted) setState(() => _speaking = true);
@@ -202,6 +203,11 @@ class _LearnScreenState extends State<LearnScreen> {
       final session = await AudioSession.instance;
       await session.configure(const AudioSessionConfiguration.speech());
       await session.setActive(true);
+
+      final dir = await getTemporaryDirectory();
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      final file = File('${dir.path}/harmonix_pronounce_$stamp.wav');
+      await file.writeAsBytes(bytes, flush: true);
 
       await _pronouncePlayer.setReleaseMode(ap.ReleaseMode.stop);
       await _pronouncePlayer.setVolume(1.0);
@@ -218,25 +224,18 @@ class _LearnScreenState extends State<LearnScreen> {
 
       Future<void> waitDone() async {
         try {
-          await _pronouncePlayer.onPlayerComplete.first.timeout(const Duration(seconds: 20));
+          await _pronouncePlayer.onPlayerComplete.first.timeout(const Duration(seconds: 15));
         } on TimeoutException {
           // ignore
         }
       }
 
+      await _pronouncePlayer.play(ap.DeviceFileSource(file.path));
+      await waitDone();
+
       try {
-        await _pronouncePlayer.play(
-          ap.BytesSource(Uint8List.fromList(bytes), mimeType: 'audio/wav'),
-        );
-        await waitDone();
-      } catch (bytesErr) {
-        debugPrint('BytesSource play failed: $bytesErr');
-        final dir = await getTemporaryDirectory();
-        final file = File('${dir.path}/harmonix_pronounce.wav');
-        await file.writeAsBytes(bytes, flush: true);
-        await _pronouncePlayer.play(ap.DeviceFileSource(file.path));
-        await waitDone();
-      }
+        if (await file.exists()) await file.delete();
+      } catch (_) {}
     } catch (e, st) {
       lastError = e;
       debugPrint('Pocket-TTS pronounce failed: $e\n$st');

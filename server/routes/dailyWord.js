@@ -91,9 +91,11 @@ router.get("/pronounce", async (req, res) => {
       langCode,
       user.voice_gender || 'female'
     );
+    const buf = Buffer.isBuffer(audioBuffer) ? audioBuffer : Buffer.from(audioBuffer);
     res.setHeader("Content-Type", "audio/wav");
-    res.setHeader("Cache-Control", "private, no-cache");
-    res.send(audioBuffer);
+    res.setHeader("Content-Length", buf.length.toString());
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.send(buf);
   } catch (err) {
     console.error("GET /api/daily-word/pronounce error:", err.message);
     if (err.code === "unsupported_language") {
