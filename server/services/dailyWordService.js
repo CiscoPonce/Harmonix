@@ -12,6 +12,7 @@ const {
 const wordQueue = require("./wordQueueService");
 const deezer = require("./deezerService");
 const lrcLib = require("./lrcLibService");
+const spotifyProfileService = require("./spotifyProfileService");
 
 const FORCE_COOLDOWN_MS = process.env.FORCE_COOLDOWN_MS
   ? parseInt(process.env.FORCE_COOLDOWN_MS, 10)
@@ -740,8 +741,27 @@ function getCuratedCandidatesForBatch(userId, langCode, genre) {
   const curated = aiService.getCuratedSongCandidates(langCode, genre);
   const freshVerified = filterUnusedSongCandidates(userId, verified);
   const freshCurated = filterUnusedSongCandidates(userId, curated);
-  // Stay inside the user's genre — never expand to mixed "any" while they have a style set.
-  return shuffleInPlace(mergeCandidateLists(freshVerified, freshCurated));
+  let merged = mergeCandidateLists(freshVerified, freshCurated);
+
+  const profile = spotifyProfileService.getUserMusicProfile(userId);
+  if (profile && Array.isArray(profile.top_artists) && profile.top_artists.length > 0) {
+    const artistSet = new Set(profile.top_artists.map((a) => String(a).toLowerCase()));
+    const spotifyFavs = [];
+    const rest = [];
+    for (const song of merged) {
+      const songArtist = String(song.artist || '').toLowerCase();
+      if (artistSet.has(songArtist)) {
+        spotifyFavs.push(song);
+      } else {
+        rest.push(song);
+      }
+    }
+    merged = [...shuffleInPlace(spotifyFavs), ...shuffleInPlace(rest)];
+  } else {
+    merged = shuffleInPlace(merged);
+  }
+
+  return merged;
 }
 
 function getFullSongCandidatePool(langCode, genre) {
@@ -986,6 +1006,9 @@ async function fetchAiCandidates(user) {
   const history = getUserDiscoveryHistory(user.id);
   const avoidSongs = [...history.songKeys];
 
+  const profile = spotifyProfileService.getUserMusicProfile(user.id);
+  const spotifyTopArtists = profile?.top_artists || [];
+
   try {
     const aiResult = await aiService.generateDailyWordSongs({
       languageName,
@@ -993,6 +1016,7 @@ async function fetchAiCandidates(user) {
       genre,
       difficulty,
       avoidSongs,
+      spotifyTopArtists,
     });
     const list = Array.isArray(aiResult) ? aiResult : [aiResult];
     // Hard filter: never feed already-used songs into validation while unused remain.

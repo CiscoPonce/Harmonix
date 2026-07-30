@@ -653,13 +653,17 @@ async function createFastChatCompletion(params, timeoutMs = 12000) {
   ]);
 }
 
-async function generateDailyWordSongs({ languageName, languageCode, genre, difficulty, avoidSongs = [] }) {
+async function generateDailyWordSongs({ languageName, languageCode, genre, difficulty, avoidSongs = [], spotifyTopArtists = [] }) {
   const langCode = normalizeLanguageCode(languageCode);
   const genreNorm = normalizeGenre(genre);
   const hits = genreExamplesForLanguage(langCode, genreNorm);
   const avoidList = avoidSongs.length
     ? `NEVER pick these already-used songs: ${avoidSongs.map((k) => k.replace("|", " - ")).join("; ")}.`
     : "";
+
+  const spotifyArtistsGuard = Array.isArray(spotifyTopArtists) && spotifyTopArtists.length > 0
+    ? `\n13. USER SPOTIFY FAVORITES: The user loves listening to these artists: ${spotifyTopArtists.slice(0, 10).join(', ')}. If any of these artists (or similar artists in the same style) have famous ${languageName}-language songs, PRIORITIZE picking their tracks!`
+    : '';
 
   const languageConfusionGuard = langCode === 'pt'
     ? `\n11. CRITICAL for Portuguese: Do NOT pick Spanish-language songs. Never return Latin-pop Spanish hits (Maluma, Bad Bunny, Luis Fonsi, Romeo Santos, Marc Anthony, Daddy Yankee, Enrique Iglesias). Prefer Brazilian/Portuguese artists (Anitta Portuguese tracks, Michel Teló, Gusttavo Lima, Marília Mendonça, Legião Urbana, Tom Jobim). Reject Spanglish titles like Downtown / El Que Espera.`
@@ -692,7 +696,7 @@ STRICT RULES:
 7. song_title must NOT be a single rare word — use the real commercial track name.
 8. Each song MUST be different from every other song you pick.
 9. ${avoidList}
-10. Prefer songs like: ${hits || '(famous catalog hits)'}${languageConfusionGuard}${genreGuard}
+10. Prefer songs like: ${hits || '(famous catalog hits)'}${languageConfusionGuard}${genreGuard}${spotifyArtistsGuard}
 
 Reply with ONLY JSON:
 {

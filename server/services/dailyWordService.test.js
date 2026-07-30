@@ -810,32 +810,37 @@ describe("Daily Word Service", () => {
     ['it', 'Italian'],
   ]) {
     it(`passes ${name} to AI for target_language=${code}`, async () => {
-      const today = new Date().toISOString().slice(0, 10);
       db.prepare('UPDATE users SET target_language = ? WHERE id = ?').run(code, userId);
-      db.prepare('DELETE FROM daily_words WHERE user_id = ? AND date = ?').run(userId, today);
+      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
 
       let capturedLanguage;
       const originalSongs = aiService.generateDailyWordSongs;
-      aiService.generateDailyWordSongs = async (args) => {
-        capturedLanguage = args.languageName;
-        return [{ song_title: "Song", artist: "Artist", genre: "pop" }];
-      };
-      const originalGloss = aiService.glossDailyWords;
-      aiService.glossDailyWords = async () => [{ translation: "test", part_of_speech: "noun" }];
-
-      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
       try {
-        await generateDailyWord(user, {
-          force: true,
-          fetchImpl: async () => ({ ok: false, status: 404 }),
-        });
-      } catch (err) {
-        expect(err.message).to.equal('daily_word_generation_failed');
+        aiService.generateDailyWordSongs = async (args) => {
+          capturedLanguage = args.languageName;
+          return [{ song_title: "Song", artist: "Artist", genre: "pop" }];
+        };
+        await fetchAiCandidates(user);
+        expect(capturedLanguage).to.equal(name);
+      } finally {
+        aiService.generateDailyWordSongs = originalSongs;
       }
-
-      expect(capturedLanguage).to.equal(name);
-      aiService.generateDailyWordSongs = originalSongs;
-      aiService.glossDailyWords = originalGloss;
     });
   }
+
+  it('boosts candidate songs matching user top Spotify artists', () => {
+    const spotifyProfileService = require('./spotifyProfileService');
+    const db = require('../db');
+    const testUserId = 'test-spotify-user-' + Date.now();
+    db.prepare('INSERT INTO users (id, email, password_hash, native_language, target_language, genre) VALUES (?, ?, ?, ?, ?, ?)').run(
+      testUserId, `spotify-${Date.now()}@test.com`, 'hash', 'en', 'es', 'reggaeton'
+    );
+    db.prepare('INSERT INTO user_spotify_profiles (user_id, top_genres_json, top_artists_json, last_synced_at) VALUES (?, ?, ?, ?)').run(
+      testUserId, JSON.stringify(['reggaeton']), JSON.stringify(['Bad Bunny']), new Date().toISOString()
+    );
+
+    const candidates = getCuratedCandidatesForBatch(testUserId, 'es', 'reggaeton');
+    expect(candidates.length).to.be.greaterThan(0);
+    expect(candidates[0].artist.toLowerCase()).to.equal('bad bunny');
+  });
 });
