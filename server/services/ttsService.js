@@ -96,20 +96,14 @@ const POCKET_LANG_MAP = {
 };
 
 /** Bump to invalidate SQLite pronunciation cache after quality/speed/accent changes. */
-const CACHE_VERSION = 'hq-v11-voices-accents';
+const CACHE_VERSION = 'hq-v12-clean-audio';
 
-/** Playback tempo (< 1 = slower). Pitch preserved via ffmpeg atempo. */
-const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.85');
+/** Playback tempo (1.0 = natural speed, no phase distortion on sibilants). */
+const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.95');
 
-/** Extra linear gain after percentile normalize. */
-const SPEECH_GAIN = Number(process.env.POCKET_TTS_GAIN || '1.25');
-
-/** Target level for the 98th-percentile sample (0–1 of full scale). */
-const SPEECH_TARGET_PEAK = Number(process.env.POCKET_TTS_TARGET_PEAK || '0.88');
-
-/** Silence before the word (seconds) — keep short for snappy UX. */
-const LEAD_SILENCE_SEC = Number(process.env.POCKET_TTS_LEAD_SILENCE || '0.08');
-const TRAIL_SILENCE_SEC = Number(process.env.POCKET_TTS_TRAIL_SILENCE || '0.12');
+/** Silence before and after the word (seconds). */
+const LEAD_SILENCE_SEC = Number(process.env.POCKET_TTS_LEAD_SILENCE || '0.05');
+const TRAIL_SILENCE_SEC = Number(process.env.POCKET_TTS_TRAIL_SILENCE || '0.10');
 
 const SUPPORTED_LANGUAGES = Object.keys(VOICE_MAP);
 
@@ -204,37 +198,24 @@ function fadeInPcm(pcm, sampleRate = 24000, fadeSeconds = 0.025) {
 }
 
 /**
- * Percentile-based loudness boost so the spoken word is consistently audible.
- * Uses a high percentile (not absolute peak) so one spike doesn't leave the
- * rest of the clip quiet; soft-clamps rare peaks.
+ * Safe peak normalization so the spoken word is clear without digital clipping.
  */
-function loudnessNormalizePcm(pcm, {
-  targetPeak = SPEECH_TARGET_PEAK,
-  gain = SPEECH_GAIN,
-  percentile = 0.98,
-} = {}) {
+function loudnessNormalizePcm(pcm, { targetPeak = 0.90 } = {}) {
   if (!Buffer.isBuffer(pcm) || pcm.length < 4) return pcm;
 
-  const absVals = [];
+  let maxVal = 0;
   for (let i = 0; i + 1 < pcm.length; i += 2) {
     const s = Math.abs(pcm.readInt16LE(i));
-    if (s > 80) absVals.push(s); // ignore near-silence so padding/breaths don't skew gain
+    if (s > maxVal) maxVal = s;
   }
-  if (absVals.length < 16) return pcm;
-  absVals.sort((a, b) => a - b);
-  const ref = absVals[Math.min(absVals.length - 1, Math.floor(absVals.length * percentile))] || 0;
-  if (ref < 32) return pcm;
+  if (maxVal < 100) return pcm; // avoid boosting silence
 
-  const peak = Math.min(0.95, Math.max(0.5, Number(targetPeak) || 0.9));
-  const extra = Math.min(2.5, Math.max(0.5, Number(gain) || 1));
-  const scale = ((32767 * peak) / ref) * extra;
+  const scale = (32767 * targetPeak) / maxVal;
+  if (scale <= 1.05 && scale >= 0.95) return pcm; // already well-leveled
 
   const out = Buffer.alloc(pcm.length);
   for (let i = 0; i + 1 < pcm.length; i += 2) {
     let v = Math.round(pcm.readInt16LE(i) * scale);
-    // Soft knee near full scale
-    if (v > 30000) v = 30000 + Math.round((v - 30000) * 0.25);
-    if (v < -30000) v = -30000 + Math.round((v + 30000) * 0.25);
     if (v > 32767) v = 32767;
     if (v < -32768) v = -32768;
     out.writeInt16LE(v, i);
@@ -251,7 +232,7 @@ function padWavWithSilence(
   } = {},
 ) {
   const clean = normalizeStreamingWav(wavBuffer);
-  const faded = fadeInPcm(clean.subarray(44), sampleRate, 0.025);
+  const faded = fadeInPcm(clean.subarray(44), sampleRate, 0.015);
   const pcmData = loudnessNormalizePcm(faded);
   const lead = Buffer.alloc(Math.round(sampleRate * leadSeconds * 2), 0);
   const trail = Buffer.alloc(Math.round(sampleRate * trailSeconds * 2), 0);
@@ -295,10 +276,10 @@ function ttsPromptForWord(word, langCode = 'es') {
 }
 
 /**
- * Slow speech without changing pitch (ffmpeg atempo) on a normalized WAV.
+ * Speech tempo adjustment via ffmpeg atempo on clean WAV.
  */
 async function slowWav(wavBuffer, tempo = SPEECH_TEMPO) {
-  const rate = Math.min(2, Math.max(0.5, Number(tempo) || 0.75));
+  const rate = Math.min(2, Math.max(0.5, Number(tempo) || 0.95));
   const clean = normalizeStreamingWav(wavBuffer);
   if (Math.abs(rate - 1) < 0.01) return clean;
 
@@ -312,7 +293,7 @@ async function slowWav(wavBuffer, tempo = SPEECH_TEMPO) {
       const proc = spawn('ffmpeg', [
         '-hide_banner', '-loglevel', 'error', '-y',
         '-i', inputPath,
-        '-filter:a', `atempo=${rate},volume=1.4,afade=t=in:st=0:d=0.03`,
+        '-filter:a', `atempo=${rate},afade=t=in:st=0:d=0.015`,
         '-ar', '24000',
         '-ac', '1',
         '-c:a', 'pcm_s16le',
@@ -424,8 +405,6 @@ module.exports = {
   POCKET_LANG_MAP,
   CACHE_VERSION,
   SPEECH_TEMPO,
-  SPEECH_GAIN,
-  SPEECH_TARGET_PEAK,
   LEAD_SILENCE_SEC,
   TRAIL_SILENCE_SEC,
   SUPPORTED_LANGUAGES,
