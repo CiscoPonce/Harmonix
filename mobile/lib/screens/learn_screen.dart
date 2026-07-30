@@ -42,6 +42,7 @@ class _LearnScreenState extends State<LearnScreen> {
   bool _loading = true;
   bool _nexting = false;
   bool _speaking = false;
+  bool _playingPreview = false;
   bool _searching = false;
   String? _error;
   String? _trackedLang;
@@ -52,6 +53,13 @@ class _LearnScreenState extends State<LearnScreen> {
   @override
   void initState() {
     super.initState();
+    _previewPlayer.playerStateStream.listen((state) {
+      if (!mounted) return;
+      final playing = state.playing && state.processingState != ja.ProcessingState.completed;
+      if (playing != _playingPreview) {
+        setState(() => _playingPreview = playing);
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _auth = context.read<AuthState>();
@@ -268,7 +276,16 @@ class _LearnScreenState extends State<LearnScreen> {
     }
   }
 
-  Future<void> _playPreview() async {
+  Future<void> _togglePreview() async {
+    if (_playingPreview || _previewPlayer.playing) {
+      _hearStopTimer?.cancel();
+      try {
+        await _previewPlayer.pause();
+      } catch (_) {}
+      if (mounted) setState(() => _playingPreview = false);
+      return;
+    }
+
     final api = context.read<ApiClient>();
     final audio = _word?['audio'] as Map<String, dynamic>?;
     final lyric = _word?['lyric'] as Map<String, dynamic>?;
@@ -280,6 +297,8 @@ class _LearnScreenState extends State<LearnScreen> {
       try {
         await _pronouncePlayer.stop();
       } catch (_) {}
+
+      if (mounted) setState(() => _playingPreview = true);
 
       // Fetch bytes so we can read X-Harmonix-Preview-Provider (iTunes fallback).
       final fetched = await api.fetchPreviewWithProvider(
@@ -297,18 +316,20 @@ class _LearnScreenState extends State<LearnScreen> {
         durationSeconds: audio?['duration_seconds'] as num?,
       );
       if (!win.shouldPlay || !win.inWindow) {
-        if (!mounted) return;
-        final label = word?['text']?.toString() ?? 'this word';
-        final stamp = lyric['timestamp']?.toString() ?? '';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              stamp.isEmpty
-                  ? 'This preview doesn’t include “$label”. Try Open in Spotify.'
-                  : 'This preview doesn’t include “$label” at $stamp. Try Open in Spotify.',
+        if (mounted) {
+          setState(() => _playingPreview = false);
+          final label = word?['text']?.toString() ?? 'this word';
+          final stamp = lyric['timestamp']?.toString() ?? '';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                stamp.isEmpty
+                    ? 'This preview doesn’t include “$label”. Try Open in Spotify.'
+                    : 'This preview doesn’t include “$label” at $stamp. Try Open in Spotify.',
+              ),
             ),
-          ),
-        );
+          );
+        }
         return;
       }
 
@@ -320,14 +341,18 @@ class _LearnScreenState extends State<LearnScreen> {
       final startMs = (win.seekTo * 1000).round();
       await _previewPlayer.seek(Duration(milliseconds: startMs));
       await _previewPlayer.play();
+      if (mounted) setState(() => _playingPreview = true);
+
       final playMs = ((win.stopAt - win.seekTo) * 1000).clamp(1800, 14000).round();
       _hearStopTimer = Timer(Duration(milliseconds: playMs), () async {
         try {
           await _previewPlayer.pause();
         } catch (_) {}
+        if (mounted) setState(() => _playingPreview = false);
       });
     } catch (e) {
       if (mounted) {
+        setState(() => _playingPreview = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Preview unavailable: $e')),
         );
@@ -579,9 +604,9 @@ class _LearnScreenState extends State<LearnScreen> {
             children: [
               _LabeledRoundAction(
                 filled: true,
-                icon: Icons.play_arrow,
-                label: 'Hear it',
-                onTap: _playPreview,
+                icon: _playingPreview ? Icons.pause : Icons.play_arrow,
+                label: _playingPreview ? 'Pause' : 'Hear it',
+                onTap: _togglePreview,
               ),
               _LabeledRoundAction(
                 filled: false,
