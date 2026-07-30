@@ -157,15 +157,11 @@ class _LearnScreenState extends State<LearnScreen> {
   Future<void> _openInSpotify() async {
     final song = _word?['song'] as Map<String, dynamic>?;
     if (song == null) return;
-    final url = spotifyOpenUrlForSong(
+    await launchSpotifySong(
       artist: song['artist']?.toString() ?? '',
       title: song['title']?.toString() ?? '',
       uri: song['spotify_uri']?.toString() ?? song['uri']?.toString(),
     );
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
   }
 
   Future<void> _addToPlaylist() async {
@@ -494,13 +490,17 @@ class _LearnScreenState extends State<LearnScreen> {
             front: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  (word['text'] as String? ?? '—').toUpperCase(),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                        color: colors.accent,
-                        fontSize: 40,
-                      ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.center,
+                  child: Text(
+                    (word['text'] as String? ?? '—').toUpperCase(),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                          color: colors.accent,
+                          fontSize: 40,
+                        ),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -780,14 +780,16 @@ class _LearnScreenState extends State<LearnScreen> {
                                   ],
                                 ),
                                 const Spacer(),
-                                Text(
-                                  text.toUpperCase(),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 22,
-                                    color: colors.accent,
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    text.toUpperCase(),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 22,
+                                      color: colors.accent,
+                                    ),
                                   ),
                                 ),
                                 if (translation.isNotEmpty)
@@ -838,15 +840,11 @@ class _LearnScreenState extends State<LearnScreen> {
                         ),
                         TextButton(
                           onPressed: () async {
-                            final url = spotifyOpenUrlForSong(
+                            await launchSpotifySong(
                               artist: artist,
                               title: title,
                               uri: songMap['spotify_uri']?.toString(),
                             );
-                            final uri = Uri.parse(url);
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
-                            }
                           },
                           child: Text(
                             'Open in Spotify',

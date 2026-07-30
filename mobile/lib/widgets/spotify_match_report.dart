@@ -56,9 +56,12 @@ class SpotifyMatchReport extends StatelessWidget {
       return;
     }
     final uri = Uri.parse(destination);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    try {
+      if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+    } catch (_) {}
+    try {
+      await launchUrl(uri, mode: LaunchMode.platformDefault);
+    } catch (_) {}
   }
 
   @override

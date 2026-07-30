@@ -264,9 +264,12 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       return;
     }
     final uri = Uri.parse(safe);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    try {
+      if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+    } catch (_) {}
+    try {
+      await launchUrl(uri, mode: LaunchMode.platformDefault);
+    } catch (_) {}
   }
 
   String _formatDuration(int? ms) {
