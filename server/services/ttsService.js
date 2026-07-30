@@ -9,9 +9,9 @@ const VOICE_MAP_FEMALE = {
   es: 'lola',
   fr: 'estelle',
   de: 'anna',
-  pt: 'lola',
+  pt: 'camila',
   en: 'alba',
-  it: 'anna',
+  it: 'fiammetta',
 };
 
 const VOICE_MAP_MALE = {
@@ -20,8 +20,68 @@ const VOICE_MAP_MALE = {
   de: 'juergen',
   pt: 'rafael',
   en: 'charles',
-  it: 'giovanni',
+  it: 'marcos',
 };
+
+const ACCENT_RESTORE_MAP = {
+  it: {
+    'perche': 'perché',
+    'perche\'': 'perché',
+    'poiche': 'poiché',
+    'affinche': 'affinché',
+    'cosi': 'così',
+    'gia': 'già',
+    'gia\'': 'già',
+    'piu': 'più',
+    'piu\'': 'più',
+    'puo': 'può',
+    'puo\'': 'può',
+    'cioe': 'cioè',
+    'citta': 'città',
+    'verita': 'verità',
+    'virtu': 'virtù',
+    'lunedi': 'lunedì',
+    'martedi': 'martedì',
+    'mercoledi': 'mercoladì',
+    'giovedi': 'giovedì',
+    'venerdi': 'venerdì',
+  },
+  es: {
+    'perche': 'por qué',
+    'tambien': 'también',
+    'despues': 'después',
+    'mas': 'más',
+    'aqui': 'aquí',
+    'alla': 'allá',
+    'esta': 'está',
+    'estan': 'están',
+  },
+  fr: {
+    'tres': 'très',
+    'deja': 'déjà',
+    'apres': 'après',
+  },
+  pt: {
+    'tambem': 'também',
+    'voce': 'você',
+    'ate': 'até',
+    'ja': 'já',
+  },
+};
+
+function normalizeWordForTTS(word, langCode = 'es') {
+  const w = String(word || '').trim();
+  if (!w) return w;
+  const lower = w.toLowerCase();
+  const langMap = ACCENT_RESTORE_MAP[langCode];
+  if (langMap && langMap[lower]) {
+    const target = langMap[lower];
+    if (w === w.toUpperCase()) return target.toUpperCase();
+    if (w[0] === w[0].toUpperCase()) return target[0].toUpperCase() + target.slice(1);
+    return target;
+  }
+  return w;
+}
 
 /** @deprecated Prefer resolveVoice(lang, gender) */
 const VOICE_MAP = VOICE_MAP_FEMALE;
@@ -35,8 +95,8 @@ const POCKET_LANG_MAP = {
   it: 'italian_24l',
 };
 
-/** Bump to invalidate SQLite pronunciation cache after quality/speed changes. */
-const CACHE_VERSION = 'hq-v10-ffmpeg';
+/** Bump to invalidate SQLite pronunciation cache after quality/speed/accent changes. */
+const CACHE_VERSION = 'hq-v11-voices-accents';
 
 /** Playback tempo (< 1 = slower). Pitch preserved via ffmpeg atempo. */
 const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.85');
@@ -226,9 +286,11 @@ function cachePronunciation(word, audioBlob, langCode = '', gender = 'female') {
   );
 }
 
-function ttsPromptForWord(word) {
-  const w = String(word || '').trim();
+function ttsPromptForWord(word, langCode = 'es') {
+  const normalized = normalizeWordForTTS(word, langCode);
+  const w = String(normalized || '').trim();
   if (!w) return w;
+  if (/[.!?]$/.test(w)) return w;
   return `${w}.`;
 }
 
@@ -273,9 +335,9 @@ async function slowWav(wavBuffer, tempo = SPEECH_TEMPO) {
   }
 }
 
-async function fetchFromPocketTTS(word, voiceUrl) {
+async function fetchFromPocketTTS(word, voiceUrl, langCode = 'es') {
   const params = new URLSearchParams();
-  params.append('text', ttsPromptForWord(word));
+  params.append('text', ttsPromptForWord(word, langCode));
   params.append('voice_url', voiceUrl);
 
   const res = await fetch(`${ttsDaemon.baseUrl()}/tts`, {
@@ -339,7 +401,7 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
 
   await ensureDaemonLanguage(langCode);
 
-  const wavBuffer = await fetchFromPocketTTS(word, resolveVoice(langCode, voiceGender));
+  const wavBuffer = await fetchFromPocketTTS(word, resolveVoice(langCode, voiceGender), langCode);
   const slowed = await slowWav(wavBuffer, SPEECH_TEMPO);
   const padded = padWavWithSilence(slowed);
   cachePronunciation(word, padded, langCode, voiceGender);
@@ -358,6 +420,7 @@ module.exports = {
   VOICE_MAP,
   VOICE_MAP_FEMALE,
   VOICE_MAP_MALE,
+  ACCENT_RESTORE_MAP,
   POCKET_LANG_MAP,
   CACHE_VERSION,
   SPEECH_TEMPO,
@@ -368,6 +431,7 @@ module.exports = {
   SUPPORTED_LANGUAGES,
   normalizeVoiceGender,
   resolveVoice,
+  normalizeWordForTTS,
   normalizeStreamingWav,
   padWavWithSilence,
   fadeInPcm,
