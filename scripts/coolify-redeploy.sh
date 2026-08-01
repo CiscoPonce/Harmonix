@@ -167,6 +167,8 @@ trap cleanup_standbys EXIT
 
 start_api_standby
 
+log "Building updated API container..."
+run_compose build api
 log "Rolling api (standby serves Traefik; old web still up)"
 run_compose up -d --no-deps --force-recreate api
 ensure_networks
