@@ -14,11 +14,19 @@ ENV NODE_ENV=production
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     ffmpeg \
+    python3 \
+    python3-pip \
+    python3-venv \
+    espeak-ng \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd -r harmonix && useradd -r -g harmonix harmonix
+
+RUN python3 -m venv /app/venv && \
+    /app/venv/bin/pip install --no-cache-dir kokoro-onnx soundfile onnxruntime
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN mkdir -p /data && chown -R harmonix:harmonix /app /data
+RUN mkdir -p /data /app/models/kokoro && chown -R harmonix:harmonix /app /data
 USER harmonix
 ENV PORT=3001
 ENV SQLITE_PATH=/data/harmonix.db

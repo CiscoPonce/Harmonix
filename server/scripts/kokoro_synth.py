@@ -22,7 +22,11 @@ def main():
     lang = sys.argv[2]
     voice = sys.argv[3] if len(sys.argv) > 3 else "af_heart"
 
-    model_dir = "/home/cisco/Documents/Oracle server/lyrics/server/models/kokoro"
+    model_dir = os.getenv("KOKORO_MODEL_DIR")
+    if not model_dir or not os.path.exists(model_dir):
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        model_dir = os.path.join(base_dir, "models", "kokoro")
+
     onnx_path = os.path.join(model_dir, "kokoro-v1.0.onnx")
     voices_path = os.path.join(model_dir, "voices-v1.0.bin")
 
