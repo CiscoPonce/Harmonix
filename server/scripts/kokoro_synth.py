@@ -49,7 +49,15 @@ def main():
     from kokoro_onnx import Kokoro
     kokoro = Kokoro(onnx_path, voices_path)
 
-    samples, sample_rate = kokoro.create(word, voice=voice, speed=1.0, lang=lang)
+    try:
+        samples, sample_rate = kokoro.create(word, voice=voice, speed=1.0, lang=lang)
+    except Exception as err:
+        sys.stderr.write(f"Kokoro create error for {word} ({lang}/{voice}): {err}\n")
+        try:
+            samples, sample_rate = kokoro.create(word, voice="af_heart", speed=1.0, lang="en-us")
+        except Exception as err2:
+            sys.stderr.write(f"Kokoro fallback error for {word}: {err2}\n")
+            sys.exit(1)
     trimmed = trim_pcm_silence(samples)
     phonemes = ""
     try:

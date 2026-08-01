@@ -16,10 +16,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ffmpeg \
     libgomp1 \
+    espeak-ng \
+    libespeak-ng-dev \
     python3 \
     python3-pip \
     python3-venv \
-    espeak-ng \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd -r harmonix && useradd -r -g harmonix harmonix
 
