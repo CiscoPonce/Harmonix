@@ -13,6 +13,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
     ffmpeg \
     python3 \
     python3-pip \
@@ -23,6 +24,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN python3 -m venv /app/venv && \
     /app/venv/bin/pip install --no-cache-dir kokoro-onnx soundfile onnxruntime
+
+RUN mkdir -p /app/models/kokoro && \
+    curl -L -o /app/models/kokoro/kokoro-v1.0.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx && \
+    curl -L -o /app/models/kokoro/voices-v1.0.bin https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
