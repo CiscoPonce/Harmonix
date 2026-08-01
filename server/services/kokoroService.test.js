@@ -30,10 +30,10 @@ describe('Kokoro-82M ONNX Service Mapping', () => {
     assert.strictEqual(KOKORO_VOICES_MALE.en, 'am_adam');
   });
 
-  it('trims leading and trailing silence from float32 audio arrays', () => {
-    const { trimPcmSilence } = require('./kokoroService');
-    const raw = new Float32Array([0, 0, 0, 0.05, 0.2, 0.8, 0.05, 0, 0, 0]);
-    const trimmed = trimPcmSilence(raw, 0.01, 1);
-    assert.strictEqual(trimmed.length, 6);
+  it('generates valid RIFF WAV audio buffer via kokoroService', async () => {
+    const { generateKokoroAudio } = require('./kokoroService');
+    const res = await generateKokoroAudio('perché', 'it');
+    assert.ok(res && res.audio);
+    assert.strictEqual(res.audio.slice(0, 4).toString(), 'RIFF');
   });
 });

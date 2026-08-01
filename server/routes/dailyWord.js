@@ -72,7 +72,7 @@ router.get("/", (req, res) => handleDailyWord(req, res, false));
 router.post("/new", (req, res) => handleDailyWord(req, res, true));
 
 router.get("/pronounce", async (req, res) => {
-  const { word } = req.query;
+  const { word, lang } = req.query;
   if (!word || !word.trim() || word.length > 100) {
     return res.status(400).json({ error: "word required" });
   }
@@ -80,7 +80,9 @@ router.get("/pronounce", async (req, res) => {
   const user = loadUser(req.user.id);
   if (!user) return res.sendStatus(404);
 
-  const langCode = user.target_language || "es";
+  const langCode = (lang && ttsService.SUPPORTED_LANGUAGES.includes(lang.toString().trim()))
+    ? lang.toString().trim()
+    : (user.target_language || "es");
   if (!ttsService.SUPPORTED_LANGUAGES.includes(langCode)) {
     return res.status(404).json({ error: "unsupported_language" });
   }

@@ -1,20 +1,6 @@
-process.env.OMP_NUM_THREADS = process.env.OMP_NUM_THREADS || '4';
-process.env.OPENBLAS_NUM_THREADS = process.env.OPENBLAS_NUM_THREADS || '4';
-
-function trimPcmSilence(float32Array, threshold = 0.005, minPad = 240) {
-  if (!float32Array || float32Array.length === 0) return float32Array;
-  let start = 0;
-  while (start < float32Array.length && Math.abs(float32Array[start]) <= threshold) {
-    start++;
-  }
-  let end = float32Array.length - 1;
-  while (end > start && Math.abs(float32Array[end]) <= threshold) {
-    end--;
-  }
-  start = Math.max(0, start - minPad);
-  end = Math.min(float32Array.length, end + 1 + minPad);
-  return float32Array.subarray(start, end);
-}
+const fs = require('fs');
+const path = require('path');
+const { execFile } = require('child_process');
 
 const KOKORO_LANG_MAP = {
   it: 'it',
@@ -43,112 +29,64 @@ const KOKORO_VOICES_MALE = {
   de: 'am_adam',
 };
 
-function getModelDir() {
-  const customPath = process.env.KOKORO_MODEL_DIR;
-  if (customPath && fs.existsSync(customPath)) return customPath;
-  return path.join(__dirname, '../models/kokoro');
+function resolvePython() {
+  const candidates = [
+    process.env.POCKET_TTS_PYTHON,
+    path.join(__dirname, '../venv/bin/python'),
+    '/home/ubuntu/pocket-tts/.venv/bin/python',
+    path.join(__dirname, '../../../pocket-tts/.venv/bin/python'),
+    'python3',
+  ].filter(Boolean);
+  for (const c of candidates) {
+    if (c === 'python3') return c;
+    if (fs.existsSync(c)) return c;
+  }
+  return 'python3';
 }
 
-function downloadFile(url, dest) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    https.get(url, (response) => {
-      if (response.statusCode === 301 || response.statusCode === 302) {
-        return downloadFile(response.headers.location, dest).then(resolve).catch(reject);
-      }
-      if (response.statusCode !== 200) {
-        fs.unlink(dest, () => {});
-        return reject(new Error(`Download failed with status ${response.statusCode}`));
-      }
-      response.pipe(file);
-      file.on('finish', () => {
-        file.close(() => resolve(dest));
-      });
-    }).on('error', (err) => {
-      fs.unlink(dest, () => {});
-      reject(err);
-    });
-  });
+function resolveKokoroScript() {
+  const candidates = [
+    path.join(__dirname, '../scripts/kokoro_synth.py'),
+    '/home/ubuntu/lyric/server/scripts/kokoro_synth.py',
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
 }
 
-async function ensureModelFiles() {
-  const dir = getModelDir();
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  const onnxPath = path.join(dir, 'kokoro-v1.0.onnx');
-  const voicesPath = path.join(dir, 'voices-v1.0.bin');
-
-  if (!fs.existsSync(onnxPath)) {
-    console.log('[kokoroService] Downloading kokoro-v1.0.onnx (82MB)...');
-    await downloadFile(
-      'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx',
-      onnxPath
-    );
-  }
-
-  if (!fs.existsSync(voicesPath)) {
-    console.log('[kokoroService] Downloading voices-v1.0.bin...');
-    await downloadFile(
-      'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin',
-      voicesPath
-    );
-  }
-
-  return { onnxPath, voicesPath };
-}
-
-async function initKokoro() {
-  if (kokoroInstance) return kokoroInstance;
-  if (isInitializing) return null;
-  isInitializing = true;
-
-  try {
-    const { kokoro_onnx } = require('kokoro-onnx') || {};
-    const KokoroClass = require('kokoro-onnx').Kokoro;
-    if (!KokoroClass) throw new Error('kokoro-onnx package not available');
-
-    const { onnxPath, voicesPath } = await ensureModelFiles();
-    kokoroInstance = new KokoroClass(onnxPath, voicesPath);
-    console.log('[kokoroService] Kokoro ONNX engine initialized successfully');
-    return kokoroInstance;
-  } catch (err) {
-    console.warn('[kokoroService] Failed to initialize Kokoro ONNX:', err.message || err);
-    return null;
-  } finally {
-    isInitializing = false;
-  }
-}
-
-async function generateKokoroAudio(word, langCode = 'es', gender = 'female') {
-  try {
-    const engine = await initKokoro();
-    if (!engine) return null;
+function generateKokoroAudio(word, langCode = 'es', gender = 'female') {
+  return new Promise((resolve) => {
+    const pythonBin = resolvePython();
+    const scriptPath = resolveKokoroScript();
+    if (!scriptPath) return resolve(null);
 
     const kokoroLang = KOKORO_LANG_MAP[langCode] || 'es';
     const voiceMap = gender === 'male' ? KOKORO_VOICES_MALE : KOKORO_VOICES_FEMALE;
     const voice = voiceMap[langCode] || voiceMap.es;
 
-    const result = await engine.create(word, {
-      voice: voice,
-      speed: 1.0,
-      lang: kokoroLang,
-    });
-
-    if (!result || !result.audio) return null;
-    const trimmedAudio = trimPcmSilence(result.audio);
-    return { audio: trimmedAudio, sampleRate: result.sampleRate || 24000 };
-  } catch (err) {
-    console.warn(`[kokoroService] Kokoro synthesis failed for '${word}' [${langCode}]:`, err.message || err);
-    return null;
-  }
+    execFile(
+      pythonBin,
+      [scriptPath, word, kokoroLang, voice],
+      { encoding: 'buffer', maxBuffer: 10 * 1024 * 1024, timeout: 8000 },
+      (err, stdout) => {
+        if (err || !stdout || stdout.length < 44) {
+          if (err) console.warn(`[kokoroService] Synthesis warning for '${word}':`, err.message || err);
+          return resolve(null);
+        }
+        if (stdout.slice(0, 4).toString() !== 'RIFF') {
+          console.warn(`[kokoroService] Invalid WAV header for '${word}'`);
+          return resolve(null);
+        }
+        resolve({ audio: stdout, sampleRate: 24000 });
+      }
+    );
+  });
 }
 
 module.exports = {
-  initKokoro,
   generateKokoroAudio,
-  trimPcmSilence,
+  resolvePython,
   KOKORO_LANG_MAP,
   KOKORO_VOICES_FEMALE,
   KOKORO_VOICES_MALE,

@@ -633,9 +633,10 @@ export function DailyWordCard({
       }
     }
 
+    const targetLang = user?.target_language || 'es';
     for (let attempt = 0; attempt <= 1; attempt++) {
       try {
-        const res = await apiFetch(`/daily-word/pronounce?word=${encodeURIComponent(data!.word.text)}`);
+        const res = await apiFetch(`/daily-word/pronounce?word=${encodeURIComponent(data!.word.text)}&lang=${encodeURIComponent(targetLang)}`);
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || "Pronunciation unavailable");
