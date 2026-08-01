@@ -68,18 +68,23 @@ function generateKokoroAudio(word, langCode = 'es', gender = 'female') {
 
     execFile(
       pythonBin,
-      [scriptPath, word, kokoroLang, voice],
-      { encoding: 'buffer', maxBuffer: 10 * 1024 * 1024, timeout: 8000 },
+      [scriptPath, word, kokoroLang, voice, '--json'],
+      { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, timeout: 8000 },
       (err, stdout) => {
-        if (err || !stdout || stdout.length < 44) {
+        if (err || !stdout) {
           if (err) console.warn(`[kokoroService] Synthesis warning for '${word}':`, err.message || err);
           return resolve(null);
         }
-        if (stdout.slice(0, 4).toString() !== 'RIFF') {
-          console.warn(`[kokoroService] Invalid WAV header for '${word}'`);
-          return resolve(null);
+        try {
+          const data = JSON.parse(stdout);
+          const wavBuffer = Buffer.from(data.wav, 'base64');
+          if (!wavBuffer || wavBuffer.length < 44 || wavBuffer.slice(0, 4).toString() !== 'RIFF') {
+            return resolve(null);
+          }
+          resolve({ audio: wavBuffer, phonemes: data.phonemes || null, sampleRate: data.sampleRate || 24000 });
+        } catch {
+          resolve(null);
         }
-        resolve({ audio: stdout, sampleRate: 24000 });
       }
     );
   });

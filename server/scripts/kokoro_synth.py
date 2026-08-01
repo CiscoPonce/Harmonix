@@ -38,6 +38,20 @@ def main():
 
     samples, sample_rate = kokoro.create(word, voice=voice, speed=1.0, lang=lang)
     trimmed = trim_pcm_silence(samples)
+    phonemes = ""
+    try:
+        phonemes = kokoro.tokenizer.phonemize(word, lang)
+    except Exception:
+        pass
+
+    if "--json" in sys.argv:
+        import base64
+        import json
+        buf = io.BytesIO()
+        sf.write(buf, trimmed, sample_rate, format="WAV", subtype="PCM_16")
+        wav_b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        print(json.dumps({"phonemes": phonemes, "wav": wav_b64, "sampleRate": sample_rate}))
+        return
 
     buf = io.BytesIO()
     sf.write(buf, trimmed, sample_rate, format="WAV", subtype="PCM_16")
