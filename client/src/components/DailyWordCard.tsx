@@ -936,87 +936,22 @@ export function DailyWordCard({
                 <RotateCw className="w-3 h-3 shrink-0" />
                 {t('tap_to_flip_back')}
               </p>
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-4">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-                    {t('word_of_the_day')} · {t('tap_to_flip')}
-                  </span>
-                  {data.word.difficulty && (
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      {data.word.difficulty}
-                    </span>
-                  )}
+
+              <div className="space-y-4 min-w-0 flex-1 flex flex-col justify-center">
+                <div className="flex items-start gap-2 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-600 dark:text-zinc-500 min-w-0">
+                  <Music2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span className="line-clamp-2 break-words">{t('found_in')} {data.song.title} · {data.song.artist}</span>
                 </div>
-
-                <div className="flex items-center gap-3 my-2 min-w-0">
-                  <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-zinc-900 dark:text-white break-words max-w-full">
-                    {data.word.text}
-                  </h2>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void playPronunciation();
-                    }}
-                    disabled={isSpeaking}
-                    className="rounded-full w-9 h-9 p-0 shrink-0 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700"
-                    title={t('pronounce_word')}
-                  >
-                    {isSpeaking ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Volume2 className="w-4 h-4" />
-                    )}
-                  </Button>
-                </div>
-
-                {data.word.part_of_speech && (
-                  <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 italic mb-4">
-                    {data.word.part_of_speech}
-                  </p>
-                )}
-
-                {showMeaning && (
-                  <div className="mt-4 pt-4 border-t border-zinc-200/60 dark:border-zinc-800/80">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-1">
-                      {t('meaning')} ({homeLanguage})
-                    </p>
-                    <p className="text-xl sm:text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
-                      {data.word.translation}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-zinc-200/60 dark:border-zinc-800/80">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2">
-                  {t('lyric_snippet')}
-                </p>
-                <blockquote className="text-base sm:text-lg italic text-zinc-700 dark:text-zinc-300 font-serif leading-relaxed">
-                  “
-                  {highlightWord(
-                    data.lyric.snippet,
-                    data.lyric.char_start,
-                    data.lyric.char_end
-                  )}
-                  ”
+                <blockquote className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-zinc-800 dark:text-zinc-200 italic break-words">
+                  &ldquo;{highlightWord(data.lyric.snippet, data.lyric.char_start, data.lyric.char_end)}&rdquo;
                 </blockquote>
-                <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  — <span className="font-bold text-zinc-700 dark:text-zinc-200">{data.song.artist}</span>, “{data.song.title}” ({data.lyric.timestamp})
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-600">
+                  Word around {data.lyric.timestamp}
                   {data.lyric.in_preview === false
                     ? ` · preview ${formatPreviewWindowLabel(data.audio.preview_offset || 0)}`
                     : ""}
                 </p>
               </div>
-            </div>
-            {/* Back of card */}
-            <div className="absolute top-0 left-0 w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-5 sm:p-8 flex flex-col justify-between shadow-md min-h-[380px] rotate-y-180 backface-hidden">
-                <div className="flex items-start gap-2 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-600 dark:text-zinc-500 min-w-0">
-                  <Music2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                  <span className="line-clamp-2 break-words">Found in {data.song.title} · {data.song.artist}</span>
-                </div>
             </div>
           </div>
         </div>
