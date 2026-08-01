@@ -26,7 +26,7 @@ services:
       FORCE_SECURE_COOKIES: ${FORCE_SECURE_COOKIES:-true}
       TTS_SKIP_SPAWN: ${TTS_SKIP_SPAWN:-true}
       # Prefer host LAN IP (set in .env); host.docker.internal often blocked by UFW.
-      TTS_BASE_URL: ${TTS_BASE_URL:-http://10.0.0.15:3002}
+      TTS_BASE_URL: ${TTS_BASE_URL:-http://host.docker.internal:3002}
       POCKET_TTS_HOST: ${POCKET_TTS_HOST:-host.docker.internal}
       TTS_PORT: ${TTS_PORT:-3002}
       VALIDATE_CONCURRENCY: ${VALIDATE_CONCURRENCY:-4}

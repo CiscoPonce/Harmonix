@@ -83,7 +83,7 @@ start_api_standby() {
     -e SQLITE_PATH=/data/harmonix.db \
     -e FRONTEND_PROXY_TARGET="http://web:3009" \
     -e TTS_SKIP_SPAWN=true \
-    -e TTS_BASE_URL="${TTS_BASE_URL:-http://10.0.0.15:3002}" \
+    -e TTS_BASE_URL="${TTS_BASE_URL:-http://host.docker.internal:3002}" \
     -e PUBLIC_BASE_URL="https://${DOMAIN}" \
     -e FORCE_SECURE_COOKIES=true \
     -v "${VOL}:/data" \
