@@ -77,12 +77,10 @@ router.get("/pronounce", async (req, res) => {
     return res.status(400).json({ error: "word required" });
   }
 
-  const user = loadUser(req.user.id);
-  if (!user) return res.sendStatus(404);
-
+  const user = req.user ? loadUser(req.user.id) : null;
   const langCode = (lang && ttsService.SUPPORTED_LANGUAGES.includes(lang.toString().trim()))
     ? lang.toString().trim()
-    : (user.target_language || "es");
+    : (user?.target_language || "es");
   if (!ttsService.SUPPORTED_LANGUAGES.includes(langCode)) {
     return res.status(404).json({ error: "unsupported_language" });
   }

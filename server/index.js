@@ -343,7 +343,11 @@ app.use('/api/vocab', authenticateToken, vocabRouter);
 app.use('/api/study', authenticateToken, studyRouter);
 app.use('/api/progress', authenticateToken, progressRouter);
 app.use('/api/validation', authenticateToken, validationRouter);
-app.use('/api/daily-word', authenticateToken, dailyWordRouter);
+// Allow public pronunciation lookup for daily words; require authentication for other daily-word routes
+app.use('/api/daily-word', (req, res, next) => {
+  if (req.path === '/pronounce') return next();
+  authenticateToken(req, res, next);
+}, dailyWordRouter);
 app.use('/api/playlists', authenticateToken, playlistsRouter);
 app.use('/api/badges', authenticateToken, badgesRouter);
 app.use('/api/user', authenticateToken, userRouter);
