@@ -9,6 +9,7 @@ import '../state/auth_state.dart';
 import '../state/home_navigation_controller.dart';
 import '../state/theme_controller.dart';
 import '../theme/harmonix_theme.dart';
+import '../utils/i18n.dart';
 import '../widgets/spotify_connection_card.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -202,7 +203,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            'Settings',
+            context.tr('settings_title'),
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: colors.textPrimary),
           ),
           const SizedBox(height: 16),

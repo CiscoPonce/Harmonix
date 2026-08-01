@@ -14,11 +14,12 @@ import {
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { HarmonixWordmark } from '@/components/HarmonixWordmark';
+import { useTranslation } from '@/lib/i18n';
 
 const NAV = [
-  { href: '/discover', label: 'Discover', icon: Compass },
-  { href: '/playlists', label: 'Library', icon: Library },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/discover', key: 'nav_discover', label: 'Discover', icon: Compass },
+  { href: '/playlists', key: 'nav_shelf', label: 'Library', icon: Library },
+  { href: '/settings', key: 'settings_title', label: 'Settings', icon: Settings },
 ] as const;
 
 export interface AppShellProps {
@@ -43,6 +44,7 @@ export function AppShell({
   headerExtra,
 }: AppShellProps) {
   const pathname = usePathname();
+  const { t } = useTranslation();
 
   return (
     <div className="flex min-h-screen bg-[#F7F8F6] text-[#0C1210] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
@@ -53,7 +55,7 @@ export function AppShell({
         </div>
 
         <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto" aria-label="Main">
-          {NAV.map(({ href, label, icon: Icon }) => {
+          {NAV.map(({ href, key, label, icon: Icon }) => {
             const active =
               pathname === href ||
               (href === '/playlists' && pathname.startsWith('/playlists'));
@@ -70,7 +72,7 @@ export function AppShell({
                 aria-current={active ? 'page' : undefined}
               >
                 <Icon className="h-5 w-5 shrink-0" aria-hidden />
-                {label}
+                {t(key) || label}
                 {active ? (
                   <span
                     className="ml-auto h-1.5 w-1.5 rounded-full bg-[#0B4D2E] dark:bg-[#3DCF7A]"

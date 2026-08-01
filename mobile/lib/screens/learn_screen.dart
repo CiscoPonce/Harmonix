@@ -17,6 +17,7 @@ import '../spotify/spotify_open.dart';
 import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
 import '../utils/hear_it_timing.dart';
+import '../utils/i18n.dart';
 import '../widgets/add_to_playlist_sheet.dart';
 import '../widgets/word_flip_card.dart';
 import 'review_screen.dart';
@@ -605,25 +606,25 @@ class _LearnScreenState extends State<LearnScreen> {
               _LabeledRoundAction(
                 filled: true,
                 icon: _playingPreview ? Icons.pause : Icons.play_arrow,
-                label: _playingPreview ? 'Pause' : 'Hear it',
+                label: _playingPreview ? context.tr('pause') : context.tr('hear_it'),
                 onTap: _togglePreview,
               ),
               _LabeledRoundAction(
                 filled: false,
                 icon: Icons.playlist_add,
-                label: 'Playlist',
+                label: context.tr('playlist'),
                 onTap: _addToPlaylist,
               ),
               _LabeledRoundAction(
                 filled: false,
                 icon: Icons.open_in_new,
-                label: 'Spotify',
+                label: context.tr('spotify'),
                 onTap: _openInSpotify,
               ),
               _LabeledRoundAction(
                 filled: false,
                 icon: Icons.ios_share,
-                label: 'Share',
+                label: context.tr('share'),
                 onTap: _share,
               ),
             ],
@@ -636,7 +637,7 @@ class _LearnScreenState extends State<LearnScreen> {
               side: BorderSide(color: colors.accent),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
-            child: Text(_nexting ? 'Finding next word…' : 'Next word'),
+            child: Text(_nexting ? context.tr('loading') : context.tr('next_word')),
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),

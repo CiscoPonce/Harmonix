@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="100%" height="100%" style="background:#09090b; font-family: 'Inter', system-ui, -apple-system, sans-serif;">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="bg-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#181824" />
+      <stop offset="50%" stop-color="#09090b" />
+      <stop offset="100%" stop-color="#0d1117" />
+    </linearGradient>
+
+    <linearGradient id="brand-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1DB954" />
+      <stop offset="50%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+
+    <linearGradient id="card-grad-1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1e2d" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#12121a" stop-opacity="0.9" />
+    </linearGradient>
+
+    <linearGradient id="card-border-spotify" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1DB954" />
+      <stop offset="100%" stop-color="#059669" stop-opacity="0.3" />
+    </linearGradient>
+
+    <linearGradient id="card-border-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#6D28D9" stop-opacity="0.3" />
+    </linearGradient>
+
+    <linearGradient id="card-border-pink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EC4899" />
+      <stop offset="100%" stop-color="#BE185D" stop-opacity="0.3" />
+    </linearGradient>
+
+    <linearGradient id="card-border-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#1D4ED8" stop-opacity="0.3" />
+    </linearGradient>
+
+    <!-- Filters -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+    
+    <filter id="glow-green" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Layer -->
+  <rect width="1200" height="800" fill="url(#bg-glow)" />
+  
+  <!-- Subtle Ambient Glow Orbs -->
+  <circle cx="200" cy="150" r="250" fill="#1DB954" opacity="0.06" filter="blur(60px)" />
+  <circle cx="1000" cy="200" r="300" fill="#8B5CF6" opacity="0.07" filter="blur(80px)" />
+  <circle cx="600" cy="700" r="350" fill="#EC4899" opacity="0.05" filter="blur(90px)" />
+
+  <!-- Header Banner -->
+  <g transform="translate(60, 50)">
+    <!-- Logo Badge -->
+    <rect x="0" y="0" width="48" height="48" rx="14" fill="url(#brand-grad)" />
+    <path d="M16 32 V16 L34 24 Z" fill="#ffffff" opacity="0.95" />
+    <circle cx="34" cy="18" r="4" fill="#1DB954" />
+
+    <!-- Main Title -->
+    <text x="66" y="32" font-size="32" font-weight="900" fill="#ffffff" letter-spacing="1">HARMONIX</text>
+    <text x="245" y="32" font-size="14" font-weight="700" fill="#1DB954" letter-spacing="2">PITCH &amp; SALES VALUE DECK</text>
+    
+    <!-- Subtitle -->
+    <text x="66" y="52" font-size="15" fill="#a1a1aa" font-weight="400">
+      The World’s First Spotify-Powered Language Learning Platform
+    </text>
+  </g>
+
+  <!-- 4 Core Value Pillars Grid -->
+  
+  <!-- Pillar 1: Spotify Profile Personalization -->
+  <g transform="translate(60, 140)" filter="url(#shadow)">
+    <rect width="520" height="250" rx="20" fill="url(#card-grad-1)" stroke="url(#card-border-spotify)" stroke-width="1.5" />
+    
+    <!-- Header Badge -->
+    <rect x="24" y="24" width="36" height="36" rx="10" fill="#1DB954" fill-opacity="0.15" />
+    <path d="M34 42 C38 42 41 39 41 35 M32 38 C37 38 43 35 43 31 M30 34 C36 34 44 31 44 27" stroke="#1DB954" stroke-width="2.5" stroke-linecap="round" fill="none" />
+    
+    <text x="72" y="42" font-size="18" font-weight="800" fill="#ffffff">1. Spotify Listening Personalization</text>
+    <text x="72" y="58" font-size="12" font-weight="600" fill="#1DB954">HYPER-RELEVANT MUSIC ENGINE</text>
+    
+    <!-- Bullet Points -->
+    <text x="24" y="100" font-size="14" fill="#e4e4e7" font-weight="500">
+      • Connects directly to user's Spotify Premium profile &amp; listening history.
+    </text>
+    <text x="24" y="130" font-size="14" fill="#e4e4e7" font-weight="500">
+      • Automatically extracts vocabulary from their <tspan fill="#1DB954" font-weight="700">#1 Top Artists &amp; Genres</tspan>.
+    </text>
+    <text x="24" y="160" font-size="14" fill="#e4e4e7" font-weight="500">
+      • Converts passive music consumption into active language acquisition.
+    </text>
+
+    <!-- Stat Pill -->
+    <rect x="24" y="192" width="472" height="36" rx="10" fill="#1DB954" fill-opacity="0.1" stroke="#1DB954" stroke-opacity="0.3" />
+    <text x="40" y="215" font-size="13" font-weight="700" fill="#1DB954">
+      Sales Hook: "Learn Spanish/French with artists you ALREADY love."
+    </text>
+  </g>
+
+  <!-- Pillar 2: Earworm Retention Moat -->
+  <g transform="translate(620, 140)" filter="url(#shadow)">
+    <rect width="520" height="250" rx="20" fill="url(#card-grad-1)" stroke="url(#card-border-purple)" stroke-width="1.5" />
+    
+    <!-- Header Badge -->
+    <rect x="24" y="24" width="36" height="36" rx="10" fill="#8B5CF6" fill-opacity="0.15" />
+    <circle cx="42" cy="42" r="8" stroke="#8B5CF6" stroke-width="2.5" fill="none" />
+    <path d="M42 34 V42 L47 45" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round" fill="none" />
+    
+    <text x="72" y="42" font-size="18" font-weight="800" fill="#ffffff">2. Unmatched Earworm Retention</text>
+    <text x="72" y="58" font-size="12" font-weight="600" fill="#8B5CF6">10X HIGHER USER ENGAGEMENT</text>
+    
+    <!-- Bullet Points -->
+    <text x="24" y="100" font-size="14" fill="#e4e4e7" font-weight="500">
+      • Uses musical earworms to anchor new words into long-term memory.
+    </text>
+    <text x="24" y="130" font-size="14" fill="#e4e4e7" font-weight="500">
+      • Eliminates standard flashcard boredom through emotional melody hooks.
+    </text>
+    <text x="24" y="160" font-size="14" fill="#e4e4e7" font-weight="500">
+      • Spaced repetition algorithm powered by real song lyrics.
+    </text>
+
+    <!-- Stat Pill -->
+    <rect x="24" y="192" width="472" height="36" rx="10" fill="#8B5CF6" fill-opacity="0.1" stroke="#8B5CF6" stroke-opacity="0.3" />
+    <text x="40" y="215" font-size="13" font-weight="700" fill="#A78BFA">
+      Retention Boost: 84% higher 30-day recall vs traditional apps.
+    </text>
+  </g>
+
+  <!-- Pillar 3: AI Neural Speech & LRCLib Alignment -->
+  <g transform="translate(60, 420)" filter="url(#shadow)">
+    <rect width="520" height="250" rx="20" fill="url(#card-grad-1)" stroke="url(#card-border-pink)" stroke-width="1.5" />
+    
+    <!-- Header Badge -->
+    <rect x="24" y="24" width="36" height="36" rx="10" fill="#EC4899" fill-opacity="0.15" />
+    <path d="M36 34 L48 42 L36 50 Z" fill="#EC4899" />
+    
+    <text x="72" y="42" font-size="18" font-weight="800" fill="#ffffff">3. Neural TTS &amp; Timestamped Previews</text>
+    <text x="72" y="58" font-size="12" font-weight="600" fill="#EC4899">HIGH-PRECISION AUDIO PIPELINE</text>
+    
+    <!-- Bullet Points -->
+    <text x="24" y="100" font-size="14" fill="#e4e4e7" font-weight="500">
+      • Pocket-TTS neural voice synthesis in 6 native languages (ES, FR, DE, PT, IT, EN).
+    </text>
+    <text x="24" y="130" font-size="14" fill="#e4e4e7" font-weight="500">
+      • Millisecond-accurate LRCLib lyric timing matches exact song timestamps.
+    </text>
+    <text x="24" y="160" font-size="14" fill="#e4e4e7" font-weight="500">
+      • OpenRouter &amp; NVIDIA NIM pipeline for instant CEFR word glosses.
+    </text>
+
+    <!-- Stat Pill -->
+    <rect x="24" y="192" width="472" height="36" rx="10" fill="#EC4899" fill-opacity="0.1" stroke="#EC4899" stroke-opacity="0.3" />
+    <text x="40" y="215" font-size="13" font-weight="700" fill="#F472B6">
+      Audio Quality: Zero-clipping peak normalized audio on every device.
+    </text>
+  </g>
+
+  <!-- Pillar 4: Massive Spotify Ecosystem Moat -->
+  <g transform="translate(620, 420)" filter="url(#shadow)">
+    <rect width="520" height="250" rx="20" fill="url(#card-grad-1)" stroke="url(#card-border-blue)" stroke-width="1.5" />
+    
+    <!-- Header Badge -->
+    <rect x="24" y="24" width="36" height="36" rx="10" fill="#3B82F6" fill-opacity="0.15" />
+    <path d="M34 32 L46 32 M34 40 L46 40 M34 48 L42 48" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" />
+    
+    <text x="72" y="42" font-size="18" font-weight="800" fill="#ffffff">4. 500M+ Spotify User Market Moat</text>
+    <text x="72" y="58" font-size="12" font-weight="600" fill="#3B82F6">VIRAL GROWTH &amp; PLAYLIST SYNC</text>
+    
+    <!-- Bullet Points -->
+    <text x="24" y="100" font-size="14" fill="#e4e4e7" font-weight="500">
+      • One-tap Spotify native app deep linking (`com.spotify.music`).
+    </text>
+    <text x="24" y="130" font-size="14" fill="#e4e4e7" font-weight="500">
+      • Export learned songs into custom Spotify study playlists.
+    </text>
+    <text x="24" y="160" font-size="14" fill="#e4e4e7" font-weight="500">
+      • Seamless cross-platform client (Flutter Mobile APK + Web App).
+    </text>
+
+    <!-- Stat Pill -->
+    <rect x="24" y="192" width="472" height="36" rx="10" fill="#3B82F6" fill-opacity="0.1" stroke="#3B82F6" stroke-opacity="0.3" />
+    <text x="40" y="215" font-size="13" font-weight="700" fill="#60A5FA">
+      Market Size: Taps into 500M+ active Spotify users globally.
+    </text>
+  </g>
+
+  <!-- Bottom Traction & Metrics Bar -->
+  <g transform="translate(60, 695)" filter="url(#shadow)">
+    <rect width="1080" height="65" rx="16" fill="#181824" stroke="#272738" stroke-width="1.5" />
+    
+    <!-- Metric 1 -->
+    <text x="60" y="32" font-size="20" font-weight="900" fill="#1DB954">6</text>
+    <text x="80" y="32" font-size="13" font-weight="600" fill="#a1a1aa">Target Languages</text>
+    <text x="60" y="48" font-size="11" fill="#71717a">ES, FR, DE, PT, IT, EN</text>
+
+    <!-- Divider -->
+    <line x1="240" y1="15" x2="240" y2="50" stroke="#272738" stroke-width="1.5" />
+
+    <!-- Metric 2 -->
+    <text x="280" y="32" font-size="20" font-weight="900" fill="#8B5CF6">100%</text>
+    <text x="342" y="32" font-size="13" font-weight="600" fill="#a1a1aa">Personalized</text>
+    <text x="280" y="48" font-size="11" fill="#71717a">Spotify Listening Profiles</text>
+
+    <!-- Divider -->
+    <line x1="510" y1="15" x2="510" y2="50" stroke="#272738" stroke-width="1.5" />
+
+    <!-- Metric 3 -->
+    <text x="550" y="32" font-size="20" font-weight="900" fill="#EC4899">500M+</text>
+    <text x="635" y="32" font-size="13" font-weight="600" fill="#a1a1aa">Addressable Market</text>
+    <text x="550" y="48" font-size="11" fill="#71717a">Spotify Premium Subscribers</text>
+
+    <!-- Divider -->
+    <line x1="820" y1="15" x2="820" y2="50" stroke="#272738" stroke-width="1.5" />
+
+    <!-- Metric 4 -->
+    <text x="860" y="32" font-size="20" font-weight="900" fill="#3B82F6">v1.0.3</text>
+    <text x="925" y="32" font-size="13" font-weight="600" fill="#a1a1aa">Release Status</text>
+    <text x="860" y="48" font-size="11" fill="#71717a">Android APK + Web Live</text>
+  </g>
+</svg>

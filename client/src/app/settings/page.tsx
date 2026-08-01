@@ -15,6 +15,7 @@ import {
   startSpotifyAuth,
 } from '@/lib/api';
 import { LANGUAGES, languageLabel } from '@/lib/languages';
+import { useTranslation } from '@/lib/i18n';
 import {
   parseSpotifyCallbackOutcome,
   type ConnectionState,
@@ -51,6 +52,7 @@ function genreLabel(value: string | undefined | null): string {
 
 function SettingsContent() {
   const { user, isLoading: authLoading, logout, refreshUser } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackOutcome = parseSpotifyCallbackOutcome(searchParams.get('spotify'));
@@ -327,7 +329,7 @@ function SettingsContent() {
                 htmlFor="settings-native-language"
                 className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]"
               >
-                Home language
+                {t('home_language_ui')}
               </label>
               <select
                 id="settings-native-language"
@@ -352,7 +354,7 @@ function SettingsContent() {
                 htmlFor="settings-target-language"
                 className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]"
               >
-                Learning language
+                {t('target_language')}
               </label>
               <select
                 id="settings-target-language"
@@ -376,7 +378,7 @@ function SettingsContent() {
 
           <div className="mt-5">
             <p className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
-              Music style
+              {t('music_genre')}
             </p>
             <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
               Prefer songs in this style when picking words for you.
