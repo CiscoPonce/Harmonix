@@ -83,6 +83,53 @@ function highlightWord(snippet: string, start: number, end: number) {
     </>
   );
 }
+function inferPartOfSpeech(word?: string, lang?: string): string {
+  if (!word) return 'word';
+  const w = word.trim().toLowerCase();
+  
+  if (lang === 'fr' || !lang) {
+    if (w.endsWith('er') || w.endsWith('ir') || w.endsWith('re') || w.endsWith('ez') || w.endsWith('ons')) return 'verb';
+    if (w.endsWith('ment')) return 'adverb';
+    if (w.endsWith('tion') || w.endsWith('sion') || w.endsWith('eur') || w.endsWith('euse') || w.endsWith('té')) return 'noun';
+    if (w.endsWith('ique') || w.endsWith('able') || w.endsWith('ible') || w.endsWith('ant') || w.endsWith('ent')) return 'adjective';
+  }
+  
+  if (lang === 'es') {
+    if (w.endsWith('ar') || w.endsWith('er') || w.endsWith('ir') || w.endsWith('ando') || w.endsWith('iendo')) return 'verb';
+    if (w.endsWith('mente')) return 'adverb';
+    if (w.endsWith('ción') || w.endsWith('sión') || w.endsWith('dad') || w.endsWith('tad') || w.endsWith('dor')) return 'noun';
+    if (w.endsWith('al') || w.endsWith('able') || w.endsWith('ible') || w.endsWith('oso') || w.endsWith('osa')) return 'adjective';
+  }
+
+  if (lang === 'it') {
+    if (w.endsWith('are') || w.endsWith('ere') || w.endsWith('ire') || w.endsWith('ando') || w.endsWith('endo')) return 'verb';
+    if (w.endsWith('mente')) return 'adverb';
+    if (w.endsWith('zione') || w.endsWith('sione') || w.endsWith('tà')) return 'noun';
+  }
+
+  if (lang === 'pt') {
+    if (w.endsWith('ar') || w.endsWith('er') || w.endsWith('ir') || w.endsWith('ando') || w.endsWith('endo')) return 'verb';
+    if (w.endsWith('mente')) return 'adverb';
+    if (w.endsWith('ção') || w.endsWith('são') || w.endsWith('dade')) return 'noun';
+  }
+
+  return 'word';
+}
+
+function formatPronunciation(raw: string) {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("/") || trimmed.startsWith("[") || trimmed.includes("ˈ")) return trimmed;
+  return `/${trimmed}/`;
+}
+
+function getDisplayPronunciation(rawPronunciation?: string | null, wordText?: string): string {
+  if (rawPronunciation && rawPronunciation.trim()) {
+    const formatted = formatPronunciation(rawPronunciation.trim());
+    if (formatted) return formatted;
+  }
+  if (!wordText || !wordText.trim()) return '';
+  return `/${wordText.trim().toLowerCase()}/`;
+}
 
 export function DailyWordCard({
   onWordChange,
@@ -882,9 +929,9 @@ export function DailyWordCard({
 
               <div className="mt-auto space-y-4 min-w-0">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                  {data.word.pronunciation && (
+                  {getDisplayPronunciation(data.word.pronunciation, data.word.text) && (
                     <span className="text-base sm:text-lg font-medium text-zinc-500 dark:text-zinc-400 tracking-wide font-serif italic break-words">
-                      {formatPronunciation(data.word.pronunciation)}
+                      {getDisplayPronunciation(data.word.pronunciation, data.word.text)}
                     </span>
                   )}
                   {SUPPORTED_PRONUNCIATION_LANGUAGES.includes(user?.target_language || "") && (
@@ -897,11 +944,9 @@ export function DailyWordCard({
                       <Volume2 className={`w-4 h-4 transition-colors ${isSpeaking ? "animate-pulse text-zinc-900 dark:text-white" : "text-zinc-400 dark:text-zinc-500"}`} />
                     </button>
                   )}
-                  {data.word.part_of_speech && (
-                    <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-900 dark:text-white shrink-0">
-                      {data.word.part_of_speech}
-                    </span>
-                  )}
+                  <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-900 dark:text-white shrink-0">
+                    {data.word.part_of_speech || inferPartOfSpeech(data.word.text, user?.target_language)}
+                  </span>
                   {showMeaning && (
                     <span className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white break-words">
                       {meaning}
