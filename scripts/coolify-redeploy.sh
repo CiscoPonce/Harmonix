@@ -159,6 +159,11 @@ if [ "${HARMONIX_REDEPLOY_BOOTED:-}" != "1" ]; then
   exec bash "${PROJECT}/scripts/coolify-redeploy.sh" "$@"
 fi
 
+if [ -d "$WORKDIR" ]; then
+  log "Syncing updated codebase to Coolify service directory: ${WORKDIR}"
+  sudo cp -r "${PROJECT}/." "${WORKDIR}/"
+fi
+
 log "Building images (live traffic stays on current containers)"
 docker compose build api web
 
