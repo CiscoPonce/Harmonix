@@ -519,7 +519,7 @@ class _LearnScreenState extends State<LearnScreen> {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.center,
                   child: Text(
-                    (word['text'] as String? ?? '—').toUpperCase(),
+                    (word['text'] as String? ?? '—'),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.displayLarge?.copyWith(
                           color: colors.accent,

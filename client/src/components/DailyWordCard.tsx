@@ -875,7 +875,7 @@ export function DailyWordCard({
               aria-label="Show song context for this word"
             >
               <div className="flex justify-center pt-1 sm:pt-2 min-w-0">
-                <p className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight uppercase sm:italic text-zinc-900 dark:text-white break-words [overflow-wrap:anywhere] text-center">
+                <p className="text-3xl sm:text-5xl md:text-6xl font-black tracking-normal text-zinc-900 dark:text-white break-words [overflow-wrap:anywhere] text-center select-none">
                   {data.word.text}
                 </p>
               </div>
