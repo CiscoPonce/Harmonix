@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     ffmpeg \
+    libgomp1 \
     python3 \
     python3-pip \
     python3-venv \

@@ -70,9 +70,9 @@ function generateKokoroAudio(word, langCode = 'es', gender = 'female') {
       pythonBin,
       [scriptPath, word, kokoroLang, voice, '--json'],
       { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, timeout: 8000 },
-      (err, stdout) => {
+      (err, stdout, stderr) => {
         if (err || !stdout) {
-          if (err) console.warn(`[kokoroService] Synthesis warning for '${word}':`, err.message || err);
+          console.warn(`[kokoroService] Synthesis error for '${word}':`, err?.message || err, stderr ? `stderr: ${stderr}` : '');
           return resolve(null);
         }
         try {
