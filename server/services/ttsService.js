@@ -369,6 +369,26 @@ async function ensureDaemonLanguage(langCode) {
   throw err;
 }
 
+function generateSilentWavBuffer(sampleRate = 24000, durationSec = 0.5) {
+  const numSamples = Math.floor(sampleRate * durationSec);
+  const dataSize = numSamples * 2;
+  const buffer = Buffer.alloc(44 + dataSize);
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write('WAVE', 8);
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(dataSize, 40);
+  return buffer;
+}
+
 async function getPronunciationForWord(word, langCode, gender = 'female') {
   if (!SUPPORTED_LANGUAGES.includes(langCode)) {
     const err = new Error('unsupported_language');
@@ -391,13 +411,18 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
     console.warn('[ttsService] Kokoro audio skipped, using Pocket-TTS fallback:', kErr.message || kErr);
   }
 
-  await ensureDaemonLanguage(langCode);
+  try {
+    await ensureDaemonLanguage(langCode);
+    const wavBuffer = await fetchFromPocketTTS(word, resolveVoice(langCode, voiceGender), langCode);
+    const slowed = await slowWav(wavBuffer, SPEECH_TEMPO);
+    const padded = padWavWithSilence(slowed);
+    cachePronunciation(word, padded, langCode, voiceGender);
+    return padded;
+  } catch (pErr) {
+    console.warn('[ttsService] Pocket-TTS fallback unavailable:', pErr.message || pErr);
+  }
 
-  const wavBuffer = await fetchFromPocketTTS(word, resolveVoice(langCode, voiceGender), langCode);
-  const slowed = await slowWav(wavBuffer, SPEECH_TEMPO);
-  const padded = padWavWithSilence(slowed);
-  cachePronunciation(word, padded, langCode, voiceGender);
-  return padded;
+  return generateSilentWavBuffer();
 }
 
 async function preCachePronunciation(word, langCode, gender = 'female') {
