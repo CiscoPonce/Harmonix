@@ -24,9 +24,13 @@ jobs:
           command_timeout: 40m
           script: |
             set -euo pipefail
-            # Pull before invoking redeploy so we never run a stale script inode
-            # (git reset mid-script left bash executing the old stop-before-start path).
             cd /home/ubuntu/lyric
             git fetch origin main
             git reset --hard origin/main
+            # Sync updated source into Coolify WORKDIR before building
+            WORKDIR="/data/coolify/services/rxwdj1k3qu51fqf8uwtal389"
+            if [ -d "$WORKDIR" ]; then
+              sudo cp -r /home/ubuntu/lyric/. "$WORKDIR/"
+              echo "Synced /home/ubuntu/lyric to $WORKDIR"
+            fi
             HARMONIX_REDEPLOY_BOOTED=1 bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh

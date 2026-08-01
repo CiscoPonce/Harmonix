@@ -165,7 +165,7 @@ if [ -d "$WORKDIR" ]; then
 fi
 
 log "Building images (live traffic stays on current containers)"
-run_compose build api web
+run_compose build --no-cache api web
 
 fix_sqlite_perms
 trap cleanup_standbys EXIT
