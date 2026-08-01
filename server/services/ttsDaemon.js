@@ -14,6 +14,7 @@ function ttsBaseUrl() {
 function resolvePython() {
   const candidates = [
     process.env.POCKET_TTS_PYTHON,
+    path.join(__dirname, "../venv/bin/python"),
     "/home/ubuntu/pocket-tts/.venv/bin/python",
     path.join(__dirname, "../../../pocket-tts/.venv/bin/python"),
     "python3",

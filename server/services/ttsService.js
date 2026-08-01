@@ -9,9 +9,9 @@ const VOICE_MAP_FEMALE = {
   es: 'lola',
   fr: 'estelle',
   de: 'anna',
-  pt: 'camila',
+  pt: 'lola',
   en: 'alba',
-  it: 'fiammetta',
+  it: 'giovanni',
 };
 
 const VOICE_MAP_MALE = {
@@ -20,7 +20,7 @@ const VOICE_MAP_MALE = {
   de: 'juergen',
   pt: 'rafael',
   en: 'charles',
-  it: 'marcos',
+  it: 'giovanni',
 };
 
 const ACCENT_RESTORE_MAP = {
@@ -355,7 +355,7 @@ async function ensureDaemonLanguage(langCode) {
   }
 
   await ttsDaemon.restart(pocketLang);
-  const maxRetries = process.env.NODE_ENV === 'test' ? 3 : 40;
+  const maxRetries = process.env.NODE_ENV === 'test' ? 3 : 120;
   const pollInterval = process.env.NODE_ENV === 'test' ? 100 : 400;
   for (let i = 0; i < maxRetries; i++) {
     await new Promise((r) => setTimeout(r, pollInterval));
