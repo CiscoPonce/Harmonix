@@ -24,6 +24,7 @@ import {
   whatsappShareHref,
   type PostcardSharePayload,
 } from '@/lib/sharePostcard';
+import { useTranslation } from '@/lib/i18n';
 
 type Props = {
   open: boolean;
@@ -32,6 +33,7 @@ type Props = {
 };
 
 export function PostcardShareSheet({ open, payload, onClose }: Props) {
+  const { t } = useTranslation();
   const titleId = useId();
   const [busy, setBusy] = useState<'native' | 'copy' | 'download' | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -138,7 +140,7 @@ export function PostcardShareSheet({ open, payload, onClose }: Props) {
               id={titleId}
               className="font-display text-xl font-bold italic text-[#3DCF7A]"
             >
-              Share postcard
+              {t('share_postcard')}
             </p>
             <p className="mt-1 truncate text-sm text-[#9AABA0]">{payload.title}</p>
             <p className="mt-1 text-xs text-[#5C6B62]">
@@ -151,7 +153,7 @@ export function PostcardShareSheet({ open, payload, onClose }: Props) {
             type="button"
             onClick={onClose}
             className="rounded-full p-2 text-[#9AABA0] hover:bg-white/5 hover:text-white"
-            aria-label="Close"
+            aria-label={t('close')}
           >
             <X className="h-5 w-5" />
           </button>
@@ -179,7 +181,7 @@ export function PostcardShareSheet({ open, payload, onClose }: Props) {
               ) : (
                 <Share2 className="h-4 w-4" />
               )}
-              {filesReady ? 'Share image & link…' : 'Share link…'}
+              {t('share')}
             </button>
           ) : null}
 
@@ -194,7 +196,7 @@ export function PostcardShareSheet({ open, payload, onClose }: Props) {
             ) : (
               <Download className="h-4 w-4" />
             )}
-            Download PNG
+            {t('download_png')}
           </button>
 
           <button
@@ -210,7 +212,7 @@ export function PostcardShareSheet({ open, payload, onClose }: Props) {
             ) : (
               <Copy className="h-4 w-4" />
             )}
-            Copy link
+            {toast === 'Link copied' ? t('link_copied') : t('copy_link')}
           </button>
 
           <div className="mt-1 grid grid-cols-3 gap-2">

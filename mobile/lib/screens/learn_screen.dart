@@ -563,7 +563,7 @@ class _LearnScreenState extends State<LearnScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Found in ${song['title'] ?? '—'} · ${song['artist'] ?? ''}',
+                  '${context.tr('found_in')} ${song['title'] ?? '—'} · ${song['artist'] ?? ''}',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     color: colors.textPrimary,

@@ -5,6 +5,7 @@ import '../services/api_client.dart';
 import '../spotify/spotify_contracts.dart';
 import '../state/home_navigation_controller.dart';
 import '../theme/harmonix_theme.dart';
+import '../utils/i18n.dart';
 import '../widgets/spotify_library_list.dart';
 import 'playlist_detail_screen.dart';
 
@@ -260,7 +261,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       header: Row(
         children: [
           Text(
-            'Library',
+            context.tr('nav_shelf'),
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   color: colors.textPrimary,
                 ),

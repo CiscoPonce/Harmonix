@@ -918,7 +918,7 @@ export function DailyWordCard({
                 </div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
                   <RotateCw className="w-3 h-3 shrink-0" />
-                  Tap for song context
+                  {t('tap_for_context')}
                 </p>
               </div>
             </button>
@@ -934,12 +934,12 @@ export function DailyWordCard({
             >
               <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 self-start">
                 <RotateCw className="w-3 h-3 shrink-0" />
-                Tap to flip back
+                {t('tap_to_flip_back')}
               </p>
               <div>
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-                    {t('word_of_the_day')} · Tap card to flip
+                    {t('word_of_the_day')} · {t('tap_to_flip')}
                   </span>
                   {data.word.difficulty && (
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
@@ -981,7 +981,7 @@ export function DailyWordCard({
                 {showMeaning && (
                   <div className="mt-4 pt-4 border-t border-zinc-200/60 dark:border-zinc-800/80">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-1">
-                      Meaning ({homeLanguage})
+                      {t('meaning')} ({homeLanguage})
                     </p>
                     <p className="text-xl sm:text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
                       {data.word.translation}

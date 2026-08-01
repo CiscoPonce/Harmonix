@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { HarmonixWordmark } from '@/components/HarmonixWordmark';
 import { LanguageBadge } from '@/components/LanguageBadge';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useTranslation } from '@/lib/i18n';
 
 interface AppHeaderProps {
   userEmail?: string;
@@ -20,6 +21,8 @@ export function AppHeader({
   homeHref = '/discover',
   showSettingsLink = true,
 }: AppHeaderProps) {
+  const { t } = useTranslation();
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/90 backdrop-blur-xl dark:border-zinc-900 dark:bg-black/90">
       <div
@@ -34,7 +37,7 @@ export function AppHeader({
           {userEmail ? (
             <div className="hidden min-w-0 lg:flex lg:flex-col lg:items-end">
               <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                Logged in as
+                {t('logged_in_as')}
               </span>
               <span className="max-w-[12rem] truncate text-xs font-bold">{userEmail}</span>
             </div>
@@ -43,12 +46,12 @@ export function AppHeader({
             <Link
               href="/settings"
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900 sm:h-8 sm:w-auto sm:gap-1.5 sm:px-3"
-              title="Settings"
-              aria-label="Settings"
+              title={t('settings')}
+              aria-label={t('settings')}
             >
               <Settings className="h-4 w-4" />
               <span className="hidden text-[10px] font-bold uppercase tracking-widest sm:inline">
-                Settings
+                {t('settings')}
               </span>
             </Link>
           ) : null}
@@ -58,11 +61,11 @@ export function AppHeader({
               size="sm"
               onClick={onLogout}
               className="h-9 w-9 shrink-0 p-0 sm:h-8 sm:w-auto sm:px-3"
-              title="Logout"
+              title={t('logout')}
             >
               <LogOut className="h-4 w-4 sm:hidden" />
               <span className="hidden text-[10px] font-bold uppercase tracking-widest sm:inline">
-                Logout
+                {t('logout')}
               </span>
             </Button>
           ) : null}
