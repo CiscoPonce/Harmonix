@@ -1,10 +1,20 @@
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
+process.env.OMP_NUM_THREADS = process.env.OMP_NUM_THREADS || '4';
+process.env.OPENBLAS_NUM_THREADS = process.env.OPENBLAS_NUM_THREADS || '4';
 
-let Kokoro = null;
-let kokoroInstance = null;
-let isInitializing = false;
+function trimPcmSilence(float32Array, threshold = 0.005, minPad = 240) {
+  if (!float32Array || float32Array.length === 0) return float32Array;
+  let start = 0;
+  while (start < float32Array.length && Math.abs(float32Array[start]) <= threshold) {
+    start++;
+  }
+  let end = float32Array.length - 1;
+  while (end > start && Math.abs(float32Array[end]) <= threshold) {
+    end--;
+  }
+  start = Math.max(0, start - minPad);
+  end = Math.min(float32Array.length, end + 1 + minPad);
+  return float32Array.subarray(start, end);
+}
 
 const KOKORO_LANG_MAP = {
   it: 'it',
@@ -12,7 +22,7 @@ const KOKORO_LANG_MAP = {
   fr: 'fr-fr',
   pt: 'pt-br',
   en: 'en-us',
-  de: 'en-us', // fallback for German if de voice pack is not built-in
+  de: 'en-us',
 };
 
 const KOKORO_VOICES_FEMALE = {
@@ -127,7 +137,8 @@ async function generateKokoroAudio(word, langCode = 'es', gender = 'female') {
     });
 
     if (!result || !result.audio) return null;
-    return result;
+    const trimmedAudio = trimPcmSilence(result.audio);
+    return { audio: trimmedAudio, sampleRate: result.sampleRate || 24000 };
   } catch (err) {
     console.warn(`[kokoroService] Kokoro synthesis failed for '${word}' [${langCode}]:`, err.message || err);
     return null;
@@ -137,6 +148,7 @@ async function generateKokoroAudio(word, langCode = 'es', gender = 'female') {
 module.exports = {
   initKokoro,
   generateKokoroAudio,
+  trimPcmSilence,
   KOKORO_LANG_MAP,
   KOKORO_VOICES_FEMALE,
   KOKORO_VOICES_MALE,

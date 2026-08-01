@@ -29,4 +29,11 @@ describe('Kokoro-82M ONNX Service Mapping', () => {
     assert.strictEqual(KOKORO_VOICES_MALE.pt, 'pm_alex');
     assert.strictEqual(KOKORO_VOICES_MALE.en, 'am_adam');
   });
+
+  it('trims leading and trailing silence from float32 audio arrays', () => {
+    const { trimPcmSilence } = require('./kokoroService');
+    const raw = new Float32Array([0, 0, 0, 0.05, 0.2, 0.8, 0.05, 0, 0, 0]);
+    const trimmed = trimPcmSilence(raw, 0.01, 1);
+    assert.strictEqual(trimmed.length, 6);
+  });
 });
