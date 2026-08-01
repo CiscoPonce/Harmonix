@@ -57,6 +57,9 @@ Thumbs.db
 .claude/
 gsd-core/
 **/gsd-file-manifest.json
+**/venv/
+**/models/
+**/scratch/
 
 # --- Large local APK duplicates (keep releases/ intentionally) ---
 /harmonix.apk

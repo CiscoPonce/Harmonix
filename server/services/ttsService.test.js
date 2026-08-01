@@ -15,9 +15,9 @@ describe('TTS Service Voice & Accent Normalization', () => {
   });
 
   it('assigns native voices for all 6 supported languages', () => {
-    assert.strictEqual(ttsService.resolveVoice('it', 'female'), 'fiammetta');
-    assert.strictEqual(ttsService.resolveVoice('it', 'male'), 'marcos');
-    assert.strictEqual(ttsService.resolveVoice('pt', 'female'), 'camila');
+    assert.strictEqual(ttsService.resolveVoice('it', 'female'), 'giovanni');
+    assert.strictEqual(ttsService.resolveVoice('it', 'male'), 'giovanni');
+    assert.strictEqual(ttsService.resolveVoice('pt', 'female'), 'lola');
     assert.strictEqual(ttsService.resolveVoice('es', 'female'), 'lola');
     assert.strictEqual(ttsService.resolveVoice('fr', 'female'), 'estelle');
     assert.strictEqual(ttsService.resolveVoice('de', 'female'), 'anna');

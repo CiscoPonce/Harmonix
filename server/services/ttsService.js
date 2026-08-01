@@ -380,6 +380,19 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
   const cached = getCachedPronunciation(word, langCode, voiceGender);
   if (cached) return cached;
 
+  try {
+    const kokoroService = require('./kokoroService');
+    const kokoroRes = await kokoroService.generateKokoroAudio(word, langCode, voiceGender);
+    if (kokoroRes && kokoroRes.audio) {
+      const slowed = await slowWav(Buffer.from(kokoroRes.audio), SPEECH_TEMPO);
+      const padded = padWavWithSilence(slowed);
+      cachePronunciation(word, padded, langCode, voiceGender);
+      return padded;
+    }
+  } catch (kErr) {
+    console.warn('[ttsService] Kokoro audio skipped, using Pocket-TTS fallback:', kErr.message || kErr);
+  }
+
   await ensureDaemonLanguage(langCode);
 
   const wavBuffer = await fetchFromPocketTTS(word, resolveVoice(langCode, voiceGender), langCode);
