@@ -122,6 +122,7 @@ start_api_standby() {
 
   rm -f "$env_tmp"
   docker network connect coolify "$API_STANDBY" 2>/dev/null || true
+  docker network connect "${UUID}_default" "$API_STANDBY" 2>/dev/null || true
   wait_container_http "$API_STANDBY" "http://127.0.0.1:3001/api/health" 40
   sleep 5
   wait_https 200 30
