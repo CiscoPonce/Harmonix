@@ -89,7 +89,7 @@ router.get("/pronounce", async (req, res) => {
     const audioBuffer = await ttsService.getPronunciationForWord(
       word.trim(),
       langCode,
-      user.voice_gender || 'female'
+      user?.voice_gender || 'female'
     );
     const buf = Buffer.isBuffer(audioBuffer) ? audioBuffer : Buffer.from(audioBuffer);
     res.setHeader("Content-Type", "audio/wav");
