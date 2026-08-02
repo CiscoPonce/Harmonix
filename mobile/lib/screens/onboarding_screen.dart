@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../constants/learning_prefs.dart';
 import '../state/auth_state.dart';
@@ -98,11 +99,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _connectSpotify() async {
     try {
-      final res = await context.read<ApiClient>().get('/api/spotify/connect-url');
-      if (res.statusCode == 200) {
-        // Will launch OAuth link or save preferences first
-        await _saveAndFinish();
+      final urlStr = await context.read<ApiClient>().spotifyAuthStart(client: 'android');
+      final uri = Uri.parse(urlStr);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
+      await _saveAndFinish();
     } catch (_) {
       await _saveAndFinish();
     }
@@ -166,7 +168,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       decoration: BoxDecoration(
         color: active
             ? colors.accent
-            : (done ? colors.accent.withValues(alpha: 0.5) : colors.textSecondary.withValues(alpha: 0.2)),
+            : (done ? colors.accent.withValues(alpha: 0.5) : colors.textMuted.withValues(alpha: 0.2)),
         borderRadius: BorderRadius.circular(5),
       ),
     );
@@ -180,7 +182,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           'Setup Profile',
           style: theme.textTheme.labelLarge?.copyWith(
             color: colors.accent,
-            fontWeight: FontWeight.black,
+            fontWeight: FontWeight.w900,
             letterSpacing: 1.5,
           ),
         ),
@@ -189,13 +191,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           'Select Languages',
           style: theme.textTheme.headlineMedium?.copyWith(
             color: colors.textPrimary,
-            fontWeight: FontWeight.black,
+            fontWeight: FontWeight.w900,
           ),
         ),
         const SizedBox(height: 8),
         Text(
           'Select your mother language and the language you want to learn.',
-          style: theme.textTheme.bodyMedium?.copyWith(color: colors.textSecondary),
+          style: theme.textTheme.bodyMedium?.copyWith(color: colors.textMuted),
         ),
         const SizedBox(height: 32),
         DropdownButtonFormField<String>(
@@ -236,7 +238,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             child: const Text(
               'Continue',
-              style: TextStyle(fontWeight: FontWeight.extrabold, fontSize: 16, color: Colors.black),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black),
             ),
           ),
         ),
@@ -252,7 +254,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           'Personalize Music',
           style: theme.textTheme.labelLarge?.copyWith(
             color: colors.accent,
-            fontWeight: FontWeight.black,
+            fontWeight: FontWeight.w900,
             letterSpacing: 1.5,
           ),
         ),
@@ -261,13 +263,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           'Style of Music',
           style: theme.textTheme.headlineMedium?.copyWith(
             color: colors.textPrimary,
-            fontWeight: FontWeight.black,
+            fontWeight: FontWeight.w900,
           ),
         ),
         const SizedBox(height: 8),
         Text(
           'Choose your favorite music genre to tailor daily song recommendations.',
-          style: theme.textTheme.bodyMedium?.copyWith(color: colors.textSecondary),
+          style: theme.textTheme.bodyMedium?.copyWith(color: colors.textMuted),
         ),
         const SizedBox(height: 24),
         for (final s in kMusicStyles) ...[
@@ -280,7 +282,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 color: _genre == s.$1 ? colors.accent.withValues(alpha: 0.15) : Colors.transparent,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: _genre == s.$1 ? colors.accent : colors.textSecondary.withValues(alpha: 0.2),
+                  color: _genre == s.$1 ? colors.accent : colors.textMuted.withValues(alpha: 0.2),
                 ),
               ),
               child: Row(
@@ -341,7 +343,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                   child: const Text(
                     'Next Step',
-                    style: TextStyle(fontWeight: FontWeight.extrabold, color: Colors.black),
+                    style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black),
                   ),
                 ),
               ),
@@ -375,14 +377,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           textAlign: TextAlign.center,
           style: theme.textTheme.headlineMedium?.copyWith(
             color: colors.textPrimary,
-            fontWeight: FontWeight.black,
+            fontWeight: FontWeight.w900,
           ),
         ),
         const SizedBox(height: 8),
         Text(
           'Connect your Spotify account to import your playlists and stream lyrics automatically. (Optional)',
           textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(color: colors.textSecondary),
+          style: theme.textTheme.bodyMedium?.copyWith(color: colors.textMuted),
         ),
         const SizedBox(height: 32),
 
@@ -411,7 +413,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                       Text(
                         'Your playlists will sync with Harmonix.',
-                        style: theme.textTheme.bodySmall?.copyWith(color: colors.textSecondary),
+                        style: theme.textTheme.bodySmall?.copyWith(color: colors.textMuted),
                       ),
                     ],
                   ),
@@ -432,7 +434,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               icon: const Icon(Icons.music_note, color: Colors.black),
               label: const Text(
                 'Connect Spotify Account',
-                style: TextStyle(fontWeight: FontWeight.extrabold, fontSize: 15),
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
               ),
             ),
           ),
@@ -456,7 +458,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               _busy
                   ? 'Saving…'
                   : (isConnected ? 'Finish Setup & Start Learning' : 'Skip & Start Learning'),
-              style: const TextStyle(fontWeight: FontWeight.extrabold, fontSize: 16, color: Colors.black),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black),
             ),
           ),
         ),

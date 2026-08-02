@@ -70,7 +70,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   Text(
                     'HARMONIX',
                     style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.black,
+                      fontWeight: FontWeight.w900,
                       letterSpacing: 2.0,
                       color: colors.textPrimary,
                     ),
@@ -119,7 +119,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           item['title']!,
                           textAlign: TextAlign.center,
                           style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.extrabold,
+                            fontWeight: FontWeight.w800,
                             color: colors.textPrimary,
                           ),
                         ),
@@ -128,7 +128,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           item['desc']!,
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colors.textSecondary,
+                            color: colors.textMuted,
                             height: 1.5,
                           ),
                         ),
@@ -151,7 +151,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     decoration: BoxDecoration(
                       color: _currentPage == index
                           ? colors.accent
-                          : colors.textSecondary.withValues(alpha: 0.3),
+                          : colors.textMuted.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -181,7 +181,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     'Get Started Free',
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.extrabold,
+                      fontWeight: FontWeight.w800,
                       color: Colors.black,
                     ),
                   ),
