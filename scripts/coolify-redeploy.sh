@@ -75,7 +75,13 @@ start_api_standby() {
   log "Starting Traefik standby API (keeps site live during API cutover)"
   local env_tmp
   env_tmp=$(mktemp)
-  sudo cat "${WORKDIR}/.env" > "$env_tmp"
+  if [ -f "${WORKDIR}/.env" ]; then
+    sudo cat "${WORKDIR}/.env" > "$env_tmp"
+  elif [ -f "${PROJECT}/server/.env" ]; then
+    sudo cat "${PROJECT}/server/.env" > "$env_tmp"
+  elif [ -f "${PROJECT}/.env" ]; then
+    sudo cat "${PROJECT}/.env" > "$env_tmp"
+  fi
   chmod 600 "$env_tmp"
 
   docker run -d \
