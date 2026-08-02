@@ -97,14 +97,11 @@ router.get("/pronounce", async (req, res) => {
     res.setHeader("Cache-Control", "public, max-age=86400");
     res.send(buf);
   } catch (err) {
-    console.error("GET /api/daily-word/pronounce error:", err.message);
+    console.error("GET /api/daily-word/pronounce error:", err.stack || err.message);
     if (err.code === "unsupported_language") {
       return res.status(404).json({ error: "unsupported_language" });
     }
-    if (err.code === "tts_generation_failed") {
-      return res.status(502).json({ error: "tts_generation_failed" });
-    }
-    res.status(502).json({ error: "tts_unavailable" });
+    res.status(500).json({ error: "pronunciation_failed", details: err.message, stack: err.stack });
   }
 });
 
