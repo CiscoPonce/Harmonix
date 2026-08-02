@@ -114,7 +114,7 @@ start_api_standby() {
 
   rm -f "$env_tmp"
   docker network connect coolify "$API_STANDBY" 2>/dev/null || true
-  wait_container_http "$API_STANDBY" "http://127.0.0.1:3001/" 40
+  wait_container_http "$API_STANDBY" "http://127.0.0.1:3001/api/health" 40
   sleep 5
   wait_https 200 30
   local p
@@ -180,7 +180,7 @@ log "Rolling api (standby serves Traefik; old web still up)"
 run_compose up -d --no-deps --force-recreate api
 ensure_networks
 fix_sqlite_perms
-wait_container_http "$API" "http://127.0.0.1:3001/" 40
+wait_container_http "$API" "http://127.0.0.1:3001/api/health" 40
 wait_https 200 45
 
 start_web_standby

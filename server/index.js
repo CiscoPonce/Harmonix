@@ -177,6 +177,9 @@ app.post('/api/auth/refresh', (req, res) => {
   }
 });
 
+// Health check
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+
 // Get Current User
 app.get('/api/auth/me', authenticateToken, (req, res) => {
   console.log('GET /api/auth/me - for user:', req.user.id);
