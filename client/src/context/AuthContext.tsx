@@ -13,6 +13,8 @@ export interface User {
   difficulty?: string;
   cefr_level?: string;
   voice_gender?: 'female' | 'male' | string;
+  is_spotify_connected?: boolean;
+  spotify_display_name?: string;
 }
 
 export interface AuthContextType {

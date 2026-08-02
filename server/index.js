@@ -185,6 +185,10 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
   console.log('GET /api/auth/me - for user:', req.user.id);
   const user = db.prepare('SELECT id, email, created_at, cefr_level, target_language, genre, difficulty, native_language, voice_gender FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.sendStatus(404);
+  const spotify = db.prepare('SELECT spotify_user_id, spotify_display_name FROM user_spotify_tokens WHERE user_id = ?').get(req.user.id);
+  user.is_spotify_connected = !!spotify;
+  user.spotify_user_id = spotify?.spotify_user_id || null;
+  user.spotify_display_name = spotify?.spotify_display_name || null;
   res.json(user);
 });
 

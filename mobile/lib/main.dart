@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'screens/home_shell.dart';
 import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/welcome_screen.dart';
 import 'services/api_client.dart';
 import 'state/auth_state.dart';
 import 'state/home_navigation_controller.dart';
@@ -121,7 +122,7 @@ class _RootGateState extends State<_RootGate> {
         body: Center(child: CircularProgressIndicator(color: colors.accent)),
       );
     }
-    if (!auth.isAuthenticated) return const LoginScreen();
+    if (!auth.isAuthenticated) return const WelcomeScreen();
     if (auth.needsOnboarding) return const OnboardingScreen();
     _scheduleBindIfReady(true);
     return const HomeShell();
