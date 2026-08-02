@@ -8,6 +8,7 @@
 
 services:
   api:
+    container_name: api-rxwdj1k3qu51fqf8uwtal389
     image: lyric-api:latest
     build:
       context: ./server
@@ -71,6 +72,7 @@ services:
       start_period: 25s
 
   web:
+    container_name: web-rxwdj1k3qu51fqf8uwtal389
     image: lyric-web:latest
     build:
       context: ./client
