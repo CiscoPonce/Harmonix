@@ -8,6 +8,7 @@
 
 services:
   api:
+    image: lyric-api:latest
     build:
       context: ./server
       dockerfile: Dockerfile
@@ -70,6 +71,7 @@ services:
       start_period: 25s
 
   web:
+    image: lyric-web:latest
     build:
       context: ./client
       dockerfile: Dockerfile
