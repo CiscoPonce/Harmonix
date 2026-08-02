@@ -147,6 +147,7 @@ start_web_standby() {
     -e HOSTNAME=0.0.0.0 \
     lyric-web:latest >/dev/null
 
+  docker network connect "${UUID}_default" "$WEB_STANDBY" 2>/dev/null || true
   wait_container_http "$WEB_STANDBY" "http://127.0.0.1:3009/" 40
   # Primary (and standby) API must resolve web → standby before we tear down primary web
   local i
@@ -156,7 +157,6 @@ start_web_standby() {
     fi
     sleep 1
   done
-  wait_https 200 20
 }
 
 cd "$PROJECT"
