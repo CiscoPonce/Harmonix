@@ -33,7 +33,8 @@ RUN mkdir -p /app/models/kokoro && \
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN mkdir -p /data /app/models/kokoro && chown -R harmonix:harmonix /app /data
+COPY scripts ./scripts
+RUN mkdir -p /data /app/models/kokoro && chmod +x /app/scripts/kokoro_synth.py && chown -R harmonix:harmonix /app /data
 USER harmonix
 ENV PORT=3001
 ENV SQLITE_PATH=/data/harmonix.db

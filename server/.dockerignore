@@ -14,4 +14,3 @@ coverage
 .git
 .gitignore
 **/*.test.js
-scripts
