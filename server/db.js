@@ -27,6 +27,11 @@ const dbPath = process.env.NODE_ENV === 'test'
     ? path.resolve(process.env.SQLITE_PATH)
     : newProdDb);
 
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 

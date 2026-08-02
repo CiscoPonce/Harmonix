@@ -105,7 +105,7 @@ start_api_standby() {
     --label "traefik.http.routers.harmonix-standby-https.tls.certresolver=letsencrypt" \
     --label "traefik.http.routers.harmonix-standby-https.service=harmonix-standby-svc" \
     --label "traefik.http.services.harmonix-standby-svc.loadbalancer.server.port=3001" \
-    --health-cmd "node -e \"fetch('http://127.0.0.1:3001/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))\"" \
+    --health-cmd "node -e \"fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"" \
     --health-interval 5s \
     --health-timeout 4s \
     --health-retries 12 \
