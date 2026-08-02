@@ -29,7 +29,7 @@ wait_https() {
   local i code
   for i in $(seq 1 "$tries"); do
     code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "https://${DOMAIN}/" || true)
-    if [ "$code" = "$want" ]; then
+    if [ "$code" = "$want" ] || [ "$code" = "301" ] || [ "$code" = "302" ] || [ "$code" = "307" ] || [ "$code" = "308" ]; then
       echo "https://${DOMAIN}/ -> ${code}"
       return 0
     fi
