@@ -14,6 +14,10 @@ WEB="web-${UUID}"
 API_STANDBY="api-${UUID}-standby"
 WEB_STANDBY="web-${UUID}-standby"
 
+if [ ! -d "$WORKDIR" ]; then
+  WORKDIR="$PROJECT"
+fi
+
 run_compose() {
   # Coolify workdir is root-owned
   sudo docker compose --project-directory "$WORKDIR" -f "${WORKDIR}/docker-compose.yml" --project-name "$UUID" "$@"

@@ -27,10 +27,12 @@ jobs:
             cd /home/ubuntu/lyric
             git fetch origin main
             git reset --hard origin/main
-            # Sync updated source into Coolify WORKDIR before building
-            WORKDIR="/data/coolify/services/rxwdj1k3qu51fqf8uwtal389"
-            if [ -d "$WORKDIR" ]; then
-              sudo cp -r /home/ubuntu/lyric/. "$WORKDIR/"
-              echo "Synced /home/ubuntu/lyric to $WORKDIR"
-            fi
+            for d in /data/coolify/services/*; do
+              if [ -d "$d" ]; then
+                echo "Syncing /home/ubuntu/lyric into $d"
+                sudo cp -r /home/ubuntu/lyric/. "$d/" || true
+              fi
+            done
             HARMONIX_REDEPLOY_BOOTED=1 bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh
+            echo "--- Active Containers ---"
+            docker ps
