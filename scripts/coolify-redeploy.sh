@@ -43,12 +43,14 @@ wait_container_http() {
   local name="$1" url="$2" tries="${3:-40}"
   local i
   for i in $(seq 1 "$tries"); do
-    if docker exec "$name" node -e "fetch('${url}').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))" 2>/dev/null; then
+    if docker exec "$name" node -e "fetch('${url}').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" 2>/dev/null; then
       return 0
     fi
     sleep 2
   done
   echo "ERROR: ${name} did not become ready at ${url}"
+  echo "=== ${name} Container Logs ==="
+  docker logs --tail 50 "$name" || true
   return 1
 }
 

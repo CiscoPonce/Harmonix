@@ -32,8 +32,9 @@ if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-const db = new Database(dbPath);
+const db = new Database(dbPath, { timeout: 10000 });
 db.pragma('journal_mode = WAL');
+db.pragma('busy_timeout = 10000');
 
 // Core schema
 db.exec(`
