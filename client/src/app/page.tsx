@@ -6,7 +6,9 @@ import { useAuth } from '@/hooks/useAuth';
 import Image from 'next/image';
 import { LandingHero } from '@/components/LandingHero';
 import { LandingFeatures } from '@/components/LandingFeatures';
+import { LandingHowItWorks } from '@/components/LandingHowItWorks';
 import { LandingTestimonials } from '@/components/LandingTestimonials';
+import { LandingAbout } from '@/components/LandingAbout';
 import { LandingFooter } from '@/components/LandingFooter';
 import { LandingHeader } from '@/components/LandingHeader';
 import { isCapacitorNative } from '@/lib/capacitor';
@@ -60,7 +62,9 @@ export default function LandingPage() {
       <main className="landing-main">
         <LandingHero />
         <LandingFeatures />
+        <LandingHowItWorks />
         <LandingTestimonials />
+        <LandingAbout />
       </main>
 
       <LandingFooter />

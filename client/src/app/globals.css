@@ -158,11 +158,11 @@ html {
 }
 
 .landing-phone-header-text {
-  @apply text-center;
+  @apply text-center max-w-[220px];
 }
 
 .landing-phone-title {
-  @apply text-sm font-bold uppercase tracking-widest text-white truncate w-40;
+  @apply text-xs font-black uppercase tracking-wider text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px];
 }
 
 .landing-phone-artist {
@@ -170,7 +170,7 @@ html {
 }
 
 .landing-phone-cover {
-  @apply flex-1 relative flex items-center justify-center m-6 mb-2 rounded-2xl overflow-hidden bg-zinc-900 shadow-2xl border border-zinc-800;
+  @apply flex-1 relative flex items-center justify-center m-5 mb-2 rounded-2xl overflow-hidden bg-zinc-900 shadow-2xl border border-zinc-800/80 min-h-[220px];
 }
 
 .landing-phone-cover-gradient {

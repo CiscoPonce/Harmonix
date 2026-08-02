@@ -47,9 +47,9 @@ export function LandingHero() {
             <Link href="/register" className="landing-btn-primary">
               Get Started Free
             </Link>
-            <Link href="#features" className="landing-btn-ghost">
+            <a href="#how-it-works" className="landing-btn-ghost">
               Watch How It Works
-            </Link>
+            </a>
           </div>
         </div>
 
@@ -67,8 +67,13 @@ export function LandingHero() {
                 </div>
               </div>
               <div className="landing-phone-cover">
-                <div className="landing-phone-cover-gradient" />
-                <div className="landing-phone-cover-icon">♪</div>
+                <Image
+                  src="/hero-album-cover.jpg"
+                  alt="Bohemian Rhapsody Cover"
+                  fill
+                  className="object-cover"
+                  priority
+                />
               </div>
               <div className="landing-phone-progress">
                 <div className="landing-phone-progress-bar">
