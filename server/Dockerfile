@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     python3-venv \
   && rm -rf /var/lib/apt/lists/* \
-  && groupadd -r harmonix && useradd -r -g harmonix harmonix
+  && groupadd -g 999 harmonix && useradd -u 999 -g harmonix -m harmonix
 
 RUN python3 -m venv /app/venv && \
     /app/venv/bin/pip install --no-cache-dir kokoro-onnx soundfile onnxruntime

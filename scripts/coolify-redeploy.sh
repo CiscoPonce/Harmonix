@@ -60,7 +60,7 @@ ensure_networks() {
 
 fix_sqlite_perms() {
   docker run --rm -v "${VOL}:/data" alpine \
-    sh -c 'chown -R 999:999 /data; chmod 775 /data; chmod 664 /data/*.db 2>/dev/null || true'
+    sh -c 'chown -R 999:999 /data; chmod 777 /data; chmod 666 /data/*.db 2>/dev/null || true'
 }
 
 cleanup_standbys() {
