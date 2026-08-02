@@ -163,7 +163,7 @@ if [ "${HARMONIX_REDEPLOY_BOOTED:-}" != "1" ]; then
   exec bash "${PROJECT}/scripts/coolify-redeploy.sh" "$@"
 fi
 
-if [ -d "$WORKDIR" ]; then
+if [ -d "$WORKDIR" ] && [ "$WORKDIR" != "$PROJECT" ]; then
   log "Syncing updated codebase to Coolify service directory: ${WORKDIR}"
   sudo cp -r "${PROJECT}/." "${WORKDIR}/"
 fi

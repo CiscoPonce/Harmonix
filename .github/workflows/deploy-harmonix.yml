@@ -28,7 +28,7 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             for d in /data/coolify/services/*; do
-              if [ -d "$d" ]; then
+              if [ -d "$d" ] && [ "$d" != "/home/ubuntu/lyric" ]; then
                 echo "Syncing /home/ubuntu/lyric into $d"
                 sudo cp -r /home/ubuntu/lyric/. "$d/" || true
               fi
