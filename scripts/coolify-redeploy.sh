@@ -14,6 +14,20 @@ WEB="web-${UUID}"
 API_STANDBY="api-${UUID}-standby"
 WEB_STANDBY="web-${UUID}-standby"
 
+# Compose creates `${project}_default`. A network named exactly $UUID often
+# does not exist (standby used to fail with "network … not found").
+app_network() {
+  if docker network inspect "${UUID}_default" >/dev/null 2>&1; then
+    echo "${UUID}_default"
+    return
+  fi
+  if docker network inspect "$UUID" >/dev/null 2>&1; then
+    echo "$UUID"
+    return
+  fi
+  echo "${UUID}_default"
+}
+
 if [ ! -d "$WORKDIR" ]; then
   WORKDIR="$PROJECT"
 fi
@@ -57,7 +71,7 @@ wait_container_http() {
 ensure_networks() {
   docker network connect coolify "$API" 2>/dev/null || true
   docker network connect coolify "$WEB" 2>/dev/null || true
-  docker network connect "$UUID" coolify-proxy 2>/dev/null || true
+  docker network connect "$(app_network)" coolify-proxy 2>/dev/null || true
 }
 
 fix_sqlite_perms() {
@@ -87,7 +101,7 @@ start_api_standby() {
   docker run -d \
     --name "$API_STANDBY" \
     --restart "no" \
-    --network "$UUID" \
+    --network "$(app_network)" \
     --network-alias "api-standby" \
     --env-file "$env_tmp" \
     -e PORT=3001 \
@@ -122,7 +136,7 @@ start_api_standby() {
 
   rm -f "$env_tmp"
   docker network connect coolify "$API_STANDBY" 2>/dev/null || true
-  docker network connect "${UUID}_default" "$API_STANDBY" 2>/dev/null || true
+  docker network connect "$(app_network)" "$API_STANDBY" 2>/dev/null || true
   wait_container_http "$API_STANDBY" "http://127.0.0.1:3001/api/health" 40
   sleep 5
   wait_https 200 30
@@ -141,14 +155,14 @@ start_web_standby() {
   docker run -d \
     --name "$WEB_STANDBY" \
     --restart "no" \
-    --network "$UUID" \
+    --network "$(app_network)" \
     --network-alias "web" \
     -e NODE_ENV=production \
     -e PORT=3009 \
     -e HOSTNAME=0.0.0.0 \
     lyric-web:latest >/dev/null
 
-  docker network connect "${UUID}_default" "$WEB_STANDBY" 2>/dev/null || true
+  docker network connect "$(app_network)" "$WEB_STANDBY" 2>/dev/null || true
   wait_container_http "$WEB_STANDBY" "http://127.0.0.1:3009/" 40
   # Primary (and standby) API must resolve web → standby before we tear down primary web
   local i
@@ -177,8 +191,12 @@ if [ -d "$WORKDIR" ] && [ "$WORKDIR" != "$PROJECT" ]; then
   sudo cp -r "${PROJECT}/." "${WORKDIR}/"
 fi
 
-log "Building images (live traffic stays on current containers)"
-run_compose build --no-cache api web
+if [ "${SKIP_BUILD:-}" = "1" ]; then
+  log "Skipping image build (SKIP_BUILD=1)"
+else
+  log "Building images (live traffic stays on current containers)"
+  run_compose build --no-cache api web
+fi
 
 fix_sqlite_perms
 trap cleanup_standbys EXIT
