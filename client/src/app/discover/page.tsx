@@ -228,6 +228,21 @@ export default function DiscoverPage() {
     );
   }
 
+  const pickTrack = useCallback((track: {
+    id: number;
+    title: string;
+    artist?: { name?: string };
+  }) => {
+    setPickingTrackId(track.id);
+    setFromTrackRequest({
+      id: String(track.id),
+      title: track.title,
+      artist: track.artist?.name,
+      nonce: Date.now(),
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const goalPct =
     stats && stats.daily_goal > 0
       ? Math.min(100, (stats.today_words / stats.daily_goal) * 100)
@@ -246,7 +261,11 @@ export default function DiscoverPage() {
       <BadgeUnlockToast badge={unlockedBadge} onDismiss={() => setUnlockedBadge(null)} />
 
       <section className="mx-auto w-full max-w-3xl" aria-label="Word of the Day">
-        <DailyWordCard onWordChange={refreshHomeData} fromTrackRequest={fromTrackRequest} />
+        <DailyWordCard
+          onWordChange={refreshHomeData}
+          fromTrackRequest={fromTrackRequest}
+          onFromTrackSettled={() => setPickingTrackId(null)}
+        />
       </section>
 
       <section
@@ -289,9 +308,16 @@ export default function DiscoverPage() {
         className="relative mt-10 overflow-hidden rounded-3xl bg-[#0B4D2E] px-6 py-8 text-white sm:px-10"
       >
         <p className="mb-3 text-sm font-medium text-white/80">
-          Search a song, then tap it to learn a word from those lyrics.
+          Search a song, then tap it — Harmonix makes a new word from those lyrics. This never opens karaoke.
         </p>
-        <div className="relative max-w-2xl">
+        <form
+          className="relative max-w-2xl"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const first = results[0];
+            if (first) pickTrack(first);
+          }}
+        >
           <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7A8A80]" />
           <input
             value={query}
@@ -299,8 +325,14 @@ export default function DiscoverPage() {
             placeholder="Search a song for a word from its lyrics…"
             className="h-12 w-full rounded-full bg-white pl-12 pr-4 text-base text-[#0C1210] placeholder:text-[#9AABA0] focus:outline-none focus:ring-2 focus:ring-white/40"
             aria-label="Search a song for a Word of the Day"
+            autoComplete="off"
           />
-        </div>
+        </form>
+        {pickingTrackId != null && fromTrackRequest ? (
+          <p className="relative mt-3 max-w-2xl text-sm font-medium text-white">
+            Creating a word from {fromTrackRequest.title || 'that song'}…
+          </p>
+        ) : null}
         {(searching || query.trim()) && (
           <div className="relative mt-4 max-w-2xl" aria-label="Search results">
             {searching ? (
@@ -316,18 +348,8 @@ export default function DiscoverPage() {
                   <li key={track.id}>
                     <button
                       type="button"
-                      disabled={pickingTrackId === track.id}
-                      onClick={() => {
-                        setPickingTrackId(track.id);
-                        setFromTrackRequest({
-                          id: String(track.id),
-                          title: track.title,
-                          artist: track.artist?.name,
-                          nonce: Date.now(),
-                        });
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                        window.setTimeout(() => setPickingTrackId(null), 800);
-                      }}
+                      disabled={pickingTrackId != null}
+                      onClick={() => pickTrack(track)}
                       className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#F7F8F6] disabled:opacity-60"
                     >
                       {track.album?.cover_medium ? (
@@ -345,7 +367,7 @@ export default function DiscoverPage() {
                         <p className="truncate text-sm text-[#5C6B62]">{track.artist?.name}</p>
                       </div>
                       <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-[#0B4D2E]">
-                        {pickingTrackId === track.id ? 'Loading…' : 'Learn a word'}
+                        {pickingTrackId === track.id ? 'Creating word…' : 'Learn a word'}
                       </span>
                     </button>
                   </li>

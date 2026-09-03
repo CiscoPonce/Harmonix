@@ -148,9 +148,11 @@ function getDisplayPronunciation(rawPronunciation?: string | null, wordText?: st
 export function DailyWordCard({
   onWordChange,
   fromTrackRequest = null,
+  onFromTrackSettled,
 }: {
   onWordChange?: (payload?: DailyWordPayload) => void;
   fromTrackRequest?: { id: string; title?: string; artist?: string; nonce: number } | null;
+  onFromTrackSettled?: () => void;
 }) {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -178,6 +180,8 @@ export function DailyWordCard({
   const [shareOpen, setShareOpen] = useState(false);
   const spotifyPlayer = useSpotifyInAppPlayer();
   const loadAbortRef = useRef<AbortController | null>(null);
+  const onFromTrackSettledRef = useRef(onFromTrackSettled);
+  onFromTrackSettledRef.current = onFromTrackSettled;
 
   const clearHearStopTimer = useCallback(() => {
     if (hearStopTimerRef.current) {
@@ -353,7 +357,14 @@ export function DailyWordCard({
     (async () => {
       setRefreshing(true);
       setRefreshError(null);
-      setStatusMessage("Finding a word in that song…");
+      setIsPlaying(false);
+      try {
+        audioRef.current?.pause();
+      } catch {
+        /* ignore */
+      }
+      const songLabel = fromTrackRequest.title?.trim() || "that song";
+      setStatusMessage(`Finding a word in ${songLabel}…`);
       try {
         const res = await apiFetch("/daily-word/from-track", {
           method: "POST",
@@ -378,11 +389,12 @@ export function DailyWordCard({
         if (!ac.signal.aborted) {
           setRefreshing(false);
           setStatusMessage(null);
+          onFromTrackSettledRef.current?.();
         }
       }
     })();
     return () => ac.abort();
-  }, [fromTrackRequest?.id, fromTrackRequest?.nonce, applyPayload]);
+  }, [fromTrackRequest?.id, fromTrackRequest?.nonce, fromTrackRequest?.title, fromTrackRequest?.artist, applyPayload]);
 
   // Poll while stocking OR while cold-generating so the "ready" badge updates live.
   useEffect(() => {
@@ -864,10 +876,10 @@ export function DailyWordCard({
   };
 
   const readyCount = queueStatus?.ready ?? data.queue?.ready ?? 0;
-  // Full-screen blocker only on first cold load (no word yet). While refreshing,
-  // keep the current word interactive and show a slim progress strip instead.
-  const showHeavyOverlay = loading && !data;
-  const showInlineProgress = refreshing && !!data;
+  const fromTrackBusy = Boolean(refreshing && fromTrackRequest?.id);
+  // Cover Hear it / karaoke while a searched song is becoming a word.
+  const showHeavyOverlay = (loading && !data) || fromTrackBusy;
+  const showInlineProgress = refreshing && !!data && !fromTrackBusy;
   const homeLanguage = (user?.native_language || "en").toUpperCase();
   const meaning = data.word.translation?.trim();
   const lineSense = (data.word.line_translation || data.lyric.line_translation || "").trim();
@@ -881,11 +893,13 @@ export function DailyWordCard({
         <div className="absolute inset-0 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-8 text-center">
           <Loader2 className="w-8 h-8 animate-spin text-zinc-900 dark:text-white" />
           <p className="text-sm font-bold uppercase tracking-widest text-zinc-900 dark:text-white">
-            {statusMessage || "Generating your first word…"}
+            {statusMessage || (fromTrackBusy ? "Finding a word in that song…" : "Generating your first word…")}
           </p>
           <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
             {elapsedSec > 0 ? `${elapsedSec}s · ` : ""}
-            Cold generate validates real songs — usually 20–60s
+            {fromTrackBusy
+              ? "Pulling a word from those lyrics — stay on this card"
+              : "Cold generate validates real songs — usually 20–60s"}
           </p>
         </div>
       )}

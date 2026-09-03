@@ -16,6 +16,19 @@ const nextConfig: NextConfig = {
       { source: "/library/:path*", destination: "/playlists/:path*", permanent: false },
     ];
   },
+  async headers() {
+    return [
+      {
+        source: "/discover",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, no-store, no-cache, must-revalidate",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -34,6 +34,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * deploy: copy live API env for standby (repo-root `.env` has no JWT; production refuses to boot)
 * daily-word: lyric-line sense (late→tarde, gets hard→se pone) plus an “in this line” gloss
 * Discover: search a song and tap it to generate a Word of the Day from those lyrics
+* Discover: song search never opens karaoke; Enter uses the first result; Discover HTML is not cached
 * daily-word: relax reuse when unused catalog keys collide on used Deezer IDs (`song_already_used`)
 * daily-word: after true on-style exhaustion, widen honestly (`style_relaxed`) instead of 503
 * daily-word: never show raw generation codes (e.g. `song_already_used`) on web or Flutter
