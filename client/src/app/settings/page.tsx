@@ -8,6 +8,7 @@ import { AppShell } from '@/components/AppShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { SpotifyConnectionCard } from '@/components/SpotifyConnectionCard';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import {
   apiFetch,
   disconnectSpotify,
@@ -77,6 +78,12 @@ function SettingsContent() {
   const [langError, setLangError] = useState<string | null>(null);
   const [langSaved, setLangSaved] = useState(false);
   const [dyslexicFont, setDyslexicFont] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSaved, setPasswordSaved] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -85,6 +92,40 @@ function SettingsContent() {
     setMusicStyle(normalizeGenre(user.genre));
     setVoiceGender(user.voice_gender === 'male' ? 'male' : 'female');
   }, [user]);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      return;
+    }
+    setPasswordBusy(true);
+    setPasswordError(null);
+    setPasswordSaved(false);
+    try {
+      const res = await apiFetch('/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Could not change password');
+      }
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordSaved(true);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : 'Could not change password');
+    } finally {
+      setPasswordBusy(false);
+    }
+  };
 
   const languagesDirty =
     nativeLanguage !== (user?.native_language || '') ||
@@ -281,7 +322,7 @@ function SettingsContent() {
             Account Settings
           </h1>
           <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-            Languages, music style, pronunciation voice, Spotify, and appearance.
+            Languages, music style, pronunciation voice, Spotify, appearance, and password.
           </p>
         </header>
 
@@ -312,6 +353,66 @@ function SettingsContent() {
               </div>
             </div>
           </div>
+        </section>
+
+        <section aria-label="Password" className={cardClassName}>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
+            Security
+          </p>
+          <h2 className="mt-1 text-base font-bold">Change password</h2>
+          <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+            You must already be signed in. Email reset links are not offered.
+          </p>
+          <form onSubmit={handleChangePassword} className="mt-4 space-y-3">
+            <div>
+              <label htmlFor="current-password" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+                Current password
+              </label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <label htmlFor="new-password" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+                New password
+              </label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={6}
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <label htmlFor="confirm-password" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+                Confirm new password
+              </label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                className="mt-1.5"
+              />
+            </div>
+            {passwordError ? <p className="text-sm text-red-600">{passwordError}</p> : null}
+            {passwordSaved ? (
+              <p className="text-sm text-[#0B4D2E] dark:text-[#3DCF7A]">Password updated.</p>
+            ) : null}
+            <Button type="submit" variant="primary" disabled={passwordBusy}>
+              {passwordBusy ? 'Saving…' : 'Update password'}
+            </Button>
+          </form>
         </section>
 
         <section aria-label="Languages and voice" className={cardClassName}>

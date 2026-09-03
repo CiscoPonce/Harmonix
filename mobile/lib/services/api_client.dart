@@ -231,8 +231,16 @@ class ApiClient {
   }
 
   /// Authenticated binary GET for Pocket-TTS WAV pronunciation.
-  Future<Uint8List> pronounceWord(String word, {bool authRetry = true}) async {
-    final uri = _uri('/daily-word/pronounce', {'word': word});
+  Future<Uint8List> pronounceWord(
+    String word, {
+    String? lang,
+    bool authRetry = true,
+  }) async {
+    final query = <String, String>{'word': word};
+    if (lang != null && lang.trim().isNotEmpty) {
+      query['lang'] = lang.trim();
+    }
+    final uri = _uri('/daily-word/pronounce', query);
     final res = await _client.get(
       uri,
       headers: _headers(accept: 'audio/wav, application/json'),
@@ -240,7 +248,7 @@ class ApiClient {
 
     if (res.statusCode == 401 && authRetry) {
       final refreshed = await refresh();
-      if (refreshed) return pronounceWord(word, authRetry: false);
+      if (refreshed) return pronounceWord(word, lang: lang, authRetry: false);
     }
 
     if (res.statusCode >= 400) {

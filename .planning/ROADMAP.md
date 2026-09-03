@@ -1,6 +1,6 @@
 # Harmonix Roadmap
 
-**Last reconciled:** 2026-07-24 — phases 1–15 complete; production `harmonix.peeporunclub.co.uk` (`.com` NXDOMAIN)  
+**Last reconciled:** 2026-09-03 — phases 1–16 complete; Play Store path is Flutter only  
 **Live:** https://harmonix.peeporunclub.co.uk (Compose `api`+`web` + Coolify Traefik; host Pocket-TTS)
 
 ---
@@ -8,8 +8,7 @@
 ## How the product runs (architecture)
 
 ```text
-  Browser / Capacitor WebView          Flutter Android (`mobile/`)
-  Next.js (compose web:3009)           Discover · Library · Settings
+  Browser (Next.js web:3009)           Flutter Android (`mobile/`) — Play Store
               \                         /
                \                       /
                 ▼                     ▼
@@ -47,6 +46,7 @@
 | **13** | Web design system (shell + Discover) | **Complete** |
 | **14** | Production Parity & Ship | **Complete** |
 | **15** | Coolify production deploy | **Complete** (domain + GH Actions zero-downtime deploy) |
+| **16** | Flutter web parity | **Complete** (Play Store client is Flutter only) |
 
 ### Phase 12 — Spotify API Integration ✅
 
@@ -167,25 +167,11 @@ Not a new phase — product refinements after Phase 14 close:
 
 ---
 
-## Suggested next
+## Phase 16 — Flutter web parity ✅
 
-### Phase 15 follow-ups (optional)
-
-| Step | Status |
-|------|--------|
-| Coolify Git “Deploy on push” webhook | **Skipped** — GH Actions owns deploys |
-| Coolify UI owns containers | Done |
-| Containerize Pocket-TTS | Later |
-
-Other optional ops (not blocking): Play Store listing, AI provider hardening, Extended Spotify Quota.
-
----
-
-## Phase 16 — Flutter + Capacitor web parity 🚧
-
-**Status:** In progress (2026-07-24)  
+**Status:** Complete (code 2026-07-24; planning closed 2026-09-03)  
 **Milestone:** v1.9  
-**Goal:** Flutter Android matches web design language and learning functionality; Capacitor remains legacy web-shell fallback.
+**Goal:** Flutter Android matches web design language and learning functionality. **Play Store ships Flutter only** — Capacitor is not a store target.
 
 | Workstream | Status |
 |------------|--------|
@@ -195,7 +181,14 @@ Other optional ops (not blocking): Play Store listing, AI provider hardening, Ex
 | Library Spotify header chip | Done |
 | Visual tokens (Phase 13 greens + Fraunces/DM Sans) | Done |
 | 3D flip cards (WOTD + shelf) | Done |
-| Dual-frontend QA + Capacitor smoke | Done (`scripts/capacitor-smoke.sh`) |
+| Dual-frontend QA | Done |
 
 **Context:** [`.planning/phases/16-flutter-web-parity/16-CONTEXT.md`](./phases/16-flutter-web-parity/16-CONTEXT.md)  
 **Parity matrix:** [`docs/DUAL-FRONTEND-QA.md`](../docs/DUAL-FRONTEND-QA.md)
+
+### Suggested next
+
+- Play Store listing (Flutter AAB; privacy URL `/privacy`)
+- AI provider hardening
+- Extended Spotify Quota
+- Containerize Pocket-TTS (optional)

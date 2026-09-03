@@ -52,7 +52,12 @@ function resolvePocketTtsBin() {
   return "pocket-tts";
 }
 
+function skipSpawn() {
+  return process.env.TTS_SKIP_SPAWN === "true" || process.env.TTS_SKIP_SPAWN === "1";
+}
+
 function freeTtsPort(port) {
+  if (skipSpawn()) return;
   try {
     execSync(`fuser -k ${port}/tcp`, { stdio: "ignore" });
   } catch {
@@ -74,6 +79,7 @@ const ttsDaemon = {
   _process: null,
   _ready: false,
   currentLanguage: null,
+  skipSpawn,
 
   start(language) {
     if (this._process) return;
@@ -81,7 +87,7 @@ const ttsDaemon = {
     this.currentLanguage = language;
 
     // Docker/Coolify: TTS runs on the host (or another container). Don't spawn.
-    if (process.env.TTS_SKIP_SPAWN === "true" || process.env.TTS_SKIP_SPAWN === "1") {
+    if (skipSpawn()) {
       console.log(`[ttsDaemon] TTS_SKIP_SPAWN set — using ${ttsBaseUrl()}`);
       this._ready = false;
       return;
@@ -110,6 +116,7 @@ const ttsDaemon = {
   },
 
   _spawn(language) {
+    if (skipSpawn()) return;
     if (this._process || this._ready) return;
 
     const python = resolvePython();
@@ -182,6 +189,7 @@ const ttsDaemon = {
   },
 
   stop() {
+    if (skipSpawn()) return Promise.resolve();
     return new Promise((resolve) => {
       if (!this._process) {
         freeTtsPort(process.env.TTS_PORT || "3002");
@@ -210,6 +218,16 @@ const ttsDaemon = {
   },
 
   async restart(language) {
+    if (skipSpawn()) {
+      if (language && this.currentLanguage && language !== this.currentLanguage) {
+        const err = new Error(
+          `Pocket-TTS language swap disabled (TTS_SKIP_SPAWN); host is ${this.currentLanguage}`
+        );
+        err.code = "tts_language_mismatch";
+        throw err;
+      }
+      return;
+    }
     await this.stop();
     await new Promise((r) => setTimeout(r, 400));
     this.currentLanguage = language;

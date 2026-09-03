@@ -12,6 +12,13 @@ describe('TTS Service Voice & Accent Normalization', () => {
   it('restores accents for Spanish words like tambien -> también', () => {
     assert.strictEqual(ttsService.normalizeWordForTTS('tambien', 'es'), 'también');
     assert.strictEqual(ttsService.normalizeWordForTTS('despues', 'es'), 'después');
+    assert.strictEqual(ttsService.normalizeWordForTTS('esta', 'es'), 'esta');
+    assert.strictEqual(ttsService.normalizeWordForTTS('estan', 'es'), 'estan');
+    assert.strictEqual(ttsService.normalizeWordForTTS('mas', 'es'), 'mas');
+  });
+
+  it('restores mercoledì not mercoladì', () => {
+    assert.strictEqual(ttsService.normalizeWordForTTS('mercoledi', 'it'), 'mercoledì');
   });
 
   it('assigns native voices for all 6 supported languages', () => {
@@ -27,5 +34,24 @@ describe('TTS Service Voice & Accent Normalization', () => {
   it('formats ttsPromptForWord cleanly with punctuation and restored accents', () => {
     assert.strictEqual(ttsService.ttsPromptForWord('perche', 'it'), 'perché.');
     assert.strictEqual(ttsService.ttsPromptForWord('BELLO', 'it'), 'BELLO.');
+    assert.strictEqual(ttsService.ttsPromptForWord('mercoledi', 'it'), 'mercoledì.');
+  });
+
+  it('skip-spawn refuses Pocket-TTS when the host model language differs', async () => {
+    const ttsDaemon = require('./ttsDaemon');
+    const prevSkip = process.env.TTS_SKIP_SPAWN;
+    const prevLang = ttsDaemon.currentLanguage;
+    process.env.TTS_SKIP_SPAWN = 'true';
+    ttsDaemon.currentLanguage = 'spanish_24l';
+    try {
+      await ttsService.ensureDaemonLanguage('en');
+      assert.fail('expected tts_language_mismatch');
+    } catch (err) {
+      assert.strictEqual(err.code, 'tts_language_mismatch');
+    } finally {
+      if (prevSkip === undefined) delete process.env.TTS_SKIP_SPAWN;
+      else process.env.TTS_SKIP_SPAWN = prevSkip;
+      ttsDaemon.currentLanguage = prevLang;
+    }
   });
 });

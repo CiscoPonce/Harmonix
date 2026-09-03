@@ -797,14 +797,25 @@ function sanitizeGloss(word, gloss, line = null) {
   };
 }
 
+function normalizeGlossLemma(word) {
+  return String(word || "")
+    .normalize("NFC")
+    .trim()
+    .replace(/^[''`´‘’]+/u, "")
+    .replace(/[''`´‘’]+$/gu, "")
+    .toLowerCase();
+}
+
 /**
  * Heuristic: models often map a whole lyric idiom onto one word
  * (e.g. "brings" in "brings me down" → "hace caer"). Flag for re-check.
- * Also catch "glossed the wrong word from the line" (color → hope when both appear).
+ * Also catch "glossed the wrong word from the line" (color → hope when both appear)
+ * and encyclopedic / programming junk from dictionary APIs (Genus Lama, Imam, int).
  */
 function translationLooksSuspicious(word, translation, line = null) {
-  const w = String(word || "").trim().toLowerCase();
-  let t = String(translation || "").trim().toLowerCase();
+  const raw = String(translation || "").trim();
+  const w = normalizeGlossLemma(word);
+  let t = raw.toLowerCase();
   t = t
     .replace(/\s*[\(\[]?\b(en|es|fr|de|it|pt|eng|spa|fre|ger|ita|por)\b[\)\]]?\s*$/i, "")
     .trim();
@@ -812,6 +823,20 @@ function translationLooksSuspicious(word, translation, line = null) {
   if (t === w) return true;
   const tokens = t.split(/\s+/).filter(Boolean);
   if (tokens.length > 4) return true;
+  if (/\([^)]+\)/.test(raw) || /\[[^\]]+\]/.test(raw)) return true;
+  if (raw.includes(",")) return true;
+  if (/\b(genus|organism|wikipedia|cableway|ropeway|integer|imam|lama)\b/i.test(raw)) return true;
+  if (/^(int|float|bool|boolean|null|void|undefined|string|fis)$/i.test(t)) return true;
+  // ALL-CAPS multi-word dumps ("THEY WILL SAY") and short code-like tokens ("FIs", "INT").
+  if (/^[A-Z]{2,}(\s+[A-Z]+){1,}$/.test(raw)) return true;
+  if (/^[A-Z]{2,4}$/.test(raw) && raw.length <= 4) return true;
+  const titleCase = raw[0] === raw[0].toUpperCase() && raw.slice(1) === raw.slice(1).toLowerCase();
+  const allLower = raw === raw.toLowerCase();
+  const allUpper = raw === raw.toUpperCase();
+  if (raw.length <= 4 && /[A-Z]/.test(raw) && !titleCase && !allUpper) return true;
+  if (!allLower && !titleCase && !allUpper && /[A-Z]/.test(raw) && tokens.length === 1 && raw.length <= 4) {
+    return true;
+  }
   // Calques of "makes/does X" for verbs that are not make/do
   if (
     /^(hace|hacer|makes?|making|does|doing)\b/.test(t) &&
@@ -825,7 +850,8 @@ function translationLooksSuspicious(word, translation, line = null) {
     const lineTokens = String(line)
       .toLowerCase()
       .split(/[^\p{L}\p{N}']+/u)
-      .filter(Boolean);
+      .filter(Boolean)
+      .map((tok) => normalizeGlossLemma(tok));
     if (lineTokens.includes(w) && lineTokens.includes(t) && t !== w) {
       return true;
     }
@@ -849,6 +875,26 @@ const COMMON_GLOSS_TABLE = {
     fuego: "fire",
     esperanza: "hope",
     pendiente: "earring",
+    llamas: "you call",
+    llama: "calls",
+    iman: "magnet",
+    imán: "magnet",
+    entero: "whole",
+    vaiven: "sway",
+    vaivén: "sway",
+    diran: "they will say",
+    dirán: "they will say",
+    chantaje: "blackmail",
+    llora: "cries",
+    quiero: "I want",
+    cómo: "how",
+    dame: "give me",
+    despues: "after",
+    después: "after",
+    solté: "I let go",
+    solte: "I let go",
+    quedamo: "we stay",
+    quedamos: "we stay",
   },
   "en|es": {
     color: "color",
@@ -858,6 +904,27 @@ const COMMON_GLOSS_TABLE = {
     hope: "esperanza",
     night: "noche",
     light: "luz",
+    alive: "vivo",
+    shake: "agitar",
+    going: "yendo",
+    caring: "cariñoso",
+    sugar: "azúcar",
+    cause: "porque",
+    enough: "suficiente",
+    leave: "irme",
+    lead: "guía",
+    follow: "seguir",
+    ruler: "gobernante",
+    please: "por favor",
+    think: "pensar",
+    levitating: "levitando",
+    before: "antes",
+    friend: "amigo",
+    swing: "balancear",
+    body: "cuerpo",
+    maybe: "tal vez",
+    across: "a través",
+    things: "cosas",
   },
   "fr|en": {
     amour: "love",
@@ -897,15 +964,43 @@ function commonGlossLookup(word, fromLang, toLang) {
   const key = `${String(fromLang || "").toLowerCase()}|${String(toLang || "").toLowerCase()}`;
   const table = COMMON_GLOSS_TABLE[key];
   if (!table) return null;
-  const hit = table[String(word || "").trim().toLowerCase()];
-  return hit || null;
+  const lemma = normalizeGlossLemma(word);
+  if (!lemma) return null;
+  return table[lemma] || table[String(word || "").trim().toLowerCase()] || null;
+}
+
+function stripDictLangSuffix(text) {
+  return String(text || "")
+    .replace(/\s*[\(\[]?\b(en|es|fr|de|it|pt)\b[\)\]]?\s*$/i, "")
+    .trim();
+}
+
+const MYMEMORY_MIN_MATCH = 0.75;
+
+function pickDictionaryCandidate(word, line, candidates) {
+  const lemma = normalizeGlossLemma(word);
+  const ranked = [...candidates].sort((a, b) => (b.match || 0) - (a.match || 0));
+  for (const c of ranked) {
+    const translated = stripDictLangSuffix(c.text);
+    if (!translated) continue;
+    if (/MYMEMORY WARNING/i.test(translated)) continue;
+    if (normalizeGlossLemma(translated) === lemma) continue;
+    const match = Number(c.match);
+    const hasMatch = Number.isFinite(match) && match > 0;
+    if (hasMatch && match < MYMEMORY_MIN_MATCH) continue;
+    if (translationLooksSuspicious(word, translated, line)) continue;
+    if (!hasMatch && translated.split(/\s+/).length > 2) continue;
+    return translated;
+  }
+  return null;
 }
 
 /**
- * Deterministic single-word gloss via MyMemory (no API key).
- * Used when AI returns null/suspicious translations so learners never see "COLOR → hope".
+ * Deterministic single-word gloss via curated table, then high-confidence MyMemory.
+ * Used when AI returns null/suspicious translations so learners never see "COLOR → hope"
+ * or encyclopedic junk ("llamas" → "Genus Lama").
  */
-async function dictionaryGlossFallback(word, fromLang, toLang, fetchImpl = fetch) {
+async function dictionaryGlossFallback(word, fromLang, toLang, fetchImpl = fetch, line = null) {
   const text = String(word || "").trim();
   const from = String(fromLang || "").toLowerCase();
   const to = String(toLang || "").toLowerCase();
@@ -921,16 +1016,18 @@ async function dictionaryGlossFallback(word, fromLang, toLang, fetchImpl = fetch
     const res = await fetchImpl(url, { signal: AbortSignal.timeout(4000) });
     if (!res.ok) return null;
     const data = await res.json();
-    let translated = String(data?.responseData?.translatedText || "").trim();
-    translated = translated
-      .replace(/\s*[\(\[]?\b(en|es|fr|de|it|pt)\b[\)\]]?\s*$/i, "")
-      .trim();
-    if (!translated) return null;
-    if (translated.toLowerCase() === text.toLowerCase()) return null;
-    // MyMemory sometimes returns multi-sentence junk for single tokens.
-    if (translated.split(/\s+/).length > 4) return null;
-    if (/MYMEMORY WARNING/i.test(translated)) return null;
-    return translated;
+    const candidates = [];
+    const primary = String(data?.responseData?.translatedText || "").trim();
+    if (primary) {
+      candidates.push({ text: primary, match: Number(data?.responseData?.match || 0) });
+    }
+    if (Array.isArray(data?.matches)) {
+      for (const m of data.matches) {
+        const mt = String(m?.translation || "").trim();
+        if (mt) candidates.push({ text: mt, match: Number(m?.match || m?.quality || 0) });
+      }
+    }
+    return pickDictionaryCandidate(text, line, candidates);
   } catch {
     return null;
   }
@@ -1132,7 +1229,7 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
         const bad = !g?.translation
           || translationLooksSuspicious(item.word, g.translation, item.line);
         if (!bad) return g;
-        const fb = common || await dictionaryGlossFallback(item.word, fromLang, toLang, fetchImpl);
+        const fb = common || await dictionaryGlossFallback(item.word, fromLang, toLang, fetchImpl, item.line);
         if (!fb) return { ...g, translation: null };
         return sanitizeGloss(item.word, {
           translation: fb,
@@ -1153,7 +1250,7 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
     console.warn(`daily word gloss fallback: ${err.message || err}`);
     if (fromLang && toLang) {
       return Promise.all(items.map(async (item) => {
-        const fb = await dictionaryGlossFallback(item.word, fromLang, toLang, fetchImpl);
+        const fb = await dictionaryGlossFallback(item.word, fromLang, toLang, fetchImpl, item.line);
         return sanitizeGloss(item.word, fb ? { translation: fb } : null, item.line);
       }));
     }
@@ -1178,6 +1275,7 @@ module.exports = {
   translationLooksSuspicious,
   dictionaryGlossFallback,
   commonGlossLookup,
+  normalizeGlossLemma,
   createChatCompletion,
   createFastChatCompletion,
   AVAILABLE_MODELS,

@@ -8,6 +8,9 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ### Features
 
+* Settings: change password while signed in (`POST /api/auth/change-password`)
+* Public `/privacy` and `/terms`; `/library` redirects to `/playlists`
+* Play Store path is Flutter only (`mobile/`)
 * unify Discover and Learn into one home (`/discover`; Learn nav removed)
 * Settings music style (genre) for daily-word personalization
 * Settings voice gender for Pocket-TTS pronunciation
@@ -23,12 +26,19 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ### Bug Fixes
 
+* security: unauthenticated password reset disabled (410)
+* security: admin gate uses `is_admin` only (no email substring, no NODE_ENV bypass)
+* security: production refuses default JWT secrets
+* ops: container healthcheck and prod-check hit `GET /api/health` instead of fake logins
 * daily-word: relax reuse when unused catalog keys collide on used Deezer IDs (`song_already_used`)
 * daily-word: after true on-style exhaustion, widen honestly (`style_relaxed`) instead of 503
 * daily-word: never show raw generation codes (e.g. `song_already_used`) on web or Flutter
 * Discover: home-language chip separated from translation gloss (no more “when EN”)
 * Flutter Hear-it: honor live `X-Harmonix-Preview-Provider` (iTunes fallback seek)
 * daily-word: reject wrong-word glosses (e.g. COLOR→hope) and fall back to curated/dictionary translations
+* daily-word: reject encyclopedic MyMemory junk (Genus Lama, Imam, int) and prefer lyric senses
+* TTS: never speak English through the host Spanish Pocket-TTS model; do not cache silent WAVs
+* TTS: pass Word of the Day `language_code` from web and Flutter; fix mercoledì / esta accent map
 * daily-word: Settings music style hard-gates song picks (no mixed-catalog fallback; cache/queue honor genre)
 * daily-word: stop forging AI/curated genre stamps; catalog genre is source of truth
 * daily-word: Hear-it seeks the real preview window (provider-aware) on web + Flutter

@@ -47,4 +47,34 @@ describe('Admin API Routes', () => {
     const body = await res.json();
     assert.strictEqual(Array.isArray(body.users), true);
   });
+
+  it('rejects a user whose email matches a founder name but is_admin is 0', async () => {
+    db.prepare(`
+      INSERT OR IGNORE INTO users (id, email, password_hash, is_admin)
+      VALUES ('test-not-admin-id', 'cisco-impostor@example.com', 'hash', 0)
+    `).run();
+
+    const nonAdminApp = express();
+    nonAdminApp.use(express.json());
+    nonAdminApp.use((req, res, next) => {
+      req.user = { id: 'test-not-admin-id' };
+      next();
+    });
+    nonAdminApp.use('/api/admin', adminRouter);
+
+    const res = await new Promise((resolve, reject) => {
+      const s = nonAdminApp.listen(0, async () => {
+        try {
+          const port = s.address().port;
+          const r = await fetch(`http://127.0.0.1:${port}/api/admin/metrics`);
+          s.close();
+          resolve(r);
+        } catch (err) {
+          s.close();
+          reject(err);
+        }
+      });
+    });
+    assert.strictEqual(res.status, 403);
+  });
 });

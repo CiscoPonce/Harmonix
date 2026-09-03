@@ -42,7 +42,7 @@ const ACCENT_RESTORE_MAP = {
     'virtu': 'virtù',
     'lunedi': 'lunedì',
     'martedi': 'martedì',
-    'mercoledi': 'mercoladì',
+    'mercoledi': 'mercoledì',
     'giovedi': 'giovedì',
     'venerdi': 'venerdì',
   },
@@ -50,11 +50,8 @@ const ACCENT_RESTORE_MAP = {
     'perche': 'por qué',
     'tambien': 'también',
     'despues': 'después',
-    'mas': 'más',
     'aqui': 'aquí',
     'alla': 'allá',
-    'esta': 'está',
-    'estan': 'están',
   },
   fr: {
     'tres': 'très',
@@ -96,7 +93,7 @@ const POCKET_LANG_MAP = {
 };
 
 /** Bump to invalidate SQLite pronunciation cache after quality/speed/accent changes. */
-const CACHE_VERSION = 'hq-v12-clean-audio';
+const CACHE_VERSION = 'hq-v13-lang-match';
 
 /** Playback tempo (1.0 = natural speed, no phase distortion on sibilants). */
 const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.95');
@@ -339,6 +336,29 @@ async function fetchFromPocketTTS(word, voiceUrl, langCode = 'es') {
 async function ensureDaemonLanguage(langCode) {
   const pocketLang = POCKET_LANG_MAP[langCode] || 'english';
 
+  // Host systemd TTS (Coolify): never spawn/restart, never lie that the
+  // Spanish model is English. Kokoro handles other languages; Pocket-TTS
+  // only runs when the loaded model already matches.
+  if (ttsDaemon.skipSpawn()) {
+    const loaded = ttsDaemon.currentLanguage
+      || process.env.POCKET_TTS_DEFAULT_LANGUAGE
+      || 'spanish_24l';
+    ttsDaemon.currentLanguage = loaded;
+    if (loaded !== pocketLang) {
+      const err = new Error(
+        `Pocket-TTS host model is ${loaded}; requested ${pocketLang}`
+      );
+      err.code = 'tts_language_mismatch';
+      throw err;
+    }
+    if (!(await ttsDaemon.healthCheck())) {
+      const err = new Error('Pocket-TTS daemon unavailable');
+      err.code = 'tts_unavailable';
+      throw err;
+    }
+    return;
+  }
+
   // Fast path: healthy daemon already on the right language.
   if (ttsDaemon.currentLanguage === pocketLang && (await ttsDaemon.healthCheck())) {
     return;
@@ -347,9 +367,14 @@ async function ensureDaemonLanguage(langCode) {
   // Adopt a healthy orphan daemon (API restarted; TTS kept running).
   // Avoid a multi-second model reload — synthesize with the live model.
   if (await ttsDaemon.healthCheck()) {
-    if (!ttsDaemon.currentLanguage || ttsDaemon.currentLanguage === pocketLang) {
-      ttsDaemon.currentLanguage = pocketLang;
+    if (ttsDaemon.currentLanguage === pocketLang) {
       return;
+    }
+    if (!ttsDaemon.currentLanguage) {
+      // Unknown loaded language — do not assume it matches the request.
+      const err = new Error('Pocket-TTS language unknown; refusing to guess');
+      err.code = 'tts_language_mismatch';
+      throw err;
     }
     // Different language loaded — must restart to swap model weights.
   }
@@ -422,6 +447,7 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
     console.warn('[ttsService] Pocket-TTS fallback unavailable:', pErr.message || pErr);
   }
 
+  // Never cache silence — a later Kokoro/Pocket success should not be blocked.
   return generateSilentWavBuffer();
 }
 
@@ -456,4 +482,6 @@ module.exports = {
   getPronunciationForWord,
   preCachePronunciation,
   getCachedPronunciation,
+  ensureDaemonLanguage,
+  generateSilentWavBuffer,
 };
