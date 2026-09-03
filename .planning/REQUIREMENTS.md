@@ -25,7 +25,7 @@
 - [x] **PLAT-01**: **User Authentication**. JWT login/register + refresh cookie.
 - [x] **PLAT-02**: **Minimalist Dark Theme**. Forest-green design system; Discover · Library · Settings shell.
 - [x] **PLAT-03**: **Settings preferences**. Home/learning languages, music style, voice gender, Spotify Connect.
-- [x] **PLAT-04**: **Native Android**. Flutter primary app; Capacitor legacy fallback.
+- [x] **PLAT-04**: **Native Android**. Flutter app (`mobile/`) is the Play Store client.
 - [x] **PLAT-05**: **Spotify Library**. OAuth, playlist sync, Harmonix→Spotify export, header account chip.
 
 ## v2 / Deferred
@@ -34,7 +34,7 @@
 - **AI metaphor / grammar tagging**.
 - **PWA offline-first** hardening.
 - **iOS / Wear OS**.
-- **Production domain + Play Store public listing**.
+- **Play Store public listing**.
 - **Spotify Extended Quota** for users beyond Development Mode allowlist.
 
 ## Out of Scope

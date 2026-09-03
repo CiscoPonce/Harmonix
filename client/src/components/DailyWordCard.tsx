@@ -24,6 +24,17 @@ import { spotifyOpenUrlForSong } from "@/lib/spotifyOpen";
 
 const SUPPORTED_PRONUNCIATION_LANGUAGES = ["es", "fr", "de", "pt", "en", "it"];
 
+function pronunciationLang(
+  data: DailyWordPayload | null | undefined,
+  userTarget?: string | null
+): string {
+  const fromWord = String(data?.language_code || "").trim();
+  if (SUPPORTED_PRONUNCIATION_LANGUAGES.includes(fromWord)) return fromWord;
+  const fromUser = String(userTarget || "").trim();
+  if (SUPPORTED_PRONUNCIATION_LANGUAGES.includes(fromUser)) return fromUser;
+  return "es";
+}
+
 interface QueueStatus {
   ready: number;
   refilling: boolean;
@@ -35,6 +46,7 @@ interface DailyWordPayload {
   date: string;
   cached?: boolean;
   from_queue?: boolean;
+  language_code?: string;
   word: {
     text: string;
     translation: string;
@@ -217,7 +229,8 @@ export function DailyWordCard({
   // Prefetch pronunciation so speaker tap is instant (cache hit or in-flight).
   useEffect(() => {
     const word = data?.word?.text?.trim();
-    if (!word || !SUPPORTED_PRONUNCIATION_LANGUAGES.includes(user?.target_language || "")) {
+    const lang = pronunciationLang(data, user?.target_language);
+    if (!word || !SUPPORTED_PRONUNCIATION_LANGUAGES.includes(lang)) {
       return;
     }
     if (pronunciationWordRef.current === word && pronunciationBlobUrlRef.current) {
@@ -228,7 +241,7 @@ export function DailyWordCard({
     (async () => {
       try {
         const res = await apiFetch(
-          `/daily-word/pronounce?word=${encodeURIComponent(word)}`,
+          `/daily-word/pronounce?word=${encodeURIComponent(word)}&lang=${encodeURIComponent(lang)}`,
           { signal: ac.signal }
         );
         if (!res.ok || cancelled) return;
@@ -247,7 +260,7 @@ export function DailyWordCard({
       cancelled = true;
       ac.abort();
     };
-  }, [data?.word?.text, user?.target_language]);
+  }, [data?.word?.text, data?.language_code, user?.target_language]);
 
   useEffect(() => {
     return () => {
@@ -680,7 +693,7 @@ export function DailyWordCard({
       }
     }
 
-    const targetLang = user?.target_language || 'es';
+    const targetLang = pronunciationLang(data, user?.target_language);
     for (let attempt = 0; attempt <= 1; attempt++) {
       try {
         const res = await apiFetch(`/daily-word/pronounce?word=${encodeURIComponent(data!.word.text)}&lang=${encodeURIComponent(targetLang)}`);
@@ -934,7 +947,7 @@ export function DailyWordCard({
                       {getDisplayPronunciation(data.word.pronunciation, data.word.text)}
                     </span>
                   )}
-                  {SUPPORTED_PRONUNCIATION_LANGUAGES.includes(user?.target_language || "") && (
+                  {SUPPORTED_PRONUNCIATION_LANGUAGES.includes(pronunciationLang(data, user?.target_language)) && (
                     <button
                       onClick={(e) => { e.stopPropagation(); void playPronunciation(); }}
                       className="p-1 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"

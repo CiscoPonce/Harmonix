@@ -2,8 +2,23 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'harmonix_default_jwt_secret_key_2026';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'harmonix_default_jwt_refresh_secret_key_2026';
+function loadSecret(name) {
+  const value = process.env[name];
+  const unusable = !value || value.length < 16 || /default_jwt/i.test(value);
+  if (process.env.NODE_ENV === 'production' && unusable) {
+    console.error(
+      `[auth] Refusing to start: ${name} must be set to a strong non-default value`
+    );
+    process.exit(1);
+  }
+  if (unusable) {
+    return `dev-only-${name}-not-for-production`;
+  }
+  return value;
+}
+
+const JWT_SECRET = loadSecret('JWT_SECRET');
+const JWT_REFRESH_SECRET = loadSecret('JWT_REFRESH_SECRET');
 
 async function hashPassword(password) {
   return await bcrypt.hash(password, 10);

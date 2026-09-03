@@ -114,6 +114,63 @@ describe('AI Service', () => {
     expect(sanitizeGloss('color', { translation: 'hope EN' }).translation).to.equal('hope');
     expect(commonGlossLookup('color', 'es', 'en')).to.equal('colour');
     expect(commonGlossLookup('esperanza', 'es', 'en')).to.equal('hope');
+    expect(translationLooksSuspicious('llamas', 'Genus Lama (organism)')).to.equal(true);
+    expect(translationLooksSuspicious('entero', 'int')).to.equal(true);
+    expect(translationLooksSuspicious('imán', 'Imam')).to.equal(true);
+    expect(translationLooksSuspicious('please', 'FIs')).to.equal(true);
+    expect(translationLooksSuspicious('vaivén', 'shuttle cableway, shuttle ropeway')).to.equal(true);
+    expect(translationLooksSuspicious('dirán', 'THEY WILL SAY')).to.equal(true);
+    expect(commonGlossLookup('llamas', 'es', 'en')).to.equal('you call');
+    expect(commonGlossLookup('imán', 'es', 'en')).to.equal('magnet');
+    expect(commonGlossLookup('entero', 'es', 'en')).to.equal('whole');
+    expect(commonGlossLookup("'Cause", 'en', 'es')).to.equal('porque');
+    expect(commonGlossLookup("quedamo'", 'es', 'en')).to.equal('we stay');
+    expect(commonGlossLookup('alive', 'en', 'es')).to.equal('vivo');
+  });
+
+  it('rejects encyclopedic MyMemory junk and keeps high-confidence everyday glosses', async () => {
+    const { dictionaryGlossFallback } = require('./aiService');
+    const junk = await dictionaryGlossFallback(
+      'fotón',
+      'es',
+      'en',
+      async () => ({
+        ok: true,
+        json: async () => ({
+          responseData: { translatedText: 'Genus Lama (organism)', match: 1 },
+          matches: [{ translation: 'Imam', match: 0.9 }],
+        }),
+      }),
+      'el fotón de luz'
+    );
+    expect(junk).to.equal(null);
+
+    const lowMatch = await dictionaryGlossFallback('casa', 'es', 'en', async () => ({
+      ok: true,
+      json: async () => ({
+        responseData: { translatedText: 'dwelling', match: 0.2 },
+      }),
+    }));
+    expect(lowMatch).to.equal(null);
+
+    const ok = await dictionaryGlossFallback('casa', 'es', 'en', async () => ({
+      ok: true,
+      json: async () => ({
+        responseData: { translatedText: 'house', match: 0.92 },
+      }),
+    }));
+    expect(ok).to.equal('house');
+
+    const curated = await dictionaryGlossFallback(
+      'llamas',
+      'es',
+      'en',
+      async () => {
+        throw new Error('MyMemory should not be called for curated lemmas');
+      },
+      'Si tú me llamas'
+    );
+    expect(curated).to.equal('you call');
   });
 
   it('prefers curated gloss over conflicting AI neighbor-word mixup', async () => {

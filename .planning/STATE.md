@@ -2,49 +2,49 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: flutter-web-parity
-status: in_progress
-stopped_at: "Phase 16 required: Add to playlist, 3D flips, Capacitor smoke"
-last_updated: "2026-07-24T17:20:00.000Z"
+status: complete
+stopped_at: "Phase 16 closed; Play Store is Flutter-only"
+last_updated: "2026-09-03T21:50:00.000Z"
 progress:
   total_phases: 16
-  completed_phases: 15
-  percent: 97
+  completed_phases: 16
+  percent: 100
 ---
 
 # Project State — Harmonix
 
 ## Current Focus
 
-**Phase 16 — Flutter + Capacitor web parity (v1.9).** Settings prefs, Discover practice/shelf/review, Library Spotify chip, and theme tokens landed on `cursor/phase16-flutter-parity-1e8c`. Remaining: Capacitor smoke + optional Add-to-playlist / 3D flip polish.
+**Play Store listing (Flutter `mobile/` only).** Phase 16 workstreams shipped in July; planning docs caught up 2026-09-03. Capacitor is not a release path.
 
 ## What is live now
 
 | Surface | Evidence |
 |---------|----------|
 | Public web | **https://harmonix.peeporunclub.co.uk** (Let’s Encrypt) |
+| Privacy | `/privacy` |
+| Library URL | `/playlists` (`/library` redirects) |
 | Containers | `api-rxwdj1k3qu51fqf8uwtal389` + `web-rxwdj1k3qu51fqf8uwtal389` |
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
-| TTS | Host systemd `harmonix-tts` on `:3002` (`TTS_BASE_URL=http://10.0.0.15:3002`); API image includes **ffmpeg** for atempo |
+| TTS | Host systemd `harmonix-tts` on `:3002`; compose `TTS_SKIP_SPAWN=true` |
 | Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` |
-| Mobile | Flutter primary (`mobile/`); Capacitor legacy loads live web |
+| Mobile | Flutter Play Store path (`mobile/`) |
 
 ## Phase status
 
 | Phase | Status |
 |------:|--------|
-| 1–15 | Complete |
-| **16** | **In progress** — Settings prefs + theme started |
+| 1–16 | Complete |
 
 ## Architecture (verified)
 
 ```text
-Browser / Capacitor → Traefik → api → web
-Flutter Android     → same API + host TTS
+Browser → Traefik → api → web
+Flutter Android → same API + host TTS
 Push main → GitHub Actions SSH → coolify-redeploy.sh
 ```
 
 ## Session
 
-**Last session:** 2026-07-24 — Phase 16 discuss locked; Flutter Settings music style / voice gender / language list + brand tokens.  
-**Default branch:** `main`  
-**Active work branch:** `cursor/phase16-flutter-parity-1e8c`
+**Last session:** 2026-09-03 — prod hardening (password reset closed, explicit admin, JWT fail-fast, healthcheck, privacy, Flutter-only store).  
+**Default branch:** `main`

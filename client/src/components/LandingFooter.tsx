@@ -6,8 +6,8 @@ export function LandingFooter() {
       <div className="landing-footer-inner">
         <div className="landing-footer-links">
           <a href="#" className="landing-footer-link">Support</a>
-          <a href="#" className="landing-footer-link">Privacy</a>
-          <a href="#" className="landing-footer-link">Terms</a>
+          <a href="/privacy" className="landing-footer-link">Privacy</a>
+          <a href="/terms" className="landing-footer-link">Terms</a>
         </div>
         <p className="landing-footer-contact">Contact: info@harmonix.app</p>
       </div>

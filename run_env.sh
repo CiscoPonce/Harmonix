@@ -21,9 +21,8 @@ wait_for_port() {
   local attempt=1
 
   while [ "$attempt" -le "$max_attempts" ]; do
-    if curl -sf "http://127.0.0.1:${port}/" >/dev/null 2>&1 || \
-       curl -s -o /dev/null -w "%{http_code}" -X POST "http://127.0.0.1:${port}/api/auth/login" \
-         -H "Content-Type: application/json" -d "{}" | grep -qE "^(401|400|200)$"; then
+    if curl -sf "http://127.0.0.1:${port}/api/health" >/dev/null 2>&1 || \
+       curl -sf "http://127.0.0.1:${port}/" >/dev/null 2>&1; then
       echo "$label is ready on port $port"
       return 0
     fi

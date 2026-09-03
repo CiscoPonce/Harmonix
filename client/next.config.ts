@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  async redirects() {
+    return [
+      { source: "/library", destination: "/playlists", permanent: true },
+      { source: "/library/:path*", destination: "/playlists/:path*", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

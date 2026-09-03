@@ -1518,7 +1518,13 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, {
           && !aiService.translationLooksSuspicious(item.word, g.translation, item.line)) {
           return g;
         }
-        const fb = await aiService.dictionaryGlossFallback(item.word, fromLang, toLang);
+        const fb = await aiService.dictionaryGlossFallback(
+          item.word,
+          fromLang,
+          toLang,
+          fetch,
+          item.line
+        );
         if (!fb) return { ...(g || {}), translation: null };
         return aiService.sanitizeGloss(item.word, {
           translation: fb,
@@ -1589,7 +1595,9 @@ async function enrichPayloadWordMeta(payload, user) {
       const fb = await aiService.dictionaryGlossFallback(
         text,
         normalizeLangCode(user.target_language || "es"),
-        normalizeLangCode(user.native_language || "en")
+        normalizeLangCode(user.native_language || "en"),
+        fetch,
+        line
       );
       if (fb) candidateTranslation = fb;
       else if (aiService.translationLooksSuspicious(text, candidateTranslation, line)) {

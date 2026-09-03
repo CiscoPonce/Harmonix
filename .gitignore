@@ -70,6 +70,9 @@ gsd-core/
 .planning/research/
 .planning/**/scratch/
 
+# Local SSH/ops notes (not part of the product)
+where.md
+
 # Legacy duplicate phase folders
 .planning/phases/phase-1/
 .planning/phases/phase-2/

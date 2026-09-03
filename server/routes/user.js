@@ -4,6 +4,7 @@ const db = require('../db');
 const { VALID_LANGUAGE_CODES } = require('../constants/languages');
 const wordQueue = require('../services/wordQueueService');
 const dailyWordService = require('../services/dailyWordService');
+const spotifyProfile = require('../services/spotifyProfileService');
 
 const VALID_VOICE_GENDERS = ['female', 'male'];
 const VALID_GENRES = ['any', 'pop', 'rock', 'hip-hop', 'reggaeton'];
@@ -105,6 +106,16 @@ router.patch('/preferences', (req, res) => {
   } catch (err) {
     console.error('PATCH /api/user/preferences error:', err.message);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/sync-spotify-profile', async (req, res) => {
+  try {
+    const result = await spotifyProfile.syncUserProfile(req.user.id);
+    res.json(result);
+  } catch (err) {
+    console.error('POST /api/user/sync-spotify-profile error:', err);
+    res.status(500).json({ error: 'profile_sync_failed', message: err.message });
   }
 });
 

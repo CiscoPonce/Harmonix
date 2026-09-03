@@ -10,6 +10,9 @@
 
 - Access tokens: short-lived JWT (`Authorization: Bearer`).
 - Refresh tokens: httpOnly cookie (and body for mobile); use HTTPS / secure cookies in production.
+- Production refuses to start if `JWT_SECRET` / `JWT_REFRESH_SECRET` are missing or default-like.
+- Password change requires a logged-in session (`POST /api/auth/change-password`). Unauthenticated `POST /api/auth/reset-password` returns 410.
+- Admin APIs require `users.is_admin = 1` (set in the database). Email substring matching is not used.
 - Spotify: Authorization Code + PKCE; tokens encrypted in SQLite; player uses short-lived access tokens from `GET /api/spotify/player/token`.
 
 ## Data & copyright

@@ -22,7 +22,6 @@ export interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
-  resetPassword: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -32,10 +31,10 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 function friendlyAuthError(error: string | undefined, context: 'login' | 'register') {
   if (error === 'Invalid credentials') {
-    return 'Wrong email or password. If you already registered, try resetting your password.';
+    return 'Wrong email or password.';
   }
   if (error === 'Email already registered') {
-    return 'This email is already registered. Log in instead, or reset your password below.';
+    return 'This email is already registered. Log in instead.';
   }
   return error || (context === 'login' ? 'Login failed' : 'Registration failed');
 }
@@ -133,22 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-
-  const resetPassword = async (email: string, password: string) => {
-    const res = await apiFetch('/auth/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!res.ok) {
-      const errorData = await parseJsonResponse<{ error?: string }>(res).catch(() => ({
-        error: 'Password reset failed',
-      }));
-      throw new Error(errorData.error || 'Password reset failed');
-    }
-    await login(email, password);
-  };
-
   const refreshUser = async () => {
     try {
       const userRes = await apiFetch('/auth/me');
@@ -169,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, resetPassword, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

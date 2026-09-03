@@ -101,7 +101,7 @@ router.get("/pronounce", async (req, res) => {
     if (err.code === "unsupported_language") {
       return res.status(404).json({ error: "unsupported_language" });
     }
-    res.status(500).json({ error: "pronunciation_failed", details: err.message, stack: err.stack });
+    res.status(500).json({ error: "pronunciation_failed" });
   }
 });
 

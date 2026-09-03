@@ -94,7 +94,7 @@ export default function AdminPage() {
     setSyncingProfile(true);
     setSyncMsg(null);
     try {
-      const resRaw = await apiFetch('/admin/sync-spotify-profile', {
+      const resRaw = await apiFetch('/user/sync-spotify-profile', {
         method: 'POST',
       });
       if (!resRaw.ok) throw new Error('Failed to sync profile');

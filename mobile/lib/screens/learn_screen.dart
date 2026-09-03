@@ -195,7 +195,7 @@ class _LearnScreenState extends State<LearnScreen> {
     );
   }
 
-  Future<void> _speakWord(String text) async {
+  Future<void> _speakWord(String text, {String? lang}) async {
     try {
       await _pronouncePlayer.stop();
       await _pronouncePlayer.release();
@@ -206,7 +206,7 @@ class _LearnScreenState extends State<LearnScreen> {
     Object? lastError;
     try {
       final api = context.read<ApiClient>();
-      final bytes = await api.pronounceWord(text);
+      final bytes = await api.pronounceWord(text, lang: lang);
       if (!mounted) return;
 
       final session = await AudioSession.instance;
@@ -542,7 +542,10 @@ class _LearnScreenState extends State<LearnScreen> {
                     IconButton(
                       onPressed: word['text'] == null
                           ? null
-                          : () => _speakWord(word['text'] as String),
+                          : () => _speakWord(
+                                word['text'] as String,
+                                lang: _word?['language_code'] as String?,
+                              ),
                       icon: Icon(
                         _speaking ? Icons.volume_up : Icons.volume_up_outlined,
                         size: 20,

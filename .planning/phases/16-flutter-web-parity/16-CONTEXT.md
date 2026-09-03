@@ -1,8 +1,8 @@
 # Phase 16 — Flutter + Capacitor web parity
 
-**Status:** In progress — required parity items landed (2026-07-24)  
+**Status:** Complete (planning closed 2026-09-03)  
 **Milestone:** v1.9 (mobile parity)  
-**Surfaces:** Flutter Android (`mobile/`) primary · Capacitor (`client/android`) legacy web-shell
+**Surfaces:** Flutter Android (`mobile/`) is the Play Store app. Capacitor is not shipped.
 
 ## Goal
 

@@ -16,12 +16,12 @@ AI-first language learning through real music lyrics — validated against Deeze
 
 | Item | State |
 |------|--------|
-| Roadmap phases 1–14 | **Complete** (v1.7 Production Parity & Ship) |
+| Roadmap phases 1–16 | **Complete** (v1.9 Flutter web parity) |
 | Phase 15 Coolify deploy | **Live** — Traefik HTTPS + GH Actions zero-downtime deploy on `main` push |
 | Web home | Unified **Discover** (Word of the Day + practice + search) |
-| Nav | Discover · Library · Settings |
-| Settings | Languages · music style · voice gender · Spotify |
-| Mobile | Flutter primary (`mobile/`); Capacitor legacy fallback |
+| Nav | Discover · Library (`/playlists`) · Settings |
+| Settings | Languages · music style · voice gender · Spotify · password |
+| Mobile | **Flutter only** for Play Store (`mobile/`). Capacitor is not a release path. |
 | Branches | Product work is on `main` only |
 
 See [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](./.planning/STATE.md).
@@ -36,7 +36,7 @@ See [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](
 - **Library** — Harmonix playlists + Spotify playlists; export Harmonix → Spotify; connected account shown in the header (`Spotify · {name}`)
 - **Practice** — SRS review + streak/goal chips on Discover
 - **Web shell** — Discover · Library · Settings (forest-green design system + theme-aware logos)
-- **Android** — Flutter native app (`mobile/`) as primary mobile app; Capacitor web-wrapper (`client/android/`) retained as legacy fallback (D-14-05)
+- **Android** — Flutter native app (`mobile/`) is the Play Store app. The Capacitor wrapper under `client/android/` is archived and not shipped.
 
 ## Stack
 
@@ -44,7 +44,7 @@ See [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](
 |-------|------|
 | API | Node.js, Express, SQLite |
 | Web | Next.js App Router, Tailwind v4 |
-| Mobile | Flutter (`mobile/`) — Primary · Capacitor (`client/android/`) — Legacy Fallback |
+| Mobile | Flutter (`mobile/`) — Play Store. Capacitor is not shipped. |
 | AI | NVIDIA NIM + OpenRouter fallback |
 | Music | Deezer, LRCLib, Spotify Web API / Web Playback SDK |
 | TTS | Pocket-TTS (local daemon) |
@@ -53,7 +53,7 @@ See [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](
 
 ```text
 server/          Express API + SQLite + Spotify/TTS/daily-word services
-client/          Next.js web + Capacitor Android (`client/android/`)
+client/          Next.js web
 mobile/          Flutter Android app (Play Store path)
 releases/        Sideload debug APKs
 docs/            Runbooks (Coolify, Spotify, mobile, releases)
@@ -117,7 +117,7 @@ Known env-sensitive failures: Pocket-TTS not running; Spotify `/status` contract
 
 ## Planning
 
-Milestone **v1.7** is complete (Phase 14). **v1.8 / Phase 15** is live on Coolify Traefik with GH Actions zero-downtime deploy. Remaining optional ops: Play Store listing, AI provider hardening, Extended Spotify Quota.
+Milestone **v1.9** (Phase 16 Flutter web parity) is complete. Production is Coolify Traefik. Android Play Store path is **Flutter only**. Remaining ops: Play Store listing, privacy URL is `/privacy`, AI provider hardening, Extended Spotify Quota.
 
 ## Releases
 
