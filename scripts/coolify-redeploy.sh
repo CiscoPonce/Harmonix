@@ -8,6 +8,11 @@ PROJECT="${PROJECT:-/home/ubuntu/lyric}"
 UUID="${COOLIFY_SERVICE_UUID:-rxwdj1k3qu51fqf8uwtal389}"
 VOL="${UUID}_harmonix-data"
 WORKDIR="/data/coolify/services/${UUID}"
+# ubuntu cannot always stat Coolify's root-owned service dir; `test -d` then
+# falsely falls back to $PROJECT and the incomplete repo-root .env (no JWT).
+if ! sudo test -d "$WORKDIR"; then
+  WORKDIR="$PROJECT"
+fi
 DOMAIN="${PUBLIC_DOMAIN:-harmonix.peeporunclub.co.uk}"
 API="api-${UUID}"
 WEB="web-${UUID}"
@@ -27,10 +32,6 @@ app_network() {
   fi
   echo "${UUID}_default"
 }
-
-if [ ! -d "$WORKDIR" ]; then
-  WORKDIR="$PROJECT"
-fi
 
 run_compose() {
   # Coolify workdir is root-owned
@@ -89,14 +90,23 @@ start_api_standby() {
   log "Starting Traefik standby API (keeps site live during API cutover)"
   local env_tmp
   env_tmp=$(mktemp)
-  if [ -f "${WORKDIR}/.env" ]; then
-    sudo cat "${WORKDIR}/.env" > "$env_tmp"
+  chmod 600 "$env_tmp"
+  # Live API env is the source of truth (Coolify secrets). Do not use the
+  # git checkout's root .env — it has no JWT and production now refuses to boot.
+  if docker inspect "$API" >/dev/null 2>&1; then
+    docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$API" > "$env_tmp"
+  elif sudo test -f "/data/coolify/services/${UUID}/.env"; then
+    sudo cat "/data/coolify/services/${UUID}/.env" > "$env_tmp"
   elif [ -f "${PROJECT}/server/.env" ]; then
     sudo cat "${PROJECT}/server/.env" > "$env_tmp"
   elif [ -f "${PROJECT}/.env" ]; then
     sudo cat "${PROJECT}/.env" > "$env_tmp"
   fi
-  chmod 600 "$env_tmp"
+  if ! grep -q '^JWT_SECRET=.' "$env_tmp"; then
+    echo "ERROR: JWT_SECRET missing from standby env (will not start production API)"
+    rm -f "$env_tmp"
+    return 1
+  fi
 
   docker run -d \
     --name "$API_STANDBY" \
@@ -186,9 +196,9 @@ if [ "${HARMONIX_REDEPLOY_BOOTED:-}" != "1" ]; then
   exec bash "${PROJECT}/scripts/coolify-redeploy.sh" "$@"
 fi
 
-if [ -d "$WORKDIR" ] && [ "$WORKDIR" != "$PROJECT" ]; then
+if [ "$WORKDIR" != "$PROJECT" ]; then
   log "Syncing updated codebase to Coolify service directory: ${WORKDIR}"
-  sudo cp -r "${PROJECT}/." "${WORKDIR}/"
+  sudo rsync -a --exclude '.env' --exclude '.git' "${PROJECT}/" "${WORKDIR}/"
 fi
 
 if [ "${SKIP_BUILD:-}" = "1" ]; then

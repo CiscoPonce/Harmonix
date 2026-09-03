@@ -31,6 +31,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * security: production refuses default JWT secrets
 * ops: healthcheck GET /api/health instead of fake logins
 * deploy: attach Coolify standbys to compose `${uuid}_default` network (not a missing UUID network)
+* deploy: copy live API env for standby (repo-root `.env` has no JWT; production refuses to boot)
 * daily-word: relax reuse when unused catalog keys collide on used Deezer IDs (`song_already_used`)
 * daily-word: after true on-style exhaustion, widen honestly (`style_relaxed`) instead of 503
 * daily-word: never show raw generation codes (e.g. `song_already_used`) on web or Flutter
