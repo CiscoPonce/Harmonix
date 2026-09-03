@@ -1,9 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Flame, Loader2, Play, Search, Target } from 'lucide-react';
+import { Flame, Loader2, Search, Target } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AppShell } from '@/components/AppShell';
 import { DailyWordCard } from '@/components/DailyWordCard';
@@ -40,6 +39,13 @@ export default function DiscoverPage() {
     icon?: string;
     category?: string;
   } | null>(null);
+  const [fromTrackRequest, setFromTrackRequest] = useState<{
+    id: string;
+    title?: string;
+    artist?: string;
+    nonce: number;
+  } | null>(null);
+  const [pickingTrackId, setPickingTrackId] = useState<number | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
@@ -228,11 +234,19 @@ export default function DiscoverPage() {
       : 0;
 
   return (
-    <AppShell userEmail={user.email} onLogout={logout} searchPlaceholder="Search lyrics, artists, or languages...">
+    <AppShell
+      userEmail={user.email}
+      onLogout={logout}
+      searchPlaceholder="Search a song for a word from its lyrics…"
+      onSearchSubmit={(q) => {
+        setQuery(q);
+        document.getElementById('discover-song-search')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }}
+    >
       <BadgeUnlockToast badge={unlockedBadge} onDismiss={() => setUnlockedBadge(null)} />
 
       <section className="mx-auto w-full max-w-3xl" aria-label="Word of the Day">
-        <DailyWordCard onWordChange={refreshHomeData} />
+        <DailyWordCard onWordChange={refreshHomeData} fromTrackRequest={fromTrackRequest} />
       </section>
 
       <section
@@ -270,53 +284,77 @@ export default function DiscoverPage() {
         <ReviewCountBadge />
       </section>
 
-      <section className="relative mt-10 overflow-hidden rounded-3xl bg-[#0B4D2E] px-6 py-8 text-white sm:px-10">
+      <section
+        id="discover-song-search"
+        className="relative mt-10 overflow-hidden rounded-3xl bg-[#0B4D2E] px-6 py-8 text-white sm:px-10"
+      >
+        <p className="mb-3 text-sm font-medium text-white/80">
+          Search a song, then tap it to learn a word from those lyrics.
+        </p>
         <div className="relative max-w-2xl">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7A8A80]" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search lyrics, artists, or languages..."
+            placeholder="Search a song for a word from its lyrics…"
             className="h-12 w-full rounded-full bg-white pl-12 pr-4 text-base text-[#0C1210] placeholder:text-[#9AABA0] focus:outline-none focus:ring-2 focus:ring-white/40"
-            aria-label="Discover search"
+            aria-label="Search a song for a Word of the Day"
           />
         </div>
+        {(searching || query.trim()) && (
+          <div className="relative mt-4 max-w-2xl" aria-label="Search results">
+            {searching ? (
+              <div className="flex items-center gap-2 text-sm text-white/80">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Searching songs…
+              </div>
+            ) : results.length === 0 ? (
+              <p className="text-sm text-white/70">No songs found. Try the artist plus title.</p>
+            ) : (
+              <ul className="divide-y divide-white/10 overflow-hidden rounded-2xl bg-white text-[#0C1210] shadow-lg">
+                {results.slice(0, 8).map((track) => (
+                  <li key={track.id}>
+                    <button
+                      type="button"
+                      disabled={pickingTrackId === track.id}
+                      onClick={() => {
+                        setPickingTrackId(track.id);
+                        setFromTrackRequest({
+                          id: String(track.id),
+                          title: track.title,
+                          artist: track.artist?.name,
+                          nonce: Date.now(),
+                        });
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        window.setTimeout(() => setPickingTrackId(null), 800);
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#F7F8F6] disabled:opacity-60"
+                    >
+                      {track.album?.cover_medium ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={track.album.cover_medium}
+                          alt=""
+                          className="h-12 w-12 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="h-12 w-12 rounded-lg bg-[#E8F5EE]" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-bold">{track.title}</p>
+                        <p className="truncate text-sm text-[#5C6B62]">{track.artist?.name}</p>
+                      </div>
+                      <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-[#0B4D2E]">
+                        {pickingTrackId === track.id ? 'Loading…' : 'Learn a word'}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </section>
-
-      {(searching || results.length > 0) && (
-        <section className="mt-8 space-y-3" aria-label="Search results">
-          {searching ? (
-            <Loader2 className="h-6 w-6 animate-spin text-[#0B4D2E] dark:text-[#3DCF7A]" />
-          ) : (
-            <ul className="divide-y divide-[#E4EBE6] overflow-hidden rounded-2xl border border-[#E4EBE6] bg-white dark:divide-[#2A3530] dark:border-[#2A3530] dark:bg-[#171E1B]">
-              {results.slice(0, 8).map((track) => (
-                <li key={track.id}>
-                  <Link
-                    href={`/player/${track.id}`}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-[#F7F8F6] dark:hover:bg-[#1A2420]"
-                  >
-                    {track.album?.cover_medium ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={track.album.cover_medium}
-                        alt=""
-                        className="h-12 w-12 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <div className="h-12 w-12 rounded-lg bg-[#E8F5EE]" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-bold">{track.title}</p>
-                      <p className="truncate text-sm text-[#5C6B62]">{track.artist?.name}</p>
-                    </div>
-                    <Play className="h-4 w-4 text-[#0B4D2E]" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
 
       <section className="mt-12" aria-label="Recent words">
         <div className="mb-4 flex items-end justify-between gap-3">

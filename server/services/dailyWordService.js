@@ -283,10 +283,12 @@ function buildPayload(date, suggestion, track, lyricsData, occurrence, langCode 
       difficulty: suggestion.difficulty || "medium",
       cefr_level: suggestion.cefr_level || null,
       gloss_v: suggestion.gloss_v || null,
+      line_translation: suggestion.line_translation || null,
     },
     lyric: {
       ...occurrence,
       in_preview: inPreview,
+      line_translation: suggestion.line_translation || occurrence.line_translation || null,
     },
     song: {
       id: String(track.id),
@@ -331,7 +333,7 @@ function persistPayloadSideEffects(payload, track, lyricsData, syncCheck) {
   `).run(String(track.id), lyricsData.syncedLyrics, lyricsData.plainLyrics || null);
 }
 
-async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetchImpl = fetch, seenSongIds = new Set(), { allowSongReuse = false } = {}) {
+async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetchImpl = fetch, seenSongIds = new Set(), { allowSongReuse = false, allowOutsidePreview = false } = {}) {
   const label = `${suggestion.artist} - ${suggestion.song_title}`;
   const langCode = normalizeLangCode(user.target_language || "es");
   let lastError = null;
@@ -434,7 +436,7 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
         return { error: "no_suitable_word" };
       }
 
-      if (!occurrence.in_preview) {
+      if (!occurrence.in_preview && !allowOutsidePreview) {
         console.warn(
           `daily word reject: lyric outside preview window ${label} ` +
             `(t=${occurrence.timestamp} window=${formatTimestamp(previewStart * 1000)}-${formatTimestamp(previewEnd * 1000)})`
@@ -630,6 +632,7 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
       translation: gloss.translation,
       part_of_speech: gloss.part_of_speech,
       pronunciation: gloss.pronunciation,
+      line_translation: gloss.line_translation || null,
       gloss_v: gloss.gloss_v || 2,
       difficulty: userDifficulty,
       genre: p.genre,
@@ -1733,6 +1736,85 @@ async function enrichIfNeeded(payload, user) {
   return enriched;
 }
 
+async function generateDailyWordFromTrack(user, trackId, fetchImpl = fetch) {
+  const date = todayDate();
+  const id = String(trackId || "").trim();
+  if (!id) {
+    const err = new Error("track_required");
+    err.code = "track_required";
+    throw err;
+  }
+
+  let track;
+  try {
+    track = await deezer.fetchTrack(id, fetchImpl);
+  } catch (err) {
+    const wrapped = new Error(err.code || err.message || "deezer_not_found");
+    wrapped.code = err.code || "deezer_not_found";
+    throw wrapped;
+  }
+  if (!track) {
+    const err = new Error("deezer_not_found");
+    err.code = "deezer_not_found";
+    throw err;
+  }
+
+  const suggestion = {
+    artist: track.artist?.name || "",
+    song_title: track.title || "",
+    genre: user.genre || "pop",
+  };
+  const history = getUserDiscoveryHistory(user.id);
+  const result = await tryValidateSongCandidate(
+    suggestion,
+    user,
+    date,
+    history.words,
+    fetchImpl,
+    new Set(),
+    { allowSongReuse: true, allowOutsidePreview: true }
+  );
+  if (!result.picked) {
+    const err = new Error(result.error || "generation_failed");
+    err.code = result.error || "generation_failed";
+    throw err;
+  }
+
+  const languageName = languageNameFromCode(user.target_language || "es");
+  const nativeLanguageName = languageNameFromCode(user.native_language || "en", "English");
+  const glosses = await glossWithCompleteness(
+    [{ word: result.picked.word, line: result.picked.line }],
+    languageName,
+    nativeLanguageName,
+    {
+      fast: true,
+      fromLang: normalizeLangCode(user.target_language || "es"),
+      toLang: normalizeLangCode(user.native_language || "en"),
+    }
+  );
+  const gloss = glosses[0] || {};
+  const wordSuggestion = {
+    target_word: result.picked.word,
+    translation: gloss.translation,
+    part_of_speech: gloss.part_of_speech,
+    pronunciation: gloss.pronunciation,
+    line_translation: gloss.line_translation || null,
+    gloss_v: gloss.gloss_v || 2,
+    difficulty: user.difficulty || "medium",
+    genre: result.genre,
+  };
+  const payload = buildPayload(
+    date,
+    wordSuggestion,
+    result.track,
+    result.lyricsData,
+    result.occurrence,
+    user.target_language || "es"
+  );
+  persistPayloadSideEffects(payload, result.track, result.lyricsData, result.syncCheck);
+  return enrichIfNeeded(deliverPayload(user.id, payload), user);
+}
+
 async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}) {
   const date = todayDate();
 
@@ -1786,6 +1868,7 @@ module.exports = {
   generateNextDailyWord,
   generateAndDeliverBatch,
   generateDailyWord,
+  generateDailyWordFromTrack,
   hydratePayloadAudio,
   enrichPayloadWordMeta,
   enrichIfNeeded,

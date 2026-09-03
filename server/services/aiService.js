@@ -794,6 +794,7 @@ function sanitizeGloss(word, gloss, line = null) {
     translation,
     part_of_speech: gloss.part_of_speech || null,
     pronunciation: gloss.pronunciation || null,
+    line_translation: sanitizeLineGloss(gloss.line_translation),
   };
 }
 
@@ -825,7 +826,9 @@ function translationLooksSuspicious(word, translation, line = null) {
   if (tokens.length > 4) return true;
   if (/\([^)]+\)/.test(raw) || /\[[^\]]+\]/.test(raw)) return true;
   if (raw.includes(",")) return true;
-  if (/\b(genus|organism|wikipedia|cableway|ropeway|integer|imam|lama)\b/i.test(raw)) return true;
+  if (/\b(genus|organism|wikipedia|cableway|ropeway|integer|imam|lama|señalización|senalizacion)\b/i.test(raw)) return true;
+  if (/\bvial\b/i.test(raw)) return true;
+  if (/\b[a-z]\.\s+\S/i.test(raw) || (/[.]/.test(raw) && raw.length < 12 && /\./.test(raw))) return true;
   if (/^(int|float|bool|boolean|null|void|undefined|string|fis)$/i.test(t)) return true;
   // ALL-CAPS multi-word dumps ("THEY WILL SAY") and short code-like tokens ("FIs", "INT").
   if (/^[A-Z]{2,}(\s+[A-Z]+){1,}$/.test(raw)) return true;
@@ -925,6 +928,20 @@ const COMMON_GLOSS_TABLE = {
     maybe: "tal vez",
     across: "a través",
     things: "cosas",
+    late: "tarde",
+    remind: "recordar",
+    gets: "se pone",
+    get: "se pone",
+    crazy: "loco",
+    magnet: "imán",
+    signs: "señales",
+    sign: "señal",
+    judge: "juzgar",
+    touch: "toque",
+    empty: "vacío",
+    kind: "tipo",
+    shall: "vas a",
+    have: "tener",
   },
   "fr|en": {
     amour: "love",
@@ -960,7 +977,38 @@ const COMMON_GLOSS_TABLE = {
   },
 };
 
-function commonGlossLookup(word, fromLang, toLang) {
+function lyricSenseLookup(word, fromLang, toLang, line) {
+  const lemma = normalizeGlossLemma(word);
+  const L = String(line || "").toLowerCase();
+  const from = String(fromLang || "").toLowerCase();
+  const to = String(toLang || "").toLowerCase();
+  if (!lemma || from === to) return null;
+  if (from === "en" && to === "es") {
+    if (lemma === "late") return "tarde";
+    if ((lemma === "get" || lemma === "gets") && /\bhard\b/.test(L)) return "se pone";
+    if (lemma === "gets" || lemma === "get") return "se pone";
+    if (lemma === "have" && /\bhave to\b/.test(L)) return "tener que";
+    if (lemma === "judge" && /\b(judge me|to judge|judge)\b/.test(L)) return "juzgar";
+    if (lemma === "touch") return "toque";
+    if (lemma === "signs" || lemma === "sign") return "señales";
+    if (lemma === "shall") return "vas a";
+    if (lemma === "magnet") return "imán";
+  }
+  return null;
+}
+
+function sanitizeLineGloss(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return null;
+  if (/MYMEMORY WARNING|genus|organism|wikipedia/i.test(raw)) return null;
+  const tokens = raw.split(/\s+/).filter(Boolean);
+  if (tokens.length > 16) return tokens.slice(0, 16).join(" ");
+  return raw;
+}
+
+function commonGlossLookup(word, fromLang, toLang, line = null) {
+  const keyed = lyricSenseLookup(word, fromLang, toLang, line);
+  if (keyed) return keyed;
   const key = `${String(fromLang || "").toLowerCase()}|${String(toLang || "").toLowerCase()}`;
   const table = COMMON_GLOSS_TABLE[key];
   if (!table) return null;
@@ -1006,7 +1054,7 @@ async function dictionaryGlossFallback(word, fromLang, toLang, fetchImpl = fetch
   const to = String(toLang || "").toLowerCase();
   if (!text || !from || !to || from === to) return null;
 
-  const common = commonGlossLookup(text, from, to);
+  const common = commonGlossLookup(text, from, to, line);
   if (common) return common;
 
   try {
@@ -1142,6 +1190,7 @@ Hard rules:
 6. Never translate a DIFFERENT word from the same line (WRONG: word "color", line has "hope", translation "hope").
 7. Never append a language code (WRONG: "hope EN").
 8. Also give part_of_speech and pronunciation (IPA or readable phonetic for how to say the ${languageName} word).
+9. Also give line_translation: a short natural ${nativeLanguageName} rendering of the lyric line (how a learner should understand that sentence), 4–14 everyday words. Use the line's meaning, not a dictionary first-hit.
 
 Items: ${JSON.stringify(items)}
 
@@ -1203,6 +1252,7 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
         translation: hit?.translation,
         part_of_speech: hit?.part_of_speech,
         pronunciation: hit?.pronunciation,
+        line_translation: hit?.line_translation,
       }, item.line);
     });
 
@@ -1213,7 +1263,7 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
     if (fromLang && toLang) {
       glosses = await Promise.all(glosses.map(async (g, i) => {
         const item = items[i];
-        const common = commonGlossLookup(item.word, fromLang, toLang);
+        const common = commonGlossLookup(item.word, fromLang, toLang, item.line);
         // Curated table beats a conflicting AI gloss (e.g. color → "hope").
         if (common && g?.translation) {
           const a = common.toLowerCase();
@@ -1275,6 +1325,7 @@ module.exports = {
   translationLooksSuspicious,
   dictionaryGlossFallback,
   commonGlossLookup,
+  lyricSenseLookup,
   normalizeGlossLemma,
   createChatCompletion,
   createFastChatCompletion,

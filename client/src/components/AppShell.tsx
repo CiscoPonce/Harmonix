@@ -31,6 +31,7 @@ export interface AppShellProps {
   showBottomPlayer?: boolean;
   nowPlaying?: { title: string; artist: string } | null;
   headerExtra?: ReactNode;
+  onSearchSubmit?: (query: string) => void;
 }
 
 export function AppShell({
@@ -42,6 +43,7 @@ export function AppShell({
   showBottomPlayer = false,
   nowPlaying = null,
   headerExtra,
+  onSearchSubmit,
 }: AppShellProps) {
   const pathname = usePathname();
   const { t } = useTranslation();
@@ -132,9 +134,10 @@ export function AppShell({
               onSubmit={(e) => {
                 e.preventDefault();
                 const input = e.currentTarget.querySelector('input');
-                if (input && input.value.trim()) {
-                  window.location.href = `/discover?q=${encodeURIComponent(input.value.trim())}`;
-                }
+                const q = input?.value.trim();
+                if (!q) return;
+                if (onSearchSubmit) onSearchSubmit(q);
+                else window.location.href = `/discover?q=${encodeURIComponent(q)}`;
               }}
               className="relative mx-auto hidden w-full max-w-xl flex-1 md:block"
             >

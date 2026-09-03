@@ -22,7 +22,11 @@ export function friendlyDailyWordReason(
     case "no_suitable_word":
       return "Couldn't match a song with synced lyrics right now. Try again shortly.";
     case "lyrics_wrong_language":
-      return "That song didn't match your learning language. Trying another…";
+      return "That song isn't in your learning language. Search for a song sung in the language you're learning.";
+    case "track_required":
+    case "track_not_found":
+    case "no_preview":
+      return "Couldn't open that track. Try another search result.";
     case "stale_preferences":
     case "daily_word_stale_preferences":
       return "Your learning preferences changed — loading a new word…";

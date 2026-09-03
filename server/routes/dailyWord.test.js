@@ -226,4 +226,20 @@ describe("GET /pronounce", () => {
     expect(calledWith).to.deep.equal(["newword", "es", "female"]);
     expect(res.statusCode).to.equal(200);
   });
+
+  it("POST /from-track returns a word from the chosen song", async () => {
+    const original = dailyWordService.generateDailyWordFromTrack;
+    dailyWordService.generateDailyWordFromTrack = async () => ({
+      date: "2026-09-03",
+      word: { text: "late", translation: "tarde", line_translation: "noches tarde a mediados de junio" },
+      song: { id: "99", title: "Heat Waves", artist: "Glass Animals" },
+    });
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/from-track").route.stack[0].handle;
+    const req = { user: { id: userId }, body: { trackId: "99" } };
+    const res = mockRes();
+    await handler(req, res);
+    expect(res.body.word.text).to.equal("late");
+    expect(res.body.from_search).to.equal(true);
+    dailyWordService.generateDailyWordFromTrack = original;
+  });
 });

@@ -53,6 +53,7 @@ interface DailyWordPayload {
     part_of_speech?: string | null;
     pronunciation?: string | null;
     difficulty?: string;
+    line_translation?: string | null;
   };
   lyric: {
     snippet: string;
@@ -63,6 +64,7 @@ interface DailyWordPayload {
     char_start: number;
     char_end: number;
     in_preview?: boolean | null;
+    line_translation?: string | null;
   };
   song: {
     id: string;
@@ -145,8 +147,10 @@ function getDisplayPronunciation(rawPronunciation?: string | null, wordText?: st
 
 export function DailyWordCard({
   onWordChange,
+  fromTrackRequest = null,
 }: {
   onWordChange?: (payload?: DailyWordPayload) => void;
+  fromTrackRequest?: { id: string; title?: string; artist?: string; nonce: number } | null;
 }) {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -342,6 +346,43 @@ export function DailyWordCard({
     fetchQueueStatus();
     return () => loadAbortRef.current?.abort();
   }, [user?.target_language, user?.native_language, user?.genre]);
+
+  useEffect(() => {
+    if (!fromTrackRequest?.id) return;
+    const ac = new AbortController();
+    (async () => {
+      setRefreshing(true);
+      setRefreshError(null);
+      setStatusMessage("Finding a word in that song…");
+      try {
+        const res = await apiFetch("/daily-word/from-track", {
+          method: "POST",
+          body: JSON.stringify({
+            trackId: fromTrackRequest.id,
+            title: fromTrackRequest.title,
+            artist: fromTrackRequest.artist,
+          }),
+          signal: ac.signal,
+        });
+        if (ac.signal.aborted) return;
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(friendlyDailyWordReason(body.reason || body.error));
+        }
+        applyPayload(await res.json());
+        setIsFlipped(true);
+      } catch (err) {
+        if (ac.signal.aborted || (err instanceof DOMException && err.name === "AbortError")) return;
+        setRefreshError(err instanceof Error ? err.message : "Couldn't load a word from that song");
+      } finally {
+        if (!ac.signal.aborted) {
+          setRefreshing(false);
+          setStatusMessage(null);
+        }
+      }
+    })();
+    return () => ac.abort();
+  }, [fromTrackRequest?.id, fromTrackRequest?.nonce, applyPayload]);
 
   // Poll while stocking OR while cold-generating so the "ready" badge updates live.
   useEffect(() => {
@@ -829,6 +870,7 @@ export function DailyWordCard({
   const showInlineProgress = refreshing && !!data;
   const homeLanguage = (user?.native_language || "en").toUpperCase();
   const meaning = data.word.translation?.trim();
+  const lineSense = (data.word.line_translation || data.lyric.line_translation || "").trim();
   const showMeaning = Boolean(
     meaning && meaning.toLowerCase() !== data.word.text.toLowerCase()
   );
@@ -975,6 +1017,14 @@ export function DailyWordCard({
                     </span>
                   )}
                 </div>
+                {lineSense ? (
+                  <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                    <span className="mr-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                      {t('in_this_line')}
+                    </span>
+                    {lineSense}
+                  </p>
+                ) : null}
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
                   <RotateCw className="w-3 h-3 shrink-0" />
                   {t('tap_for_context')}
@@ -1004,6 +1054,11 @@ export function DailyWordCard({
                 <blockquote className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-zinc-800 dark:text-zinc-200 italic break-words">
                   &ldquo;{highlightWord(data.lyric.snippet, data.lyric.char_start, data.lyric.char_end)}&rdquo;
                 </blockquote>
+                {lineSense ? (
+                  <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                    {lineSense}
+                  </p>
+                ) : null}
                 <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-600">
                   Word around {data.lyric.timestamp}
                   {data.lyric.in_preview === false

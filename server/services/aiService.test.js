@@ -126,6 +126,12 @@ describe('AI Service', () => {
     expect(commonGlossLookup("'Cause", 'en', 'es')).to.equal('porque');
     expect(commonGlossLookup("quedamo'", 'es', 'en')).to.equal('we stay');
     expect(commonGlossLookup('alive', 'en', 'es')).to.equal('vivo');
+    expect(commonGlossLookup('Late', 'en', 'es', 'Late nights in the middle of June')).to.equal('tarde');
+    expect(commonGlossLookup('gets', 'en', 'es', 'And when it gets hard')).to.equal('se pone');
+    expect(commonGlossLookup('magnet', 'en', 'es', 'We push and pull like a magnet do')).to.equal('imán');
+    expect(commonGlossLookup('signs', 'en', 'es', 'And in my face is flashing signs')).to.equal('señales');
+    expect(translationLooksSuspicious('magnet', 'c. iman.')).to.equal(true);
+    expect(translationLooksSuspicious('signs', 'señalización vial')).to.equal(true);
   });
 
   it('rejects encyclopedic MyMemory junk and keeps high-confidence everyday glosses', async () => {

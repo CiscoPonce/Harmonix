@@ -68,6 +68,28 @@ router.post("/next", async (req, res) => {
   }
 });
 
+router.post("/from-track", async (req, res) => {
+  const started = Date.now();
+  const trackId = req.body?.trackId || req.body?.track_id || req.query.trackId;
+  console.log(`POST /api/daily-word/from-track - user: ${req.user.id} track=${trackId}`);
+  try {
+    const user = loadUser(req.user.id);
+    if (!user) return res.sendStatus(404);
+    const payload = await dailyWordService.generateDailyWordFromTrack(user, trackId);
+    console.log(`POST /api/daily-word/from-track - success in ${Date.now() - started}ms: ${payload.word.text}`);
+    res.json({ ...payload, queue: wordQueue.getQueueStatus(user.id), from_search: true });
+    ttsService.preCachePronunciation(payload.word.text, user.target_language, user.voice_gender || 'female').catch(() => {});
+  } catch (err) {
+    console.error(`POST /api/daily-word/from-track - failed in ${Date.now() - started}ms:`, err.code || err.message);
+    const reason = err.code || err.message;
+    res.status(reason === "track_required" ? 400 : 503).json({
+      error: "daily_word_unavailable",
+      reason,
+      queue: wordQueue.getQueueStatus(req.user.id),
+    });
+  }
+});
+
 router.get("/", (req, res) => handleDailyWord(req, res, false));
 router.post("/new", (req, res) => handleDailyWord(req, res, true));
 

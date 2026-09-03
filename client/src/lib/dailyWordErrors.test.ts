@@ -15,6 +15,7 @@ describe('friendlyDailyWordReason', () => {
       'deezer_not_found',
       'lyrics_not_found',
       'stale_preferences',
+      'lyrics_wrong_language',
       'totally_unknown_reason_xyz',
     ]) {
       const msg = friendlyDailyWordReason(code);

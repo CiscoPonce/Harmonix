@@ -41,6 +41,9 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     open_in_spotify: 'Open in Spotify',
     add_to_playlist: 'Add to my playlist',
     found_in: 'Found in',
+    in_this_line: 'In this line',
+    search_song_for_word: 'Search a song for a word from its lyrics…',
+    learn_word_from_song: 'Learn a word',
 
     // Shelf / Review / Library
     shelf_title: 'Vocabulary Shelf',
@@ -124,6 +127,9 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     open_in_spotify: 'Abrir en Spotify',
     add_to_playlist: 'Añadir a mi lista',
     found_in: 'Encontrado en',
+    in_this_line: 'En esta línea',
+    search_song_for_word: 'Busca una canción para sacar una palabra de la letra…',
+    learn_word_from_song: 'Aprender una palabra',
 
     // Shelf / Review / Library
     shelf_title: 'Estantería de Vocabulario',
@@ -207,6 +213,9 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     open_in_spotify: 'Ouvrir dans Spotify',
     add_to_playlist: 'Ajouter à ma playlist',
     found_in: 'Trouvé dans',
+    in_this_line: 'Dans cette ligne',
+    search_song_for_word: 'Cherchez une chanson pour en tirer un mot…',
+    learn_word_from_song: 'Apprendre un mot',
 
     // Shelf / Review / Library
     shelf_title: 'Étagère de Vocabulaire',
@@ -290,6 +299,9 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     open_in_spotify: 'In Spotify öffnen',
     add_to_playlist: 'Zur Playlist hinzufügen',
     found_in: 'Gefunden in',
+    in_this_line: 'In dieser Zeile',
+    search_song_for_word: 'Suche einen Song, um ein Wort aus dem Text zu lernen…',
+    learn_word_from_song: 'Wort lernen',
 
     // Shelf / Review / Library
     shelf_title: 'Wortschatz-Sammlung',
@@ -373,6 +385,9 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     open_in_spotify: 'Abrir no Spotify',
     add_to_playlist: 'Adicionar à minha playlist',
     found_in: 'Encontrado em',
+    in_this_line: 'Nesta linha',
+    search_song_for_word: 'Pesquise uma música para aprender uma palavra da letra…',
+    learn_word_from_song: 'Aprender uma palavra',
 
     // Shelf / Review / Library
     shelf_title: 'Estante de Vocabulário',
@@ -456,6 +471,9 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     open_in_spotify: 'Apri in Spotify',
     add_to_playlist: 'Aggiungi alla mia playlist',
     found_in: 'Trovato in',
+    in_this_line: 'In questo verso',
+    search_song_for_word: 'Cerca una canzone per imparare una parola dal testo…',
+    learn_word_from_song: 'Impara una parola',
 
     // Shelf / Review / Library
     shelf_title: 'Scaffale Vocabolario',
