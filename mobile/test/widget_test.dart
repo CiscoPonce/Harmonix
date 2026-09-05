@@ -3,8 +3,8 @@ import 'package:harmonix_mobile/services/api_client.dart';
 import 'package:harmonix_mobile/theme/harmonix_theme.dart';
 
 void main() {
-  test('Harmonix brand accent is forest green', () {
-    expect(HarmonixColors.brand.toARGB32(), 0xFF0B6B3A);
+  test('Harmonix brand accent matches the web forest token (#0B4D2E)', () {
+    expect(HarmonixColors.brand.toARGB32(), 0xFF0B4D2E);
   });
 
   test('friendlyDailyWordError maps known reasons', () {

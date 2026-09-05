@@ -206,16 +206,24 @@ void main() {
 
     final profile = find.text('Learner');
     final card = find.byType(SpotifyConnectionCard);
-    final appearance = find.text('APPEARANCE');
     expect(profile, findsOneWidget);
     expect(card, findsOneWidget);
-    expect(appearance, findsOneWidget);
 
     final profileY = tester.getTopLeft(profile).dy;
     final cardY = tester.getTopLeft(card).dy;
-    final appearanceY = tester.getTopLeft(appearance).dy;
     expect(cardY, greaterThan(profileY));
-    expect(appearanceY, greaterThan(cardY));
+
+    // Settings grew (Languages / Music style / Voice), so APPEARANCE now sits
+    // below the test viewport; scroll it into view before asserting order.
+    final appearance = find.text('APPEARANCE');
+    await tester.scrollUntilVisible(
+      appearance,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    // Reaching it by scrolling *down* proves it sits below the connection card.
+    expect(appearance, findsOneWidget);
   });
 
   test('auth start and disconnect use only authenticated backend methods', () async {
