@@ -85,6 +85,26 @@ cleanup_standbys() {
   sudo docker rm -f "$WEB_STANDBY" >/dev/null 2>&1 || true
 }
 
+# Overlay rotated provider secrets from Coolify .env onto a docker env-file.
+# Does not print secret values.
+overlay_coolify_provider_keys() {
+  local dest="$1"
+  local src="/data/coolify/services/${UUID}/.env"
+  if ! sudo test -f "$src"; then
+    return 0
+  fi
+  local key
+  for key in OPENROUTER_API_KEY NVIDIA_NIM_API_KEY NVIDIA_API_KEY; do
+    local line
+    line=$(sudo grep -E "^${key}=" "$src" | tail -1 || true)
+    if [ -n "${line}" ]; then
+      grep -v -E "^${key}=" "$dest" > "${dest}.ov" || true
+      printf '%s\n' "$line" >> "${dest}.ov"
+      mv "${dest}.ov" "$dest"
+    fi
+  done
+}
+
 start_api_standby() {
   sudo docker rm -f "$API_STANDBY" >/dev/null 2>&1 || true
   log "Starting Traefik standby API (keeps site live during API cutover)"
@@ -102,6 +122,8 @@ start_api_standby() {
   elif [ -f "${PROJECT}/.env" ]; then
     sudo cat "${PROJECT}/.env" > "$env_tmp"
   fi
+  # Coolify .env wins for rotated provider keys (live inspect can be stale).
+  overlay_coolify_provider_keys "$env_tmp"
   if ! grep -q '^JWT_SECRET=.' "$env_tmp"; then
     echo "ERROR: JWT_SECRET missing from standby env (will not start production API)"
     rm -f "$env_tmp"
