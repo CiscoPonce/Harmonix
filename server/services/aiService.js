@@ -76,6 +76,13 @@ function isRateLimitError(err) {
   return err && (err.status === 429 || String(err.message || '').includes('429'));
 }
 
+function isNimAuthError(err) {
+  return err && (
+    err.status === 401
+    || /api key expired|unauthorized/i.test(String(err.message || ''))
+  );
+}
+
 function isRetryableError(err) {
   return isRateLimitError(err) || err?.status === 404 || (err?.status >= 500 && err?.status < 600);
 }
@@ -140,7 +147,9 @@ async function tryChatCompletion(params, { fast = false, label = 'ChatCompletion
       return await client.chat.completions.create({ ...params, model });
     } catch (err) {
       lastErr = err;
-      if (provider === 'nvidia' && isRateLimitError(err)) markNimRateLimited();
+      if (provider === 'nvidia' && (isRateLimitError(err) || isNimAuthError(err))) {
+        markNimRateLimited();
+      }
       console.warn(`${label} [${provider}] ${model} failed: ${err.message || err}. Status: ${err.status}`);
       if (isRetryableError(err)) {
         console.warn(`Attempting fallback to next model...`);

@@ -619,6 +619,108 @@ describe("Daily Word Service", () => {
     expect(String(result.song.id)).to.equal("3");
   });
 
+  it("serves another word from the same song when the queue item allows it", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    saveDailyWord(userId, today, {
+      date: today,
+      word: { text: "late" },
+      song: { id: "99", title: "Heat Waves", artist: "Glass Animals" },
+    });
+    wordQueue.enqueuePayloads(userId, [
+      {
+        date: today,
+        language_code: "en",
+        preferred_genre: "pop",
+        allow_same_song: true,
+        word: { text: "waves", translation: "olas" },
+        lyric: { snippet: "heat waves", timestamp: "0:35", timestamp_ms: 35000, line_index: 0, char_start: 5, char_end: 10 },
+        song: { id: "99", title: "Heat Waves", artist: "Glass Animals", genre: "pop" },
+        audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      },
+    ]);
+    db.prepare("UPDATE users SET target_language = 'en' WHERE id = ?").run(userId);
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const result = await consumeNextDailyWord(user);
+    expect(result.word.text).to.equal("waves");
+    expect(String(result.song.id)).to.equal("99");
+  });
+
+  it("keeps validating after the first word so extras can fill the queue", async () => {
+    const songFor = (url) => {
+      const decoded = decodeURIComponent(url).replace(/\+/g, " ");
+      if (decoded.includes("Song Two") || decoded.includes("Artist Two")) {
+        return { id: 201, title: "Song Two", artist: "Artist Two", lyrics: "[00:35.00] La noche cae lento\n[00:42.00] Caminamos lejos\n[00:50.00] Para ti" };
+      }
+      if (decoded.includes("Song Three") || decoded.includes("Artist Three")) {
+        return { id: 202, title: "Song Three", artist: "Artist Three", lyrics: "[00:35.00] Quiero verte ahora\n[00:42.00] Bailemos juntos\n[00:50.00] Para ti" };
+      }
+      if (decoded.includes("Song One") || decoded.includes("Artist One")) {
+        return { id: 200, title: "Song One", artist: "Artist One", lyrics: "[00:35.00] El amor brilla fuerte\n[00:42.00] Siempre juntos\n[00:50.00] Para ti" };
+      }
+      return null;
+    };
+    const mockFetch = async (url) => {
+      if (url.includes("itunes.apple.com")) {
+        return { ok: true, status: 200, json: async () => ({ results: [] }) };
+      }
+      if (url.includes("deezer.com/search")) {
+        const song = songFor(url);
+        if (!song) {
+          return { ok: true, status: 200, json: async () => ({ data: [] }) };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: [{
+              id: song.id,
+              title: song.title,
+              duration: 200,
+              preview: "https://cdn.example/preview.mp3",
+              artist: { name: song.artist },
+            }],
+          }),
+        };
+      }
+      if (url.includes("lrclib.net")) {
+        const song = songFor(url);
+        if (!song) {
+          return { ok: true, status: 404, json: async () => ({}) };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            syncedLyrics: song.lyrics,
+            plainLyrics: song.lyrics.replace(/\[[^\]]+\]\s*/g, ""),
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const restore = stubSongPipeline([]);
+    const candidates = [
+      { song_title: "Song One", artist: "Artist One", genre: "pop" },
+      { song_title: "Song Two", artist: "Artist Two", genre: "pop" },
+      { song_title: "Song Three", artist: "Artist Three", genre: "pop" },
+    ];
+    const { valid, finishBackground } = await validateAllCandidates(
+      candidates,
+      "2026-09-05",
+      user,
+      mockFetch,
+      { stopAfter: 1 }
+    );
+    expect(valid).to.have.lengthOf(1);
+    expect(finishBackground).to.be.a("function");
+    const extras = await finishBackground();
+    expect(extras.queued).to.be.at.least(1);
+    expect(wordQueue.countReady(userId)).to.be.at.least(1);
+    restore();
+  });
+
   it("tracks full discovery history for dedupe", () => {
     saveDailyWord(userId, "2026-06-01", {
       date: "2026-06-01",

@@ -333,17 +333,21 @@ function persistPayloadSideEffects(payload, track, lyricsData, syncCheck) {
   `).run(String(track.id), lyricsData.syncedLyrics, lyricsData.plainLyrics || null);
 }
 
-async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetchImpl = fetch, seenSongIds = new Set(), { allowSongReuse = false, allowOutsidePreview = false } = {}) {
+async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetchImpl = fetch, seenSongIds = new Set(), {
+  allowSongReuse = false,
+  allowOutsidePreview = false,
+  knownTrack = null,
+} = {}) {
   const label = `${suggestion.artist} - ${suggestion.song_title}`;
   const langCode = normalizeLangCode(user.target_language || "es");
   let lastError = null;
 
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const track = await searchDeezerTrack(suggestion.artist, suggestion.song_title, fetchImpl);
+      const track = knownTrack || await searchDeezerTrack(suggestion.artist, suggestion.song_title, fetchImpl);
       if (!track) {
         lastError = "deezer_not_found";
-        if (attempt === 0) {
+        if (attempt === 0 && !knownTrack) {
           await new Promise((r) => setTimeout(r, 400));
           continue;
         }
@@ -589,9 +593,14 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
         avoidWords.add(key);
         seenSongIds.add(String(result.track.id));
         partials.push(result);
-        if (partials.length >= stopAfter) {
+        // Return the first word as soon as we have `stopAfter`, but keep
+        // validating until QUEUE_BATCH_SIZE so Next Word stays instant.
+        if (partials.length >= stopAfter && resolveEarly) {
+          resolveEarly();
+          resolveEarly = null;
+        }
+        if (partials.length >= QUEUE_BATCH_SIZE) {
           stopped = true;
-          if (resolveEarly) resolveEarly();
         }
       }
     } else if (result.error) {
@@ -692,7 +701,8 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
     sideEffects: immediateResults,
     lastError,
     candidateCount: candidates.length,
-    finishBackground: stopAfter < uniqueCandidates.length ? finishBackground : null,
+    finishBackground:
+      stopAfter < Math.min(QUEUE_BATCH_SIZE, ranked.length) ? finishBackground : null,
   };
 }
 
@@ -792,12 +802,17 @@ function filterUniquePayloads(userId, payloads) {
         : null;
 
     // Prefer a new song for every new word until the unused catalog is gone.
-    if (songId && seenSongIds.has(songId)) continue;
-    if (songKey && seenSongKeys.has(songKey)) continue;
+    // from-track extras opt in to more words from the same lyrics.
+    if (!payload.allow_same_song) {
+      if (songId && seenSongIds.has(songId)) continue;
+      if (songKey && seenSongKeys.has(songKey)) continue;
+    }
 
     seenWords.add(word);
-    if (songId) seenSongIds.add(songId);
-    if (songKey) seenSongKeys.add(songKey);
+    if (!payload.allow_same_song) {
+      if (songId) seenSongIds.add(songId);
+      if (songKey) seenSongKeys.add(songKey);
+    }
     unique.push(payload);
   }
 
@@ -1421,8 +1436,9 @@ async function consumeNextDailyWord(user, fetchImpl = fetch) {
         ? `${String(queued.song.artist).toLowerCase()}|${String(queued.song.title).toLowerCase()}`
         : null;
     if (
-      (songId && history.songIds.has(songId)) ||
-      (songKey && history.songKeys.has(songKey))
+      !queued.allow_same_song &&
+      ((songId && history.songIds.has(songId)) ||
+        (songKey && history.songKeys.has(songKey)))
     ) {
       console.warn(
         `daily word skip: duplicate queued song "${queued.song?.artist} — ${queued.song?.title}"`
@@ -1487,32 +1503,56 @@ function shouldBackgroundPolish(word) {
     && !wordMetaNeedsEnrichment(word);
 }
 
+async function dictionaryOnlyGlosses(items, fromLang, toLang) {
+  return Promise.all(items.map(async (item) => {
+    const fb = fromLang && toLang
+      ? await aiService.dictionaryGlossFallback(item.word, fromLang, toLang, fetch, item.line)
+      : null;
+    return {
+      translation: fb || null,
+      part_of_speech: null,
+      pronunciation: null,
+      gloss_v: fb ? 2 : 1,
+    };
+  }));
+}
+
 async function glossWithCompleteness(items, languageName, nativeLanguageName, {
   fast = false,
   fromLang = null,
   toLang = null,
 } = {}) {
   if (!items?.length) return [];
-  let glosses = await aiService.glossDailyWords(items, languageName, {
-    fast,
-    nativeLanguageName,
-    refine: false,
-    fromLang,
-    toLang,
-  });
+  let glosses;
+  try {
+    glosses = await aiService.glossDailyWords(items, languageName, {
+      fast,
+      nativeLanguageName,
+      refine: false,
+      fromLang,
+      toLang,
+    });
+  } catch (err) {
+    console.warn(`daily word gloss failed (${err.status || err.code || err.message}) — dictionary fallback`);
+    return dictionaryOnlyGlosses(items, fromLang, toLang);
+  }
 
   const needsRefine = items.some((item, i) => (
     translationNeedsFix({ text: item.word, translation: glosses[i]?.translation })
     || aiService.translationLooksSuspicious(item.word, glosses[i]?.translation, item.line)
   ));
   if (needsRefine) {
-    glosses = await aiService.refineGlosses(
-      items,
-      glosses,
-      languageName,
-      nativeLanguageName,
-      { fast }
-    );
+    try {
+      glosses = await aiService.refineGlosses(
+        items,
+        glosses,
+        languageName,
+        nativeLanguageName,
+        { fast }
+      );
+    } catch (err) {
+      console.warn(`daily word refine failed (${err.status || err.code || err.message}) — keep current glosses`);
+    }
     // After refine, still rescue with dictionary if needed.
     if (fromLang && toLang) {
       glosses = await Promise.all(glosses.map(async (g, i) => {
@@ -1736,6 +1776,94 @@ async function enrichIfNeeded(payload, user) {
   return enriched;
 }
 
+async function queueExtraWordsFromValidatedSong(user, {
+  firstWord,
+  track,
+  lyricsData,
+  syncCheck,
+  genre,
+  date,
+  fetchImpl = fetch,
+}) {
+  const langCode = normalizeLangCode(user.target_language || "es");
+  const avoid = new Set(getUserDiscoveryHistory(user.id).words);
+  if (firstWord) avoid.add(String(firstWord).toLowerCase());
+
+  const extras = [];
+  const plain = plainFromLyricsData(lyricsData);
+  const pickOpts = { songTitle: track.title || "" };
+  const duration = track.duration;
+  const provider =
+    track.provider === "itunes" || deezer.isItunesTrackId?.(track.id) ? "itunes" : "deezer";
+
+  for (let i = 0; i < QUEUE_BATCH_SIZE - 1; i += 1) {
+    const picked = pickWordFromLyricsHeuristic(
+      plain,
+      user.difficulty || "medium",
+      avoid,
+      langCode,
+      pickOpts
+    );
+    if (!picked) break;
+    avoid.add(picked.word.toLowerCase());
+    const occurrence = findWordOccurrence(picked.word, lyricsData.syncedLyrics, plain, {
+      duration,
+      provider,
+    });
+    if (!occurrence) continue;
+    extras.push({ picked, occurrence });
+  }
+  if (!extras.length) {
+    scheduleRefill(user, fetchImpl);
+    return 0;
+  }
+
+  const languageName = languageNameFromCode(user.target_language || "es");
+  const nativeLanguageName = languageNameFromCode(user.native_language || "en", "English");
+  const glosses = await glossWithCompleteness(
+    extras.map((item) => ({ word: item.picked.word, line: item.picked.line })),
+    languageName,
+    nativeLanguageName,
+    {
+      fast: true,
+      fromLang: langCode,
+      toLang: normalizeLangCode(user.native_language || "en"),
+    }
+  );
+
+  const payloads = extras.map((item, i) => {
+    const gloss = glosses[i] || {};
+    const wordSuggestion = {
+      target_word: item.picked.word,
+      translation: gloss.translation,
+      part_of_speech: gloss.part_of_speech,
+      pronunciation: gloss.pronunciation,
+      line_translation: gloss.line_translation || null,
+      gloss_v: gloss.gloss_v || 2,
+      difficulty: user.difficulty || "medium",
+      genre,
+    };
+    const payload = buildPayload(
+      date,
+      wordSuggestion,
+      track,
+      lyricsData,
+      item.occurrence,
+      user.target_language || "es"
+    );
+    payload.allow_same_song = true;
+    persistPayloadSideEffects(payload, track, lyricsData, syncCheck);
+    return payload;
+  });
+
+  const inserted = wordQueue.enqueuePayloads(user.id, filterUniquePayloads(user.id, payloads));
+  if (inserted) {
+    console.log(`daily word from-track: queued ${inserted} extra words from ${track.title}`);
+  }
+  scheduleRefill(user, fetchImpl);
+  return inserted;
+}
+
 async function generateDailyWordFromTrack(user, trackId, fetchImpl = fetch) {
   const date = todayDate();
   const id = String(trackId || "").trim();
@@ -1772,7 +1900,7 @@ async function generateDailyWordFromTrack(user, trackId, fetchImpl = fetch) {
     history.words,
     fetchImpl,
     new Set(),
-    { allowSongReuse: true, allowOutsidePreview: true }
+    { allowSongReuse: true, allowOutsidePreview: true, knownTrack: track }
   );
   if (!result.picked) {
     const err = new Error(result.error || "generation_failed");
@@ -1812,7 +1940,19 @@ async function generateDailyWordFromTrack(user, trackId, fetchImpl = fetch) {
     user.target_language || "es"
   );
   persistPayloadSideEffects(payload, result.track, result.lyricsData, result.syncCheck);
-  return enrichIfNeeded(deliverPayload(user.id, payload), user);
+  const delivered = deliverPayload(user.id, payload);
+  void queueExtraWordsFromValidatedSong(user, {
+    firstWord: result.picked.word,
+    track: result.track,
+    lyricsData: result.lyricsData,
+    syncCheck: result.syncCheck,
+    genre: result.genre,
+    date,
+    fetchImpl,
+  }).catch((err) => {
+    console.warn(`daily word from-track extras failed:`, err.message || err);
+  });
+  return enrichIfNeeded(delivered, user);
 }
 
 async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}) {
@@ -1869,6 +2009,7 @@ module.exports = {
   generateAndDeliverBatch,
   generateDailyWord,
   generateDailyWordFromTrack,
+  queueExtraWordsFromValidatedSong,
   hydratePayloadAudio,
   enrichPayloadWordMeta,
   enrichIfNeeded,
