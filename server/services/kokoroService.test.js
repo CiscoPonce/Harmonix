@@ -43,12 +43,31 @@ describe('Kokoro-82M ONNX Service Mapping', () => {
 
   it('remembers a missing Kokoro runtime and skips the spawn', async () => {
     const svc = require('./kokoroService');
-    svc.__resetKokoroAvailabilityForTest();
-    assert.strictEqual(svc.isKokoroUnavailable(), false);
-    svc.markKokoroUnavailable('test');
-    assert.strictEqual(svc.isKokoroUnavailable(), true);
-    const res = await svc.generateKokoroAudio('hola', 'es');
-    assert.strictEqual(res, null);
-    svc.__resetKokoroAvailabilityForTest();
+    const disabled = process.env.KOKORO_DISABLED;
+    delete process.env.KOKORO_DISABLED; // CI sets it; this test exercises the runtime flag
+    try {
+      svc.__resetKokoroAvailabilityForTest();
+      assert.strictEqual(svc.isKokoroUnavailable(), false);
+      svc.markKokoroUnavailable('test');
+      assert.strictEqual(svc.isKokoroUnavailable(), true);
+      const res = await svc.generateKokoroAudio('hola', 'es');
+      assert.strictEqual(res, null);
+    } finally {
+      svc.__resetKokoroAvailabilityForTest();
+      if (disabled !== undefined) process.env.KOKORO_DISABLED = disabled;
+    }
+  });
+
+  it('KOKORO_DISABLED=true short-circuits without spawning', async () => {
+    const svc = require('./kokoroService');
+    const prev = process.env.KOKORO_DISABLED;
+    process.env.KOKORO_DISABLED = 'true';
+    try {
+      assert.strictEqual(svc.isKokoroUnavailable(), true);
+      assert.strictEqual(await svc.generateKokoroAudio('hola', 'es'), null);
+    } finally {
+      if (prev === undefined) delete process.env.KOKORO_DISABLED;
+      else process.env.KOKORO_DISABLED = prev;
+    }
   });
 });
