@@ -1633,10 +1633,30 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, {
   }));
 }
 
+function applyCuratedGloss(payload, user) {
+  const text = payload?.word?.text;
+  if (!text || !user) return payload;
+  const fromLang = normalizeLangCode(user.target_language || "es");
+  const toLang = normalizeLangCode(user.native_language || "en");
+  const line = payload?.lyric?.snippet;
+  const tableHit = aiService.commonGlossLookup(text, fromLang, toLang, line);
+  if (!tableHit || aiService.translationLooksSuspicious(text, tableHit, line)) return payload;
+  const current = String(payload.word.translation || "").trim();
+  if (current && current.toLowerCase() === tableHit.toLowerCase()) return payload;
+  return {
+    ...payload,
+    word: { ...payload.word, translation: tableHit, gloss_v: 2 },
+  };
+}
+
 async function enrichPayloadWordMeta(payload, user) {
   const text = payload?.word?.text;
   const line = payload?.lyric?.snippet;
-  if (!text || !wordMetaNeedsEnrichment(payload.word)) return payload;
+  if (!text) return payload;
+
+  const curated = applyCuratedGloss(payload, user);
+  if (curated.word.translation !== payload.word.translation) return curated;
+  if (!wordMetaNeedsEnrichment(payload.word)) return payload;
 
   const fromLang = normalizeLangCode(user.target_language || "es");
   const toLang = normalizeLangCode(user.native_language || "en");
@@ -1729,7 +1749,6 @@ async function backfillQueueMetadata(user) {
   const items = wordQueue.listReadyItems(user.id);
   let updated = 0;
   for (const item of items) {
-    if (!wordMetaNeedsEnrichment(item.payload?.word)) continue;
     const enriched = await enrichPayloadWordMeta(item.payload, user);
     if (JSON.stringify(enriched) !== JSON.stringify(item.payload)) {
       wordQueue.updatePayload(item.id, enriched);
@@ -1743,8 +1762,8 @@ async function backfillQueueMetadata(user) {
 }
 
 async function enrichIfNeeded(payload, user) {
-  if (process.env.NODE_ENV === "test") return hydratePayloadAudio(payload);
-  const hydrated = hydratePayloadAudio(payload);
+  if (process.env.NODE_ENV === "test") return hydratePayloadAudio(applyCuratedGloss(payload, user));
+  const hydrated = applyCuratedGloss(hydratePayloadAudio(payload), user);
 
   // Queued / cached words with a usable gloss must return immediately.
   if (!wordMetaNeedsEnrichment(hydrated.word)) {

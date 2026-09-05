@@ -210,6 +210,27 @@ describe("Daily Word Service", () => {
     }
   });
 
+  it("overwrites software/geometry first-hits with lyric-table senses", async () => {
+    db.prepare(`
+      UPDATE users SET native_language = 'es', target_language = 'en' WHERE id = ?
+    `).run(userId);
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const cases = [
+      { text: "home", translation: "inicio", line: "Why are you sitting at home on the floor?", want: "hogar" },
+      { text: "planes", translation: "planos", line: "Jet planes, islands, tigers on a gold leash", want: "aviones" },
+      { text: "time", translation: "hora", line: "Tale as old as time", want: "tiempo" },
+      { text: "rule", translation: "regla", line: "Let me be your ruler", want: "gobernar" },
+      { text: "care", translation: "atención", line: "We don't care", want: "importar" },
+    ];
+    for (const item of cases) {
+      const out = await enrichPayloadWordMeta({
+        word: { text: item.text, translation: item.translation, gloss_v: 2 },
+        lyric: { snippet: item.line },
+      }, user);
+      expect(out.word.translation, item.text).to.equal(item.want);
+    }
+  });
+
   it("skips clipped slang and artist names when picking lyric words", () => {
     const lyrics = [
       "Holdin' on through the heat",

@@ -38,6 +38,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * daily-word: keep batching after the first word so Next Word stays instant; search stocks extra words from the same song
 * daily-word: skip failed AI song-pick when the catalog is used up; stock extra words from the first hit so Next word is instant
 * daily-word: first card uses the dictionary table (world→mundo), rejects junk glosses like "las", and does not wait on Muse to stock the batch
+* daily-word: overwrite software/geometry first-hits (home→hogar, planes→aviones, time→tiempo, rule→gobernar)
 * ai: default NIM to Muse Glimmer (live ~0.7s gloss); OpenRouter to Nemotron 3.5 Lightning free; drop 410'd llama/nano/step models
 * deploy: overlay rotated OpenRouter/NIM keys from Coolify .env so inspect-copy does not keep stale secrets
 * daily-word: relax reuse when unused catalog keys collide on used Deezer IDs (`song_already_used`)

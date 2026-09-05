@@ -136,6 +136,17 @@ describe('AI Service', () => {
     expect(translationLooksSuspicious('world', 'mundo')).to.equal(false);
     expect(commonGlossLookup('world', 'en', 'es')).to.equal('mundo');
     expect(commonGlossLookup('home', 'en', 'es')).to.equal('hogar');
+    expect(commonGlossLookup('planes', 'en', 'es', 'Jet planes, islands, tigers on a gold leash')).to.equal('aviones');
+    expect(commonGlossLookup('time', 'en', 'es', 'Tale as old as time')).to.equal('tiempo');
+    expect(commonGlossLookup('rule', 'en', 'es', 'Let me be your ruler')).to.equal('gobernar');
+    expect(commonGlossLookup('care', 'en', 'es', "We don't care")).to.equal('importar');
+    expect(commonGlossLookup('same', 'en', 'es', "You know it's not the same as it was")).to.equal('igual');
+    expect(translationLooksSuspicious('home', 'inicio')).to.equal(true);
+    expect(translationLooksSuspicious('planes', 'planos')).to.equal(true);
+    expect(translationLooksSuspicious('time', 'hora')).to.equal(true);
+    expect(translationLooksSuspicious('rule', 'regla')).to.equal(true);
+    expect(translationLooksSuspicious('care', 'atención')).to.equal(true);
+    expect(translationLooksSuspicious('same', 'Yo igual')).to.equal(true);
   });
 
   it('rejects encyclopedic MyMemory junk and keeps high-confidence everyday glosses', async () => {

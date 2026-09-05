@@ -871,6 +871,13 @@ function translationLooksSuspicious(word, translation, line = null) {
     "the", "a", "an", "of", "and", "or", "to", "in", "on", "at",
   ]);
   if (functionGlosses.has(t) && !functionGlosses.has(w) && w.length > 3) return true;
+  // Software / geometry / clock first-hits that are wrong in pop lyrics.
+  if (w === "home" && /^(inicio|comienzo|portada|homepage)$/.test(t)) return true;
+  if ((w === "plane" || w === "planes") && /^(plano|planos)$/.test(t)) return true;
+  if (w === "time" && t === "hora") return true;
+  if (w === "rule" && /^(regla|normativa|normas?)$/.test(t)) return true;
+  if (w === "care" && /^(atenci[oó]n|cuidado m[eé]dico)$/.test(t)) return true;
+  if (w === "same" && /yo igual/.test(t)) return true;
 
   if (line) {
     const lineTokens = String(line)
@@ -947,7 +954,7 @@ const COMMON_GLOSS_TABLE = {
     world: "mundo",
     home: "hogar",
     time: "tiempo",
-    same: "mismo",
+    same: "igual",
     holdin: "sosteniendo",
     holding: "sosteniendo",
     waves: "olas",
@@ -1024,6 +1031,10 @@ const COMMON_GLOSS_TABLE = {
     kind: "tipo",
     shall: "vas a",
     have: "tener",
+    planes: "aviones",
+    plane: "avión",
+    rule: "gobernar",
+    care: "importar",
   },
   "fr|en": {
     amour: "love",
@@ -1075,6 +1086,14 @@ function lyricSenseLookup(word, fromLang, toLang, line) {
     if (lemma === "signs" || lemma === "sign") return "señales";
     if (lemma === "shall") return "vas a";
     if (lemma === "magnet") return "imán";
+    if (lemma === "home") return "hogar";
+    if (lemma === "time") return "tiempo";
+    if (lemma === "plane") return "avión";
+    if (lemma === "planes") return "aviones";
+    if (lemma === "rule") return "gobernar";
+    if (lemma === "ruler") return "gobernante";
+    if (lemma === "care") return "importar";
+    if (lemma === "same") return "igual";
   }
   return null;
 }
