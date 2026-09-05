@@ -3,6 +3,7 @@ const aiService = require("./aiService");
 const validation = require("./validationService");
 const alignment = require("../utils/alignment");
 const { languageNameFromCode, wordMatchesTargetLanguage, lyricsMatchTargetLanguage, normalizeLangCode, getLyricStopwords } = require("../constants/languages");
+const { isLyricProperName, isLyricLightVerb } = require("../constants/lyricProperNames");
 const {
   effectiveCefr,
   difficultyMatchScore,
@@ -70,12 +71,39 @@ function pickWordsFromText(text, difficulty, avoidWords, langCode, options, coun
   return picks;
 }
 
+function glossLangPair(langCode) {
+  const code = normalizeLangCode(langCode);
+  if (code === "en") return ["en", "es"];
+  if (code === "es") return ["es", "en"];
+  return null;
+}
+
+/** Dictionary sense we can actually teach — not a name transliteration. */
+function teachableGloss(word, langCode, line) {
+  if (isLyricProperName(word)) return null;
+  const pair = glossLangPair(langCode);
+  if (!pair) return null;
+  const gloss = aiService.commonGlossLookup(word, pair[0], pair[1], line);
+  if (!gloss) return null;
+  if (isLyricProperName(gloss)) return null;
+  const lemma = String(word || "").toLowerCase();
+  const folded = String(gloss).toLowerCase().replace(/[¡!¿?]/g, "").trim();
+  if (folded === lemma) return null;
+  return gloss;
+}
+
+function isLineInitialToken(token, line) {
+  const tokens = String(line || "").match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜàâäçéèêëîïôùûüãõßàèéìòù]+/gu) || [];
+  return tokens[0] === token;
+}
+
 function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new Set(), langCode = "es", options = {}) {
   const diff = normalizeDifficulty(difficulty);
   const minLen = diff === 'easy' ? 3 : diff === 'hard' ? 7 : 4;
   const maxLen = diff === 'easy' ? 7 : diff === 'hard' ? 24 : 12;
   const targetLen = diff === 'easy' ? 4 : diff === 'hard' ? 9 : 6;
   const stopwords = getLyricStopwords(langCode);
+  const canCheckGloss = Boolean(glossLangPair(langCode));
   const songTitle = String(options.songTitle || '');
   const artist = String(options.artist || '');
   const tokenizeName = (value) => new Set(
@@ -115,10 +143,19 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
       // Clipped lyric slang ("Holdin'") and artist names are not vocabulary.
       if (new RegExp(`(?:^|[^\\p{L}])${lower}'`, "iu").test(line)) continue;
       if (artistTokens.has(lower)) continue;
+      if (isLyricProperName(lower)) continue;
+
+      const gloss = teachableGloss(token, langCode, line);
+      // Title-only names (Jude) and mid-line capitals without a dictionary sense.
+      if (canCheckGloss && titleTokens.has(lower) && !gloss) continue;
+      const capitalized = /^\p{Lu}/u.test(token);
+      if (canCheckGloss && capitalized && !isLineInitialToken(token, line) && !gloss) continue;
 
       let score = 0;
-      // Prefer words that carry the song (title / hook repetition)
-      if (titleTokens.has(lower)) score += 40;
+      // Prefer hook words that are real vocabulary (corazón, waves) — not names.
+      if (titleTokens.has(lower) && (!canCheckGloss || gloss)) score += 40;
+      if (gloss) score += 8;
+      if (isLyricLightVerb(lower)) score -= 16;
       const count = freq.get(lower) || 1;
       if (count >= 4) score += 18;
       else if (count >= 2) score += 10;

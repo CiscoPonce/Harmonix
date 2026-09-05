@@ -276,6 +276,47 @@ describe("Daily Word Service", () => {
     expect(picked.word.toLowerCase()).to.equal("corazón");
   });
 
+  it("skips title names and picks a translatable lyric from Hey Jude", () => {
+    const lyrics = [
+      "Hey Jude, don't make it bad",
+      "Take a sad song and make it better",
+      "Remember to let her into your heart",
+      "Then you can start to make it better",
+      "Hey Jude, don't be afraid",
+      "You were made to go out and get her",
+      "The minute you let her under your skin",
+      "Then you begin to make it better",
+      "Na na na, na na na na",
+    ].join("\n");
+    const picked = pickWordFromLyricsHeuristic(lyrics, "medium", new Set(), "en", {
+      songTitle: "Hey Jude",
+      artist: "The Beatles",
+    });
+    expect(picked).to.be.ok;
+    expect(picked.word.toLowerCase()).to.not.equal("jude");
+    expect(picked.word.toLowerCase()).to.be.oneOf([
+      "better", "remember", "heart", "afraid", "song", "begin",
+    ]);
+  });
+
+  it("skips lyric proper names even when they have a name-to-name gloss", () => {
+    const lyrics = [
+      "Eleanor Rigby picks up the rice",
+      "in the church where a wedding has been",
+      "Lives in a dream",
+      "Waits at the window",
+    ].join("\n");
+    const picked = pickWordFromLyricsHeuristic(lyrics, "medium", new Set(), "en", {
+      songTitle: "Eleanor Rigby",
+      artist: "The Beatles",
+    });
+    expect(picked).to.be.ok;
+    expect(["eleanor", "rigby"]).to.not.include(picked.word.toLowerCase());
+    expect(picked.word.toLowerCase()).to.be.oneOf([
+      "church", "wedding", "dream", "window", "lives", "waits", "picks", "rice",
+    ]);
+  });
+
   it("keeps genre fidelity for hip-hop (does not remap to pop)", () => {
     expect(aiService.normalizeGenre("hip-hop")).to.equal("hip-hop");
     expect(aiService.normalizeGenre("hiphop")).to.equal("hip-hop");

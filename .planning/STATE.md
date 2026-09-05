@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: flutter-web-parity
 status: complete
-stopped_at: "2026-09-05 search: iTunes fallback when Deezer 403s catalog search"
-last_updated: "2026-09-05T20:20:00.000Z"
+stopped_at: "2026-09-05 daily-word: skip lyric proper names, pick translatable hooks"
+last_updated: "2026-09-05T20:40:00.000Z"
 progress:
   total_phases: 16
   completed_phases: 16
