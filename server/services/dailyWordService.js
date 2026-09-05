@@ -61,11 +61,14 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
   const targetLen = diff === 'easy' ? 4 : diff === 'hard' ? 9 : 6;
   const stopwords = getLyricStopwords(langCode);
   const songTitle = String(options.songTitle || '');
-  const titleTokens = new Set(
-    (songTitle.match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜàâäçéèêëîïôùûüãõßàèéìòù]+/gu) || [])
+  const artist = String(options.artist || '');
+  const tokenizeName = (value) => new Set(
+    (String(value).match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜàâäçéèêëîïôùûüãõßàèéìòù]+/gu) || [])
       .map((t) => t.toLowerCase())
       .filter((t) => t.length >= 3 && !stopwords.has(t))
   );
+  const titleTokens = tokenizeName(songTitle);
+  const artistTokens = tokenizeName(artist);
 
   const lines = String(plainLyrics || '')
     .split('\n')
@@ -93,6 +96,9 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
       // Reject pure lyric filler / onomatopoeia
       if (/^(la|na|da|pa|ra|ta|bam|bum|pum|dun|tum)+$/i.test(lower)) continue;
       if (/^(oh+|ah+|uh+|mm+|hey+|yeah+|yea+)$/i.test(lower)) continue;
+      // Clipped lyric slang ("Holdin'") and artist names are not vocabulary.
+      if (new RegExp(`(?:^|[^\\p{L}])${lower}'`, "iu").test(line)) continue;
+      if (artistTokens.has(lower)) continue;
 
       let score = 0;
       // Prefer words that carry the song (title / hook repetition)
@@ -390,6 +396,7 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
       const parsedLines = validation.parseLrc(lyricsData.syncedLyrics);
       const pickOpts = {
         songTitle: suggestion.song_title || track.title || "",
+        artist: suggestion.artist || track.artist || "",
       };
 
       // Prefer a word whose lyric line sits inside the 30s preview cut —
@@ -1075,7 +1082,8 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
     let merged = [];
 
     if (relaxSongReuse) {
-      merged = getFullSongCandidatePool(langCode, genre).slice(0, 20);
+      const userWaiting = stopAfter <= USER_DELIVER_STOP_AFTER;
+      merged = getFullSongCandidatePool(langCode, genre).slice(0, userWaiting ? 6 : 16);
       console.log(`daily word batch: retrying ${merged.length} candidates allowing new words from known songs`);
     } else {
       const userWaiting = stopAfter <= USER_DELIVER_STOP_AFTER;
@@ -1214,21 +1222,26 @@ async function deliverFromBatch(user, batch, fetchImpl, { fromQueue = false, pre
   const delivered = deliverPayload(user.id, first, { fromQueue });
   const firstEffect = (batch.sideEffects || []).find((effect) => effect.payload === first);
   if (firstEffect?.track && firstEffect?.lyricsData) {
-    try {
-      const extra = await queueExtraWordsFromValidatedSong(user, {
-        firstWord: first.word?.text,
-        track: firstEffect.track,
-        lyricsData: firstEffect.lyricsData,
-        syncCheck: firstEffect.syncCheck,
-        genre: first.song?.genre || user.genre,
-        date: first.date || todayDate(),
-        fetchImpl,
-      });
+    // Same-song extras must not block the first card. Table glosses fill the
+    // queue in the background so Next word is actually instant.
+    const extraPromise = queueExtraWordsFromValidatedSong(user, {
+      firstWord: first.word?.text,
+      track: firstEffect.track,
+      lyricsData: firstEffect.lyricsData,
+      syncCheck: firstEffect.syncCheck,
+      genre: first.song?.genre || user.genre,
+      date: first.date || todayDate(),
+      fetchImpl,
+    }).then((extra) => {
       if (extra) {
         console.log(`daily word batch: queued ${extra} extra words from ${first.song?.title}`);
       }
-    } catch (err) {
+      return extra;
+    }).catch((err) => {
       console.warn(`daily word batch extras failed:`, err.message || err);
+    });
+    if (process.env.NODE_ENV === "test") {
+      await extraPromise;
     }
   }
   if (batch.finishBackground) {
@@ -1525,12 +1538,12 @@ function glossNeedsQualityCheck(word) {
 }
 
 function wordMetaNeedsEnrichment(word) {
-  return glossNeedsQualityCheck(word) || !word?.pronunciation;
+  return glossNeedsQualityCheck(word);
 }
 
 function shouldBackgroundPolish(word) {
   return Boolean(word?.text)
-    && Number(word.gloss_v || 0) < 2
+    && (Number(word.gloss_v || 0) < 2 || !word?.pronunciation)
     && !wordMetaNeedsEnrichment(word);
 }
 
@@ -1623,85 +1636,36 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, {
 async function enrichPayloadWordMeta(payload, user) {
   const text = payload?.word?.text;
   const line = payload?.lyric?.snippet;
-  if (!text || !line || !wordMetaNeedsEnrichment(payload.word)) return payload;
+  if (!text || !wordMetaNeedsEnrichment(payload.word)) return payload;
 
-  const languageName = languageNameFromCode(user.target_language || "es");
-  const nativeLanguageName = languageNameFromCode(user.native_language || "en", "English");
-  const item = [{ word: text, line }];
+  const fromLang = normalizeLangCode(user.target_language || "es");
+  const toLang = normalizeLangCode(user.native_language || "en");
   const started = Date.now();
 
   try {
-    // Fast path first — never double-call AI unless the gloss is missing/suspicious.
-    let glosses = await aiService.glossDailyWords(item, languageName, {
-      fast: true,
-      nativeLanguageName,
-      refine: false,
-      fromLang: normalizeLangCode(user.target_language || "es"),
-      toLang: normalizeLangCode(user.native_language || "en"),
-    });
-    let gloss = glosses[0];
-    let candidateTranslation = gloss?.translation ?? payload.word.translation;
-
-    if (
-      translationNeedsFix({ text, translation: candidateTranslation })
-      || aiService.translationLooksSuspicious(text, candidateTranslation, line)
-      || !gloss?.pronunciation
-    ) {
-      glosses = await aiService.refineGlosses(
-        item,
-        [{
-          translation: candidateTranslation,
-          part_of_speech: gloss?.part_of_speech ?? payload.word.part_of_speech,
-          pronunciation: gloss?.pronunciation ?? payload.word.pronunciation,
-        }],
-        languageName,
-        nativeLanguageName,
-        { fast: true }
-      );
-      gloss = glosses[0];
-      candidateTranslation = gloss?.translation ?? candidateTranslation;
+    // Request path: table + dictionary only. Muse timeouts were adding 6–14s
+    // to every Next word even when the queue already had the payload.
+    const tableHit = aiService.commonGlossLookup(text, fromLang, toLang, line);
+    if (tableHit && !aiService.translationLooksSuspicious(text, tableHit, line)) {
+      console.log(`daily word enrich gloss: ${text} in ${Date.now() - started}ms (table)`);
+      return {
+        ...payload,
+        word: { ...payload.word, translation: tableHit, gloss_v: 2 },
+      };
     }
-
-    if (
-      translationNeedsFix({ text, translation: candidateTranslation })
-      || aiService.translationLooksSuspicious(text, candidateTranslation, line)
-    ) {
-      const fb = await aiService.dictionaryGlossFallback(
-        text,
-        normalizeLangCode(user.target_language || "es"),
-        normalizeLangCode(user.native_language || "en"),
-        fetch,
-        line
-      );
-      if (fb) candidateTranslation = fb;
-      else if (aiService.translationLooksSuspicious(text, candidateTranslation, line)) {
-        candidateTranslation = null;
-      }
+    const fb = await aiService.dictionaryGlossFallback(text, fromLang, toLang, fetch, line);
+    if (fb && !aiService.translationLooksSuspicious(text, fb, line)) {
+      console.log(`daily word enrich gloss: ${text} in ${Date.now() - started}ms (dictionary)`);
+      return {
+        ...payload,
+        word: { ...payload.word, translation: fb, gloss_v: 2 },
+      };
     }
-
-    if (!gloss && !candidateTranslation) return payload;
-    console.log(`daily word enrich gloss: ${text} in ${Date.now() - started}ms`);
-    const nextTranslation = gloss?.translation ?? candidateTranslation ?? payload.word.translation;
-    const safeTranslation = aiService.translationLooksSuspicious(text, nextTranslation, line)
-      ? null
-      : nextTranslation;
-    return {
-      ...payload,
-      word: {
-        ...payload.word,
-        translation: safeTranslation,
-        part_of_speech: gloss?.part_of_speech ?? payload.word.part_of_speech,
-        pronunciation: gloss?.pronunciation ?? payload.word.pronunciation,
-        gloss_v: (
-          safeTranslation
-          && !aiService.translationLooksSuspicious(text, safeTranslation, line)
-        ) ? 2 : 1,
-      },
-    };
+    return payload;
   } catch (err) {
     console.warn(`daily word enrich gloss failed in ${Date.now() - started}ms: ${err.message || err}`);
+    return payload;
   }
-  return payload;
 }
 
 function scheduleBackgroundGlossPolish(user, payload) {
@@ -1822,7 +1786,7 @@ async function queueExtraWordsFromValidatedSong(user, {
 
   const extras = [];
   const plain = plainFromLyricsData(lyricsData);
-  const pickOpts = { songTitle: track.title || "" };
+  const pickOpts = { songTitle: track.title || "", artist: track.artist || "" };
   const duration = track.duration;
   const provider =
     track.provider === "itunes" || deezer.isItunesTrackId?.(track.id) ? "itunes" : "deezer";
@@ -1849,18 +1813,21 @@ async function queueExtraWordsFromValidatedSong(user, {
     return 0;
   }
 
-  const languageName = languageNameFromCode(user.target_language || "es");
-  const nativeLanguageName = languageNameFromCode(user.native_language || "en", "English");
-  const glosses = await glossWithCompleteness(
-    extras.map((item) => ({ word: item.picked.word, line: item.picked.line })),
-    languageName,
-    nativeLanguageName,
-    {
-      fast: true,
-      fromLang: langCode,
-      toLang: normalizeLangCode(user.native_language || "en"),
-    }
-  );
+  const toLang = normalizeLangCode(user.native_language || "en");
+  const glosses = extras.map((item) => {
+    const translation = aiService.commonGlossLookup(
+      item.picked.word,
+      langCode,
+      toLang,
+      item.picked.line
+    );
+    return {
+      translation: translation || null,
+      part_of_speech: null,
+      pronunciation: null,
+      gloss_v: translation ? 2 : 1,
+    };
+  });
 
   const payloads = extras.map((item, i) => {
     const gloss = glosses[i] || {};

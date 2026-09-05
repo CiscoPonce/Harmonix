@@ -12,6 +12,7 @@ const {
   generateNextDailyWord,
   generateDailyWord,
   fetchAiCandidates,
+  enrichPayloadWordMeta,
   pickWordFromLyricsHeuristic,
   filterUniquePayloads,
   filterUnusedSongCandidates,
@@ -183,6 +184,45 @@ describe("Daily Word Service", () => {
   it("picks vocabulary words from real lyric lines", () => {
     const picked = pickWordFromLyricsHeuristic("El amor y la noche brillan", "easy", new Set());
     expect(picked.word.toLowerCase()).to.be.oneOf(["amor", "noche", "brillan"]);
+  });
+
+  it("fixes function-word glosses from the table without calling AI", async () => {
+    db.prepare(`
+      UPDATE users SET native_language = 'es', target_language = 'en' WHERE id = ?
+    `).run(userId);
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    let aiCalls = 0;
+    const original = aiService.glossDailyWords;
+    aiService.glossDailyWords = async () => {
+      aiCalls += 1;
+      throw new Error("should not call AI for a table gloss");
+    };
+    try {
+      const out = await enrichPayloadWordMeta({
+        word: { text: "world", translation: "las", pronunciation: "/world/" },
+        lyric: { snippet: "around the world" },
+      }, user);
+      expect(out.word.translation).to.equal("mundo");
+      expect(out.word.gloss_v).to.equal(2);
+      expect(aiCalls).to.equal(0);
+    } finally {
+      aiService.glossDailyWords = original;
+    }
+  });
+
+  it("skips clipped slang and artist names when picking lyric words", () => {
+    const lyrics = [
+      "Holdin' on through the heat",
+      "Harry said the waves keep rolling",
+      "Holdin' on through the heat",
+    ].join("\n");
+    const picked = pickWordFromLyricsHeuristic(lyrics, "medium", new Set(), "en", {
+      songTitle: "Waves",
+      artist: "Harry Styles",
+    });
+    expect(picked.word.toLowerCase()).to.be.oneOf(["waves", "heat", "rolling", "through", "keep"]);
+    expect(picked.word.toLowerCase()).to.not.equal("holdin");
+    expect(picked.word.toLowerCase()).to.not.equal("harry");
   });
 
   it("prefers title/hook words that carry meaning in the song", () => {

@@ -865,6 +865,13 @@ function translationLooksSuspicious(word, translation, line = null) {
   }
   // If the translation is another distinct token already in the lyric, the model
   // almost certainly glossed the wrong word (e.g. COLOR → "hope" from the same line).
+  const functionGlosses = new Set([
+    "el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "al", "y", "o", "a",
+    "en", "que", "se", "su", "sus", "lo", "le", "les",
+    "the", "a", "an", "of", "and", "or", "to", "in", "on", "at",
+  ]);
+  if (functionGlosses.has(t) && !functionGlosses.has(w) && w.length > 3) return true;
+
   if (line) {
     const lineTokens = String(line)
       .toLowerCase()
@@ -937,6 +944,65 @@ const COMMON_GLOSS_TABLE = {
     please: "por favor",
     think: "pensar",
     levitating: "levitando",
+    world: "mundo",
+    home: "hogar",
+    time: "tiempo",
+    same: "mismo",
+    holdin: "sosteniendo",
+    holding: "sosteniendo",
+    waves: "olas",
+    heat: "calor",
+    late: "tarde",
+    hard: "difícil",
+    never: "nunca",
+    always: "siempre",
+    again: "otra vez",
+    still: "todavía",
+    right: "bien",
+    wrong: "mal",
+    good: "bueno",
+    bad: "malo",
+    life: "vida",
+    day: "día",
+    dark: "oscuro",
+    fire: "fuego",
+    water: "agua",
+    people: "gente",
+    friend: "amigo",
+    baby: "bebé",
+    girl: "chica",
+    boy: "chico",
+    man: "hombre",
+    woman: "mujer",
+    eyes: "ojos",
+    hands: "manos",
+    mind: "mente",
+    soul: "alma",
+    dream: "sueño",
+    song: "canción",
+    music: "música",
+    dance: "bailar",
+    tonight: "esta noche",
+    tomorrow: "mañana",
+    yesterday: "ayer",
+    together: "juntos",
+    alone: "solo",
+    away: "lejos",
+    back: "atrás",
+    down: "abajo",
+    around: "alrededor",
+    through: "a través",
+    without: "sin",
+    before: "antes",
+    after: "después",
+    because: "porque",
+    nothing: "nada",
+    everything: "todo",
+    something: "algo",
+    someone: "alguien",
+    anybody: "cualquiera",
+    everybody: "todos",
+    nobody: "nadie",
     before: "antes",
     friend: "amigo",
     swing: "balancear",
@@ -1193,6 +1259,21 @@ async function glossDailyWords(items, languageName, {
   fetchImpl = fetch,
 } = {}) {
   if (!items?.length) return [];
+
+  if (fromLang && toLang) {
+    const tableOnly = items.map((item) => {
+      const common = commonGlossLookup(item.word, fromLang, toLang, item.line);
+      if (!common) return null;
+      return sanitizeGloss(item.word, {
+        translation: common,
+        part_of_speech: null,
+        pronunciation: null,
+      }, item.line);
+    });
+    if (fast && tableOnly.every((g) => g?.translation)) {
+      return tableOnly;
+    }
+  }
 
   const glossUserPrompt = `For each item, translate ONLY the single target "word" into ${nativeLanguageName}.
 Use the lyric "line" only to pick the correct dictionary sense of that word — never gloss the whole phrase or idiom as if it were the word.

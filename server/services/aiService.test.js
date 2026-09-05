@@ -132,6 +132,10 @@ describe('AI Service', () => {
     expect(commonGlossLookup('signs', 'en', 'es', 'And in my face is flashing signs')).to.equal('señales');
     expect(translationLooksSuspicious('magnet', 'c. iman.')).to.equal(true);
     expect(translationLooksSuspicious('signs', 'señalización vial')).to.equal(true);
+    expect(translationLooksSuspicious('world', 'las')).to.equal(true);
+    expect(translationLooksSuspicious('world', 'mundo')).to.equal(false);
+    expect(commonGlossLookup('world', 'en', 'es')).to.equal('mundo');
+    expect(commonGlossLookup('home', 'en', 'es')).to.equal('hogar');
   });
 
   it('rejects encyclopedic MyMemory junk and keeps high-confidence everyday glosses', async () => {
