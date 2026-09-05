@@ -771,7 +771,7 @@ export function DailyWordCard({
         }
         if (attempt === 1) {
           setIsSpeaking(false);
-          setRefreshError("Pronunciation unavailable");
+          setRefreshError(t('pronunciation_unavailable'));
           setTimeout(() => setRefreshError(null), 3000);
         }
       }
@@ -791,7 +791,7 @@ export function DailyWordCard({
         <div className="px-4 py-3 sm:px-6 border-b border-zinc-100 dark:border-zinc-900 flex flex-row items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-900/40">
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             <Sparkles className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
-            <span>Word of the day</span>
+            <span>{t('word_of_the_day')}</span>
           </div>
           <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
         </div>
@@ -814,9 +814,9 @@ export function DailyWordCard({
   if ((error && !data) || !data) {
     return (
       <div className="w-full max-w-3xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-8 space-y-4 text-center">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">{error || "No word available right now."}</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{error || t('no_word_available')}</p>
         <Button onClick={() => loadDailyWord(false)} disabled={refreshing}>
-          {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Try again"}
+          {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : t('try_again')}
         </Button>
       </div>
     );
@@ -893,13 +893,11 @@ export function DailyWordCard({
         <div className="absolute inset-0 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-8 text-center">
           <Loader2 className="w-8 h-8 animate-spin text-zinc-900 dark:text-white" />
           <p className="text-sm font-bold uppercase tracking-widest text-zinc-900 dark:text-white">
-            {statusMessage || (fromTrackBusy ? "Finding a word in that song…" : "Generating your first word…")}
+            {statusMessage || (fromTrackBusy ? t('finding_word_in_song') : t('generating_first_word'))}
           </p>
           <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
             {elapsedSec > 0 ? `${elapsedSec}s · ` : ""}
-            {fromTrackBusy
-              ? "Pulling a word from those lyrics — stay on this card"
-              : "Cold generate validates real songs — usually 20–60s"}
+            {fromTrackBusy ? t('from_track_hint') : t('cold_generate_hint')}
           </p>
         </div>
       )}
@@ -909,12 +907,12 @@ export function DailyWordCard({
           <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-700 dark:text-amber-300 shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold text-amber-900 dark:text-amber-100 truncate">
-              {statusMessage || (readyCount > 0 ? "Loading next word…" : "Finding a new word in a real song…")}
+              {statusMessage || (readyCount > 0 ? t('loading_next_word') : t('finding_new_word'))}
             </p>
             <p className="text-[10px] text-amber-700/80 dark:text-amber-200/70">
               {readyCount > 0
-                ? "Queue hit — should be instant"
-                : `${elapsedSec}s · keep using this word; next one arrives when matched`}
+                ? t('queue_hit_instant')
+                : t('keep_using_word', { s: elapsedSec })}
             </p>
           </div>
           <div className="hidden sm:block h-1 w-24 rounded-full bg-amber-200 dark:bg-amber-900 overflow-hidden shrink-0">
@@ -935,15 +933,15 @@ export function DailyWordCard({
       <div className="px-4 py-3 sm:px-6 border-b border-zinc-100 dark:border-zinc-900 flex flex-row items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-900/40">
         <div className="flex items-center gap-2 min-w-0 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-500 dark:text-zinc-400">
           <Sparkles className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
-          <span className="shrink-0">Word of the day</span>
+          <span className="shrink-0">{t('word_of_the_day')}</span>
           {readyCount > 0 && (
             <span className="px-2 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px] shrink-0">
-              {readyCount} ready
+              {t('n_ready', { n: readyCount })}
             </span>
           )}
           {(queueStatus?.refilling || (refreshing && readyCount === 0)) && !showHeavyOverlay && (
             <span className="text-zinc-400 dark:text-zinc-600 truncate">
-              · {queueStatus?.refilling ? "stocking" : "matching"}
+              · {queueStatus?.refilling ? t('queue_stocking') : t('queue_matching')}
             </span>
           )}
         </div>
@@ -960,19 +958,19 @@ export function DailyWordCard({
             ) : (
               <RefreshCw className="h-3.5 w-3.5" />
             )}
-            {readyCount > 0 ? "Next word" : "New word"}
+            {readyCount > 0 ? t('next_word') : t('new_word')}
           </Button>
         </div>
       </div>
       <p className="border-b border-zinc-100 px-4 py-2 text-[11px] text-zinc-500 dark:border-zinc-900 dark:text-zinc-400 sm:px-6">
         {readyCount > 0
-          ? `${readyCount} buffered — Next word is instant.`
-          : "Request a new word anytime. Buffered words appear instantly; cold generate runs in the background."}
+          ? t('n_buffered_instant', { n: readyCount })
+          : t('request_anytime')}
         {data.style_relaxed && (
           <span className="mt-1 block text-zinc-400 dark:text-zinc-500">
-            Couldn&apos;t find more{" "}
-            {(data.style_relaxed_from || user?.genre || "that").toString().replace("-", " ")}{" "}
-            tracks — showing a close match.
+            {t('style_relaxed', {
+              style: (data.style_relaxed_from || user?.genre || "that").toString().replace("-", " "),
+            })}
           </span>
         )}
       </p>
@@ -988,7 +986,7 @@ export function DailyWordCard({
               type="button"
               className="daily-word-flip-face daily-word-flip-front flex flex-col justify-between text-left w-full min-h-[15.5rem] sm:min-h-[19rem] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 p-4 sm:p-8 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-600"
               onClick={toggleFlip}
-              aria-label="Show song context for this word"
+              aria-label={t('show_song_context')}
             >
               <div className="flex justify-center pt-1 sm:pt-2 min-w-0">
                 <p className="text-3xl sm:text-5xl md:text-6xl font-black tracking-normal text-zinc-900 dark:text-white break-words [overflow-wrap:anywhere] text-center select-none">
@@ -1007,7 +1005,7 @@ export function DailyWordCard({
                     <button
                       onClick={(e) => { e.stopPropagation(); void playPronunciation(); }}
                       className="p-1 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
-                      aria-label="Listen to pronunciation"
+                      aria-label={t('listen_pronunciation')}
                       type="button"
                     >
                       <Volume2 className={`w-4 h-4 transition-colors ${isSpeaking ? "animate-pulse text-zinc-900 dark:text-white" : "text-zinc-400 dark:text-zinc-500"}`} />
@@ -1024,8 +1022,8 @@ export function DailyWordCard({
                   {showMeaning && (
                     <span
                       className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-400 shrink-0"
-                      aria-label={`Translation language: ${homeLanguage}`}
-                      title={`Shown in your home language (${homeLanguage})`}
+                      aria-label={t('translation_language', { lang: homeLanguage })}
+                      title={t('shown_in_home_language', { lang: homeLanguage })}
                     >
                       {homeLanguage}
                     </span>
@@ -1053,7 +1051,7 @@ export function DailyWordCard({
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleFlip(); } }}
               role="button"
               tabIndex={0}
-              aria-label="Back to word"
+              aria-label={t('back_to_word')}
             >
               <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 self-start">
                 <RotateCw className="w-3 h-3 shrink-0" />
@@ -1074,9 +1072,9 @@ export function DailyWordCard({
                   </p>
                 ) : null}
                 <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-600">
-                  Word around {data.lyric.timestamp}
+                  {t('word_around', { time: data.lyric.timestamp })}
                   {data.lyric.in_preview === false
-                    ? ` · preview ${formatPreviewWindowLabel(data.audio.preview_offset || 0)}`
+                    ? ` · ${t('preview_window', { window: formatPreviewWindowLabel(data.audio.preview_offset || 0) })}`
                     : ""}
                 </p>
               </div>
@@ -1099,7 +1097,7 @@ export function DailyWordCard({
             ) : (
               <Play className="w-4 h-4" />
             )}
-            {hearBusy ? 'Starting…' : isPlaying ? t('pause') : t('hear_it')}
+            {hearBusy ? t('starting') : isPlaying ? t('pause') : t('hear_it')}
           </Button>
           <Button
             type="button"
@@ -1113,7 +1111,7 @@ export function DailyWordCard({
             ) : (
               <Share2 className="w-4 h-4" />
             )}
-            {sharing ? "Creating…" : t('share')}
+            {sharing ? t('creating') : t('share')}
           </Button>
           <Button
             type="button"

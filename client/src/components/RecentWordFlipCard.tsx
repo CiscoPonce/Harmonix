@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ExternalLink, Music2, RotateCw } from 'lucide-react';
 import { spotifyOpenUrlForSong } from '@/lib/spotifyOpen';
+import { useTranslation } from '@/lib/i18n';
 
 export type ShelfWord = {
   id?: number | string | null;
@@ -46,6 +47,7 @@ function highlightWord(snippet: string, start?: number, end?: number) {
 
 /** Compact flip card for the Discover shelf — same front/back pattern as Word of the Day. */
 export function RecentWordFlipCard({ item }: { item: ShelfWord }) {
+  const { t } = useTranslation();
   const [flipped, setFlipped] = useState(false);
   const phrase = (item.phrase || item.lyric?.snippet || '').trim();
   const title = (item.title || item.song?.title || '').trim();
@@ -72,7 +74,7 @@ export function RecentWordFlipCard({ item }: { item: ShelfWord }) {
             className="daily-word-flip-face daily-word-flip-front flex h-full w-full flex-col justify-between rounded-2xl border border-[#E4EBE6] bg-gradient-to-b from-[#E8F5EE] to-[#F7F8F6] p-4 text-left transition hover:border-[#0B4D2E]/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B4D2E] dark:border-[#2A3530] dark:from-[#0B4D2E]/30 dark:to-[#171E1B] dark:hover:border-[#3DCF7A]/50 dark:focus-visible:ring-[#3DCF7A]"
             onClick={toggle}
             aria-label={
-              canFlip ? `Show lyric for ${item.word.text}` : item.word.text
+              canFlip ? t('show_lyric_for', { word: item.word.text }) : item.word.text
             }
             disabled={!canFlip}
           >
@@ -87,7 +89,7 @@ export function RecentWordFlipCard({ item }: { item: ShelfWord }) {
               {canFlip ? (
                 <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[#7A8A80]">
                   <RotateCw className="h-2.5 w-2.5" aria-hidden />
-                  Flip
+                  {t('flip')}
                 </span>
               ) : null}
             </div>
@@ -130,12 +132,12 @@ export function RecentWordFlipCard({ item }: { item: ShelfWord }) {
             }}
             role="button"
             tabIndex={0}
-            aria-label="Back to word"
+            aria-label={t('back_to_word')}
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[#7A8A80]">
                 <RotateCw className="h-2.5 w-2.5 shrink-0" aria-hidden />
-                Flip back
+                {t('flip_back')}
               </span>
               {item.lyric?.timestamp ? (
                 <span className="text-[9px] font-bold uppercase tracking-widest text-[#9AABA0]">
@@ -149,7 +151,7 @@ export function RecentWordFlipCard({ item }: { item: ShelfWord }) {
                 <div className="flex items-center gap-1.5 text-[#0B4D2E] dark:text-[#3DCF7A]">
                   <Music2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   <span className="text-[9px] font-bold uppercase tracking-widest">
-                    In the song
+                    {t('in_the_song')}
                   </span>
                 </div>
                 {title ? (
@@ -178,7 +180,7 @@ export function RecentWordFlipCard({ item }: { item: ShelfWord }) {
                 </blockquote>
               ) : (
                 <p className="text-xs text-[#5C6B62]">
-                  Lyric line unavailable for this word.
+                  {t('lyric_unavailable')}
                 </p>
               )}
             </div>
@@ -195,7 +197,7 @@ export function RecentWordFlipCard({ item }: { item: ShelfWord }) {
           className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-[#0B4D2E] bg-[#0B4D2E] px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-[#093d25] dark:border-[#3DCF7A] dark:bg-[#3DCF7A] dark:text-[#0C1210] dark:hover:bg-[#2FB86A]"
         >
           <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
-          Open in Spotify
+          {t('open_in_spotify')}
         </a>
       ) : null}
     </article>

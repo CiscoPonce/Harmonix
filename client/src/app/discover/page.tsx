@@ -10,6 +10,7 @@ import { RecentWordFlipCard, type ShelfWord } from '@/components/RecentWordFlipC
 import { ReviewCountBadge } from '@/components/ReviewCountBadge';
 import { BadgeUnlockToast } from '@/components/BadgeUnlockToast';
 import { apiFetch } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n';
 
 type RecentWord = ShelfWord;
 
@@ -24,6 +25,7 @@ type ProgressStats = {
 
 export default function DiscoverPage() {
   const { user, isLoading, logout } = useAuth();
+  const { t, tp } = useTranslation();
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<
@@ -252,7 +254,7 @@ export default function DiscoverPage() {
     <AppShell
       userEmail={user.email}
       onLogout={logout}
-      searchPlaceholder="Search a song for a word from its lyrics…"
+      searchPlaceholder={t('search_song_for_word')}
       onSearchSubmit={(q) => {
         setQuery(q);
         document.getElementById('discover-song-search')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -260,7 +262,7 @@ export default function DiscoverPage() {
     >
       <BadgeUnlockToast badge={unlockedBadge} onDismiss={() => setUnlockedBadge(null)} />
 
-      <section className="mx-auto w-full max-w-3xl" aria-label="Word of the Day">
+      <section className="mx-auto w-full max-w-3xl" aria-label={t('word_of_the_day')}>
         <DailyWordCard
           onWordChange={refreshHomeData}
           fromTrackRequest={fromTrackRequest}
@@ -276,13 +278,13 @@ export default function DiscoverPage() {
           <>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#E4EBE6] bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-[#0C1210] dark:border-[#2A3530] dark:bg-[#171E1B] dark:text-[#F2F5F3]">
               <Flame className="h-3.5 w-3.5 text-[#0B4D2E] dark:text-[#3DCF7A]" aria-hidden />
-              {stats.streak_days} day{stats.streak_days === 1 ? '' : 's'}
+              {tp('streak_days', stats.streak_days)}
             </div>
             <div className="inline-flex min-w-[140px] flex-col gap-1 rounded-full border border-[#E4EBE6] bg-white px-3 py-1.5 dark:border-[#2A3530] dark:bg-[#171E1B]">
               <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-widest text-[#5C6B62] dark:text-[#9AABA0]">
                 <span className="inline-flex items-center gap-1">
                   <Target className="h-3 w-3" aria-hidden />
-                  Today
+                  {t('today')}
                 </span>
                 <span>
                   {stats.today_words}
@@ -308,7 +310,7 @@ export default function DiscoverPage() {
         className="relative mt-10 overflow-hidden rounded-3xl bg-[#0B4D2E] px-6 py-8 text-white sm:px-10"
       >
         <p className="mb-3 text-sm font-medium text-white/80">
-          Search a song, then tap it — Harmonix makes a new word from those lyrics. This never opens karaoke.
+          {t('search_intro')}
         </p>
         <form
           className="relative max-w-2xl"
@@ -322,15 +324,15 @@ export default function DiscoverPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search a song for a word from its lyrics…"
+            placeholder={t('search_song_for_word')}
             className="h-12 w-full rounded-full bg-white pl-12 pr-4 text-base text-[#0C1210] placeholder:text-[#9AABA0] focus:outline-none focus:ring-2 focus:ring-white/40"
-            aria-label="Search a song for a Word of the Day"
+            aria-label={t('search_song_for_word')}
             autoComplete="off"
           />
         </form>
         {pickingTrackId != null && fromTrackRequest ? (
           <p className="relative mt-3 max-w-2xl text-sm font-medium text-white">
-            Creating a word from {fromTrackRequest.title || 'that song'}…
+            {t('creating_word_from', { title: fromTrackRequest.title || t('that_song') })}
           </p>
         ) : null}
         {(searching || query.trim()) && (
@@ -338,10 +340,10 @@ export default function DiscoverPage() {
             {searching ? (
               <div className="flex items-center gap-2 text-sm text-white/80">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Searching songs…
+                {t('searching_songs')}
               </div>
             ) : results.length === 0 ? (
-              <p className="text-sm text-white/70">No songs found. Try the artist plus title.</p>
+              <p className="text-sm text-white/70">{t('no_songs_found')}</p>
             ) : (
               <ul className="divide-y divide-white/10 overflow-hidden rounded-2xl bg-white text-[#0C1210] shadow-lg">
                 {results.slice(0, 8).map((track) => (
@@ -367,7 +369,7 @@ export default function DiscoverPage() {
                         <p className="truncate text-sm text-[#5C6B62]">{track.artist?.name}</p>
                       </div>
                       <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-[#0B4D2E]">
-                        {pickingTrackId === track.id ? 'Creating word…' : 'Learn a word'}
+                        {pickingTrackId === track.id ? t('creating_word') : t('learn_word_from_song')}
                       </span>
                     </button>
                   </li>
@@ -382,10 +384,10 @@ export default function DiscoverPage() {
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
             <h2 className="text-sm font-bold uppercase tracking-widest text-[#0C1210] dark:text-[#F2F5F3]">
-              Your shelf
+              {t('your_shelf')}
             </h2>
             <p className="mt-1 text-xs text-[#5C6B62] dark:text-[#9AABA0]">
-              Tap a card to flip — song title and lyric phrase on the back.
+              {t('shelf_hint')}
             </p>
           </div>
         </div>
@@ -396,7 +398,7 @@ export default function DiscoverPage() {
             </div>
           ) : trending.length === 0 ? (
             <p className="col-span-full text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-              Flip today&apos;s word above — your shelf fills as you discover more.
+              {t('shelf_empty_hint')}
             </p>
           ) : (
             trending.slice(0, 8).map((item, i) => (

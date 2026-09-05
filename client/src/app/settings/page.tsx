@@ -313,16 +313,16 @@ function SettingsContent() {
     <AppShell
       userEmail={user.email}
       onLogout={logout}
-      pageTitle="Account Settings"
-      searchPlaceholder="Search terminology..."
+      pageTitle={t('settings_title')}
+      searchPlaceholder={t('search_song_for_word')}
     >
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
         <header>
           <h1 className="font-display text-3xl font-bold italic tracking-tight text-[#0B4D2E] dark:text-[#3DCF7A] sm:text-4xl">
-            Account Settings
+            {t('settings_title')}
           </h1>
           <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-            Languages, music style, pronunciation voice, Spotify, appearance, and password.
+            {t('settings_subtitle')}
           </p>
         </header>
 
@@ -348,7 +348,7 @@ function SettingsContent() {
                   Style · {genreLabel(user.genre)}
                 </span>
                 <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                  Voice · {user.voice_gender === 'male' ? 'Male' : 'Female'}
+                  {t('voice_label')} · {user.voice_gender === 'male' ? t('voice_male') : t('voice_female')}
                 </span>
               </div>
             </div>
@@ -357,16 +357,16 @@ function SettingsContent() {
 
         <section aria-label="Password" className={cardClassName}>
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-            Security
+            {t('security')}
           </p>
-          <h2 className="mt-1 text-base font-bold">Change password</h2>
+          <h2 className="mt-1 text-base font-bold">{t('change_password')}</h2>
           <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-            You must already be signed in. Email reset links are not offered.
+            {t('change_password_hint')}
           </p>
           <form onSubmit={handleChangePassword} className="mt-4 space-y-3">
             <div>
               <label htmlFor="current-password" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
-                Current password
+                {t('current_password')}
               </label>
               <Input
                 id="current-password"
@@ -379,7 +379,7 @@ function SettingsContent() {
             </div>
             <div>
               <label htmlFor="new-password" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
-                New password
+                {t('new_password')}
               </label>
               <Input
                 id="new-password"
@@ -393,7 +393,7 @@ function SettingsContent() {
             </div>
             <div>
               <label htmlFor="confirm-password" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
-                Confirm new password
+                {t('confirm_new_password')}
               </label>
               <Input
                 id="confirm-password"
@@ -407,21 +407,21 @@ function SettingsContent() {
             </div>
             {passwordError ? <p className="text-sm text-red-600">{passwordError}</p> : null}
             {passwordSaved ? (
-              <p className="text-sm text-[#0B4D2E] dark:text-[#3DCF7A]">Password updated.</p>
+              <p className="text-sm text-[#0B4D2E] dark:text-[#3DCF7A]">{t('password_updated')}</p>
             ) : null}
             <Button type="submit" variant="primary" disabled={passwordBusy}>
-              {passwordBusy ? 'Saving…' : 'Update password'}
+              {passwordBusy ? t('saving') : t('update_password')}
             </Button>
           </form>
         </section>
 
         <section aria-label="Languages and voice" className={cardClassName}>
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-            Learning profile
+            {t('learning_profile')}
           </p>
-          <h2 className="mt-1 text-base font-bold">Languages, music style & voice</h2>
+          <h2 className="mt-1 text-base font-bold">{t('languages_style_voice')}</h2>
           <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-            Choose where words come from and how they sound. Difficulty stays set from onboarding.
+            {t('learning_profile_hint')}
           </p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -442,7 +442,7 @@ function SettingsContent() {
                 }}
                 className={selectClassName}
               >
-                <option value="">Select language</option>
+                <option value="">{t('select_language')}</option>
                 {LANGUAGES.map((l) => (
                   <option key={l.value} value={l.value}>
                     {l.label}
@@ -467,7 +467,7 @@ function SettingsContent() {
                 }}
                 className={selectClassName}
               >
-                <option value="">Select language</option>
+                <option value="">{t('select_language')}</option>
                 {LANGUAGES.map((l) => (
                   <option key={l.value} value={l.value}>
                     {l.label}
@@ -482,9 +482,9 @@ function SettingsContent() {
               {t('music_genre')}
             </p>
             <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-              Prefer songs in this style when picking words for you.
+              {t('music_style_hint')}
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Music style">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t('music_genre')}>
               {MUSIC_STYLES.map((opt) => {
                 const active = musicStyle === opt.value;
                 return (
@@ -513,16 +513,16 @@ function SettingsContent() {
 
           <div className="mt-5">
             <p className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
-              Voice gender
+              {t('voice_gender')}
             </p>
             <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-              Used for Word of the Day pronunciation audio.
+              {t('voice_gender_hint')}
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Voice gender">
+            <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('voice_gender')}>
               {(
                 [
-                  { value: 'female', label: 'Female' },
-                  { value: 'male', label: 'Male' },
+                  { value: 'female', label: t('voice_female') },
+                  { value: 'male', label: t('voice_male') },
                 ] as const
               ).map((opt) => {
                 const active = voiceGender === opt.value;
@@ -555,7 +555,7 @@ function SettingsContent() {
           )}
           {langSaved && !langError && (
             <p className="mt-3 text-sm font-medium text-[#0B4D2E] dark:text-[#3DCF7A]">
-              Preferences saved.
+              {t('preferences_saved')}
             </p>
           )}
 
@@ -570,12 +570,12 @@ function SettingsContent() {
               {langSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving…
+                  {t('saving')}
                 </>
               ) : languagesDirty ? (
-                'Save changes'
+                t('save_changes')
               ) : (
-                'Saved'
+                t('saved')
               )}
             </Button>
             {languagesDirty && (
@@ -591,11 +591,11 @@ function SettingsContent() {
                   setLangSaved(false);
                 }}
               >
-                Reset
+                {t('reset')}
               </button>
             )}
             <p className="w-full text-xs text-[#5C6B62] dark:text-[#9AABA0]">
-              Changes save automatically. Use Save if you want to apply immediately.
+              {t('autosave_hint')}
             </p>
           </div>
         </section>
@@ -614,13 +614,13 @@ function SettingsContent() {
 
         <section aria-label="Appearance & Accessibility" className={cardClassName}>
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-            Appearance
+            {t('appearance')}
           </p>
           <div className="mt-4 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-bold">Dark mode</h2>
+              <h2 className="text-base font-bold">{t('dark_mode')}</h2>
               <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                Switch between light and dark themes.
+                {t('dark_mode_hint')}
               </p>
             </div>
             <ThemeToggle />
@@ -629,9 +629,9 @@ function SettingsContent() {
           <div className="mt-5 border-t border-[#E4EBE6] pt-4 dark:border-[#2A3530]">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-base font-bold">Dyslexia-friendly font</h2>
+                <h2 className="text-base font-bold">{t('dyslexia_font')}</h2>
                 <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                  Wider letter spacing for lyrics and study text.
+                  {t('dyslexia_font_hint')}
                 </p>
               </div>
               <button

@@ -1,9 +1,18 @@
 import assert from 'node:assert/strict';
-import { test, describe, it } from 'node:test';
-import { TRANSLATIONS, getTranslation, LanguageCode } from './i18n.ts';
+import { describe, it } from 'node:test';
+import { TRANSLATIONS, getTranslation, getPlural, type LanguageCode } from './i18n.dictionary.ts';
 
 describe('Web Client i18n Translations', () => {
   const languages: LanguageCode[] = ['en', 'es', 'fr', 'de', 'pt', 'it'];
+
+  it('interpolates {vars} and picks plural forms', () => {
+    assert.strictEqual(getTranslation('n_ready', 'en', { n: 4 }), '4 ready');
+    assert.strictEqual(getTranslation('n_ready', 'es', { n: 4 }), '4 listas');
+    assert.strictEqual(getPlural('streak_days', 1, 'en'), '1 day');
+    assert.strictEqual(getPlural('streak_days', 3, 'de'), '3 Tage');
+    // Unknown placeholder is left intact rather than becoming "undefined".
+    assert.strictEqual(getTranslation('word_around', 'en', {}), 'Word around {time}');
+  });
   const baseKeys = Object.keys(TRANSLATIONS.en);
 
   languages.forEach((lang) => {

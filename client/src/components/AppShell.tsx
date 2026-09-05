@@ -7,7 +7,6 @@ import {
   Library,
   Settings,
   Search,
-  Bell,
   User,
   LogOut,
 } from 'lucide-react';
@@ -90,7 +89,7 @@ export function AppShell({
           {nowPlaying ? (
             <div className="rounded-2xl bg-[#E8F5EE] p-4 dark:bg-[#0B4D2E]/30">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#0B4D2E] dark:text-[#3DCF7A]">
-                Now playing
+                {t('now_playing')}
               </p>
               <p className="mt-1 truncate text-sm font-bold text-[#0C1210] dark:text-[#F2F5F3]">
                 {nowPlaying.title}
@@ -101,16 +100,10 @@ export function AppShell({
             </div>
           ) : (
             <div className="rounded-2xl bg-gradient-to-br from-[#E8F5EE] to-[#D7EDE0] p-4 dark:from-[#0B4D2E]/40 dark:to-[#163D2A]">
-              <p className="text-sm font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">Pro Plan</p>
+              <p className="text-sm font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">{t('word_of_the_day')}</p>
               <p className="mt-1 text-xs leading-relaxed text-[#3D5A4A] dark:text-[#9AABA0]">
-                Unlock advanced linguistic analysis and offline modes.
+                {t('shelf_hint')}
               </p>
-              <button
-                type="button"
-                className="mt-3 w-full rounded-full bg-[#0B4D2E] px-3 py-2 text-xs font-bold text-white hover:bg-[#093F25] dark:bg-[#3DCF7A] dark:text-[#0C1210] dark:hover:bg-[#2FB86A]"
-              >
-                Upgrade
-              </button>
             </div>
           )}
         </div>
@@ -149,24 +142,17 @@ export function AppShell({
                 type="search"
                 placeholder={searchPlaceholder}
                 className="h-11 w-full rounded-full border border-[#E4EBE6] bg-white py-2 pl-10 pr-4 text-sm text-[#0C1210] placeholder:text-[#9AABA0] focus:border-[#0B4D2E] focus:outline-none focus:ring-2 focus:ring-[#0B4D2E]/20 dark:border-[#2A3530] dark:bg-[#171E1B] dark:text-[#F2F5F3] dark:focus:border-[#3DCF7A] dark:focus:ring-[#3DCF7A]/20"
-                aria-label="Search"
+                aria-label={t('search')}
               />
             </form>
 
             <div className="ml-auto flex items-center gap-2">
               {headerExtra}
-              <button
-                type="button"
-                className="hidden h-10 w-10 items-center justify-center rounded-full text-[#5C6B62] hover:bg-white dark:text-[#9AABA0] dark:hover:bg-[#171E1B] sm:inline-flex"
-                aria-label="Notifications"
-              >
-                <Bell className="h-5 w-5" />
-              </button>
               <Link
                 href="/settings"
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0B4D2E] text-white dark:bg-[#3DCF7A] dark:text-[#0C1210]"
-                title={userEmail || 'Account settings'}
-                aria-label="Account settings"
+                title={userEmail || t('account_settings')}
+                aria-label={t('account_settings')}
               >
                 <User className="h-5 w-5" aria-hidden />
               </Link>
@@ -175,8 +161,8 @@ export function AppShell({
                   type="button"
                   onClick={onLogout}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#5C6B62] hover:bg-white dark:text-[#9AABA0] dark:hover:bg-[#171E1B]"
-                  aria-label="Log out"
-                  title="Log out"
+                  aria-label={t('log_out')}
+                  title={t('log_out')}
                 >
                   <LogOut className="h-5 w-5" />
                 </button>
@@ -188,7 +174,7 @@ export function AppShell({
             className="flex gap-1 overflow-x-auto border-t border-[#E4EBE6] px-2 py-2 dark:border-[#2A3530] lg:hidden"
             aria-label="Mobile"
           >
-            {NAV.map(({ href, label, icon: Icon }) => {
+            {NAV.map(({ href, key, label, icon: Icon }) => {
               const active =
                 pathname === href ||
                 (href === '/playlists' && pathname.startsWith('/playlists'));
@@ -204,7 +190,7 @@ export function AppShell({
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />
-                  {label}
+                  {t(key) || label}
                 </Link>
               );
             })}
@@ -224,9 +210,8 @@ export function AppShell({
               {' · '}© {new Date().getFullYear()} Harmonix. Resonance in Language.
             </p>
             <div className="flex gap-4 text-xs font-semibold text-[#5C6B62] dark:text-[#9AABA0]">
-              <span>Privacy</span>
-              <span>Terms</span>
-              <span>Contact</span>
+              <Link href="/privacy" className="hover:text-[#0B4D2E] dark:hover:text-[#3DCF7A]">{t('privacy')}</Link>
+              <Link href="/terms" className="hover:text-[#0B4D2E] dark:hover:text-[#3DCF7A]">{t('terms')}</Link>
             </div>
           </div>
         </footer>
