@@ -119,6 +119,24 @@ Expect `401`/`400` (API up). Browser via Express proxy: Discover should load.
 
 ---
 
+## Nightly SQLite backup
+
+[`scripts/backup-sqlite.sh`](../scripts/backup-sqlite.sh) takes a consistent online backup
+(better-sqlite3 `backup()` inside the running `api` container), verifies `PRAGMA integrity_check`,
+gzips it into `/home/ubuntu/backups/harmonix/` and prunes copies older than 14 days.
+
+```bash
+sudo cp /home/ubuntu/lyric/scripts/systemd/harmonix-backup.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now harmonix-backup.timer
+sudo systemctl start harmonix-backup.service && journalctl -u harmonix-backup -n 20 --no-pager
+```
+
+Restore: `gunzip -k harmonix-<stamp>.db.gz`, stop `api`, `docker cp` it to `/data/harmonix.db` in the
+`<uuid>_harmonix-data` volume, restart `api`.
+
+---
+
 ## Rollback
 
 ```bash

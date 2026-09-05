@@ -8,6 +8,12 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ### Features
 
+* Flutter: tap a search result to learn a word from that song (`POST /api/daily-word/from-track`, web parity); Spotify stays as a trailing icon
+* Flutter: lyric line translation on the card back; Discover/Settings/nav fully translated (6 languages, `{var}` interpolation, plurals)
+* Web: every visible string on Discover, the Word card, shelf cards and Settings is translated; ~90 new keys per language
+* Daily word: three preview-window picks are tried before accepting a lyric outside the 30s clip; extras prefer preview lines so "Hear it" plays the word
+* Ops: nightly SQLite backup (`scripts/backup-sqlite.sh`, systemd timer 03:30 UTC, 14-day retention)
+* CI: deploy waits for server, web and Flutter test jobs; in-flight deploys are queued, not cancelled
 * Settings: change password while signed in (`POST /api/auth/change-password`)
 * Public `/privacy` and `/terms`; `/library` redirects to `/playlists`
 * Play Store path is Flutter only (`mobile/`)
@@ -26,6 +32,13 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ### Bug Fixes
 
+* security: CORS no longer reflects every Origin with credentials — allowlist of same-origin, dev hosts and `CORS_ORIGINS`
+* security: hardening headers (nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy, HSTS over TLS); `X-Powered-By` removed from Express and Next
+* security: rate limits on login/register/refresh (20 per 15 min per IP), public Deezer/LRCLib proxies and `/pronounce`; register validates email and 8-char passwords; 256 kB JSON body limit
+* ai: OpenRouter circuit breaker — after a 429 it is skipped for 2 minutes instead of 200+ consecutive failures; the fast gloss path fails instantly when both providers are cooling down
+* tts: Pocket-TTS is tried first when the host daemon already serves the language; Kokoro remembers a missing Python runtime instead of spawning on every request
+* web: Next 16.2.9 → 16.3.4 (security release); dead "Pro Plan / Upgrade" card and bell removed; footer Privacy/Terms are links
+* tests: playlist route tests await async handlers; Kokoro integration test skips without `KOKORO_INTEGRATION=1`; web i18n test runnable under `node --test`
 * security: unauthenticated password reset disabled (410)
 * security: admin gate uses `is_admin` only (no email substring, no NODE_ENV bypass)
 * security: production refuses default JWT secrets

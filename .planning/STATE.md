@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: flutter-web-parity
 status: complete
-stopped_at: "Phase 16 closed; Play Store is Flutter-only"
-last_updated: "2026-09-03T21:50:00.000Z"
+stopped_at: "2026-09-05 hardening pass: API security, provider breakers, i18n, CI gate, backups"
+last_updated: "2026-09-05T19:30:00.000Z"
 progress:
   total_phases: 16
   completed_phases: 16
@@ -16,6 +16,8 @@ progress:
 ## Current Focus
 
 **Play Store listing (Flutter `mobile/` only).** Phase 16 workstreams shipped in July; planning docs caught up 2026-09-03. Capacitor is not a release path.
+
+**2026-09-05 hardening pass (post-audit):** CORS allowlist + security headers + auth/proxy rate limits; OpenRouter/NIM circuit breakers (no more 429 storms); Pocket-TTS-first pronunciation; preview-window word picks so "Hear it" plays the word; full UI i18n on web and Flutter; Flutter learns a word from a searched song; CI test gate (server/web/Flutter) before deploy; nightly SQLite backup timer (`scripts/backup-sqlite.sh`). Still open: restrict Coolify ports 8000/6001 to a VPN/allowlist, reboot VPS for pending kernel, React-compiler lint debt in `client/src` (26 pre-existing errors), Play Store listing.
 
 ## What is live now
 
