@@ -30,10 +30,25 @@ describe('Kokoro-82M ONNX Service Mapping', () => {
     assert.strictEqual(KOKORO_VOICES_MALE.en, 'am_adam');
   });
 
-  it('generates valid RIFF WAV audio buffer via kokoroService', async () => {
+  it('generates valid RIFF WAV audio buffer via kokoroService', async function () {
+    // Integration test: needs a Python env with kokoro installed. Skip elsewhere
+    // (CI, laptops without the venv) instead of failing the suite.
+    if (process.env.KOKORO_INTEGRATION !== '1') this.skip();
+    this.timeout(20000);
     const { generateKokoroAudio } = require('./kokoroService');
     const res = await generateKokoroAudio('perché', 'it');
     assert.ok(res && res.audio);
     assert.strictEqual(res.audio.slice(0, 4).toString(), 'RIFF');
+  });
+
+  it('remembers a missing Kokoro runtime and skips the spawn', async () => {
+    const svc = require('./kokoroService');
+    svc.__resetKokoroAvailabilityForTest();
+    assert.strictEqual(svc.isKokoroUnavailable(), false);
+    svc.markKokoroUnavailable('test');
+    assert.strictEqual(svc.isKokoroUnavailable(), true);
+    const res = await svc.generateKokoroAudio('hola', 'es');
+    assert.strictEqual(res, null);
+    svc.__resetKokoroAvailabilityForTest();
   });
 });

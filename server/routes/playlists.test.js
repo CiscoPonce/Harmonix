@@ -44,26 +44,26 @@ describe('Playlist API Routes', () => {
   });
 
   describe('GET /', () => {
-    it('lists playlists for the user', () => {
+    it('lists playlists for the user', async () => {
       const pid = nanoid();
       db.prepare('INSERT INTO playlists (id, user_id, name) VALUES (?, ?, ?)').run(pid, 'pl-owner', 'Test List');
       const handler = playlistsRouter.stack.find(s => s.route.path === '/' && s.route.methods.get).route.stack[0].handle;
       const req = { user: { id: 'pl-owner' } };
       const res = mockRes();
-      handler(req, res);
+      await handler(req, res);
       expect(res.body.playlists).to.have.lengthOf(1);
       expect(res.body.playlists[0].name).to.equal('Test List');
     });
   });
 
   describe('GET /:id', () => {
-    it('returns playlist with songs', () => {
+    it('returns playlist with songs', async () => {
       const pid = nanoid();
       db.prepare('INSERT INTO playlists (id, user_id, name) VALUES (?, ?, ?)').run(pid, 'pl-owner', 'Detail Test');
       const handler = playlistsRouter.stack.find(s => s.route.path === '/:id' && s.route.methods.get).route.stack[0].handle;
       const req = { params: { id: pid }, user: { id: 'pl-owner' } };
       const res = mockRes();
-      handler(req, res);
+      await handler(req, res);
       expect(res.body.name).to.equal('Detail Test');
       expect(res.body.songs).to.be.an('array');
     });
@@ -114,13 +114,15 @@ describe('Playlist API Routes', () => {
   });
 
   describe('POST /:id/songs', () => {
-    it('adds a song to a playlist', () => {
+    it('adds a song to a playlist', async () => {
       const pid = nanoid();
       db.prepare('INSERT INTO playlists (id, user_id, name) VALUES (?, ?, ?)').run(pid, 'pl-owner', 'Songs');
       const handler = playlistsRouter.stack.find(s => s.route.path === '/:id/songs' && s.route.methods.post).route.stack[0].handle;
-      const req = { params: { id: pid }, body: { song_id: '12345' }, user: { id: 'pl-owner' } };
+      // A track that already carries a cover keeps ensureTrackCover off the network.
+      const track = { id: 12345, title: 'Song', artist: 'Artist', cover: 'https://e-cdns-images.dzcdn.net/images/cover/x/250x250.jpg' };
+      const req = { params: { id: pid }, body: { song_id: '12345', track }, user: { id: 'pl-owner' } };
       const res = mockRes();
-      handler(req, res);
+      await handler(req, res);
       expect(res.statusCode).to.equal(201);
       expect(res.body.entry.playlist_id).to.equal(pid);
     });

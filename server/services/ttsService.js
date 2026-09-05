@@ -425,30 +425,55 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
   const cached = getCachedPronunciation(word, langCode, voiceGender);
   if (cached) return cached;
 
-  try {
-    const kokoroService = require('./kokoroService');
-    const kokoroRes = await kokoroService.generateKokoroAudio(word, langCode, voiceGender);
-    if (kokoroRes && kokoroRes.audio) {
-      cachePronunciation(word, kokoroRes.audio, langCode, voiceGender);
-      return kokoroRes.audio;
+  const kokoroService = require('./kokoroService');
+  const tryKokoro = async () => {
+    try {
+      const kokoroRes = await kokoroService.generateKokoroAudio(word, langCode, voiceGender);
+      if (kokoroRes && kokoroRes.audio) {
+        cachePronunciation(word, kokoroRes.audio, langCode, voiceGender);
+        return kokoroRes.audio;
+      }
+    } catch (kErr) {
+      console.warn('[ttsService] Kokoro audio skipped:', kErr.message || kErr);
     }
-  } catch (kErr) {
-    console.warn('[ttsService] Kokoro audio skipped, using Pocket-TTS fallback:', kErr.message || kErr);
-  }
+    return null;
+  };
+  const tryPocket = async () => {
+    try {
+      await ensureDaemonLanguage(langCode);
+      const wavBuffer = await fetchFromPocketTTS(word, resolveVoice(langCode, voiceGender), langCode);
+      const slowed = await slowWav(wavBuffer, SPEECH_TEMPO);
+      const padded = padWavWithSilence(slowed);
+      cachePronunciation(word, padded, langCode, voiceGender);
+      return padded;
+    } catch (pErr) {
+      console.warn('[ttsService] Pocket-TTS unavailable:', pErr.message || pErr);
+    }
+    return null;
+  };
 
-  try {
-    await ensureDaemonLanguage(langCode);
-    const wavBuffer = await fetchFromPocketTTS(word, resolveVoice(langCode, voiceGender), langCode);
-    const slowed = await slowWav(wavBuffer, SPEECH_TEMPO);
-    const padded = padWavWithSilence(slowed);
-    cachePronunciation(word, padded, langCode, voiceGender);
-    return padded;
-  } catch (pErr) {
-    console.warn('[ttsService] Pocket-TTS fallback unavailable:', pErr.message || pErr);
+  // Production: the host Pocket-TTS daemon already has the (Spanish) model
+  // loaded and answers in ~300ms; a Kokoro spawn costs seconds even when it
+  // works. Go to the daemon first when it can serve this language, otherwise
+  // Kokoro first (other languages / local dev).
+  const pocketFirst = pocketCanServe(langCode) || kokoroService.isKokoroUnavailable();
+  const order = pocketFirst ? [tryPocket, tryKokoro] : [tryKokoro, tryPocket];
+  for (const attempt of order) {
+    const audio = await attempt();
+    if (audio) return audio;
   }
 
   // Never cache silence — a later Kokoro/Pocket success should not be blocked.
   return generateSilentWavBuffer();
+}
+
+function pocketCanServe(langCode) {
+  const pocketLang = POCKET_LANG_MAP[langCode] || 'english';
+  if (!ttsDaemon.skipSpawn()) return false;
+  const loaded = ttsDaemon.currentLanguage
+    || process.env.POCKET_TTS_DEFAULT_LANGUAGE
+    || 'spanish_24l';
+  return loaded === pocketLang;
 }
 
 async function preCachePronunciation(word, langCode, gender = 'female') {
@@ -483,5 +508,6 @@ module.exports = {
   preCachePronunciation,
   getCachedPronunciation,
   ensureDaemonLanguage,
+  pocketCanServe,
   generateSilentWavBuffer,
 };

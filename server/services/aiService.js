@@ -69,6 +69,31 @@ function markNimRateLimited() {
   console.warn(`NVIDIA rate-limited — using OpenRouter first for ${Math.round(NIM_COOLDOWN_MS / 1000)}s`);
 }
 
+// OpenRouter :free models share a tiny per-key quota. Once they 429, every
+// further call for the next couple of minutes is a guaranteed 429 (observed live:
+// 200+ in a row), so open the circuit and let dictionary/table fallbacks answer.
+const OPENROUTER_COOLDOWN_MS = parseInt(process.env.OPENROUTER_RATE_LIMIT_COOLDOWN_MS || '120000', 10);
+let openrouterRateLimitedUntil = 0;
+
+function isOpenrouterInCooldown() {
+  return Date.now() < openrouterRateLimitedUntil;
+}
+
+function markOpenrouterRateLimited() {
+  if (isOpenrouterInCooldown()) return;
+  openrouterRateLimitedUntil = Date.now() + OPENROUTER_COOLDOWN_MS;
+  console.warn(`OpenRouter rate-limited — skipping it for ${Math.round(OPENROUTER_COOLDOWN_MS / 1000)}s`);
+}
+
+function providerCooldowns() {
+  return { nvidia: isNimInCooldown(), openrouter: isOpenrouterInCooldown() };
+}
+
+function __setProviderCooldownsForTest({ nvidiaUntil = 0, openrouterUntil = 0 } = {}) {
+  nimRateLimitedUntil = nvidiaUntil;
+  openrouterRateLimitedUntil = openrouterUntil;
+}
+
 function isRateLimitError(err) {
   return err && (err.status === 429 || String(err.message || '').includes('429'));
 }
@@ -95,6 +120,7 @@ function buildModelAttempts(primaryModel, { fast = false } = {}) {
 
   const attempts = [];
   const skipNim = isNimInCooldown();
+  const useOpenrouter = Boolean(openrouter) && !isOpenrouterInCooldown();
 
   // User-facing fast path: NIM first (Muse is the live, sub-second gloss model).
   // OpenRouter is next if the NIM key/models fail — not first, because a dead
@@ -105,11 +131,13 @@ function buildModelAttempts(primaryModel, { fast = false } = {}) {
         attempts.push({ client: nimClient, provider: 'nvidia', model });
       }
     }
-    if (openrouter) {
+    if (useOpenrouter) {
       for (const model of OPENROUTER_MODELS) {
         attempts.push({ client: openrouter, provider: 'openrouter', model });
       }
     }
+    // Both providers cooling down → return no attempts so the caller fails in
+    // microseconds and the dictionary/table path answers instead of a 429 storm.
     return attempts;
   }
 
@@ -118,7 +146,7 @@ function buildModelAttempts(primaryModel, { fast = false } = {}) {
     attempts.push({ client: nimClient, provider: 'nvidia', model: nimPrimary });
   }
 
-  if (openrouter) {
+  if (useOpenrouter) {
     for (const model of OPENROUTER_MODELS) {
       attempts.push({ client: openrouter, provider: 'openrouter', model });
     }
@@ -128,7 +156,9 @@ function buildModelAttempts(primaryModel, { fast = false } = {}) {
     for (const model of nimChain.slice(1)) {
       attempts.push({ client: nimClient, provider: 'nvidia', model });
     }
-  } else if (!openrouter) {
+  } else if (!useOpenrouter) {
+    // Background work with everything cooling down: still try the NIM chain
+    // (one call each) rather than giving up on the batch entirely.
     for (const model of nimChain.slice(1)) {
       attempts.push({ client: nimClient, provider: 'nvidia', model });
     }
@@ -150,6 +180,8 @@ async function tryChatCompletion(params, { fast = false, label = 'ChatCompletion
       lastErr = err;
       if (provider === 'nvidia' && (isRateLimitError(err) || isNimAuthError(err))) {
         markNimRateLimited();
+      } else if (provider === 'openrouter' && isRateLimitError(err)) {
+        markOpenrouterRateLimited();
       }
       console.warn(`${label} [${provider}] ${model} failed: ${err.message || err}. Status: ${err.status}`);
       if (isRetryableError(err)) {
@@ -1445,6 +1477,9 @@ module.exports = {
   normalizeGlossLemma,
   createChatCompletion,
   createFastChatCompletion,
+  buildModelAttempts,
+  providerCooldowns,
+  __setProviderCooldownsForTest,
   AVAILABLE_MODELS,
   OPENROUTER_MODELS,
   openai,

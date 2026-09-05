@@ -14,6 +14,7 @@ const {
   fetchAiCandidates,
   enrichPayloadWordMeta,
   pickWordFromLyricsHeuristic,
+  pickWordsFromText,
   filterUniquePayloads,
   filterUnusedSongCandidates,
   getCuratedCandidatesForBatch,
@@ -244,6 +245,21 @@ describe("Daily Word Service", () => {
     expect(picked.word.toLowerCase()).to.be.oneOf(["waves", "heat", "rolling", "through", "keep"]);
     expect(picked.word.toLowerCase()).to.not.equal("holdin");
     expect(picked.word.toLowerCase()).to.not.equal("harry");
+  });
+
+  it("returns several distinct preview-window candidates without touching the caller's avoid set", () => {
+    const preview = [
+      "mi corazón late fuerte",
+      "la noche brilla sobre el mar",
+      "caminamos juntos hasta el amanecer",
+    ].join("\n");
+    const avoid = new Set(["noche"]);
+    const picks = pickWordsFromText(preview, "medium", avoid, "es", { songTitle: "Corazón" }, 3);
+    expect(picks.length).to.be.greaterThan(1);
+    const words = picks.map((p) => p.word.toLowerCase());
+    expect(new Set(words).size).to.equal(words.length);
+    expect(words).to.not.include("noche");
+    expect([...avoid]).to.deep.equal(["noche"]);
   });
 
   it("prefers title/hook words that carry meaning in the song", () => {

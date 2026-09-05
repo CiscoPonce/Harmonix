@@ -21,6 +21,8 @@ const BATCH_AI_ATTEMPTS = 3;
 const REFILL_BATCH_ROUNDS = 5;
 const QUEUE_BATCH_SIZE = 5;
 const USER_DELIVER_STOP_AFTER = 1;
+/** Preview-window words to try before falling back to a song-wide pick. */
+const PREVIEW_PICK_ATTEMPTS = 3;
 
 const batchGenerationInProgress = new Set();
 const batchGenerationWaiters = new Map();
@@ -52,6 +54,19 @@ function shuffleInPlace(list) {
 function plainFromLyricsData(lyricsData) {
   if (lyricsData.plainLyrics) return lyricsData.plainLyrics;
   return validation.parseLrc(lyricsData.syncedLyrics).map((p) => p.text).join('\n');
+}
+
+/** Up to `count` distinct heuristic picks from one block of lyric text. */
+function pickWordsFromText(text, difficulty, avoidWords, langCode, options, count) {
+  const picks = [];
+  const avoid = new Set(avoidWords);
+  for (let i = 0; i < count; i += 1) {
+    const pick = pickWordFromLyricsHeuristic(text, difficulty, avoid, langCode, options);
+    if (!pick) break;
+    avoid.add(pick.word.toLowerCase());
+    picks.push(pick);
+  }
+  return picks;
 }
 
 function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new Set(), langCode = "es", options = {}) {
@@ -418,16 +433,20 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
         .map((line) => line.text)
         .join("\n");
       if (previewPlain.trim()) {
-        const previewPick = pickWordFromLyricsHeuristic(
+        // Try a few preview-window words before we accept a song-wide pick that
+        // "Hear it" cannot play from the 30s clip.
+        const previewPicks = pickWordsFromText(
           previewPlain,
           user.difficulty || "medium",
           avoidWords,
           langCode,
-          pickOpts
+          pickOpts,
+          PREVIEW_PICK_ATTEMPTS
         );
-        if (previewPick && (!firstPick || previewPick.word.toLowerCase() !== firstPick.word.toLowerCase())) {
-          candidates.unshift(previewPick); // prefer preview-window word
-        }
+        const seen = new Set(previewPicks.map((p) => p.word.toLowerCase()));
+        const rest = candidates.filter((c) => !seen.has(c.word.toLowerCase()));
+        candidates.length = 0;
+        candidates.push(...previewPicks, ...rest); // prefer preview-window words
       }
 
       for (const candidate of candidates) {
@@ -1810,22 +1829,32 @@ async function queueExtraWordsFromValidatedSong(user, {
   const provider =
     track.provider === "itunes" || deezer.isItunesTrackId?.(track.id) ? "itunes" : "deezer";
 
-  for (let i = 0; i < QUEUE_BATCH_SIZE - 1; i += 1) {
-    const picked = pickWordFromLyricsHeuristic(
-      plain,
-      user.difficulty || "medium",
-      avoid,
-      langCode,
-      pickOpts
-    );
-    if (!picked) break;
-    avoid.add(picked.word.toLowerCase());
-    const occurrence = findWordOccurrence(picked.word, lyricsData.syncedLyrics, plain, {
-      duration,
-      provider,
-    });
-    if (!occurrence) continue;
-    extras.push({ picked, occurrence });
+  // Preview-window lines first so "Hear it" can actually play the lyric from
+  // the 30s clip; top up from the rest of the song only if the clip runs dry.
+  const previewPlain = validation
+    .parseLrc(lyricsData.syncedLyrics)
+    .filter((line) => isTimestampInPreview(line.time, duration, provider))
+    .map((line) => line.text)
+    .join("\n");
+  const sources = previewPlain.trim() ? [previewPlain, plain] : [plain];
+  for (const source of sources) {
+    while (extras.length < QUEUE_BATCH_SIZE - 1) {
+      const picked = pickWordFromLyricsHeuristic(
+        source,
+        user.difficulty || "medium",
+        avoid,
+        langCode,
+        pickOpts
+      );
+      if (!picked) break;
+      avoid.add(picked.word.toLowerCase());
+      const occurrence = findWordOccurrence(picked.word, lyricsData.syncedLyrics, plain, {
+        duration,
+        provider,
+      });
+      if (!occurrence) continue;
+      extras.push({ picked, occurrence });
+    }
   }
   if (!extras.length) {
     scheduleRefill(user, fetchImpl);
@@ -2009,6 +2038,7 @@ module.exports = {
   searchDeezerTrack,
   buildPayload,
   pickWordFromLyricsHeuristic,
+  pickWordsFromText,
   tryValidateSongCandidate,
   tryValidateSuggestion,
   validateAllCandidates,

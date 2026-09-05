@@ -22,6 +22,40 @@ describe('AI Service', () => {
     expect(AVAILABLE_MODELS).to.include('minimaxai/minimax-m3');
   });
 
+  describe('provider circuit breakers', () => {
+    const { buildModelAttempts, __setProviderCooldownsForTest, providerCooldowns, openrouter } = require('./aiService');
+
+    afterEach(() => __setProviderCooldownsForTest());
+
+    it('skips OpenRouter while it is rate-limited instead of storming it', () => {
+      const future = Date.now() + 60_000;
+      __setProviderCooldownsForTest({ openrouterUntil: future });
+      expect(providerCooldowns().openrouter).to.equal(true);
+      const fast = buildModelAttempts('meta/muse-glimmer-30b', { fast: true });
+      expect(fast.some((a) => a.provider === 'openrouter')).to.equal(false);
+      expect(fast.some((a) => a.provider === 'nvidia')).to.equal(true);
+      const slow = buildModelAttempts('meta/muse-glimmer-30b', { fast: false });
+      expect(slow.some((a) => a.provider === 'openrouter')).to.equal(false);
+    });
+
+    it('fast path fails instantly when both providers are cooling down', () => {
+      const future = Date.now() + 60_000;
+      __setProviderCooldownsForTest({ nvidiaUntil: future, openrouterUntil: future });
+      expect(buildModelAttempts('meta/muse-glimmer-30b', { fast: true })).to.have.length(0);
+      // Background path still tries the NIM chain rather than giving up.
+      const slow = buildModelAttempts('meta/muse-glimmer-30b', { fast: false });
+      expect(slow.every((a) => a.provider === 'nvidia')).to.equal(true);
+      expect(slow.length).to.be.greaterThan(0);
+    });
+
+    it('lets OpenRouter back in once the cooldown expires', function () {
+      if (!openrouter) this.skip();
+      __setProviderCooldownsForTest({ nvidiaUntil: Date.now() + 60_000, openrouterUntil: Date.now() - 1 });
+      const fast = buildModelAttempts('meta/muse-glimmer-30b', { fast: true });
+      expect(fast.every((a) => a.provider === 'openrouter')).to.equal(true);
+    });
+  });
+
   it('should construct correct prompt and return vocabulary', async () => {
     const mockResponse = {
       choices: [

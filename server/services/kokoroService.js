@@ -56,11 +56,36 @@ function resolveKokoroScript() {
   return null;
 }
 
+// The production API image has no Python, so every Kokoro call used to spawn,
+// fail with ENOENT, and only then fall through to Pocket-TTS. Remember that the
+// runtime is missing and skip the spawn for a while.
+const UNAVAILABLE_RECHECK_MS = parseInt(process.env.KOKORO_UNAVAILABLE_RECHECK_MS || '600000', 10);
+let unavailableUntil = 0;
+
+function isKokoroUnavailable() {
+  if (process.env.KOKORO_DISABLED === 'true') return true;
+  return Date.now() < unavailableUntil;
+}
+
+function markKokoroUnavailable(reason) {
+  if (Date.now() < unavailableUntil) return;
+  unavailableUntil = Date.now() + UNAVAILABLE_RECHECK_MS;
+  console.warn(`[kokoroService] unavailable (${reason}); skipping for ${Math.round(UNAVAILABLE_RECHECK_MS / 1000)}s`);
+}
+
+function __resetKokoroAvailabilityForTest() {
+  unavailableUntil = 0;
+}
+
 function generateKokoroAudio(word, langCode = 'es', gender = 'female') {
   return new Promise((resolve) => {
+    if (isKokoroUnavailable()) return resolve(null);
     const pythonBin = resolvePython();
     const scriptPath = resolveKokoroScript();
-    if (!scriptPath) return resolve(null);
+    if (!scriptPath) {
+      markKokoroUnavailable('kokoro_synth.py not found');
+      return resolve(null);
+    }
 
     const kokoroLang = KOKORO_LANG_MAP[langCode] || 'es';
     const voiceMap = gender === 'male' ? KOKORO_VOICES_MALE : KOKORO_VOICES_FEMALE;
@@ -73,6 +98,9 @@ function generateKokoroAudio(word, langCode = 'es', gender = 'female') {
       (err, stdout, stderr) => {
         if (err || !stdout) {
           console.warn(`[kokoroService] Synthesis error for '${word}':`, err?.message || err, stderr ? `stderr: ${stderr}` : '');
+          if (err?.code === 'ENOENT' || /No module named|ModuleNotFoundError/.test(String(stderr || ''))) {
+            markKokoroUnavailable(err?.code === 'ENOENT' ? `${pythonBin} missing` : 'kokoro python deps missing');
+          }
           return resolve(null);
         }
         try {
@@ -92,6 +120,9 @@ function generateKokoroAudio(word, langCode = 'es', gender = 'female') {
 
 module.exports = {
   generateKokoroAudio,
+  isKokoroUnavailable,
+  markKokoroUnavailable,
+  __resetKokoroAvailabilityForTest,
   resolvePython,
   KOKORO_LANG_MAP,
   KOKORO_VOICES_FEMALE,

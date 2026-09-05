@@ -31,10 +31,21 @@ const ttsDaemon = require('./services/ttsDaemon');
 const defaultTtsLang = process.env.POCKET_TTS_DEFAULT_LANGUAGE || 'spanish_24l';
 ttsDaemon.start(defaultTtsLang);
 
+const {
+  corsOrigin,
+  securityHeaders,
+  authLimiter,
+  pronounceLimiter,
+  publicProxyLimiter,
+  validateRegistration,
+} = require('./middleware/security');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use(securityHeaders);
 
 /** Cookie options that work in WebView over ngrok HTTPS (Capacitor). */
 function authCookieOptions(req) {
@@ -50,11 +61,13 @@ function authCookieOptions(req) {
   };
 }
 
-app.use(express.json());
+app.use(express.json({ limit: '256kb' }));
 app.use(cookieParser());
+// Reflecting every Origin with credentials let any site call the API with the
+// user's cookies. Only same-origin, dev servers, and CORS_ORIGINS are allowed.
 app.use(cors({
-  origin: true,
-  credentials: true
+  origin: corsOrigin,
+  credentials: true,
 }));
 
 // Middleware to protect routes
@@ -78,16 +91,16 @@ app.use('/api/auth', passwordRoutes(authenticateToken));
 // --- Auth Endpoints ---
 
 // Register
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authLimiter, async (req, res) => {
   console.log('POST /api/auth/register - received');
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
+  const checked = validateRegistration(req.body?.email, req.body?.password);
+  if (checked.error) {
+    return res.status(400).json({ error: checked.error });
   }
+  const { email, password } = checked;
 
   try {
-    const existingUser = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    const existingUser = db.prepare('SELECT id FROM users WHERE lower(email) = ?').get(email);
     if (existingUser) {
       return res.status(409).json({ error: 'Email already registered' });
     }
@@ -107,12 +120,17 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // Login
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   console.log('POST /api/auth/login - received');
-  const { email, password } = req.body;
+  const email = String(req.body?.email || '').trim();
+  const password = String(req.body?.password || '');
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
 
   try {
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email)
+      || db.prepare('SELECT * FROM users WHERE lower(email) = ?').get(email.toLowerCase());
     if (!user) {
       console.log('POST /api/auth/login - user not found');
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -150,7 +168,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Refresh Token
-app.post('/api/auth/refresh', (req, res) => {
+app.post('/api/auth/refresh', authLimiter, (req, res) => {
   console.log('POST /api/auth/refresh - received');
   const refreshToken = req.cookies.refreshToken || req.body?.refreshToken;
   if (!refreshToken) {
@@ -205,7 +223,7 @@ app.post('/api/auth/logout', (req, res) => {
 // --- Media Proxy Endpoints ---
 
 // Deezer Search
-app.get('/api/search', async (req, res) => {
+app.get('/api/search', publicProxyLimiter, async (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Query parameter "q" is required' });
 
@@ -228,7 +246,7 @@ app.get('/api/search', async (req, res) => {
 });
 
 // Track Metadata + Offset Calculation (Deezer numeric ids or itunes_* fallback ids)
-app.get('/api/tracks/:id', async (req, res) => {
+app.get('/api/tracks/:id', publicProxyLimiter, async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -292,7 +310,7 @@ app.get('/api/tracks/:id', async (req, res) => {
 });
 
 // LRCLib Lyric Proxy
-app.get('/api/lyrics', async (req, res) => {
+app.get('/api/lyrics', publicProxyLimiter, async (req, res) => {
   const { artist_name, track_name, album_name, duration } = req.query;
 
   if (!artist_name || !track_name) {
@@ -331,7 +349,7 @@ app.use('/api/progress', authenticateToken, progressRouter);
 app.use('/api/validation', authenticateToken, validationRouter);
 // Allow public pronunciation lookup for daily words; require authentication for other daily-word routes
 app.use('/api/daily-word', (req, res, next) => {
-  if (req.path === '/pronounce') return next();
+  if (req.path === '/pronounce') return pronounceLimiter(req, res, next);
   authenticateToken(req, res, next);
 }, dailyWordRouter);
 app.use('/api/playlists', authenticateToken, playlistsRouter);
