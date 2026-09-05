@@ -11,10 +11,13 @@ const {
   consumeNextDailyWord,
   generateNextDailyWord,
   generateDailyWord,
+  fetchAiCandidates,
   pickWordFromLyricsHeuristic,
   filterUniquePayloads,
   filterUnusedSongCandidates,
   getCuratedCandidatesForBatch,
+  getFullSongCandidatePool,
+  hasUnusedSongCandidates,
   getUserDiscoveryHistory,
   purgeQueueWrongLanguage,
   VALIDATE_CONCURRENCY,
@@ -323,8 +326,32 @@ describe("Daily Word Service", () => {
     expect(result.song.id).to.equal("999");
     expect(result.lyric.snippet.toLowerCase()).to.match(/amor|noche|brillan|fuerte|siempre|juntos/);
     expect(result.audio.preview_url).to.match(/^\/api\/audio\/preview\/999/);
+    expect(wordQueue.countReady(userId)).to.be.at.least(1);
 
     restore();
+  });
+
+  it("skips AI song pick when unused catalog is empty", async () => {
+    const pool = getFullSongCandidatePool("es", "pop");
+    pool.forEach((song, i) => {
+      saveDailyWord(userId, `2026-07-${String((i % 28) + 1).padStart(2, "0")}`, {
+        date: `2026-07-${String((i % 28) + 1).padStart(2, "0")}`,
+        word: { text: `usedword${i}` },
+        song: { id: String(4000 + i), title: song.song_title, artist: song.artist },
+      });
+    });
+    expect(hasUnusedSongCandidates(userId, "es", "pop")).to.equal(false);
+    let aiCalls = 0;
+    const original = aiService.generateDailyWordSongs;
+    aiService.generateDailyWordSongs = async () => {
+      aiCalls += 1;
+      return [{ song_title: "Nope", artist: "Nope", genre: "pop" }];
+    };
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const found = await fetchAiCandidates(user);
+    aiService.generateDailyWordSongs = original;
+    expect(aiCalls).to.equal(0);
+    expect(found).to.deep.equal([]);
   });
 
   it("generateNextDailyWord skips cooldown when queue is empty", async () => {

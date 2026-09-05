@@ -185,6 +185,13 @@ function parseJsonContent(raw) {
   }
 }
 
+function messageToJson(response) {
+  const msg = response?.choices?.[0]?.message || {};
+  return parseJsonContent(msg.content)
+    || parseJsonContent(msg.reasoning_content)
+    || parseJsonContent(msg.reasoning);
+}
+
 function normalizeSingleDailyWord(content) {
   if (!content || typeof content !== 'object') return null;
   if (content.target_word && content.song_title && content.artist) return content;
@@ -570,7 +577,7 @@ const GENRE_HIT_EXAMPLES = {
     any: 'Bailando (Enrique Iglesias), Gasolina (Daddy Yankee), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives), Propuesta Indecente (Romeo Santos)',
   },
   en: {
-    pop: 'Bad Guy (Billie Eilish), Shallow (Lady Gaga), Rolling in the Deep (Adele), Heat Waves (Glass Animals), Someone You Loved (Lewis Capaldi), Hello (Adele), Stay With Me (Sam Smith)',
+    pop: 'Bad Guy (Billie Eilish), Shallow (Lady Gaga), Rolling in the Deep (Adele), Heat Waves (Glass Animals), Someone You Loved (Lewis Capaldi), Hello (Adele), Stay With Me (Sam Smith), Photograph (Ed Sheeran), Shape of You (Ed Sheeran), Blinding Lights (The Weeknd), Someone Like You (Adele), Counting Stars (OneRepublic), Royals (Lorde), Happier (Marshmello), Anti-Hero (Taylor Swift), As It Was (Harry Styles)',
     rock: 'Mr. Brightside (The Killers), Demons (Imagine Dragons), Radioactive (Imagine Dragons), Yellow (Coldplay), Believer (Imagine Dragons), Viva La Vida (Coldplay)',
     'hip-hop': 'Lose Yourself (Eminem), Not Afraid (Eminem), HUMBLE. (Kendrick Lamar), God\'s Plan (Drake), Stronger (Kanye West), In Da Club (50 Cent), Empire State of Mind (Jay-Z)',
     any: 'Bad Guy (Billie Eilish), Rolling in the Deep (Adele), Heat Waves (Glass Animals), Mr. Brightside (The Killers)',
@@ -720,16 +727,16 @@ Reply with ONLY JSON:
 }`;
 
   let lastErr = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 1; attempt++) {
     try {
       const response = await Promise.race([
         createChatCompletion({
           messages: [
-            { role: 'system', content: systemPrompt },
+            { role: 'system', content: `reasoning_strength: low. ${systemPrompt}` },
             { role: 'user', content: `List 5 famous ${languageName}-language ${genreNorm} songs for a word-of-the-day playlist. Songs must be sung in ${languageName}. Return JSON only.` },
           ],
           response_format: { type: 'json_object' },
-          max_tokens: 1200,
+          max_tokens: 600,
           temperature: 0.3,
           top_p: 0.9,
         }),
@@ -738,12 +745,11 @@ Reply with ONLY JSON:
             const err = new Error('ai_timeout');
             err.code = 'ai_timeout';
             reject(err);
-          }, 35000);
+          }, 12000);
         }),
       ]);
 
-      const raw = response.choices?.[0]?.message?.content;
-      const parsed = normalizeDailyWord(parseJsonContent(raw));
+      const parsed = normalizeDailyWord(messageToJson(response));
       if (!parsed?.length) {
         lastErr = new Error('invalid_ai_daily_word_response');
         continue;
@@ -1149,7 +1155,7 @@ Reply JSON only: { "words": [ { "word": "...", "translation": "...", "part_of_sp
         temperature: 0.1,
       }));
 
-    const raw = parseJsonContent(response.choices?.[0]?.message?.content);
+    const raw = messageToJson(response);
     const list = raw?.words || raw?.items || [];
     const byWord = new Map(list.map((w) => [String(w.word || '').toLowerCase(), w]));
 
@@ -1239,7 +1245,7 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
         temperature: 0.15,
       }));
 
-    const raw = parseJsonContent(response.choices?.[0]?.message?.content);
+    const raw = messageToJson(response);
     const list = Array.isArray(raw?.words) ? raw.words
       : Array.isArray(raw?.items) ? raw.items
         : [];

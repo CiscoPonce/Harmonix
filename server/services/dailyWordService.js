@@ -584,7 +584,10 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
 
   const poolPromise = runValidationPool(ranked, async (suggestion) => {
     const result = await tryValidateSongCandidate(
-      suggestion, user, date, avoidWords, fetchImpl, seenSongIds, { allowSongReuse: relaxSongReuse }
+      suggestion, user, date, avoidWords, fetchImpl, seenSongIds, {
+        allowSongReuse: relaxSongReuse,
+        allowOutsidePreview: relaxSongReuse,
+      }
     );
     if (result.picked) {
       const key = result.picked.word.toLowerCase();
@@ -1018,8 +1021,11 @@ function assertForceCooldown(userId) {
 
 async function fetchAiCandidates(user) {
   const langCode = normalizeLangCode(user.target_language || "es");
-  const languageName = languageNameFromCode(langCode);
   const genre = user.genre || "pop";
+  if (!hasUnusedSongCandidates(user.id, langCode, genre)) {
+    return [];
+  }
+  const languageName = languageNameFromCode(langCode);
   const difficulty = user.difficulty || "medium";
   const history = getUserDiscoveryHistory(user.id);
   const avoidSongs = [...history.songKeys];
@@ -1131,6 +1137,11 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
     });
   };
 
+  if (!hasUnusedSongCandidates(user.id, langCode, genre)) {
+    console.log(`daily word batch: unused catalog empty for ${langCode}/${genre} — reuse pool, skip AI song pick`);
+    return runOnce(true);
+  }
+
   let result = await runOnce(false);
   // Only reuse known songs when this user has exhausted unused catalog songs.
   // Otherwise "Next word" keeps returning different words from the same track.
@@ -1200,6 +1211,26 @@ async function deliverFromBatch(user, batch, fetchImpl, { fromQueue = false, pre
   } else {
     console.log(`daily word batch: delivered 1 (${matching.length}/${batch.candidateCount} validated)`);
   }
+  const delivered = deliverPayload(user.id, first, { fromQueue });
+  const firstEffect = (batch.sideEffects || []).find((effect) => effect.payload === first);
+  if (firstEffect?.track && firstEffect?.lyricsData) {
+    try {
+      const extra = await queueExtraWordsFromValidatedSong(user, {
+        firstWord: first.word?.text,
+        track: firstEffect.track,
+        lyricsData: firstEffect.lyricsData,
+        syncCheck: firstEffect.syncCheck,
+        genre: first.song?.genre || user.genre,
+        date: first.date || todayDate(),
+        fetchImpl,
+      });
+      if (extra) {
+        console.log(`daily word batch: queued ${extra} extra words from ${first.song?.title}`);
+      }
+    } catch (err) {
+      console.warn(`daily word batch extras failed:`, err.message || err);
+    }
+  }
   if (batch.finishBackground) {
     setImmediate(() => {
       batch.finishBackground().catch((err) => {
@@ -1209,7 +1240,7 @@ async function deliverFromBatch(user, batch, fetchImpl, { fromQueue = false, pre
   } else {
     scheduleRefill(user, fetchImpl);
   }
-  return deliverPayload(user.id, first, { fromQueue });
+  return delivered;
 }
 
 async function withUserBatchLock(userId, fn) {
@@ -2002,6 +2033,7 @@ module.exports = {
   getRecentDailyWords,
   computeDailyWordStreak,
   getDailyWordStats,
+  fetchAiCandidates,
   generateValidatedBatch,
   refillQueue,
   consumeNextDailyWord,
@@ -2022,6 +2054,7 @@ module.exports = {
   filterUniquePayloads,
   filterUnusedSongCandidates,
   hasUnusedSongCandidates,
+  getFullSongCandidatePool,
   getCuratedCandidatesForBatch,
   purgeQueueWrongLanguage,
   purgeQueueWrongGenre,
