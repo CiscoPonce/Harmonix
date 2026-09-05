@@ -38,26 +38,23 @@ const modelsEnv = process.env.NVIDIA_NIM_MODELS || process.env.NVIDIA_NIM_MODEL;
 const AVAILABLE_MODELS = modelsEnv
   ? modelsEnv.split(',').map(m => m.trim())
   : [
-      // Ranked 2026-07-22 free-model bench (gloss "brings"→"trae" + song JSON):
-      // llama-3.1-8b won on quality+latency; kimi-k2.6 currently 404 on NIM.
-      'meta/llama-3.1-8b-instruct',
+      // 2026-09-05 live NIM bench (gloss "brings"→"trae"): llama-3.1-8b / nano-9b /
+      // step-3.7-flash now 410. Muse ~650–830ms + follows JSON guardrails.
+      // Lightning-on-NIM is alive but ~4.3s and dumps thinking into content.
+      'meta/muse-glimmer-30b',
       'minimaxai/minimax-m3',
-      'qwen/qwen3-next-80b-a3b-instruct',
-      'meta/llama-3.3-70b-instruct',
-      'stepfun-ai/step-3.7-flash',
-      'nvidia/nvidia-nemotron-nano-9b-v2',
+      'nvidia/nemotron-3.5-lightning-30b-a3b',
     ];
 
 const OPENROUTER_MODELS = (process.env.OPENROUTER_MODELS
-  || 'nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-26b-a4b-it:free')
+  || 'nvidia/nemotron-3.5-lightning:free')
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
 
 const FAST_MODELS = [
-  'meta/llama-3.1-8b-instruct',
-  'stepfun-ai/step-3.7-flash',
-  'nvidia/nvidia-nemotron-nano-9b-v2',
+  'meta/muse-glimmer-30b',
+  'minimaxai/minimax-m3',
 ];
 
 const NIM_COOLDOWN_MS = parseInt(process.env.NIM_RATE_LIMIT_COOLDOWN_MS || '300000', 10);
@@ -84,7 +81,10 @@ function isNimAuthError(err) {
 }
 
 function isRetryableError(err) {
-  return isRateLimitError(err) || err?.status === 404 || (err?.status >= 500 && err?.status < 600);
+  return isRateLimitError(err)
+    || err?.status === 404
+    || err?.status === 410
+    || (err?.status >= 500 && err?.status < 600);
 }
 
 function buildModelAttempts(primaryModel, { fast = false } = {}) {
@@ -96,17 +96,18 @@ function buildModelAttempts(primaryModel, { fast = false } = {}) {
   const attempts = [];
   const skipNim = isNimInCooldown();
 
-  // User-facing fast path: try working OpenRouter free models first (more reliable
-  // latency on VPS), then short-timeout NIM. Full song generation keeps NIM first.
+  // User-facing fast path: NIM first (Muse is the live, sub-second gloss model).
+  // OpenRouter is next if the NIM key/models fail — not first, because a dead
+  // OpenRouter key adds ~200ms of 401s before every word.
   if (fast) {
-    if (openrouter) {
-      for (const model of OPENROUTER_MODELS) {
-        attempts.push({ client: openrouter, provider: 'openrouter', model });
-      }
-    }
     if (!skipNim) {
       for (const model of nimChain) {
         attempts.push({ client: nimClient, provider: 'nvidia', model });
+      }
+    }
+    if (openrouter) {
+      for (const model of OPENROUTER_MODELS) {
+        attempts.push({ client: openrouter, provider: 'openrouter', model });
       }
     }
     return attempts;
