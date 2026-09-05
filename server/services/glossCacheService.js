@@ -1,0 +1,115 @@
+/**
+ * Persistent word-gloss cache.
+ *
+ * Every gloss we ever accept (AI, curated table, MyMemory) is remembered per
+ * (word, from, to). When all live providers are exhausted — OpenRouter/NIM
+ * daily 429s plus the anonymous MyMemory quota — a learner still gets a
+ * meaning for any word another user already saw, instead of a blank card.
+ */
+const db = require("../db");
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS gloss_cache (
+    word TEXT NOT NULL,
+    from_lang TEXT NOT NULL,
+    to_lang TEXT NOT NULL,
+    translation TEXT NOT NULL,
+    source TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (word, from_lang, to_lang)
+  )
+`);
+
+const selectStmt = db.prepare(
+  "SELECT translation FROM gloss_cache WHERE word = ? AND from_lang = ? AND to_lang = ?"
+);
+const upsertStmt = db.prepare(`
+  INSERT INTO gloss_cache (word, from_lang, to_lang, translation, source)
+  VALUES (?, ?, ?, ?, ?)
+  ON CONFLICT(word, from_lang, to_lang) DO UPDATE SET
+    translation = excluded.translation,
+    source = excluded.source,
+    updated_at = CURRENT_TIMESTAMP
+`);
+const insertIgnoreStmt = db.prepare(`
+  INSERT OR IGNORE INTO gloss_cache (word, from_lang, to_lang, translation, source)
+  VALUES (?, ?, ?, ?, ?)
+`);
+const countStmt = db.prepare("SELECT COUNT(*) AS c FROM gloss_cache");
+
+function normKey(word) {
+  return String(word || "").trim().toLowerCase();
+}
+
+function normLang(code) {
+  return String(code || "").trim().toLowerCase();
+}
+
+function getGloss(word, fromLang, toLang) {
+  const key = normKey(word);
+  const from = normLang(fromLang);
+  const to = normLang(toLang);
+  if (!key || !from || !to || from === to) return null;
+  const row = selectStmt.get(key, from, to);
+  return row?.translation || null;
+}
+
+function rememberGloss(word, fromLang, toLang, translation, source = "unknown") {
+  const key = normKey(word);
+  const from = normLang(fromLang);
+  const to = normLang(toLang);
+  const value = String(translation || "").trim();
+  if (!key || !from || !to || from === to || !value) return false;
+  // Never store an identity "translation" — it is not a meaning.
+  if (value.toLowerCase() === key) return false;
+  upsertStmt.run(key, from, to, value, source);
+  return true;
+}
+
+function count() {
+  return countStmt.get().c;
+}
+
+/**
+ * One-off warm-up from historical daily words that already carry a good gloss
+ * (gloss_v >= 2). Idempotent — INSERT OR IGNORE — so it is safe on every boot.
+ */
+function backfillFromDailyWords({ isSuspicious = () => false } = {}) {
+  const rows = db.prepare(`
+    SELECT dw.word_json AS word_json, u.native_language AS native_language
+    FROM daily_words dw
+    JOIN users u ON u.id = dw.user_id
+  `).all();
+  let inserted = 0;
+  const tx = db.transaction(() => {
+    for (const row of rows) {
+      let payload;
+      try {
+        payload = JSON.parse(row.word_json);
+      } catch {
+        continue;
+      }
+      const word = payload?.word;
+      const text = normKey(word?.text);
+      const translation = String(word?.translation || "").trim();
+      const from = normLang(payload?.language_code);
+      const to = normLang(row.native_language);
+      if (!text || !translation || !from || !to || from === to) continue;
+      if (Number(word?.gloss_v || 0) < 2) continue;
+      if (translation.toLowerCase() === text) continue;
+      if (isSuspicious(text, translation, payload?.lyric?.snippet || null)) continue;
+      const res = insertIgnoreStmt.run(text, from, to, translation, "backfill");
+      inserted += res.changes;
+    }
+  });
+  tx();
+  return inserted;
+}
+
+module.exports = {
+  getGloss,
+  rememberGloss,
+  backfillFromDailyWords,
+  count,
+};

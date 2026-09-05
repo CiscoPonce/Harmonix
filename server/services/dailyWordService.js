@@ -10,6 +10,7 @@ const {
   normalizeDifficulty,
 } = require("../constants/difficulty");
 const wordQueue = require("./wordQueueService");
+const glossCache = require("./glossCacheService");
 const deezer = require("./deezerService");
 const lrcLib = require("./lrcLibService");
 const spotifyProfileService = require("./spotifyProfileService");
@@ -1643,13 +1644,32 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, {
 
   // Never escalate to the slow (60s NIM) path on user-facing requests — background
   // polish fills gaps after we return. Slow escalate previously caused 20–30s Next Word.
-  return glosses.map((g, i) => ({
-    ...g,
-    gloss_v: (
-      g?.translation
-      && !aiService.translationLooksSuspicious(items[i].word, g.translation, items[i].line)
-    ) ? 2 : 1,
-  }));
+  return glosses.map((g, i) => {
+    const healthy = Boolean(g?.translation)
+      && !aiService.translationLooksSuspicious(items[i].word, g.translation, items[i].line);
+    if (healthy) rememberAcceptedGloss(items[i].word, fromLang, toLang, g.translation, "ai");
+    return { ...g, gloss_v: healthy ? 2 : 1 };
+  });
+}
+
+/** Persist a gloss every provider agreed on so it survives the next 429 storm. */
+function rememberAcceptedGloss(word, fromLang, toLang, translation, source) {
+  if (!fromLang || !toLang || !translation) return;
+  try {
+    glossCache.rememberGloss(word, fromLang, toLang, translation, source);
+  } catch (err) {
+    console.warn(`gloss cache write failed: ${err.message || err}`);
+  }
+}
+
+function cachedGlossFor(text, fromLang, toLang, line) {
+  try {
+    const hit = glossCache.getGloss(text, fromLang, toLang);
+    if (hit && !aiService.translationLooksSuspicious(text, hit, line)) return hit;
+  } catch (err) {
+    console.warn(`gloss cache read failed: ${err.message || err}`);
+  }
+  return null;
 }
 
 function applyCuratedGloss(payload, user) {
@@ -1658,13 +1678,24 @@ function applyCuratedGloss(payload, user) {
   const fromLang = normalizeLangCode(user.target_language || "es");
   const toLang = normalizeLangCode(user.native_language || "en");
   const line = payload?.lyric?.snippet;
-  const tableHit = aiService.commonGlossLookup(text, fromLang, toLang, line);
-  if (!tableHit || aiService.translationLooksSuspicious(text, tableHit, line)) return payload;
   const current = String(payload.word.translation || "").trim();
-  if (current && current.toLowerCase() === tableHit.toLowerCase()) return payload;
+  const tableHit = aiService.commonGlossLookup(text, fromLang, toLang, line);
+  if (tableHit && !aiService.translationLooksSuspicious(text, tableHit, line)) {
+    rememberAcceptedGloss(text, fromLang, toLang, tableHit, "table");
+    if (current && current.toLowerCase() === tableHit.toLowerCase()) return payload;
+    return {
+      ...payload,
+      word: { ...payload.word, translation: tableHit, gloss_v: 2 },
+    };
+  }
+  // No table hit: a thin word can still be rescued synchronously from the
+  // persistent cache (glosses other users already received).
+  if (!wordMetaNeedsEnrichment(payload.word)) return payload;
+  const cached = cachedGlossFor(text, fromLang, toLang, line);
+  if (!cached) return payload;
   return {
     ...payload,
-    word: { ...payload.word, translation: tableHit, gloss_v: 2 },
+    word: { ...payload.word, translation: cached, gloss_v: 2 },
   };
 }
 
@@ -1686,6 +1717,7 @@ async function enrichPayloadWordMeta(payload, user) {
     // to every Next word even when the queue already had the payload.
     const tableHit = aiService.commonGlossLookup(text, fromLang, toLang, line);
     if (tableHit && !aiService.translationLooksSuspicious(text, tableHit, line)) {
+      rememberAcceptedGloss(text, fromLang, toLang, tableHit, "table");
       console.log(`daily word enrich gloss: ${text} in ${Date.now() - started}ms (table)`);
       return {
         ...payload,
@@ -1694,6 +1726,7 @@ async function enrichPayloadWordMeta(payload, user) {
     }
     const fb = await aiService.dictionaryGlossFallback(text, fromLang, toLang, fetch, line);
     if (fb && !aiService.translationLooksSuspicious(text, fb, line)) {
+      rememberAcceptedGloss(text, fromLang, toLang, fb, "dictionary");
       console.log(`daily word enrich gloss: ${text} in ${Date.now() - started}ms (dictionary)`);
       return {
         ...payload,
@@ -1755,6 +1788,13 @@ function scheduleBackgroundGlossPolish(user, payload) {
           },
         };
         saveDailyWord(user.id, enriched.date || todayDate(), enriched);
+        rememberAcceptedGloss(
+          text,
+          normalizeLangCode(user.target_language || "es"),
+          normalizeLangCode(user.native_language || "en"),
+          gloss.translation,
+          "ai"
+        );
         console.log(`daily word background gloss polish: ${text}`);
       } catch (err) {
         console.warn(`background gloss polish failed: ${err.message || err}`);

@@ -127,7 +127,13 @@ function inferPartOfSpeech(word?: string, lang?: string): string {
     if (w.endsWith('ção') || w.endsWith('são') || w.endsWith('dade')) return 'noun';
   }
 
-  return 'word';
+  if (lang === 'en') {
+    if (w.endsWith('ly') && w.length > 4) return 'adverb';
+    if (w.endsWith('ing') || w.endsWith('ed') || w.endsWith('en')) return 'verb';
+    if (w.endsWith('tion') || w.endsWith('sion') || w.endsWith('ness') || w.endsWith('ment')) return 'noun';
+  }
+
+  return '';
 }
 
 function formatPronunciation(raw: string) {
@@ -403,6 +409,48 @@ export function DailyWordCard({
     const timer = setInterval(fetchQueueStatus, 2000);
     return () => clearInterval(timer);
   }, [queueStatus?.refilling, queueStatus?.ready, refreshing, fetchQueueStatus]);
+
+  // Background polish / cache backfill can fill a blank gloss after the first
+  // paint. Re-fetch the same card a few times instead of leaving it empty.
+  useEffect(() => {
+    const text = data?.word?.text?.trim();
+    const meaning = data?.word?.translation?.trim();
+    if (!text || (meaning && meaning.toLowerCase() !== text.toLowerCase()) || refreshing) {
+      return;
+    }
+    let cancelled = false;
+    const delays = [1200, 3000, 6500];
+    const timers = delays.map((ms) =>
+      window.setTimeout(async () => {
+        if (cancelled) return;
+        try {
+          const res = await apiFetch("/daily-word");
+          if (!res.ok || cancelled) return;
+          const payload = (await res.json()) as DailyWordPayload;
+          if (payload?.word?.text !== text) return;
+          const next = payload.word.translation?.trim();
+          if (!next || next.toLowerCase() === text.toLowerCase()) return;
+          setData((prev) => {
+            if (!prev || prev.word?.text !== text) return prev;
+            return {
+              ...prev,
+              word: { ...prev.word, ...payload.word },
+              lyric: {
+                ...prev.lyric,
+                line_translation: payload.lyric?.line_translation ?? prev.lyric.line_translation,
+              },
+            };
+          });
+        } catch {
+          /* keep the pending placeholder */
+        }
+      }, ms)
+    );
+    return () => {
+      cancelled = true;
+      timers.forEach((id) => window.clearTimeout(id));
+    };
+  }, [data?.word?.text, data?.word?.translation, refreshing]);
 
   useEffect(() => {
     if (!refreshing && !(loading && !data)) return;
@@ -1011,12 +1059,18 @@ export function DailyWordCard({
                       <Volume2 className={`w-4 h-4 transition-colors ${isSpeaking ? "animate-pulse text-zinc-900 dark:text-white" : "text-zinc-400 dark:text-zinc-500"}`} />
                     </button>
                   )}
-                  <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-900 dark:text-white shrink-0">
-                    {data.word.part_of_speech || inferPartOfSpeech(data.word.text, user?.target_language)}
-                  </span>
-                  {showMeaning && (
+                  {(data.word.part_of_speech || inferPartOfSpeech(data.word.text, user?.target_language)) && (
+                    <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-900 dark:text-white shrink-0">
+                      {data.word.part_of_speech || inferPartOfSpeech(data.word.text, user?.target_language)}
+                    </span>
+                  )}
+                  {showMeaning ? (
                     <span className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white break-words">
                       {meaning}
+                    </span>
+                  ) : (
+                    <span className="text-sm italic text-zinc-400 dark:text-zinc-500">
+                      {t('meaning_pending')}
                     </span>
                   )}
                   {showMeaning && (

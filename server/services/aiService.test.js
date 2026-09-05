@@ -200,7 +200,7 @@ describe('AI Service', () => {
     );
     expect(junk).to.equal(null);
 
-    const lowMatch = await dictionaryGlossFallback('casa', 'es', 'en', async () => ({
+    const lowMatch = await dictionaryGlossFallback('zxqdwellingword', 'es', 'en', async () => ({
       ok: true,
       json: async () => ({
         responseData: { translatedText: 'dwelling', match: 0.2 },
@@ -208,7 +208,7 @@ describe('AI Service', () => {
     }));
     expect(lowMatch).to.equal(null);
 
-    const ok = await dictionaryGlossFallback('casa', 'es', 'en', async () => ({
+    const ok = await dictionaryGlossFallback('zxqhouseword', 'es', 'en', async () => ({
       ok: true,
       json: async () => ({
         responseData: { translatedText: 'house', match: 0.92 },
@@ -256,5 +256,89 @@ describe('AI Service', () => {
     } finally {
       openai.chat.completions.create = originalCreate;
     }
+  });
+
+  describe('MyMemory quota + gloss cache', () => {
+    const {
+      dictionaryGlossFallback,
+      parseMyMemoryResetMs,
+      isMyMemoryCoolingDown,
+      __setMyMemoryCooldownForTest,
+      rememberGloss,
+      commonGlossLookup,
+      buildMyMemoryUrl,
+    } = require('./aiService');
+
+    afterEach(() => __setMyMemoryCooldownForTest(0));
+
+    it('parses the MyMemory reset countdown', () => {
+      const ms = parseMyMemoryResetMs('NEXT AVAILABLE IN 1 HOURS 2 MINUTES 0 SECONDS');
+      expect(ms).to.be.greaterThan(60 * 60 * 1000);
+      expect(ms).to.be.lessThan(70 * 60 * 1000);
+    });
+
+    it('skips MyMemory while cooling down and uses the persistent cache', async () => {
+      rememberGloss('zxqglosscache', 'en', 'es', 'prueba', 'test');
+      __setMyMemoryCooldownForTest(Date.now() + 60_000);
+      expect(isMyMemoryCoolingDown()).to.equal(true);
+      const cached = await dictionaryGlossFallback(
+        'zxqglosscache',
+        'en',
+        'es',
+        () => { throw new Error('MyMemory must not be called while cooling down'); }
+      );
+      expect(cached).to.equal('prueba');
+
+      const miss = await dictionaryGlossFallback(
+        'zxqglossmiss',
+        'en',
+        'es',
+        () => { throw new Error('MyMemory must not be called while cooling down'); }
+      );
+      expect(miss).to.equal(null);
+    });
+
+    it('opens the circuit when MyMemory returns a quota warning', async () => {
+      const result = await dictionaryGlossFallback(
+        'zxqquotaword',
+        'en',
+        'es',
+        async () => ({
+          ok: true,
+          json: async () => ({
+            responseData: {
+              translatedText: 'MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN 1 HOURS 0 MINUTES',
+              match: 1,
+            },
+          }),
+        })
+      );
+      expect(result).to.equal(null);
+      expect(isMyMemoryCoolingDown()).to.equal(true);
+    });
+
+    it('looks up English plurals from the curated stem', () => {
+      expect(commonGlossLookup('nights', 'en', 'es')).to.equal('noches');
+    });
+
+    it('glosses blinded and other English inflections without a network call', () => {
+      expect(commonGlossLookup('blinded', 'en', 'es', 'blinded by the light')).to.equal('cegado');
+      expect(commonGlossLookup('shining', 'en', 'es')).to.equal('brillando');
+      expect(commonGlossLookup('waited', 'en', 'es')).to.equal('esperar');
+    });
+
+    it('adds de= when MYMEMORY_EMAIL is set', () => {
+      const prev = process.env.MYMEMORY_EMAIL;
+      process.env.MYMEMORY_EMAIL = 'ops@harmonix.test';
+      try {
+        expect(buildMyMemoryUrl('nights', 'en', 'es')).to.equal(
+          buildMyMemoryUrl('nights', 'en', 'es')
+        );
+        expect(buildMyMemoryUrl('nights', 'en', 'es')).to.include('de=ops%40harmonix.test');
+      } finally {
+        if (prev === undefined) delete process.env.MYMEMORY_EMAIL;
+        else process.env.MYMEMORY_EMAIL = prev;
+      }
+    });
   });
 });

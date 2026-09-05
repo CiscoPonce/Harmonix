@@ -45,6 +45,10 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * ops: healthcheck GET /api/health instead of fake logins
 * deploy: attach Coolify standbys to compose `${uuid}_default` network (not a missing UUID network)
 * deploy: copy live API env for standby (repo-root `.env` has no JWT; production refuses to boot)
+* daily-word: persist accepted glosses (`gloss_cache`) so a later 429 storm still shows a meaning
+* daily-word: pause MyMemory after its daily quota warning instead of treating the warning as a translation
+* daily-word: English plurals hit the curated table (`nights` → `noches`) instead of a blank card
+* web: Word of the Day shows “Meaning on its way…” and re-fetches until the gloss arrives
 * daily-word: lyric-line sense (late→tarde, gets hard→se pone) plus an “in this line” gloss
 * Discover: search a song and tap it to generate a Word of the Day from those lyrics
 * Discover: song search never opens karaoke; Enter uses the first result; Discover HTML is not cached

@@ -397,4 +397,18 @@ app.use('/', createProxyMiddleware({
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT} (frontend proxy → ${frontendTarget})`);
+  if (process.env.NODE_ENV !== 'test') {
+    try {
+      const glossCache = require('./services/glossCacheService');
+      const { translationLooksSuspicious } = require('./services/aiService');
+      const inserted = glossCache.backfillFromDailyWords({
+        isSuspicious: translationLooksSuspicious,
+      });
+      if (inserted > 0) {
+        console.log(`gloss cache: warmed ${inserted} historical meanings (${glossCache.count()} total)`);
+      }
+    } catch (err) {
+      console.warn(`gloss cache backfill skipped: ${err.message || err}`);
+    }
+  }
 });

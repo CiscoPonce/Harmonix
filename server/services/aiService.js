@@ -968,6 +968,10 @@ const COMMON_GLOSS_TABLE = {
     heart: "corazón",
     hope: "esperanza",
     night: "noche",
+    nights: "noches",
+    days: "días",
+    plans: "planes",
+    plan: "plan",
     light: "luz",
     alive: "vivo",
     shake: "agitar",
@@ -1067,6 +1071,62 @@ const COMMON_GLOSS_TABLE = {
     plane: "avión",
     rule: "gobernar",
     care: "importar",
+    blind: "ciego",
+    blinded: "cegado",
+    see: "ver",
+    seen: "visto",
+    feel: "sentir",
+    felt: "sentí",
+    know: "saber",
+    known: "conocido",
+    want: "querer",
+    need: "necesitar",
+    come: "venir",
+    coming: "viniendo",
+    go: "ir",
+    gone: "ido",
+    take: "tomar",
+    give: "dar",
+    make: "hacer",
+    made: "hecho",
+    break: "romper",
+    broken: "roto",
+    fall: "caer",
+    falling: "cayendo",
+    wait: "esperar",
+    waiting: "esperando",
+    call: "llamar",
+    calling: "llamando",
+    cry: "llorar",
+    crying: "llorando",
+    stay: "quedarte",
+    lost: "perdido",
+    found: "encontrado",
+    free: "libre",
+    true: "verdadero",
+    believe: "creer",
+    forget: "olvidar",
+    shine: "brillar",
+    shining: "brillando",
+    burn: "arder",
+    burning: "ardiendo",
+    hurt: "duele",
+    pain: "dolor",
+    tears: "lágrimas",
+    tear: "lágrima",
+    kiss: "beso",
+    lips: "labios",
+    voice: "voz",
+    hear: "oír",
+    listen: "escuchar",
+    sing: "cantar",
+    singing: "cantando",
+    rain: "lluvia",
+    sun: "sol",
+    moon: "luna",
+    stars: "estrellas",
+    star: "estrella",
+    sky: "cielo",
   },
   "fr|en": {
     amour: "love",
@@ -1126,8 +1186,30 @@ function lyricSenseLookup(word, fromLang, toLang, line) {
     if (lemma === "ruler") return "gobernante";
     if (lemma === "care") return "importar";
     if (lemma === "same") return "igual";
+    if (lemma === "blinded" || lemma === "blind") return lemma === "blinded" ? "cegado" : "ciego";
   }
   return null;
+}
+
+/** English inflections → stems we may already have in the curated table. */
+function englishInflectionStems(lemma) {
+  const out = [];
+  const add = (s) => {
+    if (s && s !== lemma && s.length >= 3) out.push(s);
+  };
+  if (lemma.endsWith("ing") && lemma.length > 5) {
+    add(lemma.slice(0, -3));
+    add(`${lemma.slice(0, -3)}e`);
+  }
+  if (lemma.endsWith("ied") && lemma.length > 4) add(`${lemma.slice(0, -3)}y`);
+  if (lemma.endsWith("ed") && lemma.length > 4) {
+    add(lemma.slice(0, -2));
+    add(lemma.slice(0, -1));
+  }
+  if (lemma.endsWith("ies") && lemma.length > 4) add(`${lemma.slice(0, -3)}y`);
+  else if (lemma.endsWith("es") && lemma.length > 4) add(lemma.slice(0, -2));
+  else if (lemma.endsWith("s") && !lemma.endsWith("ss") && lemma.length > 3) add(lemma.slice(0, -1));
+  return out;
 }
 
 function sanitizeLineGloss(text) {
@@ -1147,7 +1229,16 @@ function commonGlossLookup(word, fromLang, toLang, line = null) {
   if (!table) return null;
   const lemma = normalizeGlossLemma(word);
   if (!lemma) return null;
-  return table[lemma] || table[String(word || "").trim().toLowerCase()] || null;
+  const direct = table[lemma] || table[String(word || "").trim().toLowerCase()] || null;
+  if (direct) return direct;
+  // English inflections: nights→night, blinded→blind, shining→shine.
+  const from = String(fromLang || "").toLowerCase();
+  if (from === "en") {
+    for (const stem of englishInflectionStems(lemma)) {
+      if (table[stem]) return table[stem];
+    }
+  }
+  return null;
 }
 
 function stripDictLangSuffix(text) {
@@ -1157,6 +1248,86 @@ function stripDictLangSuffix(text) {
 }
 
 const MYMEMORY_MIN_MATCH = 0.75;
+// Anonymous MyMemory allows ~5k chars/day per IP; passing a contact email (`de=`)
+// lifts that to 50k. Once the quota warning appears every further call is wasted,
+// so we remember the reset time and skip the network until then.
+const MYMEMORY_QUOTA_FALLBACK_COOLDOWN_MS = 60 * 60 * 1000;
+const MYMEMORY_QUOTA_MAX_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+let mymemoryCooldownUntil = 0;
+
+function isMyMemoryQuotaMessage(text) {
+  return /MYMEMORY WARNING/i.test(String(text || ""));
+}
+
+/** Parse "NEXT AVAILABLE IN 14 HOURS 26 MINUTES 38 SECONDS" into ms (capped). */
+function parseMyMemoryResetMs(text) {
+  const s = String(text || "").toUpperCase();
+  const h = Number(/(\d+)\s+HOURS?/.exec(s)?.[1] || 0);
+  const m = Number(/(\d+)\s+MINUTES?/.exec(s)?.[1] || 0);
+  const sec = Number(/(\d+)\s+SECONDS?/.exec(s)?.[1] || 0);
+  const ms = ((h * 60 + m) * 60 + sec) * 1000;
+  if (!ms) return MYMEMORY_QUOTA_FALLBACK_COOLDOWN_MS;
+  return Math.min(ms + 60 * 1000, MYMEMORY_QUOTA_MAX_COOLDOWN_MS);
+}
+
+function markMyMemoryQuotaExhausted(message) {
+  const wait = parseMyMemoryResetMs(message);
+  mymemoryCooldownUntil = Date.now() + wait;
+  console.warn(`MyMemory quota exhausted — skipping dictionary calls for ${Math.round(wait / 60000)} min`);
+}
+
+function isMyMemoryCoolingDown() {
+  return Date.now() < mymemoryCooldownUntil;
+}
+
+function __setMyMemoryCooldownForTest(untilMs) {
+  mymemoryCooldownUntil = Number(untilMs) || 0;
+}
+
+function buildMyMemoryUrl(text, from, to) {
+  const params = new URLSearchParams({ q: text, langpair: `${from}|${to}` });
+  const email = String(process.env.MYMEMORY_EMAIL || "").trim();
+  if (email) params.set("de", email);
+  return `https://api.mymemory.translated.net/get?${params.toString()}`;
+}
+
+let glossCache = null;
+function getGlossCache() {
+  if (glossCache === null) {
+    try {
+      glossCache = require("./glossCacheService");
+    } catch (err) {
+      console.warn(`gloss cache unavailable: ${err.message}`);
+      glossCache = false;
+    }
+  }
+  return glossCache || null;
+}
+
+function rememberGloss(word, fromLang, toLang, translation, source) {
+  const cache = getGlossCache();
+  if (!cache) return false;
+  try {
+    return cache.rememberGloss(word, fromLang, toLang, translation, source);
+  } catch (err) {
+    console.warn(`gloss cache write failed: ${err.message}`);
+    return false;
+  }
+}
+
+function cachedGlossLookup(word, fromLang, toLang, line = null) {
+  const cache = getGlossCache();
+  if (!cache) return null;
+  try {
+    const hit = cache.getGloss(word, fromLang, toLang);
+    if (!hit) return null;
+    if (translationLooksSuspicious(word, hit, line)) return null;
+    return hit;
+  } catch (err) {
+    console.warn(`gloss cache read failed: ${err.message}`);
+    return null;
+  }
+}
 
 function pickDictionaryCandidate(word, line, candidates) {
   const lemma = normalizeGlossLemma(word);
@@ -1190,15 +1361,28 @@ async function dictionaryGlossFallback(word, fromLang, toLang, fetchImpl = fetch
   const common = commonGlossLookup(text, from, to, line);
   if (common) return common;
 
+  // Persistent cache: glosses any provider accepted before (any user). Zero network.
+  const cached = cachedGlossLookup(text, from, to, line);
+  if (cached) return cached;
+
+  if (isMyMemoryCoolingDown()) return null;
+
   try {
-    const url =
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}` +
-      `&langpair=${encodeURIComponent(from)}|${encodeURIComponent(to)}`;
-    const res = await fetchImpl(url, { signal: AbortSignal.timeout(4000) });
+    const res = await fetchImpl(buildMyMemoryUrl(text, from, to), { signal: AbortSignal.timeout(4000) });
+    if (res.status === 429) {
+      markMyMemoryQuotaExhausted("");
+      return null;
+    }
     if (!res.ok) return null;
     const data = await res.json();
     const candidates = [];
     const primary = String(data?.responseData?.translatedText || "").trim();
+    const details = String(data?.responseDetails || "");
+    if (isMyMemoryQuotaMessage(primary) || isMyMemoryQuotaMessage(details)) {
+      // Daily quota exhausted — stop hammering it until the stated reset.
+      markMyMemoryQuotaExhausted(isMyMemoryQuotaMessage(primary) ? primary : details);
+      return null;
+    }
     if (primary) {
       candidates.push({ text: primary, match: Number(data?.responseData?.match || 0) });
     }
@@ -1208,7 +1392,9 @@ async function dictionaryGlossFallback(word, fromLang, toLang, fetchImpl = fetch
         if (mt) candidates.push({ text: mt, match: Number(m?.match || m?.quality || 0) });
       }
     }
-    return pickDictionaryCandidate(text, line, candidates);
+    const picked = pickDictionaryCandidate(text, line, candidates);
+    if (picked && fetchImpl === fetch) rememberGloss(text, from, to, picked, "mymemory");
+    return picked;
   } catch {
     return null;
   }
@@ -1480,6 +1666,12 @@ module.exports = {
   buildModelAttempts,
   providerCooldowns,
   __setProviderCooldownsForTest,
+  isMyMemoryCoolingDown,
+  parseMyMemoryResetMs,
+  buildMyMemoryUrl,
+  cachedGlossLookup,
+  rememberGloss,
+  __setMyMemoryCooldownForTest,
   AVAILABLE_MODELS,
   OPENROUTER_MODELS,
   openai,
