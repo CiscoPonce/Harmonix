@@ -3,14 +3,77 @@ name: Deploy Harmonix (Coolify VPS)
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
+# Queue deploys instead of cancelling one that may be mid-cutover
+# (coolify-redeploy.sh swaps Traefik routing; killing it half-way strands containers).
 concurrency:
   group: deploy-harmonix-production
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
+  test-server:
+    name: Server tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm test
+        env:
+          NODE_ENV: test
+          TTS_SKIP_SPAWN: 'true'
+          KOKORO_DISABLED: 'true'
+
+  test-client:
+    name: Web tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - name: Unit tests
+        run: node --experimental-strip-types --test 'src/lib/*.test.ts'
+
+  test-mobile:
+    name: Flutter analyze + tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --fatal-infos
+      - run: flutter test
+
   deploy:
+    name: Deploy to production
+    needs: [test-server, test-client, test-mobile]
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

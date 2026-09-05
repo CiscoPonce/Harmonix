@@ -1,5 +1,5 @@
-/// Hear-it timing helpers — map lyric lines into Deezer / iTunes preview seek.
-/// Mirrors `client/src/lib/hearItTiming.ts` so Flutter and web stay in sync.
+// Hear-it timing helpers — map lyric lines into Deezer / iTunes preview seek.
+// Mirrors `client/src/lib/hearItTiming.ts` so Flutter and web stay in sync.
 
 const double _maxLineDurForWordEstSec = 5;
 

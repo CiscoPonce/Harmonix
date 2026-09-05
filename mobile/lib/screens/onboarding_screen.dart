@@ -201,7 +201,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 32),
         DropdownButtonFormField<String>(
-          value: _native,
+          initialValue: _native,
           decoration: const InputDecoration(
             labelText: 'Mother Language (Native)',
             border: OutlineInputBorder(),
@@ -213,7 +213,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 20),
         DropdownButtonFormField<String>(
-          value: _target,
+          initialValue: _target,
           decoration: const InputDecoration(
             labelText: 'Target Language (Learning)',
             border: OutlineInputBorder(),
@@ -310,7 +310,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ],
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
-          value: _voice,
+          initialValue: _voice,
           decoration: const InputDecoration(
             labelText: 'Pronunciation Voice',
             border: OutlineInputBorder(),

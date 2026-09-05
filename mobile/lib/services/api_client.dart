@@ -345,6 +345,17 @@ class ApiClient {
 
   Future<Map<String, dynamic>> nextDailyWord() => request('POST', '/daily-word/next');
 
+  Future<Map<String, dynamic>> dailyWordFromTrack({
+    required String trackId,
+    String? title,
+    String? artist,
+  }) =>
+      request('POST', '/daily-word/from-track', body: {
+        'trackId': trackId,
+        'title': ?title,
+        'artist': ?artist,
+      });
+
   Future<Map<String, dynamic>> queueStatus() => request('GET', '/daily-word/queue-status');
 
   Future<Map<String, dynamic>> recentDailyWords({int days = 7}) =>

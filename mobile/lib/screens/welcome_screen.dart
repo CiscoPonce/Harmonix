@@ -17,12 +17,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   final List<Map<String, String>> _features = [
     {
       'title': 'Learn Through Lyrics',
-      'desc': 'Sing along with real-time synchronized karaoke lyrics in multiple languages.',
+      'desc': 'Every day, a real word from a real song — with the lyric line it lives in.',
       'icon': '🎵',
     },
     {
       'title': 'AI Daily Words',
-      'desc': 'Discover and master native vocabulary extracted directly from your favorite songs.',
+      'desc': 'Hear the word in the song’s 30-second clip, then flip the card for its meaning and context.',
       'icon': '✨',
     },
     {

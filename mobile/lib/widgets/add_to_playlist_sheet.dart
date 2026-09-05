@@ -261,7 +261,7 @@ class _AddToPlaylistSheetState extends State<AddToPlaylistSheet> {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _playlists.length,
-                separatorBuilder: (_, __) => Divider(color: colors.border, height: 1),
+                separatorBuilder: (_, _) => Divider(color: colors.border, height: 1),
                 itemBuilder: (context, i) {
                   final p = _playlists[i];
                   final id = p['id']?.toString() ?? '';

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:audio_session/audio_session.dart';
 import 'package:audioplayers/audioplayers.dart' as ap;
@@ -45,6 +44,7 @@ class _LearnScreenState extends State<LearnScreen> {
   bool _speaking = false;
   bool _playingPreview = false;
   bool _searching = false;
+  String? _pickingTrackId;
   String? _error;
   String? _trackedLang;
   String? _trackedGenre;
@@ -180,7 +180,7 @@ class _LearnScreenState extends State<LearnScreen> {
     if (id == null || id.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No song to add yet')),
+        SnackBar(content: Text(context.tr('no_song_to_add'))),
       );
       return;
     }
@@ -196,6 +196,7 @@ class _LearnScreenState extends State<LearnScreen> {
   }
 
   Future<void> _speakWord(String text, {String? lang}) async {
+    final api = context.read<ApiClient>();
     try {
       await _pronouncePlayer.stop();
       await _pronouncePlayer.release();
@@ -205,7 +206,6 @@ class _LearnScreenState extends State<LearnScreen> {
 
     Object? lastError;
     try {
-      final api = context.read<ApiClient>();
       final bytes = await api.pronounceWord(text, lang: lang);
       if (!mounted) return;
 
@@ -224,9 +224,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Playing pronunciation…'),
-            duration: Duration(seconds: 1),
+          SnackBar(
+            content: Text(context.tr('playing_pronunciation')),
+            duration: const Duration(seconds: 1),
           ),
         );
       }
@@ -413,6 +413,41 @@ class _LearnScreenState extends State<LearnScreen> {
     }
   }
 
+  /// Web parity: tapping a search result makes a Word of the Day from that
+  /// song instead of bouncing the user out to Spotify.
+  Future<void> _learnFromTrack(String trackId, {String? title, String? artist}) async {
+    final api = context.read<ApiClient>();
+    setState(() {
+      _pickingTrackId = trackId;
+      _error = null;
+    });
+    try {
+      await _previewPlayer.stop();
+    } catch (_) {}
+    try {
+      final payload = await api.dailyWordFromTrack(trackId: trackId, title: title, artist: artist);
+      Map<String, dynamic>? queue;
+      try {
+        queue = await api.queueStatus();
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _word = payload;
+        _queue = queue ?? payload['queue'] as Map<String, dynamic>?;
+        _searchResults = [];
+        _searchQuery.clear();
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = context.tr('word_from_song_failed'));
+    } finally {
+      if (mounted) setState(() => _pickingTrackId = null);
+    }
+  }
+
   Future<void> _search() async {
     final q = _searchQuery.text.trim();
     if (q.isEmpty) return;
@@ -447,7 +482,7 @@ class _LearnScreenState extends State<LearnScreen> {
               FilledButton(
                 onPressed: () => _load(),
                 style: FilledButton.styleFrom(backgroundColor: HarmonixColors.brand),
-                child: const Text('Retry'),
+                child: Text(context.tr('retry')),
               ),
             ],
           ),
@@ -463,6 +498,8 @@ class _LearnScreenState extends State<LearnScreen> {
     final ipaLabel = ipa == null
         ? (word['part_of_speech']?.toString() ?? '')
         : (ipa.startsWith('/') ? ipa : '/$ipa/');
+    final lineSense =
+        (word['line_translation'] ?? lyric['line_translation'] ?? '').toString().trim();
     final colors = HarmonixColors.of(context);
 
     return RefreshIndicator(
@@ -490,11 +527,11 @@ class _LearnScreenState extends State<LearnScreen> {
             children: [
               Container(width: 28, height: 2, color: colors.accent),
               const SizedBox(width: 8),
-              Text('WORD OF THE DAY', style: Theme.of(context).textTheme.titleSmall),
+              Text(context.tr('word_of_the_day').toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
               if (ready != null) ...[
                 const Spacer(),
                 Text(
-                  '$ready ready',
+                  context.tr('n_ready', {'n': ready}),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(color: colors.accent),
                 ),
               ],
@@ -503,7 +540,9 @@ class _LearnScreenState extends State<LearnScreen> {
           if (_word?['style_relaxed'] == true) ...[
             const SizedBox(height: 8),
             Text(
-              "Couldn't find more ${(_word?['style_relaxed_from'] ?? 'that').toString().replaceAll('-', ' ')} tracks — showing a close match.",
+              context.tr('style_relaxed', {
+                'style': (_word?['style_relaxed_from'] ?? 'that').toString().replaceAll('-', ' '),
+              }),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.textMuted),
             ),
           ],
@@ -592,11 +631,20 @@ class _LearnScreenState extends State<LearnScreen> {
                     ),
                   ),
                 ),
-                if ((lyric['timestamp']?.toString() ?? '').isNotEmpty)
+                if (lineSense.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    lineSense,
+                    style: TextStyle(color: colors.textMuted, fontSize: 13, height: 1.3),
+                  ),
+                ],
+                if ((lyric['timestamp']?.toString() ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 6),
                   Text(
                     lyric['timestamp'].toString(),
                     style: TextStyle(color: colors.textMuted, fontSize: 12),
                   ),
+                ],
               ],
             ),
           ),
@@ -656,8 +704,10 @@ class _LearnScreenState extends State<LearnScreen> {
                 if (_stats != null)
                   _PracticeChip(
                     icon: Icons.local_fire_department,
-                    label:
-                        '${_stats!['streak_days'] ?? 0} day${(_stats!['streak_days'] == 1) ? '' : 's'}',
+                    label: context.trPlural(
+                      'streak_days',
+                      (_stats!['streak_days'] as num?)?.toInt() ?? 0,
+                    ),
                   ),
                 if (_stats != null)
                   _GoalChip(
@@ -669,7 +719,7 @@ class _LearnScreenState extends State<LearnScreen> {
                   ActionChip(
                     avatar: Icon(Icons.replay, size: 16, color: colors.accent),
                     label: Text(
-                      '$_dueCount ${_dueCount == 1 ? 'word' : 'words'} to review →',
+                      context.trPlural('to_review', _dueCount),
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 12,
@@ -696,7 +746,7 @@ class _LearnScreenState extends State<LearnScreen> {
               decoration: InputDecoration(
                 filled: true,
                 fillColor: Colors.white,
-                hintText: 'Search lyrics, artists, or languages…',
+                hintText: context.tr('search_hint'),
                 hintStyle: const TextStyle(color: Color(0xFF9AABA0)),
                 prefixIcon: const Icon(Icons.search, color: Color(0xFF7A8A80)),
                 suffixIcon: IconButton(
@@ -717,7 +767,14 @@ class _LearnScreenState extends State<LearnScreen> {
               onSubmitted: (_) => _search(),
             ),
           ),
-          const SizedBox(height: 12),
+          if (_searchResults.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              context.tr('search_intro'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.textMuted),
+            ),
+          ],
+          const SizedBox(height: 4),
           ..._searchResults.map((raw) {
             final item = raw as Map<String, dynamic>;
             final title = item['title']?.toString() ?? 'Track';
@@ -725,36 +782,65 @@ class _LearnScreenState extends State<LearnScreen> {
                 ? (item['artist'] as Map)['name']?.toString()
                 : item['artist']?.toString();
             final id = item['id']?.toString();
+            final busy = _pickingTrackId != null;
+            final isThis = _pickingTrackId == id;
             return ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(Icons.music_note, color: colors.accent),
               title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text(artist ?? ''),
-              trailing: id == null ? null : const Icon(Icons.open_in_new, size: 18),
-              onTap: id == null
+              subtitle: Text(
+                isThis
+                    ? context.tr('creating_word')
+                    : (artist ?? ''),
+              ),
+              trailing: id == null
                   ? null
-                  : () async {
-                      final url = spotifyOpenUrlForSong(
-                        artist: artist ?? '',
-                        title: title,
-                      );
-                      final uri = Uri.parse(url);
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      }
-                    },
+                  : isThis
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              context.tr('learn_word').toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: colors.accent,
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: context.tr('open_in_spotify'),
+                              icon: const Icon(Icons.open_in_new, size: 18),
+                              onPressed: () async {
+                                final uri = Uri.parse(
+                                  spotifyOpenUrlForSong(artist: artist ?? '', title: title),
+                                );
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+              onTap: id == null || busy
+                  ? null
+                  : () => _learnFromTrack(id, title: title, artist: artist),
             );
           }),
           if (_shelf.isNotEmpty) ...[
             const SizedBox(height: 28),
-            Text('YOUR SHELF', style: Theme.of(context).textTheme.titleSmall),
+            Text(context.tr('your_shelf').toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 12),
             SizedBox(
               height: 240,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _shelf.length.clamp(0, 14),
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (context, i) {
                   final item = _shelf[i];
                   final w = item['word'] is Map
@@ -1011,7 +1097,7 @@ class _GoalChip extends StatelessWidget {
               Icon(Icons.flag_outlined, size: 12, color: colors.textMuted),
               const SizedBox(width: 4),
               Text(
-                'TODAY',
+                context.tr('today').toUpperCase(),
                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: colors.textMuted),
               ),
               const Spacer(),

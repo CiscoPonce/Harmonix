@@ -169,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await auth.refreshUser();
       if (!mounted) return;
       setState(() {
-        _prefsMessage = successHint ?? 'Saved';
+        _prefsMessage = successHint ?? context.tr('saved');
       });
     } catch (e) {
       if (!mounted) return;
@@ -241,7 +241,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'LANGUAGES',
+                  context.tr('languages').toUpperCase(),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(color: colors.accent),
                 ),
                 const SizedBox(height: 12),
@@ -250,9 +250,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
-                        value: nativeLang,
-                        decoration: const InputDecoration(
-                          labelText: 'Home Language',
+                        initialValue: nativeLang,
+                        decoration: InputDecoration(
+                          labelText: context.tr('home_language'),
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         ),
@@ -264,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ? null
                             : (val) {
                                 if (val != null) {
-                                  _savePrefs({'native_language': val}, successHint: 'Home language saved');
+                                  _savePrefs({'native_language': val}, successHint: context.tr('home_language_saved'));
                                 }
                               },
                       ),
@@ -273,9 +273,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
-                        value: targetLang,
-                        decoration: const InputDecoration(
-                          labelText: 'Learning',
+                        initialValue: targetLang,
+                        decoration: InputDecoration(
+                          labelText: context.tr('learning'),
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         ),
@@ -289,7 +289,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 if (val != null) {
                                   _savePrefs(
                                     {'target_language': val},
-                                    successHint: 'Learning language saved — word queue refreshed',
+                                    successHint: context.tr('learning_language_saved'),
                                   );
                                 }
                               },
@@ -299,12 +299,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'MUSIC STYLE',
+                  context.tr('music_style').toUpperCase(),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(color: colors.accent),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Prefer songs in this style when picking words. Changing style refreshes your word queue.',
+                  context.tr('music_style_hint'),
                   style: TextStyle(color: colors.textMuted, fontSize: 12),
                 ),
                 const SizedBox(height: 10),
@@ -326,26 +326,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ? null
                             : (_) => _savePrefs(
                                   {'genre': s.$1},
-                                  successHint: 'Music style saved — word queue refreshed',
+                                  successHint: context.tr('music_style_saved'),
                                 ),
                       ),
                   ],
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'VOICE',
+                  context.tr('voice').toUpperCase(),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(color: colors.accent),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Pocket-TTS pronunciation voice for daily words.',
+                  context.tr('voice_hint'),
                   style: TextStyle(color: colors.textMuted, fontSize: 12),
                 ),
                 const SizedBox(height: 10),
                 SegmentedButton<String>(
                   segments: [
                     for (final v in kVoiceGenders)
-                      ButtonSegment(value: v.$1, label: Text(v.$2), icon: Icon(
+                      ButtonSegment(value: v.$1, label: Text(context.tr(v.$1)), icon: Icon(
                         v.$1 == 'female' ? Icons.record_voice_over : Icons.record_voice_over_outlined,
                       )),
                   ],
@@ -356,7 +356,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           if (next.isEmpty) return;
                           _savePrefs(
                             {'voice_gender': next.first},
-                            successHint: 'Voice saved',
+                            successHint: context.tr('voice_saved'),
                           );
                         },
                 ),
@@ -376,13 +376,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onCancelDisconnect: () => setState(() => _confirmDisconnect = false),
           ),
           const SizedBox(height: 16),
-          Text('APPEARANCE', style: Theme.of(context).textTheme.titleSmall),
+          Text(context.tr('appearance').toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 4),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text('Dark mode', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700)),
+            title: Text(context.tr('dark_mode'), style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700)),
             subtitle: Text(
-              themeCtrl.isDark ? 'Dark theme on' : 'Light theme on',
+              themeCtrl.isDark ? context.tr('dark_theme_on') : context.tr('light_theme_on'),
               style: TextStyle(color: colors.textMuted),
             ),
             secondary: Icon(
@@ -395,22 +395,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (v) => themeCtrl.setDarkMode(v),
           ),
           const SizedBox(height: 16),
-          Text('STATS', style: Theme.of(context).textTheme.titleSmall),
+          Text(context.tr('stats').toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           Row(
             children: [
-              _StatTile(label: 'Streak', value: '${_stats?['streak_days'] ?? 0}'),
+              _StatTile(label: context.tr('streak'), value: '${_stats?['streak_days'] ?? 0}'),
               const SizedBox(width: 12),
-              _StatTile(label: 'Words', value: '${_stats?['total_words'] ?? 0}'),
+              _StatTile(label: context.tr('words'), value: '${_stats?['total_words'] ?? 0}'),
               const SizedBox(width: 12),
-              _StatTile(label: 'Today', value: '${_stats?['today_words'] ?? 0}/${_stats?['daily_goal'] ?? 1}'),
+              _StatTile(label: context.tr('today'), value: '${_stats?['today_words'] ?? 0}/${_stats?['daily_goal'] ?? 1}'),
             ],
           ),
           const SizedBox(height: 24),
-          Text('ACHIEVEMENTS', style: Theme.of(context).textTheme.titleSmall),
+          Text(context.tr('achievements').toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           if (_badges.isEmpty)
-            Text('No badges yet', style: TextStyle(color: colors.textMuted)),
+            Text(context.tr('no_badges'), style: TextStyle(color: colors.textMuted)),
           ..._badges.map((raw) {
             final b = raw as Map<String, dynamic>;
             final unlocked = b['unlocked'] == 1 || b['unlocked'] == true;
@@ -432,7 +432,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               side: BorderSide(color: Colors.red.shade300),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
-            child: const Text('Log out'),
+            child: Text(context.tr('log_out')),
           ),
         ],
       ),

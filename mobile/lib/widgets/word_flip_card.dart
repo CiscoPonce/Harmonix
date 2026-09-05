@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../theme/harmonix_theme.dart';
+import '../utils/i18n.dart';
 
 /// 3D flip card matching web `.daily-word-flip-*` (perspective + rotateY).
 /// Actions (Hear it, Spotify, Add playlist) must stay **outside** this widget.
@@ -113,7 +114,7 @@ class _WordFlipCardState extends State<WordFlipCard>
         if (widget.canFlip && widget.showHint) ...[
           const SizedBox(height: 8),
           Text(
-            _flipped ? 'Tap card to flip back' : 'Tap card for song context',
+            _flipped ? context.tr('tap_card_flip_back') : context.tr('tap_card_for_context'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 11,

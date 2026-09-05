@@ -1,0 +1,13 @@
+[Unit]
+Description=Harmonix nightly SQLite backup
+Documentation=https://github.com/CiscoPonce/Harmonix/blob/main/scripts/backup-sqlite.sh
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+Environment=BACKUP_DIR=/home/ubuntu/backups/harmonix
+Environment=KEEP_DAYS=14
+ExecStart=/bin/bash /home/ubuntu/lyric/scripts/backup-sqlite.sh
