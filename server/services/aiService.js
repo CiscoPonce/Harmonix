@@ -1162,6 +1162,9 @@ const COMMON_GLOSS_TABLE = {
   },
 };
 
+const EN_ES_GLOSS = require("../constants/enEsGloss.json");
+Object.assign(COMMON_GLOSS_TABLE["en|es"], EN_ES_GLOSS);
+
 function lyricSenseLookup(word, fromLang, toLang, line) {
   const lemma = normalizeGlossLemma(word);
   const L = String(line || "").toLowerCase();
