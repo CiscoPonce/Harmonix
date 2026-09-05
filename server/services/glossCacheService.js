@@ -107,9 +107,70 @@ function backfillFromDailyWords({ isSuspicious = () => false } = {}) {
   return inserted;
 }
 
+/**
+ * Rewrite stored daily/queue payloads that have no meaning, using a sync lookup
+ * (curated table / cache). Used at boot so a reload is not stuck on a blank card.
+ */
+function fillThinStoredWords(lookup) {
+  if (typeof lookup !== "function") return { updated: 0 };
+  let updated = 0;
+  const dw = db.prepare(`
+    SELECT dw.id AS id, dw.word_json AS word_json, u.native_language AS native_language,
+           u.target_language AS target_language
+    FROM daily_words dw
+    JOIN users u ON u.id = dw.user_id
+  `).all();
+  const updDw = db.prepare("UPDATE daily_words SET word_json = ? WHERE id = ?");
+  const q = db.prepare(`
+    SELECT q.id AS id, q.word_json AS word_json, u.native_language AS native_language,
+           u.target_language AS target_language
+    FROM user_word_queue q
+    JOIN users u ON u.id = q.user_id
+    WHERE q.consumed_at IS NULL
+  `).all();
+  const updQ = db.prepare("UPDATE user_word_queue SET word_json = ? WHERE id = ?");
+  const patchForUser = (json, fromLang, toLang) => {
+    let payload;
+    try {
+      payload = JSON.parse(json);
+    } catch {
+      return null;
+    }
+    const text = payload?.word?.text;
+    const current = String(payload?.word?.translation || "").trim();
+    if (!text || current) return null;
+    const from = normLang(payload?.language_code || fromLang);
+    const to = normLang(toLang);
+    const line = payload?.lyric?.snippet || null;
+    const translation = lookup(text, from, to, line);
+    if (!translation) return null;
+    payload.word = { ...payload.word, translation, gloss_v: 2 };
+    return JSON.stringify(payload);
+  };
+  const tx = db.transaction(() => {
+    for (const row of dw) {
+      const next = patchForUser(row.word_json, row.target_language, row.native_language);
+      if (next) {
+        updDw.run(next, row.id);
+        updated += 1;
+      }
+    }
+    for (const row of q) {
+      const next = patchForUser(row.word_json, row.target_language, row.native_language);
+      if (next) {
+        updQ.run(next, row.id);
+        updated += 1;
+      }
+    }
+  });
+  tx();
+  return { updated };
+}
+
 module.exports = {
   getGloss,
   rememberGloss,
   backfillFromDailyWords,
+  fillThinStoredWords,
   count,
 };

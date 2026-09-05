@@ -407,6 +407,11 @@ app.listen(PORT, () => {
       if (inserted > 0) {
         console.log(`gloss cache: warmed ${inserted} historical meanings (${glossCache.count()} total)`);
       }
+      const { commonGlossLookup } = require("./services/aiService");
+      const filled = glossCache.fillThinStoredWords(commonGlossLookup);
+      if (filled.updated > 0) {
+        console.log(`gloss cache: filled ${filled.updated} stored words that had no meaning`);
+      }
     } catch (err) {
       console.warn(`gloss cache backfill skipped: ${err.message || err}`);
     }

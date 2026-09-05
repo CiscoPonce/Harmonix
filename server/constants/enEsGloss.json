@@ -364,5 +364,16 @@
   "gold": "oro",
   "silver": "plata",
   "color": "color",
-  "colour": "color"
+  "colour": "color",
+  "pitch": "tono",
+  "fever": "fiebre",
+  "crystal": "cristal",
+  "finally": "finalmente",
+  "become": "volverse",
+  "darling": "cariño",
+  "clear": "claro",
+  "lights": "luces",
+  "light": "luz",
+  "sleep": "dormir",
+  "asleep": "dormido"
 }
