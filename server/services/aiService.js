@@ -1163,7 +1163,9 @@ const COMMON_GLOSS_TABLE = {
 };
 
 const EN_ES_GLOSS = require("../constants/enEsGloss.json");
-Object.assign(COMMON_GLOSS_TABLE["en|es"], EN_ES_GLOSS);
+const EN_ES_DICT = require("../constants/enEsDict.json");
+// Offline 20k-word map first, then lyric-curated overrides (until→hasta, etc.).
+Object.assign(COMMON_GLOSS_TABLE["en|es"], EN_ES_DICT, EN_ES_GLOSS);
 
 function lyricSenseLookup(word, fromLang, toLang, line) {
   const lemma = normalizeGlossLemma(word);

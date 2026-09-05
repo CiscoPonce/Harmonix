@@ -326,6 +326,8 @@ describe('AI Service', () => {
       expect(commonGlossLookup('shining', 'en', 'es')).to.equal('brillando');
       expect(commonGlossLookup('waited', 'en', 'es')).to.equal('esperar');
       expect(commonGlossLookup('until', 'en', 'es')).to.equal('hasta');
+      expect(commonGlossLookup('crystal', 'en', 'es')).to.equal('cristal');
+      expect(commonGlossLookup('become', 'en', 'es')).to.be.ok;
     });
 
     it('adds de= when MYMEMORY_EMAIL is set', () => {

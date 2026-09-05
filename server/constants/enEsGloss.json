@@ -375,5 +375,6 @@
   "lights": "luces",
   "light": "luz",
   "sleep": "dormir",
-  "asleep": "dormido"
+  "asleep": "dormido",
+  "heartbeat": "latido"
 }
