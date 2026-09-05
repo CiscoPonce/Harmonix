@@ -127,4 +127,31 @@ describe('deezerService', () => {
     expect(track.id).to.equal('itunes_99');
     expect(track.preview).to.include('x.m4a');
   });
+
+  it('searchCatalog falls back to iTunes when Deezer is blocked', async () => {
+    const mockFetch = async (url) => {
+      if (String(url).includes('api.deezer.com')) {
+        return { ok: false, status: 403, json: async () => ({}) };
+      }
+      expect(url).to.include('itunes.apple.com/search');
+      return {
+        ok: true,
+        json: async () => ({
+          results: [{
+            trackId: 1441164614,
+            trackName: 'Hey Jude',
+            artistName: 'The Beatles',
+            previewUrl: 'https://audio-ssl.itunes.apple.com/hey.m4a',
+            artworkUrl100: 'https://is1-ssl.mzstatic.com/100x100bb.jpg',
+            trackTimeMillis: 431000,
+          }],
+        }),
+      };
+    };
+    const tracks = await deezer.searchCatalog('ey jude', mockFetch);
+    expect(tracks).to.have.length(1);
+    expect(tracks[0].title).to.equal('Hey Jude');
+    expect(tracks[0].id).to.equal('itunes_1441164614');
+    expect(tracks[0].artist.name).to.equal('The Beatles');
+  });
 });

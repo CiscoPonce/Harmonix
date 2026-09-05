@@ -163,6 +163,23 @@ async function searchTracks(query, fetchImpl = fetch, limit = 15) {
   return data.data;
 }
 
+async function searchCatalog(query, fetchImpl = fetch, limit = 15) {
+  const q = String(query || "").trim();
+  if (!q) return [];
+  try {
+    const tracks = await searchTracks(q, fetchImpl, limit);
+    if (Array.isArray(tracks) && tracks.length) return tracks;
+  } catch (err) {
+    console.warn(`deezer catalog search failed (${err.message}) — iTunes fallback`);
+  }
+  try {
+    return await searchItunesTracks(q, fetchImpl, limit);
+  } catch (err) {
+    console.warn(`itunes catalog search failed (${err.message})`);
+    return [];
+  }
+}
+
 async function searchItunesTracks(query, fetchImpl = fetch, limit = 15) {
   const url =
     `${ITUNES_SEARCH_URL}?term=${encodeURIComponent(query)}`
@@ -364,6 +381,8 @@ module.exports = {
   buildSearchQueries,
   searchTrack,
   searchTracks,
+  searchCatalog,
+  searchItunesTracks,
   searchItunesTrack,
   fetchTrack,
   fetchItunesTrack,

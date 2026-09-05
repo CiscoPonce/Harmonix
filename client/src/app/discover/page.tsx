@@ -47,7 +47,7 @@ export default function DiscoverPage() {
     artist?: string;
     nonce: number;
   } | null>(null);
-  const [pickingTrackId, setPickingTrackId] = useState<number | null>(null);
+  const [pickingTrackId, setPickingTrackId] = useState<number | string | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
@@ -212,6 +212,8 @@ export default function DiscoverPage() {
         if (res.ok) {
           const data = await res.json();
           setResults(data.data || data.results || []);
+        } else {
+          setResults([]);
         }
       } catch {
         setResults([]);
@@ -231,7 +233,7 @@ export default function DiscoverPage() {
   }
 
   const pickTrack = useCallback((track: {
-    id: number;
+    id: number | string;
     title: string;
     artist?: { name?: string };
   }) => {

@@ -224,24 +224,16 @@ app.post('/api/auth/logout', (req, res) => {
 
 // Deezer Search
 app.get('/api/search', publicProxyLimiter, async (req, res) => {
-  const { q } = req.query;
+  const q = String(req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Query parameter "q" is required' });
 
   try {
-    const response = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}`, {
-      headers: {
-        'User-Agent': process.env.DEEZER_USER_AGENT || 'Mozilla/5.0 (compatible; Harmonix/1.7; +https://harmonix.app)',
-        Accept: 'application/json',
-      },
-    });
-    if (!response.ok) {
-      return res.status(502).json({ error: `Deezer search failed (${response.status})` });
-    }
-    const data = await response.json();
-    res.json(data);
+    // Deezer 403s many VPS IPs; iTunes Search is the same fallback daily-word uses.
+    const data = await deezer.searchCatalog(q);
+    res.json({ data });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to fetch from Deezer' });
+    res.status(502).json({ error: 'Failed to search catalog' });
   }
 });
 

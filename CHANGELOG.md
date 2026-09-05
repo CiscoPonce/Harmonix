@@ -49,6 +49,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * daily-word: pause MyMemory after its daily quota warning instead of treating the warning as a translation
 * daily-word: English plurals hit the curated table (`nights` → `noches`) instead of a blank card
 * web: Word of the Day shows “Meaning on its way…” and re-fetches until the gloss arrives
+* search: Discover song search falls back to iTunes when Deezer 403s the VPS (same path as Word of the Day)
 * daily-word: lyric-line sense (late→tarde, gets hard→se pone) plus an “in this line” gloss
 * Discover: search a song and tap it to generate a Word of the Day from those lyrics
 * Discover: song search never opens karaoke; Enter uses the first result; Discover HTML is not cached
