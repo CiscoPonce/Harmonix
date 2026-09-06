@@ -1,6 +1,6 @@
 {
   "name": "harmonix-server",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Backend for Harmonix",
   "main": "index.js",
   "scripts": {
