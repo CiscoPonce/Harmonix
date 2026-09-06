@@ -546,6 +546,13 @@ class _LearnScreenState extends State<LearnScreen> {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.textMuted),
             ),
           ],
+          if (_word?['same_song_fallback'] == true || _word?['song_repeated'] == true) ...[
+            const SizedBox(height: 8),
+            Text(
+              context.tr('same_song_fallback'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.textMuted),
+            ),
+          ],
           const SizedBox(height: 20),
           WordFlipCard(
             height: 300,

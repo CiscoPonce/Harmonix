@@ -187,6 +187,17 @@ describe('AI Service', () => {
     expect(commonGlossLookup('arms', 'en', 'es', 'in my arms')).to.equal('brazos');
     expect(translationLooksSuspicious('hand', 'cacho')).to.equal(true);
     expect(translationLooksSuspicious('hand', 'mano')).to.equal(false);
+    expect(translationLooksSuspicious('wondering', 'maravilla')).to.equal(true);
+    expect(translationLooksSuspicious('wondering', 'preguntándose')).to.equal(false);
+    const { commonGlossLookupDetailed, isTrustedGlossSource } = require('./aiService');
+    expect(commonGlossLookup('wondering', 'en', 'es', 'I was wondering if after all these years')).to.equal('preguntándose');
+    expect(commonGlossLookupDetailed('wondering', 'en', 'es').source).to.equal('sense');
+    expect(isTrustedGlossSource('sense')).to.equal(true);
+    expect(isTrustedGlossSource('stem')).to.equal(false);
+    expect(isTrustedGlossSource('dict')).to.equal(false);
+    expect(commonGlossLookupDetailed('waited', 'en', 'es').source).to.equal('stem');
+    expect(commonGlossLookupDetailed('loved', 'en', 'es').translation).to.equal('amor');
+    expect(isTrustedGlossSource(commonGlossLookupDetailed('loved', 'en', 'es').source)).to.equal(false);
     expect(translationLooksSuspicious('skin', 'máscara')).to.equal(true);
     expect(translationLooksSuspicious('arms', 'armamento')).to.equal(true);
   });

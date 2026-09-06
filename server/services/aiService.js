@@ -702,12 +702,25 @@ async function createFastChatCompletion(params, timeoutMs = 12000) {
   ]);
 }
 
-async function generateDailyWordSongs({ languageName, languageCode, genre, difficulty, avoidSongs = [], spotifyTopArtists = [] }) {
+async function generateDailyWordSongs({
+  languageName,
+  languageCode,
+  genre,
+  difficulty,
+  avoidSongs = [],
+  avoidArtists = [],
+  spotifyTopArtists = [],
+}) {
   const langCode = normalizeLanguageCode(languageCode);
   const genreNorm = normalizeGenre(genre);
   const hits = genreExamplesForLanguage(langCode, genreNorm);
   const avoidList = avoidSongs.length
-    ? `NEVER pick these already-used songs: ${avoidSongs.map((k) => k.replace("|", " - ")).join("; ")}.`
+    ? `NEVER pick these already-used songs: ${avoidSongs.slice(-60).map((k) => k.replace("|", " - ")).join("; ")}.`
+    : "";
+  // Discovery: a new song should ideally also mean a new voice. Soft rule so a
+  // thin genre can still fall back to a known artist's other hits.
+  const artistVariety = Array.isArray(avoidArtists) && avoidArtists.length
+    ? ` The learner recently heard ${avoidArtists.slice(0, 20).join(", ")} — prefer OTHER artists so they discover new voices; only reuse one of these if the genre has no other famous ${languageName} songs.`
     : "";
 
   const spotifyArtistsGuard = Array.isArray(spotifyTopArtists) && spotifyTopArtists.length > 0
@@ -743,8 +756,8 @@ STRICT RULES:
 5. Main artist only — no "feat." in the artist field.
 6. NEVER invent songs. NEVER use a vocabulary word as the song title.
 7. song_title must NOT be a single rare word — use the real commercial track name.
-8. Each song MUST be different from every other song you pick.
-9. ${avoidList}
+8. Each song MUST be different from every other song you pick — and prefer 5 different artists.
+9. ${avoidList}${artistVariety}
 10. Prefer songs like: ${hits || '(famous catalog hits)'}${languageConfusionGuard}${genreGuard}${spotifyArtistsGuard}
 
 Reply with ONLY JSON:
@@ -916,6 +929,7 @@ function translationLooksSuspicious(word, translation, line = null) {
   if (w === "ear" && /^(espiga|mazorca)$/.test(t)) return true;
   if (w === "chest" && /^(c[oó]moda|ba[uú]l|arc[oó]n)$/.test(t)) return true;
   if (w === "neck" && /^(cogote|pescuezo)$/.test(t)) return true;
+  if ((w === "wondering" || w === "wondered") && /^maravillas?$/.test(t)) return true;
 
   if (line) {
     const lineTokens = String(line)
@@ -1176,8 +1190,23 @@ const COMMON_GLOSS_TABLE = {
 
 const EN_ES_GLOSS = require("../constants/enEsGloss.json");
 const EN_ES_DICT = require("../constants/enEsDict.json");
+// Keys that only the bulk offline dictionary knows. That map is a flat
+// word→string with no part of speech ("wonder"→"maravilla" is the noun), so a
+// hit from it is provisional evidence, not a verified lyric sense.
+const EN_ES_DICT_ONLY_KEYS = new Set(
+  Object.keys(EN_ES_DICT).filter(
+    (k) => !(k in COMMON_GLOSS_TABLE["en|es"]) && !(k in EN_ES_GLOSS)
+  )
+);
 // Offline 20k-word map first, then lyric-curated overrides (until→hasta, etc.).
 Object.assign(COMMON_GLOSS_TABLE["en|es"], EN_ES_DICT, EN_ES_GLOSS);
+
+/** Sources we trust enough to ship without an AI check. */
+const TRUSTED_GLOSS_SOURCES = new Set(["sense", "curated"]);
+
+function isTrustedGlossSource(source) {
+  return TRUSTED_GLOSS_SOURCES.has(String(source || ""));
+}
 
 function lyricSenseLookup(word, fromLang, toLang, line) {
   const lemma = normalizeGlossLemma(word);
@@ -1211,6 +1240,14 @@ function lyricSenseLookup(word, fromLang, toLang, line) {
     if (lemma === "ear") return "oreja";
     if (lemma === "neck") return "cuello";
     if (lemma === "chest") return "pecho";
+    if (lemma === "wondering") return "preguntándose";
+    if (lemma === "wondered") return "se preguntó";
+    // "I wonder if…" is the verb; "a wonder" / "wonderwall" is the noun.
+    if (lemma === "wonder") {
+      return /\b(i|you|we|they|still|always|just|ever)\s+wonder\b|\bwonder\s+(if|why|how|what|where|who)\b/.test(L)
+        ? "preguntarse"
+        : "maravilla";
+    }
   }
   return null;
 }
@@ -1245,24 +1282,41 @@ function sanitizeLineGloss(text) {
   return raw;
 }
 
-function commonGlossLookup(word, fromLang, toLang, line = null) {
+/**
+ * Table gloss with provenance.
+ *   sense   — lyric-sense override keyed on the line (trusted)
+ *   curated — hand-written table / enEsGloss.json entry (trusted)
+ *   dict    — bulk offline dictionary, no part of speech (provisional)
+ *   stem    — reached by stripping an English inflection (provisional; a
+ *             participle can land on a noun homograph: wondering→wonder→maravilla)
+ * Returns null when nothing matches.
+ */
+function commonGlossLookupDetailed(word, fromLang, toLang, line = null) {
   const keyed = lyricSenseLookup(word, fromLang, toLang, line);
-  if (keyed) return keyed;
-  const key = `${String(fromLang || "").toLowerCase()}|${String(toLang || "").toLowerCase()}`;
+  if (keyed) return { translation: keyed, source: "sense" };
+  const from = String(fromLang || "").toLowerCase();
+  const key = `${from}|${String(toLang || "").toLowerCase()}`;
   const table = COMMON_GLOSS_TABLE[key];
   if (!table) return null;
   const lemma = normalizeGlossLemma(word);
   if (!lemma) return null;
-  const direct = table[lemma] || table[String(word || "").trim().toLowerCase()] || null;
-  if (direct) return direct;
+  const rawKey = String(word || "").trim().toLowerCase();
+  const directKey = table[lemma] ? lemma : (table[rawKey] ? rawKey : null);
+  if (directKey) {
+    const source = key === "en|es" && EN_ES_DICT_ONLY_KEYS.has(directKey) ? "dict" : "curated";
+    return { translation: table[directKey], source };
+  }
   // English inflections: nights→night, blinded→blind, shining→shine.
-  const from = String(fromLang || "").toLowerCase();
   if (from === "en") {
     for (const stem of englishInflectionStems(lemma)) {
-      if (table[stem]) return table[stem];
+      if (table[stem]) return { translation: table[stem], source: "stem" };
     }
   }
   return null;
+}
+
+function commonGlossLookup(word, fromLang, toLang, line = null) {
+  return commonGlossLookupDetailed(word, fromLang, toLang, line)?.translation || null;
 }
 
 function stripDictLangSuffix(text) {
@@ -1683,6 +1737,8 @@ module.exports = {
   translationLooksSuspicious,
   dictionaryGlossFallback,
   commonGlossLookup,
+  commonGlossLookupDetailed,
+  isTrustedGlossSource,
   lyricSenseLookup,
   normalizeGlossLemma,
   createChatCompletion,

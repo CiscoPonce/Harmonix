@@ -6,6 +6,11 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## [Unreleased]
 
+### Bug Fixes
+
+* daily word: one song per card — extras from the same track are last-resort only, and Next prefers a new song when the queue has one
+* gloss: stem/dictionary hits stay provisional (`gloss_v` 1) so AI polish can replace noun/verb mix-ups (`wondering` → preguntándose, not maravilla)
+
 ### Features
 
 * Flutter: tap a search result to learn a word from that song (`POST /api/daily-word/from-track`, web parity); Spotify stays as a trailing icon

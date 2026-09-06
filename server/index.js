@@ -398,8 +398,14 @@ app.listen(PORT, () => {
       if (inserted > 0) {
         console.log(`gloss cache: warmed ${inserted} historical meanings (${glossCache.count()} total)`);
       }
-      const { commonGlossLookup } = require("./services/aiService");
-      const filled = glossCache.fillThinStoredWords(commonGlossLookup);
+      const { commonGlossLookupDetailed, isTrustedGlossSource } = require("./services/aiService");
+      // Bulk-dictionary / stem hits fill the blank but stay provisional (gloss_v 1)
+      // so background polish re-checks them with the lyric line.
+      const filled = glossCache.fillThinStoredWords((text, from, to, line) => {
+        const hit = commonGlossLookupDetailed(text, from, to, line);
+        if (!hit?.translation) return null;
+        return { translation: hit.translation, trusted: isTrustedGlossSource(hit.source) };
+      });
       if (filled.updated > 0) {
         console.log(`gloss cache: filled ${filled.updated} stored words that had no meaning`);
       }

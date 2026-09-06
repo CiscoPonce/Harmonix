@@ -802,6 +802,30 @@ function getUserDiscoveryHistory(userId) {
   return { words, songIds, songKeys };
 }
 
+/** Artists of the learner's most recent words, newest first (for discovery prompts). */
+function getRecentArtists(userId, limit = 20) {
+  const seen = new Set();
+  const out = [];
+  const rows = db.prepare(
+    `SELECT word_json FROM daily_words WHERE user_id = ? ORDER BY generated_at DESC, id DESC LIMIT 60`
+  ).all(userId);
+  for (const row of rows) {
+    let artist = null;
+    try {
+      artist = JSON.parse(row.word_json)?.song?.artist;
+    } catch {
+      continue;
+    }
+    const name = String(artist || "").trim();
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 function filterUnusedSongCandidates(userId, candidates) {
   const history = getUserDiscoveryHistory(userId);
   return (candidates || []).filter((candidate) => {
@@ -1086,13 +1110,11 @@ function assertForceCooldown(userId) {
 async function fetchAiCandidates(user) {
   const langCode = normalizeLangCode(user.target_language || "es");
   const genre = user.genre || "pop";
-  if (!hasUnusedSongCandidates(user.id, langCode, genre)) {
-    return [];
-  }
   const languageName = languageNameFromCode(langCode);
   const difficulty = user.difficulty || "medium";
   const history = getUserDiscoveryHistory(user.id);
   const avoidSongs = [...history.songKeys];
+  const avoidArtists = getRecentArtists(user.id);
 
   const profile = spotifyProfileService.getUserMusicProfile(user.id);
   const spotifyTopArtists = profile?.top_artists || [];
@@ -1104,6 +1126,7 @@ async function fetchAiCandidates(user) {
       genre,
       difficulty,
       avoidSongs,
+      avoidArtists,
       spotifyTopArtists,
     });
     const list = Array.isArray(aiResult) ? aiResult : [aiResult];
@@ -1202,29 +1225,25 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
     });
   };
 
-  if (!hasUnusedSongCandidates(user.id, langCode, genre)) {
-    console.log(`daily word batch: unused catalog empty for ${langCode}/${genre} — reuse pool, skip AI song pick`);
-    return runOnce(true);
+  // Strict pass: unused songs only. When the curated catalog is exhausted the
+  // AI is still asked for *new* songs (with the full avoid list) — a repeated
+  // track is never the default answer.
+  const result = await runOnce(false);
+  if (result.valid.length) return result;
+
+  if (options.allowSongReuse === true) {
+    // Caller (user-facing ladder) has already tried on-style and widened
+    // strict passes; a known song with a new word beats a 503.
+    console.log(
+      `daily word batch: no new songs for ${langCode}/${genre} (${result.lastError}) — allowing new words from known songs`
+    );
+    const reused = await runOnce(true);
+    return { ...reused, songReused: reused.valid.length > 0 };
   }
 
-  let result = await runOnce(false);
-  // Only reuse known songs when this user has exhausted unused catalog songs.
-  // Otherwise "Next word" keeps returning different words from the same track.
-  // Also relax when unused *keys* remain but every resolve hits a used Deezer id
-  // (`song_already_used`) — otherwise cold Next/New 503s forever on thin pools.
-  if (!result.valid.length && !hasUnusedSongCandidates(user.id, langCode, genre)) {
-    console.log(`daily word batch: unused catalog exhausted for ${langCode}/${genre} — allowing song reuse`);
-    result = await runOnce(true);
-  } else if (!result.valid.length && result.lastError === "song_already_used") {
-    console.log(
-      `daily word batch: unused pass yielded only song_already_used for ${langCode}/${genre} — allowing song reuse for new words`
-    );
-    result = await runOnce(true);
-  } else if (!result.valid.length) {
-    console.warn(
-      `daily word batch: no valid unused songs this round for ${langCode}/${genre} (catalog still has unused — not reusing songs)`
-    );
-  }
+  console.warn(
+    `daily word batch: no valid new songs this round for ${langCode}/${genre} (${result.lastError}) — not reusing songs`
+  );
   return result;
 }
 
@@ -1277,30 +1296,9 @@ async function deliverFromBatch(user, batch, fetchImpl, { fromQueue = false, pre
     console.log(`daily word batch: delivered 1 (${matching.length}/${batch.candidateCount} validated)`);
   }
   const delivered = deliverPayload(user.id, first, { fromQueue });
-  const firstEffect = (batch.sideEffects || []).find((effect) => effect.payload === first);
-  if (firstEffect?.track && firstEffect?.lyricsData) {
-    // Same-song extras must not block the first card. Table glosses fill the
-    // queue in the background so Next word is actually instant.
-    const extraPromise = queueExtraWordsFromValidatedSong(user, {
-      firstWord: first.word?.text,
-      track: firstEffect.track,
-      lyricsData: firstEffect.lyricsData,
-      syncCheck: firstEffect.syncCheck,
-      genre: first.song?.genre || user.genre,
-      date: first.date || todayDate(),
-      fetchImpl,
-    }).then((extra) => {
-      if (extra) {
-        console.log(`daily word batch: queued ${extra} extra words from ${first.song?.title}`);
-      }
-      return extra;
-    }).catch((err) => {
-      console.warn(`daily word batch extras failed:`, err.message || err);
-    });
-    if (process.env.NODE_ENV === "test") {
-      await extraPromise;
-    }
-  }
+  // One song, one word: the queue is stocked with *other* validated songs by
+  // finishBackground / refill. Same-song extras are only a last-resort fallback
+  // (queueSameSongFallback) when the whole pool is exhausted.
   if (batch.finishBackground) {
     setImmediate(() => {
       batch.finishBackground().catch((err) => {
@@ -1403,10 +1401,50 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
       lastError = wideBatch.lastError || lastError;
     }
 
+    // Every *new* song failed (on-style and widened). Before giving up, a new
+    // word from a song the learner already met — flagged so the card can say so.
+    if (Date.now() < deadline) {
+      if (preferenceEpoch !== currentPreferenceEpoch(user.id)) {
+        const err = new Error("daily_word_stale_preferences");
+        err.code = "stale_preferences";
+        throw err;
+      }
+      console.log(`daily word batch: no new songs for ${requestedGenre} — allowing a known song with a new word`);
+      const reuseBatch = await generateValidatedBatch(user, fetchImpl, {
+        stopAfter: USER_DELIVER_STOP_AFTER,
+        allowSongReuse: true,
+      });
+      if (reuseBatch.valid.length) {
+        return deliverFromBatch(user, markSongRepeated(reuseBatch), fetchImpl, { preferenceEpoch });
+      }
+      lastError = reuseBatch.lastError || lastError;
+    }
+
+    // Absolute last resort: more words from the learner's most recent song.
+    if (Date.now() < deadline) {
+      const queued = await queueSameSongFallback(user, fetchImpl);
+      if (queued > 0) {
+        const instant = await consumeNextDailyWord(user, fetchImpl);
+        if (instant) {
+          console.log(`daily word batch: served same-song fallback "${instant.word?.text}"`);
+          return instant;
+        }
+      }
+    }
+
     const err = new Error("daily_word_generation_failed");
     err.code = lastError;
     throw err;
   });
+}
+
+function markSongRepeated(batch) {
+  const stamp = (payload) => (payload ? { ...payload, song_repeated: true } : payload);
+  return {
+    ...batch,
+    valid: (batch.valid || []).map(stamp),
+    sideEffects: (batch.sideEffects || []).map((effect) => ({ ...effect, payload: stamp(effect.payload) })),
+  };
 }
 
 async function refillQueue(user, fetchImpl = fetch) {
@@ -1496,15 +1534,35 @@ function purgeQueueWrongGenre(userId, userGenre) {
   }
 }
 
+/**
+ * FIFO, except never serve the same song twice in a row when another song is
+ * ready. Same-song fallback items (see queueSameSongFallback) therefore wait
+ * behind any fresh song the background refill managed to add meanwhile.
+ */
+function pickNextQueueItem(userId, lastSongId) {
+  const items = wordQueue.listReadyItems(userId);
+  if (!items.length) return null;
+  if (!lastSongId) return items[0];
+  const differentSong = items.find((item) => {
+    const id = item.payload?.song?.id;
+    return id == null || String(id) !== lastSongId;
+  });
+  return differentSong || items[0];
+}
+
 async function consumeNextDailyWord(user, fetchImpl = fetch) {
   const langCode = normalizeLangCode(user.target_language || "es");
   const userGenre = user.genre || "pop";
   purgeQueueWrongLanguage(user.id, langCode);
   purgeQueueWrongGenre(user.id, userGenre);
   const maxSkips = wordQueue.QUEUE_MAX + 5;
+  const lastSongId = (() => {
+    const last = getLastDeliveredPayload(user.id);
+    return last?.song?.id != null ? String(last.song.id) : null;
+  })();
 
   for (let i = 0; i < maxSkips; i++) {
-    const item = wordQueue.peekNext(user.id);
+    const item = pickNextQueueItem(user.id, lastSongId);
     if (!item) return null;
 
     if (!payloadMatchesUserLanguage(item.payload, langCode)) {
@@ -1699,10 +1757,22 @@ function rememberAcceptedGloss(word, fromLang, toLang, translation, source) {
   }
 }
 
+/**
+ * Cache sources whose glosses may ship without another AI check. Legacy
+ * "table" / "backfill" rows predate provenance and may hold stem-derived
+ * noun/verb mix-ups, so they are served but re-polished.
+ */
+const TRUSTED_CACHE_SOURCES = new Set(["ai", "curated", "dictionary"]);
+
 function cachedGlossFor(text, fromLang, toLang, line) {
   try {
-    const hit = glossCache.getGloss(text, fromLang, toLang);
-    if (hit && !aiService.translationLooksSuspicious(text, hit, line)) return hit;
+    const hit = glossCache.getGlossWithSource(text, fromLang, toLang);
+    if (hit?.translation && !aiService.translationLooksSuspicious(text, hit.translation, line)) {
+      return {
+        translation: hit.translation,
+        trusted: TRUSTED_CACHE_SOURCES.has(String(hit.source || "")),
+      };
+    }
   } catch (err) {
     console.warn(`gloss cache read failed: ${err.message || err}`);
   }
@@ -1716,14 +1786,31 @@ function applyCuratedGloss(payload, user) {
   const toLang = normalizeLangCode(user.native_language || "en");
   const line = payload?.lyric?.snippet;
   const current = String(payload.word.translation || "").trim();
-  const tableHit = aiService.commonGlossLookup(text, fromLang, toLang, line);
+  const hit = aiService.commonGlossLookupDetailed(text, fromLang, toLang, line);
+  const tableHit = hit?.translation || null;
   if (tableHit && !aiService.translationLooksSuspicious(text, tableHit, line)) {
-    rememberAcceptedGloss(text, fromLang, toLang, tableHit, "table");
-    if (current && current.toLowerCase() === tableHit.toLowerCase()) return payload;
-    return {
-      ...payload,
-      word: { ...payload.word, translation: tableHit, gloss_v: 2 },
-    };
+    if (aiService.isTrustedGlossSource(hit.source)) {
+      // Curated / lyric-sense entries override whatever we had.
+      rememberAcceptedGloss(text, fromLang, toLang, tableHit, "curated");
+      if (current && current.toLowerCase() === tableHit.toLowerCase()) {
+        return Number(payload.word.gloss_v || 0) >= 2
+          ? payload
+          : { ...payload, word: { ...payload.word, gloss_v: 2 } };
+      }
+      return {
+        ...payload,
+        word: { ...payload.word, translation: tableHit, gloss_v: 2 },
+      };
+    }
+    // Bulk-dictionary / stem hits are provisional: only fill a blank, never
+    // replace an existing gloss, and leave gloss_v < 2 so polish re-checks it.
+    if (translationNeedsFix(payload.word)) {
+      return {
+        ...payload,
+        word: { ...payload.word, translation: tableHit, gloss_v: 1 },
+      };
+    }
+    return payload;
   }
   // No table hit: a thin word can still be rescued synchronously from the
   // persistent cache (glosses other users already received).
@@ -1732,7 +1819,7 @@ function applyCuratedGloss(payload, user) {
   if (!cached) return payload;
   return {
     ...payload,
-    word: { ...payload.word, translation: cached, gloss_v: 2 },
+    word: { ...payload.word, translation: cached.translation, gloss_v: cached.trusted ? 2 : 1 },
   };
 }
 
@@ -1752,13 +1839,15 @@ async function enrichPayloadWordMeta(payload, user) {
   try {
     // Request path: table + dictionary only. Muse timeouts were adding 6–14s
     // to every Next word even when the queue already had the payload.
-    const tableHit = aiService.commonGlossLookup(text, fromLang, toLang, line);
+    const hit = aiService.commonGlossLookupDetailed(text, fromLang, toLang, line);
+    const tableHit = hit?.translation || null;
     if (tableHit && !aiService.translationLooksSuspicious(text, tableHit, line)) {
-      rememberAcceptedGloss(text, fromLang, toLang, tableHit, "table");
-      console.log(`daily word enrich gloss: ${text} in ${Date.now() - started}ms (table)`);
+      const trusted = aiService.isTrustedGlossSource(hit.source);
+      if (trusted) rememberAcceptedGloss(text, fromLang, toLang, tableHit, "curated");
+      console.log(`daily word enrich gloss: ${text} in ${Date.now() - started}ms (${hit.source})`);
       return {
         ...payload,
-        word: { ...payload.word, translation: tableHit, gloss_v: 2 },
+        word: { ...payload.word, translation: tableHit, gloss_v: trusted ? 2 : 1 },
       };
     }
     const fb = await aiService.dictionaryGlossFallback(text, fromLang, toLang, fetch, line);
@@ -1785,18 +1874,16 @@ function scheduleBackgroundGlossPolish(user, payload) {
         const text = payload.word.text;
         const line = payload.lyric?.snippet || null;
         const translation = payload.word.translation;
-        // Healthy glosses: stamp gloss_v without another AI call.
+        // Verified glosses (gloss_v 2) need no further AI call. Provisional
+        // ones (gloss_v < 2: bulk-dictionary / stem hits like
+        // wondering→"maravilla") always go to the AI with the lyric line, and
+        // the AI answer wins — a denylist of known-bad pairs cannot converge.
         if (
           translation
+          && Number(payload.word.gloss_v || 0) >= 2
           && !translationNeedsFix(payload.word)
           && !aiService.translationLooksSuspicious(text, translation, line)
         ) {
-          if (Number(payload.word.gloss_v || 0) < 2) {
-            saveDailyWord(user.id, payload.date || todayDate(), {
-              ...payload,
-              word: { ...payload.word, gloss_v: 2 },
-            });
-          }
           return;
         }
 
@@ -1886,6 +1973,11 @@ async function enrichIfNeeded(payload, user) {
   return enriched;
 }
 
+/**
+ * Queue more words from an already-validated song. Since v1.9.1 this is a
+ * last-resort fallback only (see queueSameSongFallback): a new word should
+ * normally come with a new song.
+ */
 async function queueExtraWordsFromValidatedSong(user, {
   firstWord,
   track,
@@ -1894,6 +1986,9 @@ async function queueExtraWordsFromValidatedSong(user, {
   genre,
   date,
   fetchImpl = fetch,
+  persist = true,
+  refill = true,
+  maxWords = QUEUE_BATCH_SIZE - 1,
 }) {
   const langCode = normalizeLangCode(user.target_language || "es");
   const avoid = new Set(getUserDiscoveryHistory(user.id).words);
@@ -1915,7 +2010,7 @@ async function queueExtraWordsFromValidatedSong(user, {
     .join("\n");
   const sources = previewPlain.trim() ? [previewPlain, plain] : [plain];
   for (const source of sources) {
-    while (extras.length < QUEUE_BATCH_SIZE - 1) {
+    while (extras.length < maxWords) {
       const picked = pickWordFromLyricsHeuristic(
         source,
         user.difficulty || "medium",
@@ -1934,23 +2029,26 @@ async function queueExtraWordsFromValidatedSong(user, {
     }
   }
   if (!extras.length) {
-    scheduleRefill(user, fetchImpl);
+    if (refill) scheduleRefill(user, fetchImpl);
     return 0;
   }
 
   const toLang = normalizeLangCode(user.native_language || "en");
   const glosses = extras.map((item) => {
-    const translation = aiService.commonGlossLookup(
+    const hit = aiService.commonGlossLookupDetailed(
       item.picked.word,
       langCode,
       toLang,
       item.picked.line
     );
+    const translation = hit?.translation || null;
     return {
-      translation: translation || null,
+      translation,
       part_of_speech: null,
       pronunciation: null,
-      gloss_v: translation ? 2 : 1,
+      // Only curated / lyric-sense hits are verified; dict/stem hits are
+      // provisional so background polish re-glosses them with the AI.
+      gloss_v: translation && aiService.isTrustedGlossSource(hit.source) ? 2 : 1,
     };
   });
 
@@ -1975,16 +2073,88 @@ async function queueExtraWordsFromValidatedSong(user, {
       user.target_language || "es"
     );
     payload.allow_same_song = true;
-    persistPayloadSideEffects(payload, track, lyricsData, syncCheck);
+    // Lets the UI be honest: "another word from this song while we look for a new one".
+    payload.same_song_fallback = true;
+    if (persist) persistPayloadSideEffects(payload, track, lyricsData, syncCheck);
     return payload;
   });
 
   const inserted = wordQueue.enqueuePayloads(user.id, filterUniquePayloads(user.id, payloads));
   if (inserted) {
-    console.log(`daily word from-track: queued ${inserted} extra words from ${track.title}`);
+    console.log(`daily word same-song fallback: queued ${inserted} extra words from ${track.title}`);
   }
-  scheduleRefill(user, fetchImpl);
+  if (refill) scheduleRefill(user, fetchImpl);
   return inserted;
+}
+
+/** Most recent delivered daily-word payload for a user (any date). */
+function getLastDeliveredPayload(userId) {
+  const row = db.prepare(
+    `SELECT word_json FROM daily_words
+     WHERE user_id = ?
+     ORDER BY generated_at DESC, id DESC
+     LIMIT 1`
+  ).get(userId);
+  if (!row) return null;
+  try {
+    return JSON.parse(row.word_json);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Last resort when the catalog + AI could not produce a single new song:
+ * re-open the lyrics of the learner's most recent song and queue a few more
+ * words from it, flagged `same_song_fallback` so the card can say so.
+ * Returns the number of words queued (0 when nothing usable is cached).
+ */
+async function queueSameSongFallback(user, fetchImpl = fetch, { maxWords = 2 } = {}) {
+  const last = getLastDeliveredPayload(user.id);
+  const songId = last?.song?.id != null ? String(last.song.id) : null;
+  if (!songId) return 0;
+  const langCode = normalizeLangCode(user.target_language || "es");
+  if (last.language_code && normalizeLangCode(last.language_code) !== langCode) return 0;
+
+  const cached = validation.getCachedSong(songId);
+  const snapshot = db.prepare(
+    "SELECT synced_lyrics, plain_lyrics FROM song_lyrics_snapshot WHERE song_id = ?"
+  ).get(songId);
+  const syncedLyrics = snapshot?.synced_lyrics || cached?.lyrics?.syncedLyrics || null;
+  if (!syncedLyrics) return 0;
+  const lyricsData = {
+    syncedLyrics,
+    plainLyrics: snapshot?.plain_lyrics || cached?.lyrics?.plainLyrics || null,
+  };
+  const t = cached?.track || {};
+  const artistName = typeof t.artist === "string" ? t.artist : (t.artist?.name || last.song.artist || "");
+  const track = {
+    id: songId,
+    title: t.title || last.song.title || "",
+    artist: { name: artistName },
+    preview: t.preview || last.audio?.preview_url || null,
+    duration: t.duration || last.audio?.duration_seconds || 0,
+    provider: t.provider || last.audio?.preview_provider,
+    // coverFromDeezerTrack reads album.cover_medium; song_cache stores a flat cover url.
+    album: t.album || (t.cover || last.song?.cover ? { cover_medium: t.cover || last.song.cover } : undefined),
+  };
+  try {
+    return await queueExtraWordsFromValidatedSong(user, {
+      firstWord: last.word?.text,
+      track,
+      lyricsData,
+      syncCheck: null,
+      genre: last.song?.genre || last.preferred_genre || user.genre,
+      date: todayDate(),
+      fetchImpl,
+      persist: false,
+      refill: false,
+      maxWords,
+    });
+  } catch (err) {
+    console.warn(`daily word same-song fallback failed: ${err.message || err}`);
+    return 0;
+  }
 }
 
 async function generateDailyWordFromTrack(user, trackId, fetchImpl = fetch) {
@@ -2064,17 +2234,9 @@ async function generateDailyWordFromTrack(user, trackId, fetchImpl = fetch) {
   );
   persistPayloadSideEffects(payload, result.track, result.lyricsData, result.syncCheck);
   const delivered = deliverPayload(user.id, payload);
-  void queueExtraWordsFromValidatedSong(user, {
-    firstWord: result.picked.word,
-    track: result.track,
-    lyricsData: result.lyricsData,
-    syncCheck: result.syncCheck,
-    genre: result.genre,
-    date,
-    fetchImpl,
-  }).catch((err) => {
-    console.warn(`daily word from-track extras failed:`, err.message || err);
-  });
+  // The learner chose this song for one word; the next card should be a new
+  // song, so stock the queue from the catalog instead of the same lyrics.
+  scheduleRefill(user, fetchImpl);
   return enrichIfNeeded(delivered, user);
 }
 
@@ -2135,6 +2297,9 @@ module.exports = {
   generateDailyWord,
   generateDailyWordFromTrack,
   queueExtraWordsFromValidatedSong,
+  queueSameSongFallback,
+  pickNextQueueItem,
+  getRecentArtists,
   hydratePayloadAudio,
   enrichPayloadWordMeta,
   enrichIfNeeded,

@@ -22,7 +22,7 @@ db.exec(`
 `);
 
 const selectStmt = db.prepare(
-  "SELECT translation FROM gloss_cache WHERE word = ? AND from_lang = ? AND to_lang = ?"
+  "SELECT translation, source FROM gloss_cache WHERE word = ? AND from_lang = ? AND to_lang = ?"
 );
 const upsertStmt = db.prepare(`
   INSERT INTO gloss_cache (word, from_lang, to_lang, translation, source)
@@ -53,6 +53,17 @@ function getGloss(word, fromLang, toLang) {
   if (!key || !from || !to || from === to) return null;
   const row = selectStmt.get(key, from, to);
   return row?.translation || null;
+}
+
+/** Same as getGloss but keeps the provenance so callers can decide trust. */
+function getGlossWithSource(word, fromLang, toLang) {
+  const key = normKey(word);
+  const from = normLang(fromLang);
+  const to = normLang(toLang);
+  if (!key || !from || !to || from === to) return null;
+  const row = selectStmt.get(key, from, to);
+  if (!row?.translation) return null;
+  return { translation: row.translation, source: row.source || "unknown" };
 }
 
 function rememberGloss(word, fromLang, toLang, translation, source = "unknown") {
@@ -142,9 +153,13 @@ function fillThinStoredWords(lookup) {
     const from = normLang(payload?.language_code || fromLang);
     const to = normLang(toLang);
     const line = payload?.lyric?.snippet || null;
-    const translation = lookup(text, from, to, line);
+    const hit = lookup(text, from, to, line);
+    if (!hit) return null;
+    // Lookup may return a plain string (legacy) or { translation, trusted }.
+    const translation = typeof hit === "string" ? hit : hit.translation;
     if (!translation) return null;
-    payload.word = { ...payload.word, translation, gloss_v: 2 };
+    const trusted = typeof hit === "string" ? true : hit.trusted !== false;
+    payload.word = { ...payload.word, translation, gloss_v: trusted ? 2 : 1 };
     return JSON.stringify(payload);
   };
   const tx = db.transaction(() => {
@@ -169,6 +184,7 @@ function fillThinStoredWords(lookup) {
 
 module.exports = {
   getGloss,
+  getGlossWithSource,
   rememberGloss,
   backfillFromDailyWords,
   fillThinStoredWords,

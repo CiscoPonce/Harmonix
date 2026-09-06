@@ -8,7 +8,11 @@ const {
   saveDailyWord,
   getRecentDailyWords,
   validateAllCandidates,
+  generateValidatedBatch,
   consumeNextDailyWord,
+  pickNextQueueItem,
+  queueSameSongFallback,
+  getRecentArtists,
   generateNextDailyWord,
   generateDailyWord,
   fetchAiCandidates,
@@ -224,6 +228,7 @@ describe("Daily Word Service", () => {
       { text: "care", translation: "atención", line: "We don't care", want: "importar" },
       { text: "hand", translation: "cacho", line: "Take my hand", want: "mano" },
       { text: "skin", translation: "máscara", line: "under your skin", want: "piel" },
+      { text: "wondering", translation: "maravilla", line: "I was wondering if after all these years", want: "preguntándose" },
     ];
     for (const item of cases) {
       const out = await enrichPayloadWordMeta({
@@ -446,12 +451,13 @@ describe("Daily Word Service", () => {
     expect(result.song.id).to.equal("999");
     expect(result.lyric.snippet.toLowerCase()).to.match(/amor|noche|brillan|fuerte|siempre|juntos/);
     expect(result.audio.preview_url).to.match(/^\/api\/audio\/preview\/999/);
-    expect(wordQueue.countReady(userId)).to.be.at.least(1);
+    // One song, one word: extras from the same lyrics stay out of the queue.
+    expect(wordQueue.countReady(userId)).to.equal(0);
 
     restore();
   });
 
-  it("skips AI song pick when unused catalog is empty", async () => {
+  it("still asks AI for new songs when the unused curated catalog is empty", async () => {
     const pool = getFullSongCandidatePool("es", "pop");
     pool.forEach((song, i) => {
       saveDailyWord(userId, `2026-07-${String((i % 28) + 1).padStart(2, "0")}`, {
@@ -470,8 +476,8 @@ describe("Daily Word Service", () => {
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     const found = await fetchAiCandidates(user);
     aiService.generateDailyWordSongs = original;
-    expect(aiCalls).to.equal(0);
-    expect(found).to.deep.equal([]);
+    expect(aiCalls).to.equal(1);
+    expect(found).to.deep.equal([{ song_title: "Nope", artist: "Nope", genre: "pop" }]);
   });
 
   it("generateNextDailyWord skips cooldown when queue is empty", async () => {
@@ -943,7 +949,7 @@ describe("Daily Word Service", () => {
     expect(VALIDATE_CONCURRENCY).to.be.at.least(3).and.at.most(8);
   });
 
-  it("relaxes song reuse when unused pass only hits song_already_used", async () => {
+  it("reuses a known song only after unused and widened passes fail", async () => {
     const today = new Date().toISOString().slice(0, 10);
     db.prepare("DELETE FROM daily_words WHERE user_id = ? AND date = ?").run(userId, today);
     // History already used Deezer id 100 (backdate so force cooldown does not fire)
@@ -1091,5 +1097,187 @@ describe("Daily Word Service", () => {
     const candidates = getCuratedCandidatesForBatch(testUserId, 'es', 'reggaeton');
     expect(candidates.length).to.be.greaterThan(0);
     expect(candidates[0].artist.toLowerCase()).to.equal('bad bunny');
+  });
+
+  it("does not reuse a used Deezer id while unused catalog keys remain", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    saveDailyWord(userId, today, {
+      date: today,
+      preferred_genre: "pop",
+      word: { text: "ayer", translation: "yesterday" },
+      song: { id: "100", title: "Old Hit", artist: "Old Artist", genre: "pop" },
+      lyric: { snippet: "ayer", timestamp: "0:45", timestamp_ms: 45000, line_index: 0, char_start: 0, char_end: 4 },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+    });
+
+    const originalCurated = aiService.getCuratedSongCandidates;
+    const originalVerified = aiService.getVerifiedSongCandidates;
+    aiService.getCuratedSongCandidates = () => [
+      { artist: "Fresh Artist", song_title: "Fresh Unused", genre: "pop" },
+    ];
+    aiService.getVerifiedSongCandidates = () => [];
+    const restore = stubSongPipeline([
+      { song_title: "Fresh Unused", artist: "Fresh Artist", genre: "pop" },
+    ]);
+
+    const mockFetch = async (url) => {
+      if (String(url).includes("itunes.apple.com")) {
+        return { ok: true, status: 200, json: async () => ({ results: [] }) };
+      }
+      if (String(url).includes("deezer.com/search")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: [{
+              id: 100,
+              title: "Fresh Unused",
+              duration: 200,
+              preview: "https://cdn.example/preview.mp3",
+              artist: { name: "Fresh Artist" },
+            }],
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    try {
+      const result = await generateValidatedBatch(user, mockFetch, { stopAfter: 1 });
+      expect(result.valid).to.have.lengthOf(0);
+      expect(result.lastError).to.equal("song_already_used");
+    } finally {
+      restore();
+      aiService.getCuratedSongCandidates = originalCurated;
+      aiService.getVerifiedSongCandidates = originalVerified;
+    }
+  });
+
+  it("pickNextQueueItem skips the last song when another song is ready", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    wordQueue.enqueuePayloads(userId, [
+      {
+        date: today,
+        language_code: "es",
+        preferred_genre: "pop",
+        word: { text: "town", translation: "pueblo" },
+        lyric: { snippet: "torn up town", timestamp: "0:14", timestamp_ms: 14000, line_index: 0, char_start: 8, char_end: 12 },
+        song: { id: "royals", title: "Royals", artist: "Lorde", genre: "pop" },
+        audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      },
+      {
+        date: today,
+        language_code: "es",
+        preferred_genre: "pop",
+        word: { text: "luz", translation: "light" },
+        lyric: { snippet: "luz", timestamp: "0:20", timestamp_ms: 20000, line_index: 0, char_start: 0, char_end: 3 },
+        song: { id: "other", title: "Other Song", artist: "Other Artist", genre: "pop" },
+        audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      },
+    ]);
+    const picked = pickNextQueueItem(userId, "royals");
+    expect(picked.payload.word.text).to.equal("luz");
+    expect(String(picked.payload.song.id)).to.equal("other");
+  });
+
+  it("queueSameSongFallback marks extras as last-resort same-song items", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    saveDailyWord(userId, today, {
+      date: today,
+      language_code: "en",
+      preferred_genre: "pop",
+      word: { text: "royals", translation: "realeza" },
+      song: { id: "404", title: "Royals", artist: "Lorde", genre: "pop" },
+      lyric: { snippet: "And we'll never be royals", timestamp: "0:14", timestamp_ms: 14000, line_index: 0, char_start: 18, char_end: 24 },
+      audio: { preview_url: "http://x", duration_seconds: 190, preview_offset: 30, preview_provider: "deezer" },
+    });
+    db.prepare(`
+      INSERT OR REPLACE INTO song_lyrics_snapshot (song_id, synced_lyrics, plain_lyrics)
+      VALUES (?, ?, ?)
+    `).run(
+      "404",
+      "[00:08.00] I've never seen a diamond in the flesh\n[00:14.00] I cut my teeth on wedding rings in the movies\n[00:20.00] And I'm not proud of my address\n[00:26.00] In a torn up town, no postcode envy",
+      "I've never seen a diamond in the flesh\nI cut my teeth on wedding rings in the movies\nAnd I'm not proud of my address\nIn a torn up town, no postcode envy"
+    );
+    db.prepare("UPDATE users SET target_language = 'en' WHERE id = ?").run(userId);
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const inserted = await queueSameSongFallback(user, fetch, { maxWords: 2 });
+    expect(inserted).to.be.at.least(1);
+    const item = wordQueue.peekNext(userId);
+    expect(item.payload.allow_same_song).to.equal(true);
+    expect(item.payload.same_song_fallback).to.equal(true);
+    expect(String(item.payload.song.id)).to.equal("404");
+    expect(String(item.payload.word.text).toLowerCase()).to.not.equal("royals");
+  });
+
+  it("getRecentArtists lists newest distinct artists first", () => {
+    saveDailyWord(userId, "2026-09-01", {
+      date: "2026-09-01",
+      word: { text: "one" },
+      song: { id: "1", title: "A", artist: "Lorde" },
+    });
+    saveDailyWord(userId, "2026-09-02", {
+      date: "2026-09-02",
+      word: { text: "two" },
+      song: { id: "2", title: "B", artist: "Glass Animals" },
+    });
+    saveDailyWord(userId, "2026-09-03", {
+      date: "2026-09-03",
+      word: { text: "three" },
+      song: { id: "3", title: "C", artist: "Lorde" },
+    });
+    expect(getRecentArtists(userId, 2)).to.deep.equal(["Lorde", "Glass Animals"]);
+  });
+
+  it("fetchAiCandidates forwards recent artists so the prompt prefers new voices", async () => {
+    saveDailyWord(userId, "2026-09-03", {
+      date: "2026-09-03",
+      word: { text: "waves" },
+      song: { id: "9", title: "Heat Waves", artist: "Glass Animals" },
+    });
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    let captured;
+    const originalSongs = aiService.generateDailyWordSongs;
+    try {
+      aiService.generateDailyWordSongs = async (args) => {
+        captured = args;
+        return [];
+      };
+      await fetchAiCandidates(user);
+      expect(captured.avoidArtists).to.include("Glass Animals");
+    } finally {
+      aiService.generateDailyWordSongs = originalSongs;
+    }
+  });
+
+  it("filterUniquePayloads keeps same-song extras only when they opt in", () => {
+    saveDailyWord(userId, "2026-06-01", {
+      date: "2026-06-01",
+      word: { text: "amor" },
+      song: { id: "1", title: "Song A", artist: "Artist A" },
+    });
+    const blocked = filterUniquePayloads(userId, [
+      { word: { text: "noche" }, song: { id: "1", title: "Song A", artist: "Artist A" } },
+    ]);
+    expect(blocked).to.have.lengthOf(0);
+    const allowed = filterUniquePayloads(userId, [
+      { word: { text: "noche" }, song: { id: "1", title: "Song A", artist: "Artist A" }, allow_same_song: true },
+    ]);
+    expect(allowed).to.have.lengthOf(1);
+    expect(allowed[0].word.text).to.equal("noche");
+  });
+
+  it("treats stem-derived dictionary hits as provisional glosses", async () => {
+    db.prepare(`
+      UPDATE users SET native_language = 'es', target_language = 'en' WHERE id = ?
+    `).run(userId);
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const out = await enrichPayloadWordMeta({
+      word: { text: "waited", translation: null, gloss_v: 1 },
+      lyric: { snippet: "I waited for you" },
+    }, user);
+    expect(out.word.translation).to.equal("esperar");
+    expect(out.word.gloss_v).to.equal(1);
   });
 });

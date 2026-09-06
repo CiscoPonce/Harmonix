@@ -82,6 +82,8 @@ interface DailyWordPayload {
   };
   style_relaxed?: boolean;
   style_relaxed_from?: string | null;
+  same_song_fallback?: boolean;
+  song_repeated?: boolean;
   queue?: QueueStatus;
 }
 
@@ -1019,6 +1021,11 @@ export function DailyWordCard({
             {t('style_relaxed', {
               style: (data.style_relaxed_from || user?.genre || "that").toString().replace("-", " "),
             })}
+          </span>
+        )}
+        {(data.same_song_fallback || data.song_repeated) && (
+          <span className="mt-1 block text-zinc-400 dark:text-zinc-500">
+            {t('same_song_fallback')}
           </span>
         )}
       </p>
