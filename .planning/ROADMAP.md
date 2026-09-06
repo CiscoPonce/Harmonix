@@ -188,7 +188,7 @@ Not a new phase — product refinements after Phase 14 close:
 
 ### Suggested next
 
-- Play Store listing (Flutter AAB; privacy URL `/privacy`)
-- AI provider hardening
-- Extended Spotify Quota
+- Play Store Internal testing — copy + graphics in `docs/PLAY-CONSOLE-LISTING.md` and `mobile/store/`
+- Signed Flutter AAB (`1.0.8+11`) on a machine with JDK 17
+- Extended Spotify Quota when testers other than the developer need Connect
 - Containerize Pocket-TTS (optional)

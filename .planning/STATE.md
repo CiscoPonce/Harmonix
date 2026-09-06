@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: flutter-web-parity
 status: complete
-stopped_at: "2026-09-05 daily-word: skip lyric proper names, pick translatable hooks"
-last_updated: "2026-09-05T20:40:00.000Z"
+stopped_at: "2026-09-06 Play Store listing pack: domain mailbox, graphics, Console copy"
+last_updated: "2026-09-06T20:35:00.000Z"
 progress:
   total_phases: 16
   completed_phases: 16
@@ -15,7 +15,7 @@ progress:
 
 ## Current Focus
 
-**Play Store listing (Flutter `mobile/` only).** Phase 16 workstreams shipped in July; planning docs caught up 2026-09-03. Capacitor is not a release path.
+**Play Store listing (Flutter `mobile/` only).** Console copy, domain mailbox (`hello@peeporunclub.co.uk`), icon + feature graphic are in-repo. Still need: JDK 17 signed AAB, phone screenshots, reviewer login, Internal testing upload. Capacitor is not a release path.
 
 **2026-09-05 hardening pass (post-audit):** CORS allowlist + security headers + auth/proxy rate limits; OpenRouter/NIM circuit breakers (no more 429 storms); Pocket-TTS-first pronunciation; preview-window word picks so "Hear it" plays the word; full UI i18n on web and Flutter; Flutter learns a word from a searched song; CI test gate (server/web/Flutter) before deploy; nightly SQLite backup timer (`scripts/backup-sqlite.sh`). Gloss cache + MyMemory quota cooldown so blank Word-of-the-Day translations refill from history/table. Discover search uses iTunes when Deezer 403s the VPS. Still open: restrict Coolify ports 8000/6001 to a VPN/allowlist, reboot VPS for pending kernel, React-compiler lint debt in `client/src` (26 pre-existing errors), Play Store listing.
 

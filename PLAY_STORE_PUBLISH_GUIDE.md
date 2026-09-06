@@ -23,6 +23,11 @@ Before building the Play Store App Bundle (`.aab`), ensure your Android Studio t
    - Register at [play.google.com/console](https://play.google.com/console) ($25 one-time fee).
 4. **Privacy Policy URL**:
    - `https://harmonix.peeporunclub.co.uk/privacy`
+5. **Support email**:
+   - `hello@peeporunclub.co.uk`
+6. **Listing copy + Data safety answers**:
+   - [`docs/PLAY-CONSOLE-LISTING.md`](docs/PLAY-CONSOLE-LISTING.md)
+   - Graphics: `mobile/store/app-icon-512.png`, `mobile/store/feature-graphic.png`
 
 ---
 

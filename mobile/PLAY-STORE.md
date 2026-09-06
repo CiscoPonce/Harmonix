@@ -7,7 +7,9 @@ iOS comes after the production domain is live (separate phase).
 
 1. Google Play Developer account
 2. Production HTTPS API (or staging HTTPS). Do **not** ship ngrok in a store build.
-3. Privacy policy URL on your domain (e.g. `https://YOUR_DOMAIN/privacy`)
+3. Privacy policy: `https://harmonix.peeporunclub.co.uk/privacy`  
+   Support: `hello@peeporunclub.co.uk`  
+   Listing copy: [`docs/PLAY-CONSOLE-LISTING.md`](../docs/PLAY-CONSOLE-LISTING.md)
 4. Release keystore (one-time; back up securely)
 
 ## One-time: create the upload keystore
@@ -28,8 +30,7 @@ cp key.properties.example key.properties
 ```bash
 cd mobile
 
-# Replace with your live domain when ready:
-export API_BASE=https://YOUR_DOMAIN/api
+export API_BASE=https://harmonix.peeporunclub.co.uk/api
 
 flutter pub get
 flutter build appbundle --release --dart-define=API_BASE=$API_BASE

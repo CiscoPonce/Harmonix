@@ -33,6 +33,9 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         await auth.login(_email.text.trim(), _password.text);
       }
+      // The root auth gate has already swapped Welcome → Home underneath us;
+      // pop this pushed route so the user actually sees it.
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

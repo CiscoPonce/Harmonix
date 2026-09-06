@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { LandingHeader } from '@/components/LandingHeader';
 import { LandingFooter } from '@/components/LandingFooter';
+import { SUPPORT_EMAIL, SUPPORT_MAILTO, SITE_ORIGIN } from '@/lib/contact';
 
 export default function PrivacyPage() {
   return (
@@ -8,13 +9,13 @@ export default function PrivacyPage() {
       <LandingHeader />
       <main className="landing-main mx-auto max-w-2xl px-6 py-16 text-[#F2F5F3]">
         <h1 className="font-display text-4xl font-bold italic">Privacy policy</h1>
-        <p className="mt-2 text-sm text-[#9AABA0]">Last updated 3 September 2026</p>
+        <p className="mt-2 text-sm text-[#9AABA0]">Last updated 6 September 2026</p>
         <div className="mt-8 space-y-4 text-sm leading-relaxed text-[#D5DDD8]">
           <p>
             Harmonix is a language-learning app that uses real song lyrics. This
             page describes what we store when you use the website or the Android
             app at{' '}
-            <Link href="https://harmonix.peeporunclub.co.uk" className="underline">
+            <Link href={SITE_ORIGIN} className="underline">
               harmonix.peeporunclub.co.uk
             </Link>
             .
@@ -28,7 +29,8 @@ export default function PrivacyPage() {
           </p>
           <h2 className="pt-4 text-lg font-semibold text-white">Music and Spotify</h2>
           <p>
-            Song search and 30-second previews come from Deezer and LRCLib.
+            Song search and 30-second previews come from Apple iTunes Search and
+            Deezer; synced lyrics come from LRCLib.
             If you connect Spotify we store encrypted OAuth tokens and playlist
             metadata so you can export Harmonix playlists and, on the web, play
             clips when you have Spotify Premium. We do not host full songs.
@@ -41,8 +43,12 @@ export default function PrivacyPage() {
           </p>
           <h2 className="pt-4 text-lg font-semibold text-white">Contact</h2>
           <p>
-            Questions: info@harmonix.app. To delete an account, email that
-            address from the address on the account.
+            Questions:{' '}
+            <a href={SUPPORT_MAILTO} className="underline">
+              {SUPPORT_EMAIL}
+            </a>
+            . To delete an account, email that address from the address on the
+            account.
           </p>
         </div>
       </main>
