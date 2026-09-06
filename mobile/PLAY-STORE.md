@@ -28,6 +28,8 @@ cp key.properties.example key.properties
 ## Build release artifacts
 
 ```bash
+export JAVA_HOME="$HOME/.local/jdk/jdk-17"
+export PATH="$JAVA_HOME/bin:$HOME/flutter/bin:$PATH"
 cd mobile
 
 export API_BASE=https://harmonix.peeporunclub.co.uk/api

@@ -1,6 +1,6 @@
 # Harmonix Roadmap
 
-**Last reconciled:** 2026-09-03 — phases 1–16 complete; Play Store path is Flutter only  
+**Last reconciled:** 2026-09-06 — phases 1–16 complete; Phase 17 Play Store listing in progress  
 **Live:** https://harmonix.peeporunclub.co.uk (Compose `api`+`web` + Coolify Traefik; host Pocket-TTS)
 
 ---
@@ -47,6 +47,7 @@
 | **14** | Production Parity & Ship | **Complete** |
 | **15** | Coolify production deploy | **Complete** (domain + GH Actions zero-downtime deploy) |
 | **16** | Flutter web parity | **Complete** (Play Store client is Flutter only) |
+| **17** | Play Store listing | **In progress** |
 
 ### Phase 12 — Spotify API Integration ✅
 
@@ -186,9 +187,26 @@ Not a new phase — product refinements after Phase 14 close:
 **Context:** [`.planning/phases/16-flutter-web-parity/16-CONTEXT.md`](./phases/16-flutter-web-parity/16-CONTEXT.md)  
 **Parity matrix:** [`docs/DUAL-FRONTEND-QA.md`](../docs/DUAL-FRONTEND-QA.md)
 
-### Suggested next
+---
 
-- Play Store Internal testing — copy + graphics in `docs/PLAY-CONSOLE-LISTING.md` and `mobile/store/`
-- Signed Flutter AAB (`1.0.8+11`) on a machine with JDK 17
+## Phase 17 — Play Store listing (in progress)
+
+**Status:** Opened 2026-09-06  
+**Milestone:** v2.0  
+**Goal:** Internal testing, then Production. Flutter AAB only.
+
+| Plan | Name | Status |
+|------|------|--------|
+| [17-CHECKLIST](./phases/17-play-store-listing/17-CHECKLIST.md) | Remaining operator steps | **Do this** |
+| [17-01](./phases/17-play-store-listing/17-01-PLAN.md) | Keystore + signed AAB | Open (JDK 17 is on this PC) |
+| [17-02](./phases/17-play-store-listing/17-02-PLAN.md) | Console listing + Data safety | Open — copy in `docs/PLAY-CONSOLE-LISTING.md` |
+| [17-03](./phases/17-play-store-listing/17-03-PLAN.md) | Internal testing → Production | Blocked on 17-01 + 17-02 |
+
+**Context:** [`.planning/phases/17-play-store-listing/17-CONTEXT.md`](./phases/17-play-store-listing/17-CONTEXT.md)
+
+Graphics and mailbox are already in-repo. You still create the keystore, upload the AAB, take screenshots, and add testers.
+
+### After Phase 17
+
 - Extended Spotify Quota when testers other than the developer need Connect
 - Containerize Pocket-TTS (optional)

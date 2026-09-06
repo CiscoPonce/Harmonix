@@ -1,21 +1,21 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.9
-milestone_name: flutter-web-parity
-status: complete
-stopped_at: "2026-09-06 Play Store listing pack: domain mailbox, graphics, Console copy"
-last_updated: "2026-09-06T20:35:00.000Z"
+milestone: v2.0
+milestone_name: play-store-listing
+status: in_progress
+stopped_at: "2026-09-06 Phase 17 opened; JDK 17 installed user-local"
+last_updated: "2026-09-06T20:50:00.000Z"
 progress:
-  total_phases: 16
+  total_phases: 17
   completed_phases: 16
-  percent: 100
+  percent: 94
 ---
 
 # Project State — Harmonix
 
 ## Current Focus
 
-**Play Store listing (Flutter `mobile/` only).** Console copy, domain mailbox (`hello@peeporunclub.co.uk`), icon + feature graphic are in-repo. Still need: JDK 17 signed AAB, phone screenshots, reviewer login, Internal testing upload. Capacitor is not a release path.
+**Phase 17 — Play Store listing.** Remaining steps: [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](phases/17-play-store-listing/17-CHECKLIST.md). JDK 17 is on this PC at `$HOME/.local/jdk/jdk-17`. Still need: upload keystore, signed AAB, Console screenshots, Internal testing. Capacitor is not a release path.
 
 **2026-09-05 hardening pass (post-audit):** CORS allowlist + security headers + auth/proxy rate limits; OpenRouter/NIM circuit breakers (no more 429 storms); Pocket-TTS-first pronunciation; preview-window word picks so "Hear it" plays the word; full UI i18n on web and Flutter; Flutter learns a word from a searched song; CI test gate (server/web/Flutter) before deploy; nightly SQLite backup timer (`scripts/backup-sqlite.sh`). Gloss cache + MyMemory quota cooldown so blank Word-of-the-Day translations refill from history/table. Discover search uses iTunes when Deezer 403s the VPS. Still open: restrict Coolify ports 8000/6001 to a VPN/allowlist, reboot VPS for pending kernel, React-compiler lint debt in `client/src` (26 pre-existing errors), Play Store listing.
 
@@ -37,6 +37,7 @@ progress:
 | Phase | Status |
 |------:|--------|
 | 1–16 | Complete |
+| 17 | In progress — Play Store listing |
 
 ## Architecture (verified)
 
