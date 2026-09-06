@@ -49,6 +49,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * daily-word: pause MyMemory after its daily quota warning instead of treating the warning as a translation
 * daily-word: English plurals hit the curated table (`nights` → `noches`) instead of a blank card
 * web: Word of the Day shows “Meaning on its way…” and re-fetches until the gloss arrives
+* daily-word: hand → mano (offline dict had the junk sense cacho); same for skin/arms/ear/neck/chest
 * daily-word: skip proper names in lyrics (Jude, Eleanor) and pick a translatable hook word instead
 * search: Discover song search falls back to iTunes when Deezer 403s the VPS (same path as Word of the Day)
 * daily-word: lyric-line sense (late→tarde, gets hard→se pone) plus an “in this line” gloss

@@ -222,6 +222,8 @@ describe("Daily Word Service", () => {
       { text: "time", translation: "hora", line: "Tale as old as time", want: "tiempo" },
       { text: "rule", translation: "regla", line: "Let me be your ruler", want: "gobernar" },
       { text: "care", translation: "atención", line: "We don't care", want: "importar" },
+      { text: "hand", translation: "cacho", line: "Take my hand", want: "mano" },
+      { text: "skin", translation: "máscara", line: "under your skin", want: "piel" },
     ];
     for (const item of cases) {
       const out = await enrichPayloadWordMeta({

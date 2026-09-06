@@ -910,6 +910,12 @@ function translationLooksSuspicious(word, translation, line = null) {
   if (w === "rule" && /^(regla|normativa|normas?)$/.test(t)) return true;
   if (w === "care" && /^(atenci[oó]n|cuidado m[eé]dico)$/.test(t)) return true;
   if (w === "same" && /yo igual/.test(t)) return true;
+  if (w === "hand" && /^(cacho|mano de obra)$/.test(t)) return true;
+  if (w === "arms" && /^(armamento|armas)$/.test(t)) return true;
+  if (w === "skin" && /^(m[aá]scara|pellejo)$/.test(t)) return true;
+  if (w === "ear" && /^(espiga|mazorca)$/.test(t)) return true;
+  if (w === "chest" && /^(c[oó]moda|ba[uú]l|arc[oó]n)$/.test(t)) return true;
+  if (w === "neck" && /^(cogote|pescuezo)$/.test(t)) return true;
 
   if (line) {
     const lineTokens = String(line)
@@ -1018,7 +1024,13 @@ const COMMON_GLOSS_TABLE = {
     man: "hombre",
     woman: "mujer",
     eyes: "ojos",
+    hand: "mano",
     hands: "manos",
+    arms: "brazos",
+    skin: "piel",
+    ear: "oreja",
+    neck: "cuello",
+    chest: "pecho",
     mind: "mente",
     soul: "alma",
     dream: "sueño",
@@ -1192,6 +1204,13 @@ function lyricSenseLookup(word, fromLang, toLang, line) {
     if (lemma === "care") return "importar";
     if (lemma === "same") return "igual";
     if (lemma === "blinded" || lemma === "blind") return lemma === "blinded" ? "cegado" : "ciego";
+    if (lemma === "hand") return "mano";
+    if (lemma === "hands") return "manos";
+    if (lemma === "arms") return "brazos";
+    if (lemma === "skin") return "piel";
+    if (lemma === "ear") return "oreja";
+    if (lemma === "neck") return "cuello";
+    if (lemma === "chest") return "pecho";
   }
   return null;
 }

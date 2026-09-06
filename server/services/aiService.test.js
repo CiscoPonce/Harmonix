@@ -181,6 +181,14 @@ describe('AI Service', () => {
     expect(translationLooksSuspicious('rule', 'regla')).to.equal(true);
     expect(translationLooksSuspicious('care', 'atención')).to.equal(true);
     expect(translationLooksSuspicious('same', 'Yo igual')).to.equal(true);
+    expect(commonGlossLookup('hand', 'en', 'es', 'Take my hand')).to.equal('mano');
+    expect(commonGlossLookup('hands', 'en', 'es')).to.equal('manos');
+    expect(commonGlossLookup('skin', 'en', 'es', 'under your skin')).to.equal('piel');
+    expect(commonGlossLookup('arms', 'en', 'es', 'in my arms')).to.equal('brazos');
+    expect(translationLooksSuspicious('hand', 'cacho')).to.equal(true);
+    expect(translationLooksSuspicious('hand', 'mano')).to.equal(false);
+    expect(translationLooksSuspicious('skin', 'máscara')).to.equal(true);
+    expect(translationLooksSuspicious('arms', 'armamento')).to.equal(true);
   });
 
   it('rejects encyclopedic MyMemory junk and keeps high-confidence everyday glosses', async () => {
