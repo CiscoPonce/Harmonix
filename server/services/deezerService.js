@@ -363,11 +363,20 @@ function extractCoverFromCachedTrack(trackOrJson) {
   return typeof direct === 'string' && direct.trim() ? direct.trim() : null;
 }
 
+/** Artist query value — Deezer/iTunes tracks store `{ name }`, not a string. */
+function artistName(artist) {
+  if (artist == null) return '';
+  if (typeof artist === 'string') return artist.trim();
+  if (typeof artist === 'object' && artist.name) return String(artist.name).trim();
+  return '';
+}
+
 /** Same-origin path; browser audio tag cannot send JWT headers. */
 function previewProxyPath(trackId, artist, title) {
   const base = `/api/audio/preview/${encodeURIComponent(String(trackId))}`;
   const params = new URLSearchParams();
-  if (artist) params.set('artist', String(artist));
+  const name = artistName(artist);
+  if (name) params.set('artist', name);
   if (title) params.set('title', String(title));
   const qs = params.toString();
   return qs ? `${base}?${qs}` : base;
@@ -391,6 +400,7 @@ module.exports = {
   coverFromDeezerTrack,
   extractCoverFromCachedTrack,
   previewProxyPath,
+  artistName,
   PREVIEW_STREAM_HEADERS,
   ITUNES_ID_PREFIX,
 };

@@ -249,17 +249,16 @@ app.get('/api/tracks/:id', publicProxyLimiter, async (req, res) => {
         return res.status(404).json({ error: 'No audio preview available for this track' });
       }
       const duration = track.duration || 0;
-      let previewOffset = 0;
-      if (duration > 60) previewOffset = 30;
-      else if (duration > 30) previewOffset = duration - 30;
+      const artist = deezer.artistName(track.artist);
+      // iTunes Search previews are the opening ~30s, not Deezer's mid-track cut.
       return res.json({
         id: track.id,
         title: track.title,
-        artist: track.artist,
-        preview: deezer.previewProxyPath(track.id, track.artist, track.title),
+        artist,
+        preview: deezer.previewProxyPath(track.id, artist, track.title),
         duration,
-        preview_offset: previewOffset,
-        cover: track.cover || null,
+        preview_offset: 0,
+        cover: deezer.coverFromDeezerTrack(track) || track.cover || null,
       });
     }
 

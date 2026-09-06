@@ -7,6 +7,10 @@ describe('deezerService', () => {
     expect(deezer.previewProxyPath('itunes_1', 'Luis Fonsi', 'Despacito')).to.equal(
       '/api/audio/preview/itunes_1?artist=Luis+Fonsi&title=Despacito'
     );
+    expect(deezer.previewProxyPath('itunes_1', { name: 'The Beatles' }, 'Hey Jude')).to.equal(
+      '/api/audio/preview/itunes_1?artist=The+Beatles&title=Hey+Jude'
+    );
+    expect(deezer.artistName({ name: 'The Beatles' })).to.equal('The Beatles');
   });
 
   it('coverFromDeezerTrack prefers medium album art', () => {
