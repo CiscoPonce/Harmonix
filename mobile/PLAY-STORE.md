@@ -39,6 +39,8 @@ flutter build appbundle --release --dart-define=API_BASE=$API_BASE
 flutter build apk --release --dart-define=API_BASE=$API_BASE
 ```
 
+Release builds must include native debug symbols (`debugSymbolLevel = SYMBOL_TABLE` in `android/app/build.gradle.kts`). Flutter 3.44 rejects the AAB if `libflutter.so.sym` is missing.
+
 Outputs:
 
 - AAB: `build/app/outputs/bundle/release/app-release.aab` ← upload to Play

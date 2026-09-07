@@ -18,8 +18,8 @@ java -version   # OpenJDK 17.0.20.1
 
 You only do this once. Back up the `.jks` and both passwords **offline**.
 
-- [ ] `cd mobile/android`
-- [ ] Create the upload keystore (it will prompt for name / org / passwords):
+- [x] `cd mobile/android`
+- [x] Create the upload keystore (it will prompt for name / org / passwords):
 
 ```bash
 export JAVA_HOME="$HOME/.local/jdk/jdk-17"
@@ -31,9 +31,9 @@ keytool -genkey -v \
   -alias upload
 ```
 
-- [ ] `cp key.properties.example key.properties` and fill `storePassword`, `keyPassword`, `keyAlias=upload`, `storeFile=../upload-keystore.jks`
-- [ ] Confirm both files are **not** staged (`git status` — `.jks` and `key.properties` are gitignored)
-- [ ] Build the Play upload:
+- [x] `cp key.properties.example key.properties` and fill `storePassword`, `keyPassword`, `keyAlias=upload`, `storeFile=../upload-keystore.jks`
+- [x] Confirm both files are **not** staged (`git status` — `.jks` and `key.properties` are gitignored)
+- [x] Build the Play upload:
 
 ```bash
 export JAVA_HOME="$HOME/.local/jdk/jdk-17"
@@ -44,7 +44,7 @@ flutter build appbundle --release \
   --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
 ```
 
-- [ ] Artifact exists: `mobile/build/app/outputs/bundle/release/app-release.aab`
+- [x] Artifact exists: `mobile/build/app/outputs/bundle/release/app-release.aab` (55 MB, signed, version `1.0.8` / `11`)
 - [ ] Optional sideload QA APK (not for Play):
 
 ```bash

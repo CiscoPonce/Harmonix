@@ -15,7 +15,7 @@ progress:
 
 ## Current Focus
 
-**Phase 17 — Play Store listing.** Remaining steps: [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](phases/17-play-store-listing/17-CHECKLIST.md). JDK 17 is on this PC at `$HOME/.local/jdk/jdk-17`. Still need: upload keystore, signed AAB, Console screenshots, Internal testing. Capacitor is not a release path.
+**Phase 17 — Play Store listing.** Section A (keystore + signed AAB `1.0.8+11`) is done on this PC. Remaining: Play Console create-app, screenshots, Internal testing — [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](phases/17-play-store-listing/17-CHECKLIST.md). AAB: `mobile/build/app/outputs/bundle/release/app-release.aab`. Capacitor is not a release path.
 
 **2026-09-06 daily-word quality:** Next word is one song per card (same-song extras only as last-resort, with honesty copy). Stem/dictionary glosses stay provisional so AI polish can replace noun/verb mix-ups (`wondering` → preguntándose). Discover search uses iTunes when Deezer 403s the VPS.
 

@@ -60,7 +60,10 @@ android {
                 signingConfigs.getByName("debug")
             }
             ndk {
-                debugSymbolLevel = "NONE"
+                // SYMBOL_TABLE is what Play Console wants for native-crash
+                // symbolication; NONE makes Flutter 3.44 fail the AAB check
+                // (libflutter.so.sym / .dbg missing).
+                debugSymbolLevel = "SYMBOL_TABLE"
             }
         }
     }

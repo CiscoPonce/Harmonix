@@ -112,10 +112,16 @@ Spotify Connect is optional and limited to testers on the Spotify developer allo
 2. **Create app** → Harmonix / English (UK) / App / Free.
 3. Store listing: paste the copy + upload icon + feature graphic + screenshots.
 4. Privacy policy URL + Data safety + Content rating.
-5. One-time on your machine (not in git): create `mobile/android/upload-keystore.jks` and `key.properties` — see `mobile/PLAY-STORE.md`.
-6. Build the signed AAB (needs JDK 17):
+5. Upload keystore is already on this PC (`mobile/android/upload-keystore.jks` + `key.properties`, gitignored). Back up `KEYSTORE-BACKUP.txt` **offline** tonight.
+6. Signed AAB is ready:
+
+`mobile/build/app/outputs/bundle/release/app-release.aab` (1.0.8 / 11)
+
+Rebuild if needed:
 
 ```bash
+export JAVA_HOME="$HOME/.local/jdk/jdk-17"
+export PATH="$JAVA_HOME/bin:$HOME/flutter/bin:$PATH"
 cd mobile
 flutter build appbundle --release \
   --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
@@ -127,12 +133,15 @@ flutter build appbundle --release \
 
 ---
 
-## 7. Still blocked until you do it locally
+## 7. Still you in Play Console
 
-This environment has Flutter but **no JDK**, so the signed AAB cannot be built here. You need:
+Repo + this PC are ready. Remaining clicks:
 
-- Android Studio / JDK 17
-- `keytool` keystore (back up the `.jks` + passwords offline — lose them and you cannot update the listing)
-- 2–4 phone screenshots
-- A reviewer login you created
+- Google Play developer account ($25) if not paid
+- Create the Harmonix app and paste this listing pack
+- Upload icon + feature graphic from `mobile/store/`
+- **2–4 phone screenshots** from a real device or emulator (Discover card, search, flipped card, Settings)
+- Data safety + content rating (answers above)
+- Internal testing: upload the AAB, add tester Gmails
+- Reviewer login in App access (create one on the live site)
 - Spotify Extended Quota only when people besides you must use Connect
