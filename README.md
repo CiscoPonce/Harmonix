@@ -56,7 +56,7 @@ See [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](
 server/          Express API + SQLite + Spotify/TTS/daily-word services
 client/          Next.js web
 mobile/          Flutter Android app (Play Store path)
-releases/        Sideload debug APKs
+releases/        Latest tester APK: Harmonix-1.0.8.apk (also on GitHub release v0.0.3)
 docs/            Runbooks (Coolify, Spotify, mobile, releases)
 .planning/       ROADMAP, STATE, phase contexts & plans
 docker-compose.yml  Coolify/Docker: api + web (Phase 15)

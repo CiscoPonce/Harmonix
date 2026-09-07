@@ -2,32 +2,34 @@
 
 | File / build | Type | Notes |
 |--------------|------|-------|
-| **[Harmonix-001](https://github.com/CiscoPonce/Harmonix/releases/tag/v1.0.1-android)** | Flutter debug APK | **Current** — dark mode, Pocket-TTS pronounce, language filters, Play Store prep |
-| [Harmonix-flutter-debug.apk](./Harmonix-flutter-debug.apk) | Older Flutter debug | Superseded by Harmonix-001 |
-| [Harmonix-debug.apk](./Harmonix-debug.apk) | Capacitor (Option B) | WebView wrapper |
+| **[Harmonix-1.0.8.apk](./Harmonix-1.0.8.apk)** | Flutter **release** (signed) | **Current** — production API, one-song-per-card, Play listing build `1.0.8+11` |
+| [Harmonix-flutter-debug.apk](./Harmonix-flutter-debug.apk) | Older Flutter debug | Sideload only; superseded |
+| [Harmonix-debug.apk](./Harmonix-debug.apk) | Capacitor (not shipped) | WebView wrapper — do not give testers |
 
-Download the latest APK from the GitHub Release (recommended):  
-**https://github.com/CiscoPonce/Harmonix/releases/tag/v1.0.1-android**
+Download (recommended):  
+**https://github.com/CiscoPonce/Harmonix/releases/tag/harmonix-v0.0.3**
+
+Play upload is the **AAB**, not this APK: `mobile/build/app/outputs/bundle/release/app-release.aab` (local, not in git).
 
 ## Install on Android
 
-1. Download `Harmonix-001.apk` from the release page (or copy from this folder if present locally).
+1. Download `Harmonix-1.0.8.apk` from the release page (or this folder).
 2. Enable **Install unknown apps** for your file manager or browser.
 3. Open the APK and install.
 
-Requires internet. API default for new builds: `https://harmonix.peeporunclub.co.uk/api`.
+Requires internet. API: `https://harmonix.peeporunclub.co.uk/api`.
 
-## Build Flutter (Option C)
+## Build
 
 ```bash
+export JAVA_HOME="$HOME/.local/jdk/jdk-17"
+export PATH="$JAVA_HOME/bin:$HOME/flutter/bin:$PATH"
 cd mobile
-export PATH="$HOME/flutter/bin:$PATH"
-flutter build apk --debug \
+flutter build apk --release \
   --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
+cp build/app/outputs/flutter-apk/app-release.apk ../releases/Harmonix-1.0.8.apk
 ```
 
-Copy output to `releases/Harmonix-001.apk` (or bump the name for the next build).
-
-### Play Store release AAB
+### Play Store AAB
 
 See [mobile/PLAY-STORE.md](../mobile/PLAY-STORE.md). Application ID: `com.harmonix.app`.
