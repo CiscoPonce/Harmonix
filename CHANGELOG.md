@@ -274,6 +274,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 ### Bug Fixes
 
 * daily word: serve translation + IPA from the queue/cache so Android and web cards are complete without waiting on Next
+* daily word: when the unused song catalog is empty, reuse a known track immediately instead of waiting ~55s on NIM 403 / OpenRouter timeouts
 * daily word: one song per card — extras from the same track are last-resort only, and Next prefers a new song when the queue has one
 * gloss: stem/dictionary hits stay provisional (`gloss_v` 1) so AI polish can replace noun/verb mix-ups (`wondering` → preguntándose, not maravilla)
 

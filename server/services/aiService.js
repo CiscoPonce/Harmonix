@@ -101,7 +101,8 @@ function isRateLimitError(err) {
 function isNimAuthError(err) {
   return err && (
     err.status === 401
-    || /api key expired|unauthorized/i.test(String(err.message || ''))
+    || err.status === 403
+    || /api key expired|unauthorized|403 status code/i.test(String(err.message || ''))
   );
 }
 

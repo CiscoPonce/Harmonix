@@ -698,7 +698,7 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
       fast: stopAfter <= USER_DELIVER_STOP_AFTER,
       fromLang: normalizeLangCode(user.target_language || "es"),
       toLang: normalizeLangCode(user.native_language || "en"),
-      requirePronunciation: true,
+      requirePronunciation: stopAfter > USER_DELIVER_STOP_AFTER,
     }
   );
 
@@ -896,7 +896,9 @@ function filterUniquePayloads(userId, payloads) {
 
     // Prefer a new song for every new word until the unused catalog is gone.
     // from-track extras opt in to more words from the same lyrics.
-    if (!payload.allow_same_song) {
+    // song_repeated is the exhausted-catalog fallback: a new word from a
+    // known track, so song-key uniqueness must not drop it.
+    if (!payload.allow_same_song && !payload.song_repeated) {
       if (songId && seenSongIds.has(songId)) continue;
       if (songKey && seenSongKeys.has(songKey)) continue;
     }
@@ -1230,6 +1232,18 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
   // Strict pass: unused songs only. When the curated catalog is exhausted the
   // AI is still asked for *new* songs (with the full avoid list) — a repeated
   // track is never the default answer.
+  // Exception: if the unused pool is already empty and the caller allowed
+  // reuse, skip the AI unused pass. Live Next was waiting 12s×N on NIM 403 /
+  // OpenRouter timeouts before it ever reached the known-song fallback.
+  const unusedForUser = getCuratedCandidatesForBatch(user.id, langCode, genre);
+  if (options.allowSongReuse === true && !unusedForUser.length) {
+    console.log(
+      `daily word batch: unused catalog empty for ${langCode}/${genre} — reusing a known song without waiting on AI`
+    );
+    const reused = await runOnce(true);
+    return { ...reused, songReused: reused.valid.length > 0 };
+  }
+
   const result = await runOnce(false);
   if (result.valid.length) return result;
 
@@ -1364,6 +1378,22 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
     let lastError = "unknown";
     const preferenceEpoch = currentPreferenceEpoch(user.id);
     const requestedGenre = aiService.normalizeGenre(user.genre || "pop");
+    const langCode = normalizeLangCode(user.target_language || "es");
+
+    // Exhausted unused catalog + dead AI song-pick (NIM 403 / OpenRouter hang)
+    // used to burn ~55s on Next before the known-song fallback. Skip that wait.
+    if (!hasUnusedSongCandidates(user.id, langCode, requestedGenre)) {
+      console.log(
+        `daily word batch: unused catalog empty for ${langCode}/${requestedGenre} — known-song fallback first`
+      );
+      const reuseBatch = await generateValidatedBatch(user, fetchImpl, {
+        stopAfter: USER_DELIVER_STOP_AFTER,
+        allowSongReuse: true,
+      });
+      if (reuseBatch.valid.length) {
+        return deliverFromBatch(user, markSongRepeated(reuseBatch), fetchImpl, { preferenceEpoch });
+      }
+    }
 
     for (let attempt = 0; attempt < maxAttempts && Date.now() < deadline; attempt++) {
       if (preferenceEpoch !== currentPreferenceEpoch(user.id)) {
@@ -1465,7 +1495,15 @@ async function refillQueue(user, fetchImpl = fetch) {
       emptyRounds < REFILL_BATCH_ROUNDS
     ) {
       const needed = wordQueue.QUEUE_MAX - wordQueue.countReady(user.id);
-      const batch = await generateValidatedBatch(user, fetchImpl, { stopAfter: needed });
+      const langCode = normalizeLangCode(user.target_language || "es");
+      const genre = user.genre || "pop";
+      const unusedEmpty = !hasUnusedSongCandidates(user.id, langCode, genre);
+      const batch = unusedEmpty
+        ? markSongRepeated(await generateValidatedBatch(user, fetchImpl, {
+          stopAfter: needed,
+          allowSongReuse: true,
+        }))
+        : await generateValidatedBatch(user, fetchImpl, { stopAfter: needed });
       if (abort.signal.aborted || batchGenerationInProgress.has(user.id)) break;
 
       if (!batch.valid.length) {
@@ -1599,6 +1637,7 @@ async function consumeNextDailyWord(user, fetchImpl = fetch) {
         : null;
     if (
       !queued.allow_same_song &&
+      !queued.song_repeated &&
       ((songId && history.songIds.has(songId)) ||
         (songKey && history.songKeys.has(songKey)))
     ) {
@@ -2451,6 +2490,7 @@ module.exports = {
   enrichIfNeeded,
   attachCachedWordMeta,
   cardPresentationReady,
+  shouldBackgroundPolish,
   polishQueuedPayload,
   translationNeedsFix,
   glossNeedsQualityCheck,

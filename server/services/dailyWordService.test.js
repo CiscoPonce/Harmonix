@@ -1354,6 +1354,89 @@ describe("Daily Word Service", () => {
     ]);
     expect(allowed).to.have.lengthOf(1);
     expect(allowed[0].word.text).to.equal("noche");
+    const repeated = filterUniquePayloads(userId, [
+      { word: { text: "luz" }, song: { id: "1", title: "Song A", artist: "Artist A" }, song_repeated: true },
+    ]);
+    expect(repeated).to.have.lengthOf(1);
+    expect(repeated[0].word.text).to.equal("luz");
+  });
+
+  it("reuses a known song immediately when the unused catalog is empty", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    db.prepare("DELETE FROM daily_words WHERE user_id = ? AND date = ?").run(userId, today);
+    saveDailyWord(userId, today, {
+      date: today,
+      preferred_genre: "pop",
+      word: { text: "ayer", translation: "yesterday" },
+      song: { id: "100", title: "Old Hit", artist: "Old Artist", genre: "pop" },
+      lyric: { snippet: "ayer", timestamp: "0:45", timestamp_ms: 45000, line_index: 0, char_start: 0, char_end: 4 },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+    });
+    db.prepare(
+      "UPDATE daily_words SET generated_at = datetime('now', '-1 day') WHERE user_id = ?"
+    ).run(userId);
+
+    const originalCurated = aiService.getCuratedSongCandidates;
+    const originalVerified = aiService.getVerifiedSongCandidates;
+    const originalSongs = aiService.generateDailyWordSongs;
+    aiService.getCuratedSongCandidates = () => [
+      { artist: "Old Artist", song_title: "Old Hit", genre: "pop" },
+    ];
+    aiService.getVerifiedSongCandidates = () => [];
+    const restore = stubSongPipeline([]);
+    let aiCalls = 0;
+    aiService.generateDailyWordSongs = async () => {
+      aiCalls += 1;
+      const err = new Error("ai_timeout");
+      err.code = "ai_timeout";
+      throw err;
+    };
+
+    const mockFetch = async (url) => {
+      if (url.includes("deezer.com/search")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: [{
+              id: 100,
+              title: "Old Hit",
+              duration: 200,
+              preview: "https://cdn.example/preview.mp3",
+              artist: { name: "Old Artist" },
+            }],
+          }),
+        };
+      }
+      if (url.includes("lrclib.net")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            syncedLyrics: "[00:35.00] El amor es fuerte\n[00:42.00] Siempre brilla\n[00:50.00] Para ti",
+            plainLyrics: "El amor es fuerte\nSiempre brilla\nPara ti",
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const started = Date.now();
+    try {
+      const result = await generateDailyWord(user, { force: true, fetchImpl: mockFetch });
+      expect(result.word.text).to.be.a("string").and.not.empty;
+      expect(result.word.text.toLowerCase()).to.not.equal("ayer");
+      expect(String(result.song.id)).to.equal("100");
+      expect(result.song_repeated).to.equal(true);
+      expect(aiCalls).to.equal(0);
+      expect(Date.now() - started).to.be.below(5000);
+    } finally {
+      restore();
+      aiService.generateDailyWordSongs = originalSongs;
+      aiService.getCuratedSongCandidates = originalCurated;
+      aiService.getVerifiedSongCandidates = originalVerified;
+    }
   });
 
   it("treats stem-derived dictionary hits as provisional glosses", async () => {

@@ -156,6 +156,44 @@ describe("Daily Word Routes", () => {
     expect(res.body.from_queue).to.equal(true);
     expect(res.body.queue).to.have.property("ready");
   });
+
+  it("POST /next returns cached IPA on a translation-only queued card", async () => {
+    const glossCache = require("../services/glossCacheService");
+    db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
+    db.exec("DELETE FROM gloss_cache");
+    db.prepare(`
+      UPDATE users
+      SET native_language = 'en', target_language = 'es', genre = 'pop'
+      WHERE id = ?
+    `).run(userId);
+    const today = new Date().toISOString().slice(0, 10);
+    db.prepare(`
+      INSERT INTO user_word_queue (user_id, word_json, expires_at)
+      VALUES (?, ?, datetime('now', '+7 days'))
+    `).run(userId, JSON.stringify({
+      date: today,
+      language_code: "es",
+      preferred_genre: "pop",
+      word: { text: "cielo", translation: "sky", gloss_v: 2 },
+      lyric: { snippet: "en el cielo", timestamp: "0:45", timestamp_ms: 45000, line_index: 0, char_start: 6, char_end: 11 },
+      song: { id: "11", title: "Song", artist: "Artist", genre: "pop" },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30, preview_provider: "deezer" },
+    }));
+    glossCache.rememberGloss("cielo", "es", "en", "sky", "ai", {
+      pronunciation: "/ˈsje.lo/",
+      part_of_speech: "noun",
+    });
+
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/next").route.stack[0].handle;
+    const req = { user: { id: userId } };
+    const res = mockRes();
+    await handler(req, res);
+
+    expect(res.body.word.text).to.equal("cielo");
+    expect(res.body.word.translation).to.equal("sky");
+    expect(res.body.word.pronunciation).to.equal("/ˈsje.lo/");
+    expect(res.body.from_queue).to.equal(true);
+  });
 });
 
 describe("GET /pronounce", () => {

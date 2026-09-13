@@ -277,6 +277,23 @@ describe('AI Service', () => {
     }
   });
 
+  it('fast table gloss still ships without IPA so Next is not blocked', async () => {
+    const { glossDailyWords } = require('./aiService');
+    const table = await glossDailyWords(
+      [{ word: 'amor', line: 'mi amor' }],
+      'Spanish',
+      {
+        fast: true,
+        nativeLanguageName: 'English',
+        fromLang: 'es',
+        toLang: 'en',
+        fetchImpl: async () => ({ ok: false }),
+      }
+    );
+    expect(table[0].translation).to.be.ok;
+    expect(table[0].pronunciation).to.equal(null);
+  });
+
   describe('MyMemory quota + gloss cache', () => {
     const {
       dictionaryGlossFallback,
