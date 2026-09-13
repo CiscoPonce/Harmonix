@@ -412,12 +412,14 @@ export function DailyWordCard({
     return () => clearInterval(timer);
   }, [queueStatus?.refilling, queueStatus?.ready, refreshing, fetchQueueStatus]);
 
-  // Background polish / cache backfill can fill a blank gloss after the first
-  // paint. Re-fetch the same card a few times instead of leaving it empty.
+  // Background polish / cache backfill can fill a blank gloss or IPA after the
+  // first paint. Re-fetch the same card a few times instead of leaving gaps.
   useEffect(() => {
     const text = data?.word?.text?.trim();
     const meaning = data?.word?.translation?.trim();
-    if (!text || (meaning && meaning.toLowerCase() !== text.toLowerCase()) || refreshing) {
+    const ipa = data?.word?.pronunciation?.trim();
+    const meaningReady = Boolean(meaning && meaning.toLowerCase() !== text?.toLowerCase());
+    if (!text || refreshing || (meaningReady && ipa)) {
       return;
     }
     let cancelled = false;
@@ -431,7 +433,9 @@ export function DailyWordCard({
           const payload = (await res.json()) as DailyWordPayload;
           if (payload?.word?.text !== text) return;
           const next = payload.word.translation?.trim();
-          if (!next || next.toLowerCase() === text.toLowerCase()) return;
+          const nextIpa = payload.word.pronunciation?.trim();
+          const nextMeaningReady = Boolean(next && next.toLowerCase() !== text.toLowerCase());
+          if (!nextMeaningReady && !nextIpa) return;
           setData((prev) => {
             if (!prev || prev.word?.text !== text) return prev;
             return {
@@ -452,7 +456,7 @@ export function DailyWordCard({
       cancelled = true;
       timers.forEach((id) => window.clearTimeout(id));
     };
-  }, [data?.word?.text, data?.word?.translation, refreshing]);
+  }, [data?.word?.text, data?.word?.translation, data?.word?.pronunciation, refreshing]);
 
   useEffect(() => {
     if (!refreshing && !(loading && !data)) return;

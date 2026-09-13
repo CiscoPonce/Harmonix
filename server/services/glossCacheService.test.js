@@ -12,6 +12,21 @@ describe("glossCacheService", () => {
     expect(glossCache.getGloss("nights", "EN", "ES")).to.equal("noches");
   });
 
+  it("remembers pronunciation without wiping it on a later meaning-only write", () => {
+    expect(glossCache.rememberGloss("nights", "en", "es", "noches", "ai", {
+      pronunciation: "/naɪts/",
+      part_of_speech: "noun",
+    })).to.equal(true);
+    const first = glossCache.getGlossWithSource("nights", "en", "es");
+    expect(first.pronunciation).to.equal("/naɪts/");
+    expect(first.part_of_speech).to.equal("noun");
+    glossCache.rememberGloss("nights", "en", "es", "noches", "curated");
+    const again = glossCache.getGlossWithSource("nights", "en", "es");
+    expect(again.translation).to.equal("noches");
+    expect(again.pronunciation).to.equal("/naɪts/");
+    expect(again.part_of_speech).to.equal("noun");
+  });
+
   it("rejects identity translations and empty pairs", () => {
     expect(glossCache.rememberGloss("nights", "en", "es", "nights")).to.equal(false);
     expect(glossCache.rememberGloss("nights", "en", "en", "noches")).to.equal(false);

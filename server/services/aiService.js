@@ -1382,11 +1382,11 @@ function getGlossCache() {
   return glossCache || null;
 }
 
-function rememberGloss(word, fromLang, toLang, translation, source) {
+function rememberGloss(word, fromLang, toLang, translation, source, extra = {}) {
   const cache = getGlossCache();
   if (!cache) return false;
   try {
-    return cache.rememberGloss(word, fromLang, toLang, translation, source);
+    return cache.rememberGloss(word, fromLang, toLang, translation, source, extra);
   } catch (err) {
     console.warn(`gloss cache write failed: ${err.message}`);
     return false;
@@ -1572,6 +1572,7 @@ async function glossDailyWords(items, languageName, {
   fromLang = null,
   toLang = null,
   fetchImpl = fetch,
+  requirePronunciation = false,
 } = {}) {
   if (!items?.length) return [];
 
@@ -1585,7 +1586,7 @@ async function glossDailyWords(items, languageName, {
         pronunciation: null,
       }, item.line);
     });
-    if (fast && tableOnly.every((g) => g?.translation)) {
+    if (fast && !requirePronunciation && tableOnly.every((g) => g?.translation)) {
       return tableOnly;
     }
   }

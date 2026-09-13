@@ -698,6 +698,7 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
       fast: stopAfter <= USER_DELIVER_STOP_AFTER,
       fromLang: normalizeLangCode(user.target_language || "es"),
       toLang: normalizeLangCode(user.native_language || "en"),
+      requirePronunciation: true,
     }
   );
 
@@ -746,6 +747,7 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
         fast: false,
         fromLang: normalizeLangCode(user.target_language || "es"),
         toLang: normalizeLangCode(user.native_language || "en"),
+        requirePronunciation: true,
       }
     );
     const extraResults = buildResults(extraPartials, extraGlosses)
@@ -1542,12 +1544,13 @@ function purgeQueueWrongGenre(userId, userGenre) {
 function pickNextQueueItem(userId, lastSongId) {
   const items = wordQueue.listReadyItems(userId);
   if (!items.length) return null;
-  if (!lastSongId) return items[0];
-  const differentSong = items.find((item) => {
+  const notSameSong = (item) => {
+    if (!lastSongId) return true;
     const id = item.payload?.song?.id;
     return id == null || String(id) !== lastSongId;
-  });
-  return differentSong || items[0];
+  };
+  const pool = items.some(notSameSong) ? items.filter(notSameSong) : items;
+  return pool.find((item) => cardPresentationReady(item.payload?.word)) || pool[0];
 }
 
 async function consumeNextDailyWord(user, fetchImpl = fetch) {
@@ -1658,8 +1661,14 @@ function wordMetaNeedsEnrichment(word) {
 
 function shouldBackgroundPolish(word) {
   return Boolean(word?.text)
-    && (Number(word.gloss_v || 0) < 2 || !word?.pronunciation)
+    && (Number(word.gloss_v || 0) < 2 || !cardPresentationReady(word))
     && !wordMetaNeedsEnrichment(word);
+}
+
+/** Translation is usable and IPA is present — safe to show on web and Android. */
+function cardPresentationReady(word) {
+  if (!word?.text || glossNeedsQualityCheck(word)) return false;
+  return Boolean(String(word.pronunciation || "").trim());
 }
 
 async function dictionaryOnlyGlosses(items, fromLang, toLang) {
@@ -1680,8 +1689,35 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, {
   fast = false,
   fromLang = null,
   toLang = null,
+  requirePronunciation = false,
 } = {}) {
   if (!items?.length) return [];
+
+  const seeded = items.map((item) => {
+    const cached = fromLang && toLang
+      ? cachedGlossFor(item.word, fromLang, toLang, item.line)
+      : null;
+    const table = fromLang && toLang
+      ? aiService.commonGlossLookupDetailed(item.word, fromLang, toLang, item.line)
+      : null;
+    const tableOk = table?.translation
+      && !aiService.translationLooksSuspicious(item.word, table.translation, item.line);
+    const translation = tableOk ? table.translation : cached?.translation || null;
+    const trusted = tableOk
+      ? aiService.isTrustedGlossSource(table.source)
+      : Boolean(cached?.trusted);
+    return {
+      translation,
+      part_of_speech: cached?.part_of_speech || null,
+      pronunciation: cached?.pronunciation || null,
+      gloss_v: translation && trusted ? 2 : 1,
+    };
+  });
+  const cacheComplete = seeded.every((g) => (
+    g.translation && (!requirePronunciation || g.pronunciation)
+  ));
+  if (cacheComplete) return seeded;
+
   let glosses;
   try {
     glosses = await aiService.glossDailyWords(items, languageName, {
@@ -1690,10 +1726,13 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, {
       refine: false,
       fromLang,
       toLang,
+      requirePronunciation,
     });
   } catch (err) {
     console.warn(`daily word gloss failed (${err.status || err.code || err.message}) — dictionary fallback`);
-    return dictionaryOnlyGlosses(items, fromLang, toLang);
+    return seeded.every((g) => g.translation)
+      ? seeded
+      : dictionaryOnlyGlosses(items, fromLang, toLang);
   }
 
   const needsRefine = items.some((item, i) => (
@@ -1740,18 +1779,30 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, {
   // Never escalate to the slow (60s NIM) path on user-facing requests — background
   // polish fills gaps after we return. Slow escalate previously caused 20–30s Next Word.
   return glosses.map((g, i) => {
-    const healthy = Boolean(g?.translation)
-      && !aiService.translationLooksSuspicious(items[i].word, g.translation, items[i].line);
-    if (healthy) rememberAcceptedGloss(items[i].word, fromLang, toLang, g.translation, "ai");
-    return { ...g, gloss_v: healthy ? 2 : 1 };
+    const seed = seeded[i] || {};
+    const merged = {
+      ...g,
+      pronunciation: g?.pronunciation || seed.pronunciation || null,
+      part_of_speech: g?.part_of_speech || seed.part_of_speech || null,
+      translation: g?.translation || seed.translation || null,
+    };
+    const healthy = Boolean(merged.translation)
+      && !aiService.translationLooksSuspicious(items[i].word, merged.translation, items[i].line);
+    if (healthy) {
+      rememberAcceptedGloss(items[i].word, fromLang, toLang, merged.translation, "ai", {
+        pronunciation: merged.pronunciation,
+        part_of_speech: merged.part_of_speech,
+      });
+    }
+    return { ...merged, gloss_v: healthy ? 2 : 1 };
   });
 }
 
 /** Persist a gloss every provider agreed on so it survives the next 429 storm. */
-function rememberAcceptedGloss(word, fromLang, toLang, translation, source) {
+function rememberAcceptedGloss(word, fromLang, toLang, translation, source, extra = {}) {
   if (!fromLang || !toLang || !translation) return;
   try {
-    glossCache.rememberGloss(word, fromLang, toLang, translation, source);
+    glossCache.rememberGloss(word, fromLang, toLang, translation, source, extra);
   } catch (err) {
     console.warn(`gloss cache write failed: ${err.message || err}`);
   }
@@ -1771,12 +1822,40 @@ function cachedGlossFor(text, fromLang, toLang, line) {
       return {
         translation: hit.translation,
         trusted: TRUSTED_CACHE_SOURCES.has(String(hit.source || "")),
+        pronunciation: hit.pronunciation || null,
+        part_of_speech: hit.part_of_speech || null,
       };
     }
   } catch (err) {
     console.warn(`gloss cache read failed: ${err.message || err}`);
   }
   return null;
+}
+
+/** Instant — attach cached IPA/POS without calling the models. */
+function attachCachedWordMeta(payload, user) {
+  const text = payload?.word?.text;
+  if (!text || !user) return payload;
+  const fromLang = normalizeLangCode(user.target_language || "es");
+  const toLang = normalizeLangCode(user.native_language || "en");
+  const cached = cachedGlossFor(text, fromLang, toLang, payload?.lyric?.snippet);
+  if (!cached) return payload;
+  const word = { ...payload.word };
+  let changed = false;
+  if (translationNeedsFix(word) && cached.translation) {
+    word.translation = cached.translation;
+    word.gloss_v = Math.max(Number(word.gloss_v || 0), cached.trusted ? 2 : 1);
+    changed = true;
+  }
+  if (!String(word.pronunciation || "").trim() && cached.pronunciation) {
+    word.pronunciation = cached.pronunciation;
+    changed = true;
+  }
+  if (!String(word.part_of_speech || "").trim() && cached.part_of_speech) {
+    word.part_of_speech = cached.part_of_speech;
+    changed = true;
+  }
+  return changed ? { ...payload, word } : payload;
 }
 
 function applyCuratedGloss(payload, user) {
@@ -1793,34 +1872,40 @@ function applyCuratedGloss(payload, user) {
       // Curated / lyric-sense entries override whatever we had.
       rememberAcceptedGloss(text, fromLang, toLang, tableHit, "curated");
       if (current && current.toLowerCase() === tableHit.toLowerCase()) {
-        return Number(payload.word.gloss_v || 0) >= 2
+        const bumped = Number(payload.word.gloss_v || 0) >= 2
           ? payload
           : { ...payload, word: { ...payload.word, gloss_v: 2 } };
+        return attachCachedWordMeta(bumped, user);
       }
-      return {
+      return attachCachedWordMeta({
         ...payload,
         word: { ...payload.word, translation: tableHit, gloss_v: 2 },
-      };
+      }, user);
     }
     // Bulk-dictionary / stem hits are provisional: only fill a blank, never
     // replace an existing gloss, and leave gloss_v < 2 so polish re-checks it.
     if (translationNeedsFix(payload.word)) {
-      return {
+      return attachCachedWordMeta({
         ...payload,
         word: { ...payload.word, translation: tableHit, gloss_v: 1 },
-      };
+      }, user);
     }
-    return payload;
+    return attachCachedWordMeta(payload, user);
   }
   // No table hit: a thin word can still be rescued synchronously from the
   // persistent cache (glosses other users already received).
-  if (!wordMetaNeedsEnrichment(payload.word)) return payload;
   const cached = cachedGlossFor(text, fromLang, toLang, line);
   if (!cached) return payload;
-  return {
+  return attachCachedWordMeta({
     ...payload,
-    word: { ...payload.word, translation: cached.translation, gloss_v: cached.trusted ? 2 : 1 },
-  };
+    word: {
+      ...payload.word,
+      translation: payload.word.translation || cached.translation,
+      gloss_v: wordMetaNeedsEnrichment(payload.word) && cached.trusted
+        ? 2
+        : (payload.word.gloss_v || (cached.trusted ? 2 : 1)),
+    },
+  }, user);
 }
 
 async function enrichPayloadWordMeta(payload, user) {
@@ -1830,7 +1915,7 @@ async function enrichPayloadWordMeta(payload, user) {
 
   const curated = applyCuratedGloss(payload, user);
   if (curated.word.translation !== payload.word.translation) return curated;
-  if (!wordMetaNeedsEnrichment(payload.word)) return payload;
+  if (!wordMetaNeedsEnrichment(payload.word)) return attachCachedWordMeta(payload, user);
 
   const fromLang = normalizeLangCode(user.target_language || "es");
   const toLang = normalizeLangCode(user.native_language || "en");
@@ -1845,21 +1930,21 @@ async function enrichPayloadWordMeta(payload, user) {
       const trusted = aiService.isTrustedGlossSource(hit.source);
       if (trusted) rememberAcceptedGloss(text, fromLang, toLang, tableHit, "curated");
       console.log(`daily word enrich gloss: ${text} in ${Date.now() - started}ms (${hit.source})`);
-      return {
+      return attachCachedWordMeta({
         ...payload,
         word: { ...payload.word, translation: tableHit, gloss_v: trusted ? 2 : 1 },
-      };
+      }, user);
     }
     const fb = await aiService.dictionaryGlossFallback(text, fromLang, toLang, fetch, line);
     if (fb && !aiService.translationLooksSuspicious(text, fb, line)) {
       rememberAcceptedGloss(text, fromLang, toLang, fb, "dictionary");
       console.log(`daily word enrich gloss: ${text} in ${Date.now() - started}ms (dictionary)`);
-      return {
+      return attachCachedWordMeta({
         ...payload,
         word: { ...payload.word, translation: fb, gloss_v: 2 },
-      };
+      }, user);
     }
-    return payload;
+    return attachCachedWordMeta(payload, user);
   } catch (err) {
     console.warn(`daily word enrich gloss failed in ${Date.now() - started}ms: ${err.message || err}`);
     return payload;
@@ -1874,13 +1959,13 @@ function scheduleBackgroundGlossPolish(user, payload) {
         const text = payload.word.text;
         const line = payload.lyric?.snippet || null;
         const translation = payload.word.translation;
-        // Verified glosses (gloss_v 2) need no further AI call. Provisional
-        // ones (gloss_v < 2: bulk-dictionary / stem hits like
-        // wondering→"maravilla") always go to the AI with the lyric line, and
-        // the AI answer wins — a denylist of known-bad pairs cannot converge.
+        // Verified complete cards (meaning + IPA) need no further AI call.
+        // Missing phonetics still go to the model — table hits used to skip
+        // this path and leave Android/web without IPA.
         if (
           translation
           && Number(payload.word.gloss_v || 0) >= 2
+          && cardPresentationReady(payload.word)
           && !translationNeedsFix(payload.word)
           && !aiService.translationLooksSuspicious(text, translation, line)
         ) {
@@ -1917,7 +2002,11 @@ function scheduleBackgroundGlossPolish(user, payload) {
           normalizeLangCode(user.target_language || "es"),
           normalizeLangCode(user.native_language || "en"),
           gloss.translation,
-          "ai"
+          "ai",
+          {
+            pronunciation: gloss.pronunciation,
+            part_of_speech: gloss.part_of_speech,
+          }
         );
         console.log(`daily word background gloss polish: ${text}`);
       } catch (err) {
@@ -1927,12 +2016,63 @@ function scheduleBackgroundGlossPolish(user, payload) {
   });
 }
 
-async function backfillQueueMetadata(user) {
-  if (process.env.NODE_ENV === "test") return { updated: 0 };
+async function polishQueuedPayload(payload, user) {
+  let enriched = attachCachedWordMeta(applyCuratedGloss(payload, user), user);
+  if (cardPresentationReady(enriched.word)) return enriched;
+  const text = enriched.word?.text;
+  const line = enriched.lyric?.snippet || null;
+  if (!text || !line) return enriched;
+  try {
+    const languageName = languageNameFromCode(user.target_language || "es");
+    const nativeLanguageName = languageNameFromCode(user.native_language || "en", "English");
+    const glosses = await aiService.glossDailyWords(
+      [{ word: text, line }],
+      languageName,
+      {
+        fast: true,
+        nativeLanguageName,
+        refine: true,
+        requirePronunciation: true,
+        fromLang: normalizeLangCode(user.target_language || "es"),
+        toLang: normalizeLangCode(user.native_language || "en"),
+      }
+    );
+    const gloss = glosses[0];
+    if (!gloss?.translation) return enriched;
+    if (aiService.translationLooksSuspicious(text, gloss.translation, line)) return enriched;
+    enriched = {
+      ...enriched,
+      word: {
+        ...enriched.word,
+        translation: gloss.translation,
+        part_of_speech: gloss.part_of_speech ?? enriched.word.part_of_speech,
+        pronunciation: gloss.pronunciation ?? enriched.word.pronunciation,
+        gloss_v: 2,
+      },
+    };
+    rememberAcceptedGloss(
+      text,
+      normalizeLangCode(user.target_language || "es"),
+      normalizeLangCode(user.native_language || "en"),
+      gloss.translation,
+      "ai",
+      {
+        pronunciation: gloss.pronunciation,
+        part_of_speech: gloss.part_of_speech,
+      }
+    );
+  } catch (err) {
+    console.warn(`queue gloss polish failed: ${err.message || err}`);
+  }
+  return enriched;
+}
+
+async function backfillQueueMetadata(user, { allowInTest = false } = {}) {
+  if (process.env.NODE_ENV === "test" && !allowInTest) return { updated: 0 };
   const items = wordQueue.listReadyItems(user.id);
   let updated = 0;
   for (const item of items) {
-    const enriched = await enrichPayloadWordMeta(item.payload, user);
+    const enriched = await polishQueuedPayload(item.payload, user);
     if (JSON.stringify(enriched) !== JSON.stringify(item.payload)) {
       wordQueue.updatePayload(item.id, enriched);
       updated += 1;
@@ -1945,10 +2085,14 @@ async function backfillQueueMetadata(user) {
 }
 
 async function enrichIfNeeded(payload, user) {
-  if (process.env.NODE_ENV === "test") return hydratePayloadAudio(applyCuratedGloss(payload, user));
-  const hydrated = applyCuratedGloss(hydratePayloadAudio(payload), user);
+  const hydrated = attachCachedWordMeta(
+    applyCuratedGloss(hydratePayloadAudio(payload), user),
+    user
+  );
+  if (process.env.NODE_ENV === "test") return hydrated;
 
   // Queued / cached words with a usable gloss must return immediately.
+  // IPA is attached from cache above so Next stays instant.
   if (!wordMetaNeedsEnrichment(hydrated.word)) {
     if (shouldBackgroundPolish(hydrated.word)) {
       scheduleBackgroundGlossPolish(user, hydrated);
@@ -1956,7 +2100,7 @@ async function enrichIfNeeded(payload, user) {
     return hydrated;
   }
 
-  const enriched = await enrichPayloadWordMeta(hydrated, user);
+  const enriched = attachCachedWordMeta(await enrichPayloadWordMeta(hydrated, user), user);
   const w = enriched.word || {};
   const prev = hydrated.word || {};
   const changed = w.translation !== prev.translation
@@ -2041,14 +2185,15 @@ async function queueExtraWordsFromValidatedSong(user, {
       toLang,
       item.picked.line
     );
-    const translation = hit?.translation || null;
+    const cached = cachedGlossFor(item.picked.word, langCode, toLang, item.picked.line);
+    const translation = hit?.translation || cached?.translation || null;
     return {
       translation,
-      part_of_speech: null,
-      pronunciation: null,
+      part_of_speech: cached?.part_of_speech || null,
+      pronunciation: cached?.pronunciation || null,
       // Only curated / lyric-sense hits are verified; dict/stem hits are
       // provisional so background polish re-glosses them with the AI.
-      gloss_v: translation && aiService.isTrustedGlossSource(hit.source) ? 2 : 1,
+      gloss_v: translation && (aiService.isTrustedGlossSource(hit?.source) || cached?.trusted) ? 2 : 1,
     };
   });
 
@@ -2076,7 +2221,7 @@ async function queueExtraWordsFromValidatedSong(user, {
     // Lets the UI be honest: "another word from this song while we look for a new one".
     payload.same_song_fallback = true;
     if (persist) persistPayloadSideEffects(payload, track, lyricsData, syncCheck);
-    return payload;
+    return attachCachedWordMeta(payload, user);
   });
 
   const inserted = wordQueue.enqueuePayloads(user.id, filterUniquePayloads(user.id, payloads));
@@ -2211,6 +2356,7 @@ async function generateDailyWordFromTrack(user, trackId, fetchImpl = fetch) {
       fast: true,
       fromLang: normalizeLangCode(user.target_language || "es"),
       toLang: normalizeLangCode(user.native_language || "en"),
+      requirePronunciation: true,
     }
   );
   const gloss = glosses[0] || {};
@@ -2303,6 +2449,9 @@ module.exports = {
   hydratePayloadAudio,
   enrichPayloadWordMeta,
   enrichIfNeeded,
+  attachCachedWordMeta,
+  cardPresentationReady,
+  polishQueuedPayload,
   translationNeedsFix,
   glossNeedsQualityCheck,
   wordMetaNeedsEnrichment,

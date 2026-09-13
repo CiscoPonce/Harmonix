@@ -16,7 +16,9 @@ const {
   generateNextDailyWord,
   generateDailyWord,
   fetchAiCandidates,
+  enrichIfNeeded,
   enrichPayloadWordMeta,
+  backfillQueueMetadata,
   pickWordFromLyricsHeuristic,
   pickWordsFromText,
   filterUniquePayloads,
@@ -30,6 +32,7 @@ const {
 } = require("./dailyWordService");
 const wordQueue = require("./wordQueueService");
 const aiService = require("./aiService");
+const glossCache = require("./glossCacheService");
 
 function stubSongPipeline(songCandidates) {
   const originalSongs = aiService.generateDailyWordSongs;
@@ -68,6 +71,7 @@ describe("Daily Word Service", () => {
     db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
     db.prepare("DELETE FROM user_word_queue WHERE user_id = ?").run(userId);
     db.prepare("DELETE FROM user_queue_refill WHERE user_id = ?").run(userId);
+    db.exec("DELETE FROM gloss_cache");
     // Avoid stale LRC from prior runs (preview-window checks depend on timestamps).
     try {
       db.prepare("DELETE FROM song_lyrics_snapshot").run();
@@ -1179,6 +1183,90 @@ describe("Daily Word Service", () => {
     const picked = pickNextQueueItem(userId, "royals");
     expect(picked.payload.word.text).to.equal("luz");
     expect(String(picked.payload.song.id)).to.equal("other");
+  });
+
+  it("pickNextQueueItem prefers a card that already has translation and IPA", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    wordQueue.enqueuePayloads(userId, [
+      {
+        date: today,
+        language_code: "es",
+        preferred_genre: "pop",
+        word: { text: "town", translation: "pueblo" },
+        lyric: { snippet: "torn up town" },
+        song: { id: "thin", title: "Thin", artist: "A", genre: "pop" },
+        audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      },
+      {
+        date: today,
+        language_code: "es",
+        preferred_genre: "pop",
+        word: { text: "luz", translation: "light", pronunciation: "/lus/" },
+        lyric: { snippet: "luz" },
+        song: { id: "ready", title: "Ready", artist: "B", genre: "pop" },
+        audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+      },
+    ]);
+    const picked = pickNextQueueItem(userId, null);
+    expect(picked.payload.word.text).to.equal("luz");
+    expect(picked.payload.word.pronunciation).to.equal("/lus/");
+  });
+
+  it("attaches cached IPA on serve without calling the models", async () => {
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    glossCache.rememberGloss("nights", "es", "en", "noches", "ai", {
+      pronunciation: "/naitz/",
+      part_of_speech: "noun",
+    });
+    let aiCalls = 0;
+    const original = aiService.glossDailyWords;
+    aiService.glossDailyWords = async () => {
+      aiCalls += 1;
+      throw new Error("should not call AI for a cached IPA");
+    };
+    try {
+      const out = await enrichIfNeeded({
+        word: { text: "nights", translation: "noches", gloss_v: 2 },
+        lyric: { snippet: "long nights" },
+        song: { id: "1", title: "Song", artist: "Artist", genre: "pop" },
+        audio: { duration_seconds: 180 },
+      }, user);
+      expect(out.word.translation).to.equal("noches");
+      expect(out.word.pronunciation).to.equal("/naitz/");
+      expect(out.word.part_of_speech).to.equal("noun");
+      expect(aiCalls).to.equal(0);
+    } finally {
+      aiService.glossDailyWords = original;
+    }
+  });
+
+  it("polishes queued cards with IPA before they are served", async () => {
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const today = new Date().toISOString().slice(0, 10);
+    wordQueue.enqueuePayloads(userId, [{
+      date: today,
+      language_code: "es",
+      preferred_genre: "pop",
+      word: { text: "ola", translation: "wave", gloss_v: 2 },
+      lyric: { snippet: "una ola enorme" },
+      song: { id: "wave", title: "Wave", artist: "Artist", genre: "pop" },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+    }]);
+    const original = aiService.glossDailyWords;
+    aiService.glossDailyWords = async (items) => items.map((item) => ({
+      translation: `${item.word}-en`,
+      part_of_speech: "noun",
+      pronunciation: "/o.la/",
+    }));
+    try {
+      const result = await backfillQueueMetadata(user, { allowInTest: true });
+      expect(result.updated).to.equal(1);
+      const queued = wordQueue.listReadyItems(userId)[0];
+      expect(queued.payload.word.pronunciation).to.equal("/o.la/");
+      expect(queued.payload.word.translation).to.equal("ola-en");
+    } finally {
+      aiService.glossDailyWords = original;
+    }
   });
 
   it("queueSameSongFallback marks extras as last-resort same-song items", async () => {

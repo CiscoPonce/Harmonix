@@ -17,7 +17,9 @@ progress:
 
 **Phase 17 — Play Store listing.** Section A (keystore + signed AAB `1.0.8+11`) is done on this PC. Remaining: Play Console create-app, screenshots, Internal testing — [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](phases/17-play-store-listing/17-CHECKLIST.md). AAB: `mobile/build/app/outputs/bundle/release/app-release.aab`. Capacitor is not a release path.
 
-**2026-09-06 daily-word quality:** Next word is one song per card (same-song extras only as last-resort, with honesty copy). Stem/dictionary glosses stay provisional so AI polish can replace noun/verb mix-ups (`wondering` → preguntándose). Discover search uses iTunes when Deezer 403s the VPS.
+**2026-09-13 daily-word cards:** Next still returns instantly. Translation + IPA are attached from the gloss cache, queued words are polished in the background, and the next card prefers a complete payload so Android/web no longer show a blank meaning or phonetics. Stem/dictionary glosses stay provisional so AI polish can replace noun/verb mix-ups (`wondering` → preguntándose). Discover search uses iTunes when Deezer 403s the VPS.
+
+**2026-09-06 daily-word quality:** Next word is one song per card (same-song extras only as last-resort, with honesty copy).
 
 **2026-09-05 hardening pass (post-audit):** CORS allowlist + security headers + auth/proxy rate limits; OpenRouter/NIM circuit breakers (no more 429 storms); Pocket-TTS-first pronunciation; preview-window word picks so "Hear it" plays the word; full UI i18n on web and Flutter; Flutter learns a word from a searched song; CI test gate (server/web/Flutter) before deploy; nightly SQLite backup timer (`scripts/backup-sqlite.sh`). Still open: restrict Coolify ports 8000/6001 to a VPN/allowlist, reboot VPS for pending kernel, React-compiler lint debt in `client/src` (26 pre-existing errors), Play Store listing.
 

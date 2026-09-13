@@ -5,6 +5,9 @@
  * (word, from, to). When all live providers are exhausted — OpenRouter/NIM
  * daily 429s plus the anonymous MyMemory quota — a learner still gets a
  * meaning for any word another user already saw, instead of a blank card.
+ *
+ * Pronunciation / POS are optional extras: once an AI polish lands IPA, later
+ * Next-word hits attach it instantly so Android and web do not wait.
  */
 const db = require("../db");
 
@@ -21,20 +24,41 @@ db.exec(`
   )
 `);
 
+function ensureColumn(table, column, type) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  }
+}
+
+ensureColumn("gloss_cache", "pronunciation", "TEXT");
+ensureColumn("gloss_cache", "part_of_speech", "TEXT");
+
 const selectStmt = db.prepare(
-  "SELECT translation, source FROM gloss_cache WHERE word = ? AND from_lang = ? AND to_lang = ?"
+  `SELECT translation, source, pronunciation, part_of_speech
+   FROM gloss_cache WHERE word = ? AND from_lang = ? AND to_lang = ?`
 );
 const upsertStmt = db.prepare(`
-  INSERT INTO gloss_cache (word, from_lang, to_lang, translation, source)
-  VALUES (?, ?, ?, ?, ?)
+  INSERT INTO gloss_cache (word, from_lang, to_lang, translation, source, pronunciation, part_of_speech)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(word, from_lang, to_lang) DO UPDATE SET
     translation = excluded.translation,
     source = excluded.source,
+    pronunciation = COALESCE(excluded.pronunciation, gloss_cache.pronunciation),
+    part_of_speech = COALESCE(excluded.part_of_speech, gloss_cache.part_of_speech),
     updated_at = CURRENT_TIMESTAMP
 `);
 const insertIgnoreStmt = db.prepare(`
-  INSERT OR IGNORE INTO gloss_cache (word, from_lang, to_lang, translation, source)
-  VALUES (?, ?, ?, ?, ?)
+  INSERT OR IGNORE INTO gloss_cache (word, from_lang, to_lang, translation, source, pronunciation, part_of_speech)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`);
+const fillMetaStmt = db.prepare(`
+  UPDATE gloss_cache
+  SET pronunciation = COALESCE(pronunciation, ?),
+      part_of_speech = COALESCE(part_of_speech, ?),
+      updated_at = CURRENT_TIMESTAMP
+  WHERE word = ? AND from_lang = ? AND to_lang = ?
+    AND (pronunciation IS NULL OR part_of_speech IS NULL)
 `);
 const countStmt = db.prepare("SELECT COUNT(*) AS c FROM gloss_cache");
 
@@ -44,6 +68,11 @@ function normKey(word) {
 
 function normLang(code) {
   return String(code || "").trim().toLowerCase();
+}
+
+function cleanMeta(value) {
+  const text = String(value || "").trim();
+  return text || null;
 }
 
 function getGloss(word, fromLang, toLang) {
@@ -63,10 +92,15 @@ function getGlossWithSource(word, fromLang, toLang) {
   if (!key || !from || !to || from === to) return null;
   const row = selectStmt.get(key, from, to);
   if (!row?.translation) return null;
-  return { translation: row.translation, source: row.source || "unknown" };
+  return {
+    translation: row.translation,
+    source: row.source || "unknown",
+    pronunciation: row.pronunciation || null,
+    part_of_speech: row.part_of_speech || null,
+  };
 }
 
-function rememberGloss(word, fromLang, toLang, translation, source = "unknown") {
+function rememberGloss(word, fromLang, toLang, translation, source = "unknown", extra = {}) {
   const key = normKey(word);
   const from = normLang(fromLang);
   const to = normLang(toLang);
@@ -74,7 +108,15 @@ function rememberGloss(word, fromLang, toLang, translation, source = "unknown") 
   if (!key || !from || !to || from === to || !value) return false;
   // Never store an identity "translation" — it is not a meaning.
   if (value.toLowerCase() === key) return false;
-  upsertStmt.run(key, from, to, value, source);
+  upsertStmt.run(
+    key,
+    from,
+    to,
+    value,
+    source,
+    cleanMeta(extra.pronunciation),
+    cleanMeta(extra.part_of_speech)
+  );
   return true;
 }
 
@@ -110,8 +152,21 @@ function backfillFromDailyWords({ isSuspicious = () => false } = {}) {
       if (Number(word?.gloss_v || 0) < 2) continue;
       if (translation.toLowerCase() === text) continue;
       if (isSuspicious(text, translation, payload?.lyric?.snippet || null)) continue;
-      const res = insertIgnoreStmt.run(text, from, to, translation, "backfill");
+      const pronunciation = cleanMeta(word?.pronunciation);
+      const partOfSpeech = cleanMeta(word?.part_of_speech);
+      const res = insertIgnoreStmt.run(
+        text,
+        from,
+        to,
+        translation,
+        "backfill",
+        pronunciation,
+        partOfSpeech
+      );
       inserted += res.changes;
+      if (pronunciation || partOfSpeech) {
+        fillMetaStmt.run(pronunciation, partOfSpeech, text, from, to);
+      }
     }
   });
   tx();
@@ -121,6 +176,7 @@ function backfillFromDailyWords({ isSuspicious = () => false } = {}) {
 /**
  * Rewrite stored daily/queue payloads that have no meaning, using a sync lookup
  * (curated table / cache). Used at boot so a reload is not stuck on a blank card.
+ * Also attaches cached IPA/POS when the stored card already has a translation.
  */
 function fillThinStoredWords(lookup) {
   if (typeof lookup !== "function") return { updated: 0 };
@@ -149,17 +205,35 @@ function fillThinStoredWords(lookup) {
     }
     const text = payload?.word?.text;
     const current = String(payload?.word?.translation || "").trim();
-    if (!text || current) return null;
+    const currentIpa = cleanMeta(payload?.word?.pronunciation);
+    if (!text || (current && currentIpa)) return null;
     const from = normLang(payload?.language_code || fromLang);
     const to = normLang(toLang);
     const line = payload?.lyric?.snippet || null;
     const hit = lookup(text, from, to, line);
-    if (!hit) return null;
-    // Lookup may return a plain string (legacy) or { translation, trusted }.
-    const translation = typeof hit === "string" ? hit : hit.translation;
+    const cached = getGlossWithSource(text, from, to);
+    const translation = current
+      || (typeof hit === "string" ? hit : hit?.translation)
+      || cached?.translation
+      || null;
+    const pronunciation = currentIpa || cached?.pronunciation || hit?.pronunciation || null;
+    const partOfSpeech = cleanMeta(payload?.word?.part_of_speech)
+      || cached?.part_of_speech
+      || hit?.part_of_speech
+      || null;
     if (!translation) return null;
-    const trusted = typeof hit === "string" ? true : hit.trusted !== false;
-    payload.word = { ...payload.word, translation, gloss_v: trusted ? 2 : 1 };
+    if (current && currentIpa) return null;
+    if (current && !pronunciation) return null;
+    const trusted = typeof hit === "string" ? true : hit?.trusted !== false;
+    payload.word = {
+      ...payload.word,
+      translation,
+      pronunciation: pronunciation || payload.word.pronunciation || null,
+      part_of_speech: partOfSpeech || payload.word.part_of_speech || null,
+    };
+    if (!current) {
+      payload.word.gloss_v = trusted ? 2 : 1;
+    }
     return JSON.stringify(payload);
   };
   const tx = db.transaction(() => {
