@@ -170,9 +170,11 @@ This is zero-downtime for push deploys (proxy 502/503 during recreate should not
 
 | Do | Don’t |
 |----|--------|
-| `git push origin main` (GitHub Actions) | Coolify UI **Restart** / stop-before-start |
+| `git push origin main` (GitHub Actions) | Coolify UI **Deploy** / **Restart** / stop-before-start |
 | `bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh` on the VPS | Manual `docker compose down` on the live project |
-| Use Coolify UI for env, domain, and health status | Rely on a Coolify “Deploy on push” webhook (Actions already owns deploys) |
+| Use Coolify UI for env, domain, and **status** | Rely on a Coolify “Deploy on push” webhook (Actions already owns deploys) |
+
+**Why Coolify used to show Exited:** GitHub redeploy recreates `api-rxwdj…` / `web-rxwdj…` from repo `docker-compose.yml`. Coolify’s sentinel only marks a service running when those containers keep `coolify.managed=true` and `coolify.serviceName=api|web`. Those labels now live in compose, so the UI should show **Running** after a GitHub deploy. The site was already up; only the dashboard was stale. Still do not click Coolify Restart — that path is a different compose than Actions uses.
 
 Repo secrets: `HARMONIX_DEPLOY_HOST`, `HARMONIX_DEPLOY_USER`, `HARMONIX_DEPLOY_SSH_KEY`.
 

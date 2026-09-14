@@ -36,14 +36,12 @@ function sleep(ms) {
 
 const modelsEnv = process.env.NVIDIA_NIM_MODELS || process.env.NVIDIA_NIM_MODEL;
 const AVAILABLE_MODELS = modelsEnv
-  ? modelsEnv.split(',').map(m => m.trim())
+  ? modelsEnv.split(',').map(m => m.trim()).filter(Boolean)
   : [
-      // 2026-09-05 live NIM bench (gloss "brings"→"trae"): llama-3.1-8b / nano-9b /
-      // step-3.7-flash now 410. Muse ~650–830ms + follows JSON guardrails.
-      // Lightning-on-NIM is alive but ~4.3s and dumps thinking into content.
-      'meta/muse-glimmer-30b',
-      'minimaxai/minimax-m3',
+      // Lightning-on-NIM with thinking off is the live sub-second JSON gloss.
+      // Muse is slower (~12s) but a solid JSON backup. MiniMax M3 is 410 EOL.
       'nvidia/nemotron-3.5-lightning-30b-a3b',
+      'meta/muse-glimmer-30b',
     ];
 
 const OPENROUTER_MODELS = (process.env.OPENROUTER_MODELS
@@ -53,8 +51,7 @@ const OPENROUTER_MODELS = (process.env.OPENROUTER_MODELS
   .filter(Boolean);
 
 const FAST_MODELS = [
-  'meta/muse-glimmer-30b',
-  'minimaxai/minimax-m3',
+  'nvidia/nemotron-3.5-lightning-30b-a3b',
 ];
 
 const NIM_COOLDOWN_MS = parseInt(process.env.NIM_RATE_LIMIT_COOLDOWN_MS || '300000', 10);
@@ -137,9 +134,8 @@ function buildModelAttempts(primaryModel, { fast = false } = {}) {
   const skipNim = isNimInCooldown();
   const useOpenrouter = Boolean(openrouter) && !isOpenrouterInCooldown();
 
-  // User-facing fast path: NIM first (Muse is the live, sub-second gloss model).
-  // OpenRouter is next if the NIM key/models fail — not first, because a dead
-  // OpenRouter key adds ~200ms of 401s before every word.
+  // Fast path: Lightning (thinking off) is the live sub-second gloss. OpenRouter
+  // is next if NIM fails. Muse stays on the slow chain for background polish.
   if (fast) {
     if (!skipNim) {
       for (const model of nimChain) {
@@ -192,7 +188,24 @@ async function tryChatCompletion(params, { fast = false, label = 'ChatCompletion
     if (provider === 'openrouter' && isOpenrouterInCooldown()) continue;
     try {
       console.log(`Calling ${label} [${provider}] model: ${model}`);
-      return await client.chat.completions.create({ ...params, model });
+      const payload = { ...params, model };
+      if (provider === 'nvidia') {
+        // Top-level kwargs (NVIDIA rejects a nested `extra_body` wrapper).
+        payload.chat_template_kwargs = {
+          enable_thinking: false,
+          reasoning_strength: 'low',
+          ...(params.chat_template_kwargs || {}),
+        };
+      }
+      const response = await client.chat.completions.create(payload);
+      // Muse often returns 200 with empty `content` and JSON in reasoning.
+      // Lightning dumps a thinking trace. Treat "no JSON" as a miss, not success.
+      if (!messageToJson(response)) {
+        lastErr = new Error(`${model} returned no JSON payload`);
+        console.warn(`${label} [${provider}] ${model} returned no JSON, trying next`);
+        continue;
+      }
+      return response;
     } catch (err) {
       lastErr = err;
       if (provider === 'nvidia' && isNimUnavailableError(err)) {
@@ -226,10 +239,18 @@ function parseJsonContent(raw) {
   try {
     return JSON.parse(text);
   } catch {
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      try { return JSON.parse(text.slice(start, end + 1)); } catch { return null; }
+    // Thinking traces often wrap the payload. Walk `{` from the end so we
+    // pick the learner JSON, not a stray brace in the chain-of-thought.
+    for (let from = text.length; from > 0; from -= 1) {
+      const start = text.lastIndexOf('{', from - 1);
+      if (start < 0) break;
+      const end = text.lastIndexOf('}');
+      if (end <= start) break;
+      try {
+        return JSON.parse(text.slice(start, end + 1));
+      } catch {
+        from = start;
+      }
     }
     return null;
   }
@@ -327,7 +348,10 @@ Output Format (JSON):
     top_p: 0.95,
   });
 
-  const content = JSON.parse(response.choices[0].message.content);
+  const content = messageToJson(response);
+  if (!content || !Array.isArray(content.vocabulary)) {
+    throw new Error('Vocabulary model returned no JSON payload');
+  }
   return content.vocabulary;
 }
 
@@ -1649,9 +1673,9 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
           },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 512,
+        max_tokens: 768,
         temperature: 0.15,
-      }, 10000)
+      }, 12000)
       : createChatCompletion({
         messages: [
           {
@@ -1781,6 +1805,8 @@ module.exports = {
   __setMyMemoryCooldownForTest,
   AVAILABLE_MODELS,
   OPENROUTER_MODELS,
+  FAST_MODELS,
+  messageToJson,
   openai,
   openaiFast,
   openrouter,

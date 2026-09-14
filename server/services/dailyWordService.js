@@ -646,6 +646,7 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
   let resolveEarly = null;
   const earlyDone = new Promise((resolve) => { resolveEarly = resolve; });
   let stopped = false;
+  let unusedMappedToKnown = 0;
 
   const poolPromise = runValidationPool(ranked, async (suggestion) => {
     const result = await tryValidateSongCandidate(
@@ -655,6 +656,7 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
       }
     );
     if (result.picked) {
+      unusedMappedToKnown = 0;
       const key = result.picked.word.toLowerCase();
       if (!usedWords.has(key)) {
         usedWords.add(key);
@@ -673,6 +675,10 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
       }
     } else if (result.error) {
       lastError = result.error;
+      if (!relaxSongReuse && result.error === "song_already_used" && partials.length === 0) {
+        unusedMappedToKnown += 1;
+        if (unusedMappedToKnown >= 3) stopped = true;
+      }
     }
     return result;
   }, { isStopped: () => stopped });
@@ -1177,13 +1183,6 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
         userWaiting ? 8 : 15
       );
 
-      // Start AI candidate fetch immediately — don't block curated validation on it.
-      const aiPromise = fetchAiCandidates(user).catch((err) => {
-        if (err.code === "ai_rate_limit") throw err;
-        console.warn(`daily word: AI song pick failed (${err.code || err.message})`);
-        return [];
-      });
-
       if (userWaiting && curated.length) {
         const curatedResult = await validateAllCandidates(curated, date, user, fetchImpl, {
           ...options,
@@ -1192,11 +1191,20 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
           relaxSongReuse,
         });
         if (curatedResult.valid.length) {
-          // Keep AI warm for background refill; don't make the user wait for it.
-          void aiPromise;
+          return curatedResult;
+        }
+        // Unused titles that Deezer resolves to already-seen ids — catalog is
+        // exhausted in practice. Do not start a 12s AI song-pick.
+        if (curatedResult.lastError === "song_already_used") {
           return curatedResult;
         }
       }
+
+      const aiPromise = fetchAiCandidates(user).catch((err) => {
+        if (err.code === "ai_rate_limit") throw err;
+        console.warn(`daily word: AI song pick failed (${err.code || err.message})`);
+        return [];
+      });
 
       let candidates = [];
       try {
@@ -1230,16 +1238,12 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
     });
   };
 
-  // Strict pass: unused songs only. When the curated catalog is exhausted the
-  // AI is still asked for *new* songs (with the full avoid list) — a repeated
-  // track is never the default answer.
-  // Exception: if the unused pool is already empty and the caller allowed
-  // reuse, skip the AI unused pass. Live Next was waiting 12s×N on NIM 403 /
-  // OpenRouter timeouts before it ever reached the known-song fallback.
-  const unusedForUser = getCuratedCandidatesForBatch(user.id, langCode, genre);
-  if (options.allowSongReuse === true && !unusedForUser.length) {
+  // Strict unused pass first. When the caller already opted into reuse
+  // (empty catalog, or unused titles all mapped to known Deezer ids), skip
+  // AI song-pick — live Next was waiting 12–50s on dead unused rounds.
+  if (options.allowSongReuse === true) {
     console.log(
-      `daily word batch: unused catalog empty for ${langCode}/${genre} — reusing a known song without waiting on AI`
+      `daily word batch: reusing known songs for ${langCode}/${genre} without unused AI pass`
     );
     const reused = await runOnce(true);
     return { ...reused, songReused: reused.valid.length > 0 };
@@ -1247,16 +1251,6 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
 
   const result = await runOnce(false);
   if (result.valid.length) return result;
-
-  if (options.allowSongReuse === true) {
-    // Caller (user-facing ladder) has already tried on-style and widened
-    // strict passes; a known song with a new word beats a 503.
-    console.log(
-      `daily word batch: no new songs for ${langCode}/${genre} (${result.lastError}) — allowing new words from known songs`
-    );
-    const reused = await runOnce(true);
-    return { ...reused, songReused: reused.valid.length > 0 };
-  }
 
   console.warn(
     `daily word batch: no valid new songs this round for ${langCode}/${genre} (${result.lastError}) — not reusing songs`
@@ -1381,9 +1375,11 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
     const requestedGenre = aiService.normalizeGenre(user.genre || "pop");
     const langCode = normalizeLangCode(user.target_language || "es");
 
-    // Exhausted unused catalog + dead AI song-pick (NIM 403 / OpenRouter hang)
-    // used to burn ~55s on Next before the known-song fallback. Skip that wait.
-    if (!hasUnusedSongCandidates(user.id, langCode, requestedGenre)) {
+    // Exhausted unused catalog, or unused titles that only resolve to songs
+    // already delivered (Deezer id collision). Skip unused AI + genre-widen.
+    if (
+      !hasUnusedSongCandidates(user.id, langCode, requestedGenre)
+    ) {
       console.log(
         `daily word batch: unused catalog empty for ${langCode}/${requestedGenre} — known-song fallback first`
       );
@@ -1411,10 +1407,17 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
       console.warn(
         `daily word batch attempt ${attempt + 1}/${maxAttempts}: 0/${batch.candidateCount || 5} passed (${lastError})`
       );
+      if (lastError === "song_already_used") break;
     }
 
     // On-style pool truly failed — one honest widen to mixed catalog (UI shows style_relaxed).
-    if (requestedGenre !== "any" && Date.now() < deadline) {
+    // Skip widen when every unused title mapped to a known track: mixed genre
+    // just spends more time on lyrics_wrong_language.
+    if (
+      requestedGenre !== "any"
+      && lastError !== "song_already_used"
+      && Date.now() < deadline
+    ) {
       if (preferenceEpoch !== currentPreferenceEpoch(user.id)) {
         const err = new Error("daily_word_stale_preferences");
         err.code = "stale_preferences";
@@ -1488,6 +1491,9 @@ async function refillQueue(user, fetchImpl = fetch) {
 
   try {
     let emptyRounds = 0;
+    const langCode = normalizeLangCode(user.target_language || "es");
+    const genre = user.genre || "pop";
+    let unusedExhausted = !hasUnusedSongCandidates(user.id, langCode, genre);
 
     while (
       !abort.signal.aborted &&
@@ -1496,10 +1502,8 @@ async function refillQueue(user, fetchImpl = fetch) {
       emptyRounds < REFILL_BATCH_ROUNDS
     ) {
       const needed = wordQueue.QUEUE_MAX - wordQueue.countReady(user.id);
-      const langCode = normalizeLangCode(user.target_language || "es");
-      const genre = user.genre || "pop";
-      const unusedEmpty = !hasUnusedSongCandidates(user.id, langCode, genre);
-      const batch = unusedEmpty
+      unusedExhausted = unusedExhausted || !hasUnusedSongCandidates(user.id, langCode, genre);
+      const batch = unusedExhausted
         ? markSongRepeated(await generateValidatedBatch(user, fetchImpl, {
           stopAfter: needed,
           allowSongReuse: true,
@@ -1509,6 +1513,7 @@ async function refillQueue(user, fetchImpl = fetch) {
 
       if (!batch.valid.length) {
         emptyRounds += 1;
+        if (batch.lastError === "song_already_used") unusedExhausted = true;
         console.warn(
           `queue refill round ${emptyRounds}/${REFILL_BATCH_ROUNDS}: 0/${batch.candidateCount || 5} valid (${batch.lastError})`
         );

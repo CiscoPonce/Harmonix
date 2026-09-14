@@ -45,6 +45,21 @@ services:
       - default
       - coolify
     labels:
+      # Coolify UI status: GitHub redeploy recreates these containers. Without
+      # coolify.* labels the UI shows Exited even while Traefik is serving.
+      - coolify.managed=true
+      - coolify.version=4.3.19
+      - coolify.serviceId=1
+      - coolify.type=service
+      - coolify.name=api-rxwdj1k3qu51fqf8uwtal389
+      - coolify.resourceName=harmonix
+      - coolify.projectName=harmonix
+      - coolify.serviceName=api
+      - coolify.environmentName=production
+      - coolify.pullRequestId=0
+      - coolify.service.subId=1
+      - coolify.service.subType=application
+      - coolify.service.subName=api
       - traefik.enable=true
       - traefik.docker.network=coolify
       - traefik.http.routers.harmonix-http.rule=Host(`harmonix.peeporunclub.co.uk`)
@@ -88,6 +103,20 @@ services:
       - "3009"
     networks:
       - default
+    labels:
+      - coolify.managed=true
+      - coolify.version=4.3.19
+      - coolify.serviceId=1
+      - coolify.type=service
+      - coolify.name=web-rxwdj1k3qu51fqf8uwtal389
+      - coolify.resourceName=harmonix
+      - coolify.projectName=harmonix
+      - coolify.serviceName=web
+      - coolify.environmentName=production
+      - coolify.pullRequestId=0
+      - coolify.service.subId=2
+      - coolify.service.subType=application
+      - coolify.service.subName=web
 
 networks:
   coolify:

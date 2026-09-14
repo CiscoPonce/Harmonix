@@ -17,7 +17,7 @@ progress:
 
 **Phase 17 — Play Store listing.** Section A (keystore + signed AAB `1.0.8+11`) is done on this PC. Remaining: Play Console create-app, screenshots, Internal testing — [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](phases/17-play-store-listing/17-CHECKLIST.md). AAB: `mobile/build/app/outputs/bundle/release/app-release.aab`. Capacitor is not a release path.
 
-**2026-09-14 NIM/OpenRouter:** Live probe: NIM Muse/Lightning **403 Authorization failed**, MiniMax **410 retired 2026-09-09**. OpenRouter `nemotron-3.5-lightning:free` **200 in ~0.5s**. After 403/410 we now skip the rest of the NIM chain and cool NIM for 30 minutes so Next is not a 403 storm every 5 minutes.
+**2026-09-14 NIM/OpenRouter:** New NVIDIA Build key is live. Fast gloss uses Lightning with thinking off (~0.4–1.8s). Next-word was slow because the unused catalog is exhausted (`song_already_used`); we now skip unused AI + genre-widen and reuse a known song with a new word.
 
 **2026-09-14 card IPA + TTS:** Word-of-the-Day IPA comes from an offline table (English including `younger`) so cards are not blank when NIM is down. Pocket-TTS on the host can `/reload` into the learner's language instead of speaking Spanish at English words. Pronunciation no longer returns a silent WAV — the client falls back to device TTS. Android/web show pending copy and poll while polish finishes.
 
@@ -37,7 +37,7 @@ progress:
 | Containers | `api-rxwdj1k3qu51fqf8uwtal389` + `web-rxwdj1k3qu51fqf8uwtal389` |
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
 | TTS | Host systemd `harmonix-tts` on `:3002`; compose `TTS_SKIP_SPAWN=true` |
-| Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` |
+| Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` (Coolify UI status only; do not use Coolify Restart) |
 | Mobile | Flutter Play Store path (`mobile/`) |
 
 ## Phase status

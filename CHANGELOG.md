@@ -6,6 +6,9 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
+* **daily-word:** skip unused AI + genre-widen when the catalog is exhausted so Next is not 13–50s
+* **ai:** Lightning-on-NIM with thinking off is the live gloss; skip empty 200s; MiniMax dropped
+* **deploy:** keep Coolify resource labels on api/web so the dashboard shows Running after GitHub redeploys
 * **ai:** 30-minute NIM cooldown on 403/410; skip remaining NIM models in the same request
 * **daily-word:** attach offline IPA (English `younger`, Spanish headwords) so cards are not blank when models are down
 * **tts:** host Pocket-TTS can reload by language; stop returning silent WAVs on failure

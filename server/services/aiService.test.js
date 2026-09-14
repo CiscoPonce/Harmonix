@@ -17,9 +17,10 @@ describe('AI Service', () => {
     openai.chat.completions.create = originalCreate;
   });
 
-  it('uses Muse Glimmer as the default primary NIM model', () => {
-    expect(AVAILABLE_MODELS[0]).to.equal('meta/muse-glimmer-30b');
-    expect(AVAILABLE_MODELS).to.include('minimaxai/minimax-m3');
+  it('uses Nemotron Lightning as the default primary NIM model', () => {
+    expect(AVAILABLE_MODELS[0]).to.equal('nvidia/nemotron-3.5-lightning-30b-a3b');
+    expect(AVAILABLE_MODELS).to.include('meta/muse-glimmer-30b');
+    expect(AVAILABLE_MODELS).to.not.include('minimaxai/minimax-m3');
   });
 
   describe('provider circuit breakers', () => {
@@ -91,9 +92,93 @@ describe('AI Service', () => {
       }
       expect(calls.filter((c) => c.provider === 'nvidia')).to.have.length(1);
       expect(ai.providerCooldowns().nvidia).to.equal(true);
-      const remaining = ai.NIM_AUTH_COOLDOWN_MS;
-      expect(remaining).to.be.at.least(60_000);
+      expect(ai.NIM_AUTH_COOLDOWN_MS).to.be.at.least(60_000);
       ai.__setProviderCooldownsForTest();
+    });
+
+    it('disables NIM thinking so Lightning returns JSON instead of a trace', async function () {
+      const ai = require('./aiService');
+      if (!ai.openaiFast) this.skip();
+      ai.__setProviderCooldownsForTest({ openrouterUntil: Date.now() + 60_000 });
+      const origFast = ai.openaiFast.chat.completions.create;
+      let seen = null;
+      ai.openaiFast.chat.completions.create = async (payload) => {
+        seen = payload;
+        return { choices: [{ message: { content: '{"ok":true}' } }] };
+      };
+      try {
+        await ai.createFastChatCompletion({
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 8,
+        });
+        expect(seen.model).to.equal('nvidia/nemotron-3.5-lightning-30b-a3b');
+        expect(seen.chat_template_kwargs.enable_thinking).to.equal(false);
+      } finally {
+        ai.openaiFast.chat.completions.create = origFast;
+        ai.__setProviderCooldownsForTest();
+      }
+    });
+
+    it('accepts Muse JSON that lands in reasoning_content instead of content', async function () {
+      const ai = require('./aiService');
+      if (!ai.openaiFast) this.skip();
+      ai.__setProviderCooldownsForTest();
+      const origFast = ai.openaiFast.chat.completions.create;
+      const origOr = ai.openrouter ? ai.openrouter.chat.completions.create : null;
+      ai.openaiFast.chat.completions.create = async () => ({
+        choices: [{
+          message: {
+            content: '',
+            reasoning_content: 'thinking...\n{"words":[{"word":"brings","translation":"trae"}]}',
+          },
+        }],
+      });
+      if (ai.openrouter) {
+        ai.openrouter.chat.completions.create = async () => {
+          throw new Error('openrouter should not be called');
+        };
+      }
+      try {
+        const out = await ai.createFastChatCompletion({
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 32,
+        });
+        expect(ai.messageToJson(out).words[0].translation).to.equal('trae');
+      } finally {
+        ai.openaiFast.chat.completions.create = origFast;
+        if (ai.openrouter && origOr) ai.openrouter.chat.completions.create = origOr;
+        ai.__setProviderCooldownsForTest();
+      }
+    });
+
+    it('skips an empty NIM 200 and uses OpenRouter when it returns JSON', async function () {
+      const ai = require('./aiService');
+      if (!ai.openaiFast || !ai.openrouter) this.skip();
+      ai.__setProviderCooldownsForTest();
+      const origFast = ai.openaiFast.chat.completions.create;
+      const origOr = ai.openrouter.chat.completions.create;
+      const calls = [];
+      ai.openaiFast.chat.completions.create = async ({ model }) => {
+        calls.push({ provider: 'nvidia', model });
+        return { choices: [{ message: { content: '', reasoning_content: 'still thinking' } }] };
+      };
+      ai.openrouter.chat.completions.create = async ({ model }) => {
+        calls.push({ provider: 'openrouter', model });
+        return { choices: [{ message: { content: '{"ok":true}' } }] };
+      };
+      try {
+        const out = await ai.createFastChatCompletion({
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 8,
+        });
+        expect(out.choices[0].message.content).to.contain('ok');
+        expect(calls.some((c) => c.provider === 'nvidia')).to.equal(true);
+        expect(calls.some((c) => c.provider === 'openrouter')).to.equal(true);
+      } finally {
+        ai.openaiFast.chat.completions.create = origFast;
+        ai.openrouter.chat.completions.create = origOr;
+        ai.__setProviderCooldownsForTest();
+      }
     });
   });
 
@@ -129,7 +214,7 @@ describe('AI Service', () => {
 
     expect(result).to.be.an('array');
     expect(result[0].word).to.equal('test');
-    expect(capturedArgs.model).to.equal('meta/muse-glimmer-30b');
+    expect(capturedArgs.model).to.equal('nvidia/nemotron-3.5-lightning-30b-a3b');
     expect(capturedArgs.messages[0].content).to.contain('English');
     expect(capturedArgs.messages[0].content).to.contain('A1');
     expect(capturedArgs.messages[1].content).to.contain(lyrics);

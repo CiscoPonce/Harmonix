@@ -142,7 +142,7 @@ start_api_standby() {
     -e FRONTEND_PROXY_TARGET="http://web:3009" \
     -e TTS_SKIP_SPAWN=true \
     -e TTS_BASE_URL="${TTS_BASE_URL:-http://host.docker.internal:3002}" \
-    -e NVIDIA_NIM_MODELS="${NVIDIA_NIM_MODELS:-meta/muse-glimmer-30b,minimaxai/minimax-m3}" \
+    -e NVIDIA_NIM_MODELS="${NVIDIA_NIM_MODELS:-nvidia/nemotron-3.5-lightning-30b-a3b,meta/muse-glimmer-30b}" \
     -e OPENROUTER_MODELS="${OPENROUTER_MODELS:-nvidia/nemotron-3.5-lightning:free}" \
     -e PUBLIC_BASE_URL="https://${DOMAIN}" \
     -e FORCE_SECURE_COOKIES=true \
@@ -224,6 +224,8 @@ if [ "$WORKDIR" != "$PROJECT" ]; then
   log "Syncing updated codebase to Coolify service directory: ${WORKDIR}"
   sudo rsync -a --exclude '.env' --exclude '.git' "${PROJECT}/" "${WORKDIR}/"
 fi
+# Compose must keep coolify.* labels (in docker-compose.yml) so Coolify's
+# sentinel marks api/web Running after this GitHub recreate.
 
 if [ "${SKIP_BUILD:-}" = "1" ]; then
   log "Skipping image build (SKIP_BUILD=1)"
