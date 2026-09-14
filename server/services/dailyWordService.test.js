@@ -1247,8 +1247,8 @@ describe("Daily Word Service", () => {
       date: today,
       language_code: "es",
       preferred_genre: "pop",
-      word: { text: "ola", translation: "wave", gloss_v: 2 },
-      lyric: { snippet: "una ola enorme" },
+      word: { text: "zxqola", translation: "wave", gloss_v: 2 },
+      lyric: { snippet: "una zxqola enorme" },
       song: { id: "wave", title: "Wave", artist: "Artist", genre: "pop" },
       audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
     }]);
@@ -1263,7 +1263,7 @@ describe("Daily Word Service", () => {
       expect(result.updated).to.equal(1);
       const queued = wordQueue.listReadyItems(userId)[0];
       expect(queued.payload.word.pronunciation).to.equal("/o.la/");
-      expect(queued.payload.word.translation).to.equal("ola-en");
+      expect(queued.payload.word.translation).to.equal("zxqola-en");
     } finally {
       aiService.glossDailyWords = original;
     }
