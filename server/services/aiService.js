@@ -58,15 +58,18 @@ const FAST_MODELS = [
 ];
 
 const NIM_COOLDOWN_MS = parseInt(process.env.NIM_RATE_LIMIT_COOLDOWN_MS || '300000', 10);
+/** 403/410 mean the key or model is dead — retrying every 5 min just stalls Next. */
+const NIM_AUTH_COOLDOWN_MS = parseInt(process.env.NIM_AUTH_COOLDOWN_MS || '1800000', 10);
 let nimRateLimitedUntil = 0;
 
 function isNimInCooldown() {
   return Date.now() < nimRateLimitedUntil;
 }
 
-function markNimRateLimited() {
-  nimRateLimitedUntil = Date.now() + NIM_COOLDOWN_MS;
-  console.warn(`NVIDIA rate-limited — using OpenRouter first for ${Math.round(NIM_COOLDOWN_MS / 1000)}s`);
+function markNimRateLimited(reason = 'rate_limit') {
+  const ms = (reason === 'auth' || reason === 'gone') ? NIM_AUTH_COOLDOWN_MS : NIM_COOLDOWN_MS;
+  nimRateLimitedUntil = Math.max(nimRateLimitedUntil, Date.now() + ms);
+  console.warn(`NVIDIA ${reason} — skipping NIM for ${Math.round(ms / 1000)}s`);
 }
 
 // OpenRouter :free models share a tiny per-key quota. Once they 429, every
@@ -102,8 +105,19 @@ function isNimAuthError(err) {
   return err && (
     err.status === 401
     || err.status === 403
-    || /api key expired|unauthorized|403 status code/i.test(String(err.message || ''))
+    || /api key expired|unauthorized|403 status code|authorization failed/i.test(String(err.message || ''))
   );
+}
+
+function isNimGoneError(err) {
+  return err && (
+    err.status === 410
+    || /end of life|no longer available/i.test(String(err.message || ''))
+  );
+}
+
+function isNimUnavailableError(err) {
+  return isRateLimitError(err) || isNimAuthError(err) || isNimGoneError(err);
 }
 
 function isRetryableError(err) {
@@ -174,14 +188,17 @@ async function tryChatCompletion(params, { fast = false, label = 'ChatCompletion
   let lastErr = null;
 
   for (const { client, provider, model } of attempts) {
+    if (provider === 'nvidia' && isNimInCooldown()) continue;
+    if (provider === 'openrouter' && isOpenrouterInCooldown()) continue;
     try {
       console.log(`Calling ${label} [${provider}] model: ${model}`);
       return await client.chat.completions.create({ ...params, model });
     } catch (err) {
       lastErr = err;
-      if (provider === 'nvidia' && (isRateLimitError(err) || isNimAuthError(err))) {
-        markNimRateLimited();
-      } else if (provider === 'openrouter' && isRateLimitError(err)) {
+      if (provider === 'nvidia' && isNimUnavailableError(err)) {
+        const reason = isNimAuthError(err) ? 'auth' : (isNimGoneError(err) ? 'gone' : 'rate_limit');
+        markNimRateLimited(reason);
+      } else if (provider === 'openrouter' && (isRateLimitError(err) || err.code === 'ai_timeout')) {
         markOpenrouterRateLimited();
       }
       console.warn(`${label} [${provider}] ${model} failed: ${err.message || err}. Status: ${err.status}`);
@@ -691,16 +708,24 @@ function getCuratedSongCandidates(languageCode, genre) {
 async function createFastChatCompletion(params, timeoutMs = 12000) {
   const work = tryChatCompletion(params, { fast: true, label: 'fast ChatCompletion' });
 
-  return Promise.race([
-    work,
-    new Promise((_, reject) => {
-      setTimeout(() => {
-        const err = new Error('ai_timeout');
-        err.code = 'ai_timeout';
-        reject(err);
-      }, timeoutMs);
-    }),
-  ]);
+  try {
+    return await Promise.race([
+      work,
+      new Promise((_, reject) => {
+        setTimeout(() => {
+          const err = new Error('ai_timeout');
+          err.code = 'ai_timeout';
+          reject(err);
+        }, timeoutMs);
+      }),
+    ]);
+  } catch (err) {
+    // NIM is already cooling; a hang is almost always OpenRouter's free model.
+    if (err && err.code === 'ai_timeout' && isNimInCooldown()) {
+      markOpenrouterRateLimited();
+    }
+    throw err;
+  }
 }
 
 async function generateDailyWordSongs({
@@ -1757,5 +1782,8 @@ module.exports = {
   AVAILABLE_MODELS,
   OPENROUTER_MODELS,
   openai,
+  openaiFast,
   openrouter,
+  NIM_COOLDOWN_MS,
+  NIM_AUTH_COOLDOWN_MS,
 };

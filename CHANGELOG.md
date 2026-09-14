@@ -6,6 +6,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
+* **ai:** 30-minute NIM cooldown on 403/410; skip remaining NIM models in the same request
 * **daily-word:** attach offline IPA (English `younger`, Spanish headwords) so cards are not blank when models are down
 * **tts:** host Pocket-TTS can reload by language; stop returning silent WAVs on failure
 * **mobile/web:** show real IPA or pending copy (never part-of-speech as phonetics); Android polls for polish like web

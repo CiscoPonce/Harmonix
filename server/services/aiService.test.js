@@ -54,6 +54,47 @@ describe('AI Service', () => {
       const fast = buildModelAttempts('meta/muse-glimmer-30b', { fast: true });
       expect(fast.every((a) => a.provider === 'openrouter')).to.equal(true);
     });
+
+    it('403 on the first NIM model cools NIM for 30 minutes and does not call the rest of the NIM chain', async function () {
+      const ai = require('./aiService');
+      if (!ai.openaiFast) this.skip();
+      ai.__setProviderCooldownsForTest();
+      const origFast = ai.openaiFast.chat.completions.create;
+      const origOr = ai.openrouter ? ai.openrouter.chat.completions.create : null;
+      const calls = [];
+      ai.openaiFast.chat.completions.create = async ({ model }) => {
+        calls.push({ provider: 'nvidia', model });
+        const err = new Error('403 status code (no body)');
+        err.status = 403;
+        throw err;
+      };
+      if (ai.openrouter) {
+        ai.openrouter.chat.completions.create = async ({ model }) => {
+          calls.push({ provider: 'openrouter', model });
+          return { choices: [{ message: { content: '{"ok":true}' } }] };
+        };
+      }
+      try {
+        const out = await ai.createFastChatCompletion({
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 8,
+        });
+        if (ai.openrouter) {
+          expect(out.choices[0].message.content).to.contain('ok');
+        }
+      } catch (err) {
+        if (ai.openrouter) throw err;
+        expect(err.status).to.equal(403);
+      } finally {
+        ai.openaiFast.chat.completions.create = origFast;
+        if (ai.openrouter && origOr) ai.openrouter.chat.completions.create = origOr;
+      }
+      expect(calls.filter((c) => c.provider === 'nvidia')).to.have.length(1);
+      expect(ai.providerCooldowns().nvidia).to.equal(true);
+      const remaining = ai.NIM_AUTH_COOLDOWN_MS;
+      expect(remaining).to.be.at.least(60_000);
+      ai.__setProviderCooldownsForTest();
+    });
   });
 
   it('should construct correct prompt and return vocabulary', async () => {
@@ -113,26 +154,36 @@ describe('AI Service', () => {
     expect(capturedArgs.messages[0].content).to.contain('A2');
   });
 
-  it('falls back to the next model on rate limit', async () => {
-    let callCount = 0;
-    openai.chat.completions.create = async (args) => {
-      callCount += 1;
-      if (args.model === AVAILABLE_MODELS[0]) {
-        const err = new Error('429 Too Many Requests');
-        err.status = 429;
-        throw err;
-      }
-      return {
-        choices: [{ message: { content: '{"ok":true}' } }],
-      };
+  it('falls back off NIM after a 429 instead of walking the rest of the NIM chain', async () => {
+    const ai = require('./aiService');
+    ai.__setProviderCooldownsForTest();
+    let nimCalls = 0;
+    openai.chat.completions.create = async () => {
+      nimCalls += 1;
+      const err = new Error('429 Too Many Requests');
+      err.status = 429;
+      throw err;
     };
-
-    const response = await createChatCompletion({
-      messages: [{ role: 'user', content: 'hi' }],
-    });
-
-    expect(callCount).to.be.at.least(2);
-    expect(response.choices[0].message.content).to.equal('{"ok":true}');
+    const origOr = ai.openrouter ? ai.openrouter.chat.completions.create : null;
+    if (ai.openrouter) {
+      ai.openrouter.chat.completions.create = async () => ({
+        choices: [{ message: { content: '{"ok":true}' } }],
+      });
+    }
+    try {
+      const response = await createChatCompletion({
+        messages: [{ role: 'user', content: 'hi' }],
+      });
+      expect(ai.openrouter).to.exist;
+      expect(response.choices[0].message.content).to.equal('{"ok":true}');
+    } catch (err) {
+      if (ai.openrouter) throw err;
+      expect(err.status).to.equal(429);
+    } finally {
+      if (ai.openrouter && origOr) ai.openrouter.chat.completions.create = origOr;
+      ai.__setProviderCooldownsForTest();
+    }
+    expect(nimCalls).to.equal(1);
   });
 
   it('flags idiom calques like brings → hace caer as suspicious', () => {
