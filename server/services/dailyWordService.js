@@ -12,6 +12,7 @@ const {
 } = require("../constants/difficulty");
 const wordQueue = require("./wordQueueService");
 const glossCache = require("./glossCacheService");
+const ipaLookup = require("./ipaLookupService");
 const deezer = require("./deezerService");
 const lrcLib = require("./lrcLibService");
 const spotifyProfileService = require("./spotifyProfileService");
@@ -1748,7 +1749,9 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, {
     return {
       translation,
       part_of_speech: cached?.part_of_speech || null,
-      pronunciation: cached?.pronunciation || null,
+      pronunciation: cached?.pronunciation
+        || ipaLookup.lookupOfflineIpa(item.word, fromLang)
+        || null,
       gloss_v: translation && trusted ? 2 : 1,
     };
   });
@@ -1878,21 +1881,29 @@ function attachCachedWordMeta(payload, user) {
   const fromLang = normalizeLangCode(user.target_language || "es");
   const toLang = normalizeLangCode(user.native_language || "en");
   const cached = cachedGlossFor(text, fromLang, toLang, payload?.lyric?.snippet);
-  if (!cached) return payload;
   const word = { ...payload.word };
   let changed = false;
-  if (translationNeedsFix(word) && cached.translation) {
-    word.translation = cached.translation;
-    word.gloss_v = Math.max(Number(word.gloss_v || 0), cached.trusted ? 2 : 1);
-    changed = true;
+  if (cached) {
+    if (translationNeedsFix(word) && cached.translation) {
+      word.translation = cached.translation;
+      word.gloss_v = Math.max(Number(word.gloss_v || 0), cached.trusted ? 2 : 1);
+      changed = true;
+    }
+    if (!String(word.pronunciation || "").trim() && cached.pronunciation) {
+      word.pronunciation = cached.pronunciation;
+      changed = true;
+    }
+    if (!String(word.part_of_speech || "").trim() && cached.part_of_speech) {
+      word.part_of_speech = cached.part_of_speech;
+      changed = true;
+    }
   }
-  if (!String(word.pronunciation || "").trim() && cached.pronunciation) {
-    word.pronunciation = cached.pronunciation;
-    changed = true;
-  }
-  if (!String(word.part_of_speech || "").trim() && cached.part_of_speech) {
-    word.part_of_speech = cached.part_of_speech;
-    changed = true;
+  if (!String(word.pronunciation || "").trim()) {
+    const offline = ipaLookup.lookupOfflineIpa(text, fromLang);
+    if (offline) {
+      word.pronunciation = offline;
+      changed = true;
+    }
   }
   return changed ? { ...payload, word } : payload;
 }

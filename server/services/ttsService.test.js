@@ -37,21 +37,73 @@ describe('TTS Service Voice & Accent Normalization', () => {
     assert.strictEqual(ttsService.ttsPromptForWord('mercoledi', 'it'), 'mercoledì.');
   });
 
-  it('skip-spawn refuses Pocket-TTS when the host model language differs', async () => {
+  it('skip-spawn reloads Pocket-TTS when the host model language differs', async () => {
     const ttsDaemon = require('./ttsDaemon');
     const prevSkip = process.env.TTS_SKIP_SPAWN;
     const prevLang = ttsDaemon.currentLanguage;
+    const origFetch = global.fetch;
     process.env.TTS_SKIP_SPAWN = 'true';
     ttsDaemon.currentLanguage = 'spanish_24l';
+    const calls = [];
+    global.fetch = async (url, opts = {}) => {
+      const href = String(url);
+      calls.push({ href, method: opts.method || 'GET', body: opts.body });
+      if (href.endsWith('/health')) {
+        return { ok: true, status: 200, json: async () => ({ status: 'ok', language: 'spanish_24l' }) };
+      }
+      if (href.endsWith('/reload')) {
+        return { ok: true, status: 200, json: async () => ({ status: 'ok', language: 'english', reloaded: true }) };
+      }
+      throw new Error(`unexpected fetch ${href}`);
+    };
+    try {
+      await ttsService.ensureDaemonLanguage('en');
+      assert.strictEqual(ttsDaemon.currentLanguage, 'english');
+      assert.ok(calls.some((c) => c.href.endsWith('/reload') && String(c.body).includes('english')));
+    } finally {
+      global.fetch = origFetch;
+      if (prevSkip === undefined) delete process.env.TTS_SKIP_SPAWN;
+      else process.env.TTS_SKIP_SPAWN = prevSkip;
+      ttsDaemon.currentLanguage = prevLang;
+    }
+  });
+
+  it('skip-spawn keeps tts_language_mismatch when the host cannot reload', async () => {
+    const ttsDaemon = require('./ttsDaemon');
+    const prevSkip = process.env.TTS_SKIP_SPAWN;
+    const prevLang = ttsDaemon.currentLanguage;
+    const origFetch = global.fetch;
+    process.env.TTS_SKIP_SPAWN = 'true';
+    ttsDaemon.currentLanguage = 'spanish_24l';
+    global.fetch = async (url) => {
+      const href = String(url);
+      if (href.endsWith('/health')) {
+        return { ok: true, status: 200, json: async () => ({ status: 'healthy' }) };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    };
     try {
       await ttsService.ensureDaemonLanguage('en');
       assert.fail('expected tts_language_mismatch');
     } catch (err) {
       assert.strictEqual(err.code, 'tts_language_mismatch');
     } finally {
+      global.fetch = origFetch;
       if (prevSkip === undefined) delete process.env.TTS_SKIP_SPAWN;
       else process.env.TTS_SKIP_SPAWN = prevSkip;
       ttsDaemon.currentLanguage = prevLang;
     }
+  });
+
+  it('treats generated silence as unusable audio', () => {
+    const silent = ttsService.generateSilentWavBuffer();
+    assert.strictEqual(ttsService.wavLooksSilent(silent), true);
+  });
+
+  it('maps language aliases onto the same Pocket-TTS family', () => {
+    assert.strictEqual(ttsService.canonicalPocketLang('es'), 'spanish_24l');
+    assert.strictEqual(ttsService.pocketLangFamily('es'), 'spanish');
+    assert.strictEqual(ttsService.pocketLangFamily('spanish_24l'), 'spanish');
+    assert.strictEqual(ttsService.pocketLangFamily('en'), 'english');
   });
 });

@@ -4,6 +4,12 @@ All notable changes to Harmonix are documented here. Releases are managed by
 [release-please](https://github.com/googleapis/release-please) from
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## Unreleased
+
+* **daily-word:** attach offline IPA (English `younger`, Spanish headwords) so cards are not blank when models are down
+* **tts:** host Pocket-TTS can reload by language; stop returning silent WAVs on failure
+* **mobile/web:** show real IPA or pending copy (never part-of-speech as phonetics); Android polls for polish like web
+
 ## [0.0.3](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.2...harmonix-v0.0.3) (2026-09-06)
 
 

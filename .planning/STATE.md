@@ -17,6 +17,8 @@ progress:
 
 **Phase 17 — Play Store listing.** Section A (keystore + signed AAB `1.0.8+11`) is done on this PC. Remaining: Play Console create-app, screenshots, Internal testing — [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](phases/17-play-store-listing/17-CHECKLIST.md). AAB: `mobile/build/app/outputs/bundle/release/app-release.aab`. Capacitor is not a release path.
 
+**2026-09-14 card IPA + TTS:** Word-of-the-Day IPA comes from an offline table (English including `younger`) so cards are not blank when NIM is down. Pocket-TTS on the host can `/reload` into the learner's language instead of speaking Spanish at English words. Pronunciation no longer returns a silent WAV — the client falls back to device TTS. Android/web show pending copy and poll while polish finishes.
+
 **2026-09-13 daily-word cards:** Next still returns instantly when the queue is stocked. Translation + IPA come from the gloss cache / background polish. If the unused song catalog is empty (this account: 276 songs), Next reuses a known track immediately instead of waiting on NIM 403 + OpenRouter timeouts (~55s). Stem/dictionary glosses stay provisional so AI polish can replace noun/verb mix-ups (`wondering` → preguntándose). Discover search uses iTunes when Deezer 403s the VPS.
 
 **2026-09-06 daily-word quality:** Next word is one song per card (same-song extras only as last-resort, with honesty copy).

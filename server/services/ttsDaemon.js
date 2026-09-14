@@ -219,13 +219,7 @@ const ttsDaemon = {
 
   async restart(language) {
     if (skipSpawn()) {
-      if (language && this.currentLanguage && language !== this.currentLanguage) {
-        const err = new Error(
-          `Pocket-TTS language swap disabled (TTS_SKIP_SPAWN); host is ${this.currentLanguage}`
-        );
-        err.code = "tts_language_mismatch";
-        throw err;
-      }
+      if (language) await this.reloadLanguage(language);
       return;
     }
     await this.stop();
@@ -241,10 +235,56 @@ const ttsDaemon = {
       const res = await fetch(`${ttsBaseUrl()}/health`);
       if (res.ok) {
         this._ready = true;
+        try {
+          const body = await res.json();
+          if (body && body.language) this.currentLanguage = body.language;
+        } catch {
+          /* stock /health is `{status:healthy}` until the HQ server is restarted */
+        }
         return true;
       }
     } catch {}
     return false;
+  },
+
+  /**
+   * Swap the host HQ model in-place. Used when TTS_SKIP_SPAWN prevents a
+   * process restart. Old daemons without POST /reload return 404.
+   */
+  async reloadLanguage(language) {
+    const target = String(language || "").trim();
+    if (!target) {
+      const err = new Error("Pocket-TTS reload language required");
+      err.code = "tts_language_mismatch";
+      throw err;
+    }
+    let res;
+    try {
+      res = await fetch(`${ttsBaseUrl()}/reload`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ language: target }).toString(),
+        signal: AbortSignal.timeout(180000),
+      });
+    } catch (err) {
+      const wrapped = new Error(`Pocket-TTS reload failed: ${err.message || err}`);
+      wrapped.code = "tts_unavailable";
+      throw wrapped;
+    }
+    if (!res.ok) {
+      const err = new Error(`Pocket-TTS reload returned ${res.status}`);
+      err.code = res.status === 404 ? "tts_language_mismatch" : "tts_unavailable";
+      throw err;
+    }
+    let next = target;
+    try {
+      const body = await res.json();
+      if (body && body.language) next = body.language;
+    } catch {
+      /* ignore */
+    }
+    this.currentLanguage = next;
+    this._ready = true;
   },
 
   baseUrl: ttsBaseUrl,

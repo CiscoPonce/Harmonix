@@ -317,6 +317,8 @@ class AppI18n {
       'voice_saved': 'Voice saved',
       'female': 'Female',
       'male': 'Male',
+      'meaning_pending': 'Meaning on its way…',
+      'ipa_pending': 'Pronunciation on its way…',
     },
     'es': {
       'n_ready': '{n} listas',
@@ -362,6 +364,8 @@ class AppI18n {
       'voice_saved': 'Voz guardada',
       'female': 'Femenina',
       'male': 'Masculina',
+      'meaning_pending': 'El significado llega enseguida…',
+      'ipa_pending': 'La pronunciación llega enseguida…',
     },
     'fr': {
       'n_ready': '{n} prêts',
@@ -407,6 +411,8 @@ class AppI18n {
       'voice_saved': 'Voix enregistrée',
       'female': 'Féminine',
       'male': 'Masculine',
+      'meaning_pending': 'Le sens arrive…',
+      'ipa_pending': 'La prononciation arrive…',
     },
     'de': {
       'n_ready': '{n} bereit',
@@ -452,6 +458,8 @@ class AppI18n {
       'voice_saved': 'Stimme gespeichert',
       'female': 'Weiblich',
       'male': 'Männlich',
+      'meaning_pending': 'Bedeutung folgt…',
+      'ipa_pending': 'Aussprache folgt…',
     },
     'pt': {
       'n_ready': '{n} prontas',
@@ -497,6 +505,8 @@ class AppI18n {
       'voice_saved': 'Voz salva',
       'female': 'Feminina',
       'male': 'Masculina',
+      'meaning_pending': 'O significado chega já…',
+      'ipa_pending': 'A pronúncia chega já…',
     },
     'it': {
       'n_ready': '{n} pronte',
@@ -542,6 +552,8 @@ class AppI18n {
       'voice_saved': 'Voce salvata',
       'female': 'Femminile',
       'male': 'Maschile',
+      'meaning_pending': 'Il significato sta arrivando…',
+      'ipa_pending': 'La pronuncia sta arrivando…',
     },
   };
 

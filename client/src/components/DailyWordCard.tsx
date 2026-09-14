@@ -144,13 +144,11 @@ function formatPronunciation(raw: string) {
   return `/${trimmed}/`;
 }
 
-function getDisplayPronunciation(rawPronunciation?: string | null, wordText?: string): string {
+function getDisplayPronunciation(rawPronunciation?: string | null): string {
   if (rawPronunciation && rawPronunciation.trim()) {
-    const formatted = formatPronunciation(rawPronunciation.trim());
-    if (formatted) return formatted;
+    return formatPronunciation(rawPronunciation.trim());
   }
-  if (!wordText || !wordText.trim()) return '';
-  return `/${wordText.trim().toLowerCase()}/`;
+  return '';
 }
 
 export function DailyWordCard({
@@ -1055,9 +1053,13 @@ export function DailyWordCard({
 
               <div className="mt-auto space-y-4 min-w-0">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                  {getDisplayPronunciation(data.word.pronunciation, data.word.text) && (
+                  {getDisplayPronunciation(data.word.pronunciation) ? (
                     <span className="text-base sm:text-lg font-medium text-zinc-500 dark:text-zinc-400 tracking-wide font-serif italic break-words">
-                      {getDisplayPronunciation(data.word.pronunciation, data.word.text)}
+                      {getDisplayPronunciation(data.word.pronunciation)}
+                    </span>
+                  ) : (
+                    <span className="text-sm italic text-zinc-400 dark:text-zinc-500">
+                      {t('ipa_pending')}
                     </span>
                   )}
                   {SUPPORTED_PRONUNCIATION_LANGUAGES.includes(pronunciationLang(data, user?.target_language)) && (

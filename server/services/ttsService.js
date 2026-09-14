@@ -92,6 +92,64 @@ const POCKET_LANG_MAP = {
   it: 'italian_24l',
 };
 
+const POCKET_LANG_ALIASES = {
+  en: 'english',
+  english: 'english',
+  'english_2026-04': 'english',
+  es: 'spanish_24l',
+  spanish: 'spanish_24l',
+  spanish_24l: 'spanish_24l',
+  fr: 'french_24l',
+  french: 'french_24l',
+  french_24l: 'french_24l',
+  de: 'german_24l',
+  german: 'german_24l',
+  german_24l: 'german_24l',
+  pt: 'portuguese_24l',
+  portuguese: 'portuguese_24l',
+  portuguese_24l: 'portuguese_24l',
+  it: 'italian_24l',
+  italian: 'italian_24l',
+  italian_24l: 'italian_24l',
+};
+
+const POCKET_LANG_FAMILY = {
+  english: 'english',
+  spanish_24l: 'spanish',
+  spanish: 'spanish',
+  french_24l: 'french',
+  german_24l: 'german',
+  german: 'german',
+  portuguese_24l: 'portuguese',
+  portuguese: 'portuguese',
+  italian_24l: 'italian',
+  italian: 'italian',
+};
+
+function canonicalPocketLang(langOrPocket) {
+  const raw = String(langOrPocket || '').trim().toLowerCase();
+  if (POCKET_LANG_MAP[raw]) return POCKET_LANG_MAP[raw];
+  if (POCKET_LANG_ALIASES[raw]) return POCKET_LANG_ALIASES[raw];
+  return raw;
+}
+
+function pocketLangFamily(langOrPocket) {
+  const canon = canonicalPocketLang(langOrPocket);
+  return POCKET_LANG_FAMILY[canon] || canon;
+}
+
+let reloadQueue = Promise.resolve();
+function reloadHostLanguage(pocketLang) {
+  const next = reloadQueue.then(async () => {
+    if (pocketLangFamily(ttsDaemon.currentLanguage) === pocketLangFamily(pocketLang)) {
+      return;
+    }
+    await ttsDaemon.reloadLanguage(pocketLang);
+  });
+  reloadQueue = next.catch(() => {});
+  return next;
+}
+
 /** Bump to invalidate SQLite pronunciation cache after quality/speed/accent changes. */
 const CACHE_VERSION = 'hq-v13-lang-match';
 
@@ -336,26 +394,36 @@ async function fetchFromPocketTTS(word, voiceUrl, langCode = 'es') {
 async function ensureDaemonLanguage(langCode) {
   const pocketLang = POCKET_LANG_MAP[langCode] || 'english';
 
-  // Host systemd TTS (Coolify): never spawn/restart, never lie that the
-  // Spanish model is English. Kokoro handles other languages; Pocket-TTS
-  // only runs when the loaded model already matches.
+  // Host systemd TTS (Coolify): never spawn a second process. Ask the HQ
+  // server to reload weights when the learner's language differs.
   if (ttsDaemon.skipSpawn()) {
-    const loaded = ttsDaemon.currentLanguage
-      || process.env.POCKET_TTS_DEFAULT_LANGUAGE
-      || 'spanish_24l';
-    ttsDaemon.currentLanguage = loaded;
-    if (loaded !== pocketLang) {
-      const err = new Error(
-        `Pocket-TTS host model is ${loaded}; requested ${pocketLang}`
-      );
-      err.code = 'tts_language_mismatch';
-      throw err;
-    }
     if (!(await ttsDaemon.healthCheck())) {
       const err = new Error('Pocket-TTS daemon unavailable');
       err.code = 'tts_unavailable';
       throw err;
     }
+    const loaded = ttsDaemon.currentLanguage
+      || process.env.POCKET_TTS_DEFAULT_LANGUAGE
+      || 'spanish_24l';
+    if (pocketLangFamily(loaded) === pocketLangFamily(pocketLang)) {
+      ttsDaemon.currentLanguage = canonicalPocketLang(loaded);
+      return;
+    }
+    // Don't block the speaker button on a 30s model load. Kick off reload,
+    // wait briefly, then fail this request so the client can use device TTS.
+    const waitMs = process.env.NODE_ENV === 'test' ? 2000 : 2500;
+    const reload = reloadHostLanguage(pocketLang);
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const err = new Error('Pocket-TTS language reload in progress');
+        err.code = 'tts_language_mismatch';
+        reject(err);
+      }, waitMs);
+      reload.then(
+        (value) => { clearTimeout(timer); resolve(value); },
+        (err) => { clearTimeout(timer); reject(err); }
+      );
+    });
     return;
   }
 
@@ -392,6 +460,18 @@ async function ensureDaemonLanguage(langCode) {
   const err = new Error('Pocket-TTS daemon failed to become ready');
   err.code = 'tts_unavailable';
   throw err;
+}
+
+function wavLooksSilent(wavBuffer, { minPeak = 200 } = {}) {
+  if (!Buffer.isBuffer(wavBuffer) || wavBuffer.length < 44 + 128) return true;
+  const pcm = wavBuffer.subarray(44);
+  let peak = 0;
+  for (let i = 0; i + 1 < pcm.length; i += 2) {
+    const sample = Math.abs(pcm.readInt16LE(i));
+    if (sample > peak) peak = sample;
+    if (peak >= minPeak) return false;
+  }
+  return true;
 }
 
 function generateSilentWavBuffer(sampleRate = 24000, durationSec = 0.5) {
@@ -444,6 +524,11 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
       const wavBuffer = await fetchFromPocketTTS(word, resolveVoice(langCode, voiceGender), langCode);
       const slowed = await slowWav(wavBuffer, SPEECH_TEMPO);
       const padded = padWavWithSilence(slowed);
+      if (wavLooksSilent(padded)) {
+        const silent = new Error('Pocket-TTS audio was silent after processing');
+        silent.code = 'tts_generation_failed';
+        throw silent;
+      }
       cachePronunciation(word, padded, langCode, voiceGender);
       return padded;
     } catch (pErr) {
@@ -452,10 +537,9 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
     return null;
   };
 
-  // Production: the host Pocket-TTS daemon already has the (Spanish) model
-  // loaded and answers in ~300ms; a Kokoro spawn costs seconds even when it
-  // works. Go to the daemon first when it can serve this language, otherwise
-  // Kokoro first (other languages / local dev).
+  // Production: the host Pocket-TTS daemon can reload into the learner's
+  // language (~seconds on first swap, then ~300ms). Kokoro is usually
+  // unavailable in the API image, so go to Pocket first when skip-spawn.
   const pocketFirst = pocketCanServe(langCode) || kokoroService.isKokoroUnavailable();
   const order = pocketFirst ? [tryPocket, tryKokoro] : [tryKokoro, tryPocket];
   for (const attempt of order) {
@@ -463,17 +547,15 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
     if (audio) return audio;
   }
 
-  // Never cache silence — a later Kokoro/Pocket success should not be blocked.
-  return generateSilentWavBuffer();
+  const err = new Error('pronunciation_failed');
+  err.code = 'tts_unavailable';
+  throw err;
 }
 
 function pocketCanServe(langCode) {
-  const pocketLang = POCKET_LANG_MAP[langCode] || 'english';
-  if (!ttsDaemon.skipSpawn()) return false;
-  const loaded = ttsDaemon.currentLanguage
-    || process.env.POCKET_TTS_DEFAULT_LANGUAGE
-    || 'spanish_24l';
-  return loaded === pocketLang;
+  if (!SUPPORTED_LANGUAGES.includes(langCode)) return false;
+  // Host daemon can POST /reload onto the requested language.
+  return ttsDaemon.skipSpawn();
 }
 
 async function preCachePronunciation(word, langCode, gender = 'female') {
@@ -490,6 +572,8 @@ module.exports = {
   VOICE_MAP_MALE,
   ACCENT_RESTORE_MAP,
   POCKET_LANG_MAP,
+  canonicalPocketLang,
+  pocketLangFamily,
   CACHE_VERSION,
   SPEECH_TEMPO,
   LEAD_SILENCE_SEC,
@@ -510,4 +594,5 @@ module.exports = {
   ensureDaemonLanguage,
   pocketCanServe,
   generateSilentWavBuffer,
+  wavLooksSilent,
 };

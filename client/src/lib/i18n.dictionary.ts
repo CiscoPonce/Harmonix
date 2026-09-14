@@ -612,6 +612,7 @@ const EXTRA: Record<LanguageCode, Record<string, string>> = {
     save_changes: 'Save changes',
     saved: 'Saved',
     meaning_pending: 'Meaning on its way…',
+    ipa_pending: 'Pronunciation on its way…',
   },
   es: {
     n_ready: '{n} listas',
@@ -692,6 +693,7 @@ const EXTRA: Record<LanguageCode, Record<string, string>> = {
     save_changes: 'Guardar cambios',
     saved: 'Guardado',
     meaning_pending: 'El significado llega enseguida…',
+    ipa_pending: 'La pronunciación llega enseguida…',
   },
   fr: {
     n_ready: '{n} prêts',
@@ -772,6 +774,7 @@ const EXTRA: Record<LanguageCode, Record<string, string>> = {
     save_changes: 'Enregistrer',
     saved: 'Enregistré',
     meaning_pending: 'Le sens arrive…',
+    ipa_pending: 'La prononciation arrive…',
   },
   de: {
     n_ready: '{n} bereit',
@@ -852,6 +855,7 @@ const EXTRA: Record<LanguageCode, Record<string, string>> = {
     save_changes: 'Änderungen speichern',
     saved: 'Gespeichert',
     meaning_pending: 'Bedeutung folgt…',
+    ipa_pending: 'Aussprache folgt…',
   },
   pt: {
     n_ready: '{n} prontas',
@@ -932,6 +936,7 @@ const EXTRA: Record<LanguageCode, Record<string, string>> = {
     save_changes: 'Salvar alterações',
     saved: 'Salvo',
     meaning_pending: 'O significado chega já…',
+    ipa_pending: 'A pronúncia chega já…',
   },
   it: {
     n_ready: '{n} pronte',
@@ -1012,6 +1017,7 @@ const EXTRA: Record<LanguageCode, Record<string, string>> = {
     save_changes: 'Salva modifiche',
     saved: 'Salvato',
     meaning_pending: 'Il significato sta arrivando…',
+    ipa_pending: 'La pronuncia sta arrivando…',
   },
 };
 

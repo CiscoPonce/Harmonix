@@ -13,6 +13,18 @@ const String kApiBase = String.fromEnvironment(
   defaultValue: 'https://harmonix.peeporunclub.co.uk/api',
 );
 
+bool wavLooksSilent(Uint8List bytes, {int minPeak = 200}) {
+  if (bytes.length < 44 + 128) return true;
+  var peak = 0;
+  final data = ByteData.sublistView(bytes);
+  for (var i = 44; i + 1 < bytes.length; i += 2) {
+    final sample = data.getInt16(i, Endian.little).abs();
+    if (sample > peak) peak = sample;
+    if (peak >= minPeak) return false;
+  }
+  return true;
+}
+
 class ApiException implements Exception {
   ApiException(
     this.message, {
@@ -284,6 +296,9 @@ class ApiClient {
         bytes[3] == 0x46;
     if (!isRiff) {
       throw ApiException('Pronunciation audio was invalid (${bytes.length} bytes)');
+    }
+    if (wavLooksSilent(bytes)) {
+      throw ApiException('Pronunciation audio was silent');
     }
     return bytes;
   }

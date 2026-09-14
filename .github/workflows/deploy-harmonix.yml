@@ -97,5 +97,22 @@ jobs:
               fi
             done
             HARMONIX_REDEPLOY_BOOTED=1 bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh
+            echo "==> Restart host Pocket-TTS so /reload and language models are live"
+            sudo cp /home/ubuntu/lyric/scripts/systemd/harmonix-tts.service /etc/systemd/system/harmonix-tts.service
+            sudo systemctl daemon-reload
+            sudo systemctl restart harmonix-tts
+            for i in $(seq 1 90); do
+              if curl -sf http://127.0.0.1:3002/health; then
+                echo
+                echo "TTS healthy after ${i} checks"
+                break
+              fi
+              if [ "$i" -eq 90 ]; then
+                echo "TTS failed to become healthy" >&2
+                systemctl status harmonix-tts --no-pager || true
+                exit 1
+              fi
+              sleep 2
+            done
             echo "--- Active Containers ---"
             docker ps

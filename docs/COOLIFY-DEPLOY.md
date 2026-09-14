@@ -37,8 +37,16 @@ Unit file in-repo: [`scripts/systemd/harmonix-tts.service`](../scripts/systemd/h
 sudo cp /home/ubuntu/lyric/scripts/systemd/harmonix-tts.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now harmonix-tts
-curl -sf http://127.0.0.1:3002/health   # expect 200
+curl -sf http://127.0.0.1:3002/health   # expect 200 JSON with "language"
 # From a test container / api: curl -sf http://10.0.0.15:3002/health
+```
+
+The HQ server can `POST /reload` (form `language=english`) so the API can speak English, French, etc. without a second daemon. Coolify redeploy does **not** restart `harmonix-tts`; after shipping HQ-server changes copy the unit + script and run:
+
+```bash
+sudo cp /home/ubuntu/lyric/scripts/systemd/harmonix-tts.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl restart harmonix-tts
 ```
 
 Keep `TTS_SKIP_SPAWN=true` on the Coolify `api` service so containers never fight the host daemon.

@@ -50,6 +50,8 @@ class _LearnScreenState extends State<LearnScreen> {
   String? _trackedGenre;
   AuthState? _auth;
   Timer? _hearStopTimer;
+  Timer? _metaPollTimer;
+  int _metaPollAttempt = 0;
 
   @override
   void initState() {
@@ -83,6 +85,7 @@ class _LearnScreenState extends State<LearnScreen> {
   @override
   void dispose() {
     _hearStopTimer?.cancel();
+    _metaPollTimer?.cancel();
     _auth?.removeListener(_onAuthChanged);
     _searchQuery.dispose();
     _previewPlayer.dispose();
@@ -132,6 +135,7 @@ class _LearnScreenState extends State<LearnScreen> {
         _shelf = shelf;
         _dueCount = dueCount;
       });
+      _scheduleMetaPoll();
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -153,6 +157,63 @@ class _LearnScreenState extends State<LearnScreen> {
           _nexting = false;
         });
       }
+    }
+  }
+
+  bool _cardMetaComplete(Map<String, dynamic>? payload) {
+    final word = payload?['word'] as Map<String, dynamic>?;
+    final text = (word?['text'] ?? '').toString().trim();
+    final meaning = (word?['translation'] ?? '').toString().trim();
+    final ipa = (word?['pronunciation'] ?? '').toString().trim();
+    final meaningReady = meaning.isNotEmpty && meaning.toLowerCase() != text.toLowerCase();
+    return meaningReady && ipa.isNotEmpty;
+  }
+
+  void _scheduleMetaPoll() {
+    _metaPollTimer?.cancel();
+    _metaPollAttempt = 0;
+    _armMetaPoll();
+  }
+
+  void _armMetaPoll() {
+    if (!mounted || _cardMetaComplete(_word)) return;
+    const delays = [1200, 3000, 6500];
+    if (_metaPollAttempt >= delays.length) return;
+    _metaPollTimer = Timer(Duration(milliseconds: delays[_metaPollAttempt]), () async {
+      _metaPollAttempt += 1;
+      await _refreshCardMeta();
+      if (mounted) _armMetaPoll();
+    });
+  }
+
+  Future<void> _refreshCardMeta() async {
+    if (!mounted || _nexting || _loading) return;
+    final current = (_word?['word'] as Map<String, dynamic>?)?['text']?.toString();
+    if (current == null || current.isEmpty) return;
+    try {
+      final payload = await context.read<ApiClient>().getDailyWord();
+      if (!mounted) return;
+      final nextText = (payload['word'] as Map?)?['text']?.toString();
+      if (nextText != current) return;
+      final nextWord = Map<String, dynamic>.from(
+        (_word?['word'] as Map?)?.map((k, v) => MapEntry(k.toString(), v)) ?? {},
+      )..addAll(Map<String, dynamic>.from(payload['word'] as Map? ?? {}));
+      final prevLyric = Map<String, dynamic>.from(
+        (_word?['lyric'] as Map?)?.map((k, v) => MapEntry(k.toString(), v)) ?? {},
+      );
+      final nextLyric = payload['lyric'] as Map?;
+      if (nextLyric?['line_translation'] != null) {
+        prevLyric['line_translation'] = nextLyric!['line_translation'];
+      }
+      setState(() {
+        _word = {
+          ...?_word,
+          'word': nextWord,
+          'lyric': prevLyric,
+        };
+      });
+    } catch (_) {
+      /* keep the pending placeholders */
     }
   }
 
@@ -494,10 +555,13 @@ class _LearnScreenState extends State<LearnScreen> {
     final lyric = _word?['lyric'] as Map<String, dynamic>? ?? {};
     final song = _word?['song'] as Map<String, dynamic>? ?? {};
     final ready = _queue?['ready'];
-    final ipa = word['pronunciation'] as String?;
-    final ipaLabel = ipa == null
-        ? (word['part_of_speech']?.toString() ?? '')
-        : (ipa.startsWith('/') ? ipa : '/$ipa/');
+    final wordText = (word['text'] as String? ?? '').trim();
+    final translation = (word['translation'] as String? ?? '').trim();
+    final showMeaning = translation.isNotEmpty && translation.toLowerCase() != wordText.toLowerCase();
+    final ipaRaw = (word['pronunciation'] as String?)?.trim() ?? '';
+    final ipaLabel = ipaRaw.isEmpty
+        ? ''
+        : (ipaRaw.startsWith('/') || ipaRaw.startsWith('[') ? ipaRaw : '/$ipaRaw/');
     final lineSense =
         (word['line_translation'] ?? lyric['line_translation'] ?? '').toString().trim();
     final colors = HarmonixColors.of(context);
@@ -575,16 +639,27 @@ class _LearnScreenState extends State<LearnScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  word['translation'] as String? ?? '',
+                  showMeaning ? translation : context.tr('meaning_pending'),
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontStyle: showMeaning ? FontStyle.normal : FontStyle.italic,
+                        color: showMeaning ? null : colors.textMuted,
+                      ),
                 ),
                 const Spacer(),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (ipaLabel.isNotEmpty)
-                      Text(ipaLabel, style: Theme.of(context).textTheme.bodyLarge),
+                      Text(ipaLabel, style: Theme.of(context).textTheme.bodyLarge)
+                    else
+                      Text(
+                        context.tr('ipa_pending'),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              fontStyle: FontStyle.italic,
+                              color: colors.textMuted,
+                            ),
+                      ),
                     IconButton(
                       onPressed: word['text'] == null
                           ? null

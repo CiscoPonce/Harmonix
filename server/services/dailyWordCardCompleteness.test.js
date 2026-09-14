@@ -171,6 +171,29 @@ describe("Daily word card completeness", () => {
     expect(cardScore(out.word).complete).to.equal(false);
   });
 
+  it("attaches offline English IPA onto a same-song card without a model call", () => {
+    db.prepare("UPDATE users SET target_language = 'en', native_language = 'es' WHERE id = ?").run(userId);
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    let aiCalls = 0;
+    const original = aiService.glossDailyWords;
+    aiService.glossDailyWords = async () => {
+      aiCalls += 1;
+      throw new Error("offline IPA must not call the models");
+    };
+    try {
+      const out = attachCachedWordMeta({
+        word: { text: "younger", translation: "más jóvenes", gloss_v: 2 },
+        lyric: { snippet: "I was younger" },
+      }, user);
+      expect(out.word.pronunciation).to.match(/^\/.+\/$/);
+      expect(cardScore(out.word).complete).to.equal(true);
+      expect(aiCalls).to.equal(0);
+    } finally {
+      aiService.glossDailyWords = original;
+      db.prepare("UPDATE users SET target_language = 'es', native_language = 'en' WHERE id = ?").run(userId);
+    }
+  });
+
   it("boot fill attaches cached IPA onto stored cards that already have a meaning", () => {
     db.prepare(`
       INSERT INTO daily_words (user_id, date, word_json)

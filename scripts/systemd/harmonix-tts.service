@@ -16,7 +16,7 @@ ExecStart=/home/ubuntu/pocket-tts/.venv/bin/python \
   /home/ubuntu/lyric/server/scripts/pocket_tts_hq_serve.py \
   --host 0.0.0.0 \
   --port 3002 \
-  --language es \
+  --language spanish_24l \
   --temperature 0.45 \
   --lsd-decode-steps 3 \
   --eos-threshold -3.5
