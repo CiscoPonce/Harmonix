@@ -151,7 +151,7 @@ function reloadHostLanguage(pocketLang) {
 }
 
 /** Bump to invalidate SQLite pronunciation cache after quality/speed/accent changes. */
-const CACHE_VERSION = 'hq-v13-lang-match';
+const CACHE_VERSION = 'hq-v16-pad';
 
 /** Playback tempo (1.0 = natural speed, no phase distortion on sibilants). */
 const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.95');
@@ -278,6 +278,30 @@ function loudnessNormalizePcm(pcm, { targetPeak = 0.90 } = {}) {
   return out;
 }
 
+function trimPcmToSpeech(
+  pcm,
+  sampleRate = 24000,
+  { floor = 180, leadMs = 20, trailMs = 80 } = {},
+) {
+  if (!Buffer.isBuffer(pcm) || pcm.length < 4) return pcm;
+  const n = Math.floor(pcm.length / 2);
+  let first = -1;
+  let last = -1;
+  for (let i = 0; i < n; i++) {
+    const s = Math.abs(pcm.readInt16LE(i * 2));
+    if (s >= floor) {
+      if (first < 0) first = i;
+      last = i;
+    }
+  }
+  if (first < 0) return pcm;
+  const lead = Math.round(sampleRate * (leadMs / 1000));
+  const trail = Math.round(sampleRate * (trailMs / 1000));
+  const start = Math.max(0, first - lead);
+  const end = Math.min(n - 1, last + trail);
+  return pcm.subarray(start * 2, (end + 1) * 2);
+}
+
 function padWavWithSilence(
   wavBuffer,
   sampleRate = 24000,
@@ -288,7 +312,8 @@ function padWavWithSilence(
 ) {
   const clean = normalizeStreamingWav(wavBuffer);
   const faded = fadeInPcm(clean.subarray(44), sampleRate, 0.015);
-  const pcmData = loudnessNormalizePcm(faded);
+  const spoken = trimPcmToSpeech(faded, sampleRate);
+  const pcmData = loudnessNormalizePcm(spoken);
   const lead = Buffer.alloc(Math.round(sampleRate * leadSeconds * 2), 0);
   const trail = Buffer.alloc(Math.round(sampleRate * trailSeconds * 2), 0);
   return buildCleanWav(Buffer.concat([lead, pcmData, trail]), sampleRate);
@@ -462,16 +487,20 @@ async function ensureDaemonLanguage(langCode) {
   throw err;
 }
 
-function wavLooksSilent(wavBuffer, { minPeak = 200 } = {}) {
+function wavLooksSilent(wavBuffer, { minPeak = 200, minVoicedMs = 180 } = {}) {
   if (!Buffer.isBuffer(wavBuffer) || wavBuffer.length < 44 + 128) return true;
+  const sampleRate = wavBuffer.length >= 28 ? (wavBuffer.readUInt32LE(24) || 24000) : 24000;
   const pcm = wavBuffer.subarray(44);
   let peak = 0;
+  let voiced = 0;
   for (let i = 0; i + 1 < pcm.length; i += 2) {
     const sample = Math.abs(pcm.readInt16LE(i));
     if (sample > peak) peak = sample;
-    if (peak >= minPeak) return false;
+    if (sample >= minPeak) voiced += 1;
   }
-  return true;
+  if (peak < minPeak) return true;
+  const voicedMs = (voiced / sampleRate) * 1000;
+  return voicedMs < minVoicedMs;
 }
 
 function generateSilentWavBuffer(sampleRate = 24000, durationSec = 0.5) {
@@ -521,16 +550,27 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
   const tryPocket = async () => {
     try {
       await ensureDaemonLanguage(langCode);
-      const wavBuffer = await fetchFromPocketTTS(word, resolveVoice(langCode, voiceGender), langCode);
-      const slowed = await slowWav(wavBuffer, SPEECH_TEMPO);
-      const padded = padWavWithSilence(slowed);
-      if (wavLooksSilent(padded)) {
-        const silent = new Error('Pocket-TTS audio was silent after processing');
-        silent.code = 'tts_generation_failed';
-        throw silent;
+      const voice = resolveVoice(langCode, voiceGender);
+      let lastErr = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const wavBuffer = await fetchFromPocketTTS(word, voice, langCode);
+          const slowed = await slowWav(wavBuffer, SPEECH_TEMPO);
+          const padded = padWavWithSilence(slowed);
+          if (wavLooksSilent(padded)) {
+            lastErr = new Error(`Pocket-TTS audio was silent after processing (attempt ${attempt})`);
+            lastErr.code = 'tts_generation_failed';
+            console.warn(`[ttsService] ${lastErr.message} word=${word}`);
+            continue;
+          }
+          cachePronunciation(word, padded, langCode, voiceGender);
+          return padded;
+        } catch (inner) {
+          lastErr = inner;
+          console.warn('[ttsService] Pocket-TTS attempt failed:', inner.message || inner);
+        }
       }
-      cachePronunciation(word, padded, langCode, voiceGender);
-      return padded;
+      if (lastErr) throw lastErr;
     } catch (pErr) {
       console.warn('[ttsService] Pocket-TTS unavailable:', pErr.message || pErr);
     }
@@ -584,6 +624,7 @@ module.exports = {
   normalizeWordForTTS,
   normalizeStreamingWav,
   padWavWithSilence,
+  trimPcmToSpeech,
   fadeInPcm,
   loudnessNormalizePcm,
   ttsPromptForWord,

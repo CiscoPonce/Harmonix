@@ -100,6 +100,27 @@ describe('TTS Service Voice & Accent Normalization', () => {
     assert.strictEqual(ttsService.wavLooksSilent(silent), true);
   });
 
+  it('treats a loud click shorter than a spoken word as unusable audio', () => {
+    const rate = 24000;
+    const samples = Math.floor(rate * 0.08);
+    const pcm = Buffer.alloc(samples * 2);
+    for (let i = 0; i < samples; i++) pcm.writeInt16LE(12000, i * 2);
+    const wav = ttsService.generateSilentWavBuffer(rate, 0.08);
+    wav.set(pcm, 44);
+    assert.strictEqual(ttsService.wavLooksSilent(wav), true);
+  });
+
+  it('trims long silent tails around the spoken samples', () => {
+    const rate = 24000;
+    const total = rate * 2;
+    const pcm = Buffer.alloc(total * 2);
+    const start = rate; // 1s in
+    for (let i = 0; i < rate * 0.3; i++) pcm.writeInt16LE(8000, (start + i) * 2);
+    const trimmed = ttsService.trimPcmToSpeech(pcm, rate);
+    const durMs = (trimmed.length / 2 / rate) * 1000;
+    assert.ok(durMs > 300 && durMs < 500, `unexpected trim duration ${durMs}`);
+  });
+
   it('maps language aliases onto the same Pocket-TTS family', () => {
     assert.strictEqual(ttsService.canonicalPocketLang('es'), 'spanish_24l');
     assert.strictEqual(ttsService.pocketLangFamily('es'), 'spanish');

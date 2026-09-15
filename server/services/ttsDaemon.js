@@ -130,7 +130,7 @@ const ttsDaemon = {
     // Lower LSD steps = faster cold synthesize (quality still good for words).
     const lsdSteps = process.env.POCKET_TTS_LSD_STEPS || "3";
     const temperature = process.env.POCKET_TTS_TEMPERATURE || "0.45";
-    const eos = process.env.POCKET_TTS_EOS || "-3.5";
+    const eos = process.env.POCKET_TTS_EOS || "-2.0";
 
     freeTtsPort(bindPort);
 

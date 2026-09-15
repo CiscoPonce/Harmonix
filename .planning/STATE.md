@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: play-store-listing
 status: in_progress
 stopped_at: "2026-09-06 Phase 17 opened; JDK 17 installed user-local"
-last_updated: "2026-09-06T20:50:00.000Z"
+last_updated: "2026-09-15T20:22:00.000Z"
 progress:
   total_phases: 17
   completed_phases: 16
@@ -18,6 +18,8 @@ progress:
 **Phase 17 — Play Store listing.** Section A (keystore + signed AAB `1.0.8+11`) is done on this PC. Remaining: Play Console create-app, screenshots, Internal testing — [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](phases/17-play-store-listing/17-CHECKLIST.md). AAB: `mobile/build/app/outputs/bundle/release/app-release.aab`. Capacitor is not a release path.
 
 **2026-09-14 NIM/OpenRouter:** New NVIDIA Build key is live. Fast gloss uses Lightning with thinking off (~0.4–1.8s). Next-word was slow because the unused catalog is exhausted (`song_already_used`); we now skip unused AI + genre-widen and reuse a known song with a new word.
+
+**2026-09-15 TTS words:** Testers got Pocket clicks instead of words. Isolated-word path now pads short prompts, uses EOS -2.0, rejects clips under ~180ms of voice (retry 3×), trims silence, and busts the pronunciation cache. Pocket stays best for Spanish; other languages use Kokoro then device TTS.
 
 **2026-09-14 card IPA + TTS:** Word-of-the-Day IPA comes from an offline table (English including `younger`) so cards are not blank when NIM is down. Pocket-TTS on the host can `/reload` into the learner's language instead of speaking Spanish at English words. Pronunciation no longer returns a silent WAV — the client falls back to device TTS. Android/web show pending copy and poll while polish finishes.
 
@@ -36,7 +38,7 @@ progress:
 | Library URL | `/playlists` (`/library` redirects) |
 | Containers | `api-rxwdj1k3qu51fqf8uwtal389` + `web-rxwdj1k3qu51fqf8uwtal389` |
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
-| TTS | Host systemd `harmonix-tts` on `:3002`; compose `TTS_SKIP_SPAWN=true` |
+| TTS | Host systemd `harmonix-tts` on `:3002` (Spanish Pocket, EOS -2.0, pad-short); Kokoro then device TTS for other languages; compose `TTS_SKIP_SPAWN=true` |
 | Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` (Coolify UI status only; do not use Coolify Restart) |
 | Mobile | Flutter Play Store path (`mobile/`) |
 

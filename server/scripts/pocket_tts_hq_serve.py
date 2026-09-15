@@ -72,7 +72,12 @@ def main() -> int:
     parser.add_argument("--language", required=True)
     parser.add_argument("--temperature", type=float, default=0.45)
     parser.add_argument("--lsd-decode-steps", type=int, default=3)
-    parser.add_argument("--eos-threshold", type=float, default=-3.5)
+    parser.add_argument(
+        "--eos-threshold",
+        type=float,
+        default=-2.0,
+        help="EOS fires when logit > threshold. Higher keeps generating (Pocket default -4.0).",
+    )
     args = parser.parse_args()
 
     import uvicorn
@@ -96,10 +101,12 @@ def main() -> int:
         print(
             f"[pocket-tts-hq] loading language={canon} "
             f"temp={args.temperature} lsd_steps={args.lsd_decode_steps} "
-            f"eos={args.eos_threshold}",
+            f"eos={args.eos_threshold} pad_short=1",
             flush=True,
         )
         pocket_main.tts_model = TTSModel.load_model(language=canon, **load_kwargs)
+        # Isolated words have too few tokens; English configs enable this in YAML.
+        pocket_main.tts_model.pad_with_spaces_for_short_inputs = True
         print("[pocket-tts-hq] model ready", flush=True)
         return canon
 

@@ -19,7 +19,7 @@ ExecStart=/home/ubuntu/pocket-tts/.venv/bin/python \
   --language spanish_24l \
   --temperature 0.45 \
   --lsd-decode-steps 3 \
-  --eos-threshold -3.5
+  --eos-threshold -2.0
 Restart=on-failure
 RestartSec=5
 # Model load can take a while on cold boot
