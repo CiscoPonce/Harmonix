@@ -19,6 +19,21 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * **tts:** host Pocket-TTS can reload by language; stop returning silent WAVs on failure
 * **mobile/web:** show real IPA or pending copy (never part-of-speech as phonetics); Android polls for polish like web
 
+## [0.0.4](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.3...harmonix-v0.0.4) (2026-09-15)
+
+
+### Bug Fixes
+
+* **ai:** cool NIM for 30 minutes after 403/410 instead of retrying every request ([e1f70c5](https://github.com/CiscoPonce/Harmonix/commit/e1f70c5a424b21b6e891239f9ca074fb6b8fe906))
+* **daily-word:** drop English slips like blame from Spanish cards ([3839e01](https://github.com/CiscoPonce/Harmonix/commit/3839e01ea919dc7d1206ffded463cfd1c6589748))
+* **daily-word:** serve complete translation and IPA without slowing Next ([08bd85b](https://github.com/CiscoPonce/Harmonix/commit/08bd85b1df49bebae96577657202476a439ee729))
+* **daily-word:** show IPA without AI and speak the learner's language ([10e301b](https://github.com/CiscoPonce/Harmonix/commit/10e301b475087b5edd0b789e255c43acc29c66b0))
+* **daily-word:** skip dead AI song-pick when the unused catalog is empty ([1476d6e](https://github.com/CiscoPonce/Harmonix/commit/1476d6ed5989a42d67d3965ff376e9348fe3e196))
+* **daily-word:** skip exhausted-catalog AI waits and keep Coolify status live ([255251d](https://github.com/CiscoPonce/Harmonix/commit/255251d8b589ed481b5cb4d1deef97957f566bad))
+* drop karaoke homepage copy, leftover English UI, and English Kokoro for German ([baad36b](https://github.com/CiscoPonce/Harmonix/commit/baad36b1598e1f6245552705dda72788742bdd5b))
+* **tests:** use a nonce word so queue IPA polish still exercises the AI path ([78d1428](https://github.com/CiscoPonce/Harmonix/commit/78d1428a5a160b9ac7d37264dd106a217a716ad4))
+* **tts:** stop caching silent Pocket clicks as spoken words ([f425e3b](https://github.com/CiscoPonce/Harmonix/commit/f425e3b25aebd97b68d82af80a5df8fdb97695d6))
+
 ## [0.0.3](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.2...harmonix-v0.0.3) (2026-09-06)
 
 
