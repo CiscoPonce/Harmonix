@@ -24,6 +24,7 @@ void main() {
     expect(AppI18n.t('unknown_key'), 'unknown_key');
     expect(AppI18n.plural('streak_days', 1, 'en'), '1 day');
     expect(AppI18n.plural('streak_days', 3, 'de'), '3 Tage');
-    expect(AppI18n.plural('to_review', 2, 'pt'), '2 palavras para revisar →');
+    expect(AppI18n.t('harmonix_playlists', 'es'), 'LISTAS DE HARMONIX');
+    expect(AppI18n.plural('songs', 3, 'en'), '3 songs');
   });
 }

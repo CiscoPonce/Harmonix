@@ -18,6 +18,7 @@ import {
   startSpotifyAuth,
 } from '@/lib/api';
 import { PLAYLISTS_CHANGED_EVENT } from '@/lib/playlistEvents';
+import { useTranslation } from '@/lib/i18n';
 import {
   capSpotifyPlaylistShelf,
   mapSpotifyListError,
@@ -83,6 +84,7 @@ function PlaylistCardSkeleton() {
 
 function LibraryContent() {
   const { user, isLoading: authLoading, logout } = useAuth();
+  const { t, tp } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackOutcome = parseSpotifyCallbackOutcome(searchParams.get('spotify'));
@@ -330,11 +332,11 @@ function LibraryContent() {
       <Link
         href="/settings"
         className="hidden max-w-[16rem] items-center gap-2 rounded-full border border-[#1DB954]/40 bg-[#1DB954]/15 px-3 py-1.5 text-xs font-bold text-[#1DB954] hover:bg-[#1DB954]/25 sm:inline-flex"
-        title="Manage Spotify in Settings"
+        title={t('settings')}
       >
         <Image src="/spotify-logo.svg" alt="" width={14} height={14} className="h-3.5 w-3.5" unoptimized />
         <span className="truncate">
-          {spotifyDisplayName ? `Spotify · ${spotifyDisplayName}` : 'Spotify connected'}
+          {spotifyDisplayName ? `Spotify · ${spotifyDisplayName}` : t('spotify_connected')}
         </span>
       </Link>
     ) : spotifyLinkState === 'reconnect' ? (
@@ -343,7 +345,7 @@ function LibraryContent() {
         onClick={() => void openSpotifyAuth()}
         className="hidden rounded-full bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-500 sm:inline-flex"
       >
-        Reconnect Spotify
+        {t('reconnect_spotify')}
       </button>
     ) : spotifyLinkState === 'disconnected' ? (
       <button
@@ -351,7 +353,7 @@ function LibraryContent() {
         onClick={() => void openSpotifyAuth()}
         className="hidden rounded-full bg-[#0B4D2E] px-4 py-2 text-xs font-bold text-white hover:bg-[#093F25] sm:inline-flex"
       >
-        Connect to Spotify
+        {t('nav_connect_spotify')}
       </button>
     ) : null;
 
@@ -359,8 +361,8 @@ function LibraryContent() {
     <AppShell
       userEmail={user?.email}
       onLogout={logout}
-      pageTitle="Library"
-      searchPlaceholder="Search your collection"
+      pageTitle={t('nav_shelf')}
+      searchPlaceholder={t('search_collection')}
       showBottomPlayer={Boolean(recent[0]?.song)}
       nowPlaying={
         recent[0]?.song
@@ -378,29 +380,30 @@ function LibraryContent() {
             role="status"
             className="rounded-lg border border-[#0B4D2E]/30 bg-white px-4 py-3 text-sm font-bold text-[#0B4D2E]"
           >
-            Spotify connected
-            {spotifyDisplayName ? ` as ${spotifyDisplayName}` : ''}. Loading your playlists.
+            {spotifyDisplayName
+              ? t('spotify_connected_as', { name: spotifyDisplayName })
+              : t('spotify_connected_banner')}
           </p>
         ) : null}
 
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80]">
-            Personal collection
+            {t('personal_collection')}
           </p>
           <p className="mt-1 max-w-xl font-display text-xl font-bold italic text-[#0C1210] sm:text-2xl">
-            Your resonance library brings together language and lyric in perfect harmony.
+            {t('library_tagline')}
           </p>
         </div>
 
         {/* Create action */}
         <div className="flex w-full max-w-[800px] gap-2">
           <Input
-            placeholder="Playlist name"
+            placeholder={t('playlist_name')}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             maxLength={100}
-            aria-label="New Harmonix playlist name"
+            aria-label={t('new_playlist')}
           />
           <Button
             variant="primary"
@@ -408,9 +411,9 @@ function LibraryContent() {
             disabled={creating || !newName.trim()}
             className="h-10 shrink-0 border border-[#0B6B3A] bg-[#0B6B3A] text-base font-bold text-white dark:border-[#3DCF7A] dark:bg-[#3DCF7A] dark:text-[#0C1210]"
           >
-            {creating ? 'Creating…' : (
+            {creating ? t('creating') : (
               <span className="inline-flex items-center gap-1">
-                <Plus className="h-4 w-4" aria-hidden /> Create
+                <Plus className="h-4 w-4" aria-hidden /> {t('create')}
               </span>
             )}
           </Button>
@@ -424,15 +427,15 @@ function LibraryContent() {
 
         {fullyEmpty ? (
           <div className="max-w-[800px] space-y-3 py-8 text-center">
-            <h2 className="text-[22px] font-bold">Your library is ready for music</h2>
+            <h2 className="text-[22px] font-bold">{t('library_ready')}</h2>
             <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-              Create a Harmonix playlist, or connect Spotify from Settings to see your playlists here.
+              {t('library_ready_hint')}
             </p>
             <Link
               href="/settings"
               className="inline-block text-base font-bold text-[#0B6B3A] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
             >
-              Open Settings
+              {t('open_settings')}
             </Link>
           </div>
         ) : null}
@@ -443,7 +446,7 @@ function LibraryContent() {
             id="harmonix-playlists-heading"
             className="text-[14px] font-bold uppercase tracking-[0.14em] text-[#5C6B62] dark:text-[#9AABA0]"
           >
-            Harmonix Playlists
+            {t('harmonix_playlists')}
           </h2>
           {harmonixLoading ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-hidden>
@@ -475,7 +478,7 @@ function LibraryContent() {
                           {p.name}
                         </p>
                         <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                          {p.song_count} song{p.song_count !== 1 ? 's' : ''}
+                          {tp('songs', p.song_count)}
                         </p>
                         <div className="mt-1">
                           <ProviderBadge provider="harmonix" />
@@ -488,7 +491,7 @@ function LibraryContent() {
                       onClick={() => handleDelete(p.id, p.name)}
                       className="shrink-0 text-xs font-bold text-[#5C6B62] underline-offset-4 hover:text-[#D32F2F] hover:underline"
                     >
-                      Delete
+                      {t('remove')}
                     </button>
                   </div>
                 );
@@ -504,7 +507,7 @@ function LibraryContent() {
               id="spotify-playlists-heading"
               className="text-[14px] font-bold uppercase tracking-[0.14em] text-[#5C6B62] dark:text-[#9AABA0]"
             >
-              Spotify Playlists
+              {t('spotify_playlists')}
             </h2>
             {spotifyConnected && !spotifyLoading ? (
               <button
@@ -512,13 +515,13 @@ function LibraryContent() {
                 onClick={refreshAll}
                 className="text-sm font-bold text-[#0B6B3A] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
               >
-                Refresh playlists
+                {t('refresh_playlists')}
               </button>
             ) : null}
           </div>
           {spotifyConnected && spotifyShelf.length > 0 ? (
             <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-              Open a playlist, then press ▶ on a track to play (Spotify Premium).
+              {t('spotify_play_hint')}
             </p>
           ) : null}
 
@@ -534,7 +537,7 @@ function LibraryContent() {
               role={spotifyError.kind === 'provider_error' ? 'alert' : 'status'}
             >
               <h3 className="font-display text-xl font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">
-                Sync Your Spotify Library
+                {t('sync_spotify_library')}
               </h3>
               <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
                 {spotifyError.message}
@@ -546,7 +549,7 @@ function LibraryContent() {
                   className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#0B4D2E] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-[#093F25] dark:bg-[#3DCF7A] dark:text-[#0C1210] dark:hover:bg-[#2FB86A]"
                 >
                   <Image src="/spotify-logo.svg" alt="" width={16} height={16} className="h-4 w-4" unoptimized />
-                  {spotifyError.kind === 'reconnect' ? 'Reconnect Spotify' : 'Connect Spotify'}
+                  {spotifyError.kind === 'reconnect' ? t('reconnect_spotify') : t('nav_connect_spotify')}
                 </button>
               )}
               {spotifyError.kind === 'provider_error' || spotifyError.kind === 'offline' ? (
@@ -555,27 +558,27 @@ function LibraryContent() {
                   onClick={refreshAll}
                   className="mt-3 text-base font-bold text-[#0B6B3A] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
                 >
-                  Retry sync
+                  {t('retry_sync')}
                 </button>
               ) : null}
               {spotifyError.kind === 'rate_limited' ? (
                 <p className="mt-2 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                  Manual refresh is paused until Spotify is ready.
+                  {t('spotify_rate_limited')}
                 </p>
               ) : null}
             </div>
           ) : spotifyShelf.length === 0 ? (
             <div className="max-w-[800px] space-y-2 rounded-xl border border-[#D7E0DA] bg-white p-4 dark:border-[#2A3530] dark:bg-[#171E1B]">
-              <h3 className="text-base font-bold">No Spotify playlists found</h3>
+              <h3 className="text-base font-bold">{t('no_spotify_playlists')}</h3>
               <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-                Create or save a playlist in Spotify, then refresh your Library.
+                {t('no_spotify_playlists_hint')}
               </p>
               <button
                 type="button"
                 onClick={refreshAll}
                 className="text-base font-bold text-[#0B6B3A] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
               >
-                Refresh playlists
+                {t('refresh_playlists')}
               </button>
             </div>
           ) : (
@@ -585,8 +588,8 @@ function LibraryContent() {
                   const href = `/playlists/spotify/${encodeURIComponent(p.provider_id)}`;
                   const countLabel =
                     p.track_count == null
-                      ? 'Track count unavailable'
-                      : `${p.track_count} track${p.track_count !== 1 ? 's' : ''}`;
+                      ? t('tracks_unavailable')
+                      : tp('tracks', p.track_count);
                   return (
                     <Link
                       key={p.stable_id}
@@ -628,7 +631,7 @@ function LibraryContent() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-base font-bold text-[#0B6B3A] underline-offset-4 hover:underline dark:text-[#3DCF7A]"
                 >
-                  Open more playlists in Spotify
+                  {t('open_more_spotify')}
                 </a>
               ) : null}
             </>
@@ -641,7 +644,7 @@ function LibraryContent() {
             id="recent-discoveries-heading"
             className="text-[14px] font-bold uppercase tracking-[0.14em] text-[#5C6B62] dark:text-[#9AABA0]"
           >
-            Recent Discoveries
+            {t('recent_discoveries')}
           </h2>
           {recentLoading ? (
             <div className="space-y-3" aria-hidden>
@@ -654,7 +657,7 @@ function LibraryContent() {
             </div>
           ) : recent.length === 0 ? (
             <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-              Words you discover while learning will show up here.
+              {t('recent_empty')}
             </p>
           ) : (
             <ul className="space-y-2">

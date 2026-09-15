@@ -7,20 +7,20 @@ export function LandingHowItWorks() {
     {
       num: '01',
       icon: <Play className="h-6 w-6 text-emerald-400" />,
-      title: 'Choose a Song & Language',
-      desc: 'Pick your favorite tracks in Spanish, French, German, Italian, Portuguese, or English.',
+      title: 'Pick a language & style',
+      desc: 'Spanish, French, German, Italian, Portuguese, or English — plus the music style you actually listen to.',
     },
     {
       num: '02',
       icon: <Sparkles className="h-6 w-6 text-purple-400" />,
-      title: 'Sing Along & Learn Words',
-      desc: 'Tap synced karaoke lyrics to reveal instant definitions, native pronunciations, and AI explanations.',
+      title: 'Get a Word of the Day',
+      desc: 'Harmonix matches a real song and a real lyric line, then shows meaning, IPA, and a tap-to-hear pronunciation.',
     },
     {
       num: '03',
       icon: <Trophy className="h-6 w-6 text-amber-400" />,
-      title: 'Master & Build Memory',
-      desc: 'Review words with spaced repetition cards and unlock achievements as your vocabulary grows.',
+      title: 'Hear it, save it, keep going',
+      desc: 'Play a short clip around the word, add it to a playlist, and build a streak as your library grows.',
     },
   ];
 
@@ -35,7 +35,7 @@ export function LandingHowItWorks() {
             How Harmonix Works
           </h2>
           <p className="text-zinc-400 text-sm sm:text-base">
-            Learning a language should feel like listening to your favorite album. Here is how you master vocabulary in minutes.
+            Language learning that starts from a real lyric line. Here is how Word of the Day works.
           </p>
         </div>
 

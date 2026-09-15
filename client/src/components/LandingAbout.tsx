@@ -15,8 +15,8 @@ export function LandingAbout() {
               The Science of Musical Language Learning
             </h2>
             <p className="text-zinc-400 text-sm sm:text-base leading-relaxed">
-              Harmonix combines real-time synchronized song lyrics with advanced AI speech synthesis and spaced repetition memory algorithms. 
-              Music triggers dopamine release, locking rhythm and vocabulary permanently into long-term memory.
+              Harmonix finds a Word of the Day in validated song lyrics, then pairs it with pronunciation audio and a short preview clip.
+              Music context helps the word stick — you learn from a line that actually exists in the track.
             </p>
 
             <div className="space-y-4 pt-2">
@@ -36,7 +36,7 @@ export function LandingAbout() {
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-white">Spotify & Deezer Sync</h4>
-                  <p className="text-xs text-zinc-400">Import your favorite playlists or explore curated genre collections.</p>
+                  <p className="text-xs text-zinc-400">Optional Spotify Connect for Premium testers, plus 30-second previews for everyone else.</p>
                 </div>
               </div>
 
@@ -68,7 +68,7 @@ export function LandingAbout() {
 
               <div className="pt-4 space-y-1">
                 <p className="text-sm font-semibold text-white">Do I need a Spotify Premium account?</p>
-                <p className="text-xs text-zinc-400">No, Spotify connection is optional. Harmonix works with standard web previews and built-in tracks.</p>
+                <p className="text-xs text-zinc-400">No. Word of the Day and 30-second previews work without Spotify. In-app Spotify playback needs Premium, and during testing only allowlisted accounts can connect.</p>
               </div>
             </div>
           </div>

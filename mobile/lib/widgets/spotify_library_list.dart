@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../spotify/spotify_contracts.dart';
 import '../theme/harmonix_theme.dart';
+import '../utils/i18n.dart';
 
 /// Provider-aware playlist identity used by Library list contracts.
 class ProviderPlaylist {
@@ -74,7 +75,7 @@ class SpotifyLibraryList extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'Library',
+                  context.tr('nav_shelf'),
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         color: colors.textPrimary,
                       ),
@@ -88,13 +89,13 @@ class SpotifyLibraryList extends StatelessWidget {
               ],
             ),
         const SizedBox(height: 16),
-        _SectionLabel('HARMONIX PLAYLISTS'),
+        _SectionLabel(context.tr('harmonix_playlists')),
         const SizedBox(height: 8),
         if (harmonixLoading)
           ...List.generate(2, (_) => const _PlaylistSkeleton())
         else if (harmonixPlaylists.isEmpty)
           Text(
-            'No playlists yet',
+            context.tr('no_playlists_yet'),
             style: TextStyle(color: colors.textMuted),
           )
         else
@@ -105,7 +106,7 @@ class SpotifyLibraryList extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 24),
-        _SectionLabel('SPOTIFY PLAYLISTS'),
+        _SectionLabel(context.tr('spotify_playlists')),
         const SizedBox(height: 8),
         if (spotifyLoading)
           ...List.generate(2, (_) => const _PlaylistSkeleton())
@@ -116,7 +117,7 @@ class SpotifyLibraryList extends StatelessWidget {
           ),
         ] else if (capped.isEmpty)
           Text(
-            'No Spotify playlists found',
+            context.tr('no_spotify_playlists'),
             style: TextStyle(color: colors.textMuted),
           )
         else ...[
@@ -135,16 +136,16 @@ class SpotifyLibraryList extends StatelessWidget {
                   foregroundColor: colors.accent,
                   minimumSize: const Size(44, 44),
                 ),
-                child: const Text('Open more playlists in Spotify'),
+                child: Text(context.tr('open_more_spotify')),
               ),
             ),
         ],
         const SizedBox(height: 24),
-        _SectionLabel('RECENT DISCOVERIES'),
+        _SectionLabel(context.tr('recent_discoveries')),
         const SizedBox(height: 8),
         if (recentDiscoveries.isEmpty)
           Text(
-            'No recent words',
+            context.tr('no_recent_words'),
             style: TextStyle(color: colors.textMuted),
           )
         else
@@ -245,7 +246,7 @@ class _SpotifyErrorBanner extends StatelessWidget {
                 minimumSize: const Size(44, 44),
                 padding: EdgeInsets.zero,
               ),
-              child: const Text('Open Settings'),
+              child: Text(context.tr('open_settings')),
             ),
           ],
         ],
@@ -312,9 +313,9 @@ class _PlaylistCard extends StatelessWidget {
         : (playlist.songCount ?? playlist.trackCount);
     final countLabel = isSpotify
         ? (count == null
-            ? 'Tracks'
-            : '$count track${count == 1 ? '' : 's'}')
-        : '${count ?? 0} song${(count ?? 0) == 1 ? '' : 's'}';
+            ? context.tr('tracks_unavailable')
+            : context.trPlural('tracks', count))
+        : context.trPlural('songs', count ?? 0);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),

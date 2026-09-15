@@ -22,11 +22,6 @@ import {
   type ConnectionState,
 } from '@/lib/spotifyContracts';
 
-const ERROR_COPY =
-  'Spotify authorization didn’t complete. You can try connecting again.';
-const PROVIDER_ERROR_COPY =
-  'Spotify is unavailable right now. Your Harmonix library is still available. Try again.';
-
 const selectClassName =
   'mt-1.5 flex h-10 w-full rounded-lg border border-[#E4EBE6] bg-[#F7F8F6] px-3 text-sm text-[#0C1210] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B4D2E]/40 dark:border-[#2A3530] dark:bg-[#121A17] dark:text-[#F2F5F3] dark:focus-visible:ring-[#3DCF7A]/40';
 
@@ -143,7 +138,7 @@ function SettingsContent() {
     router.replace('/settings', { scroll: false });
   }, [callbackOutcome, router]);
 
-  const recoveryMessage = callbackOutcome === 'error' ? ERROR_COPY : message;
+  const recoveryMessage = callbackOutcome === 'error' ? t('spotify_auth_failed') : message;
   const cardState: ConnectionState =
     callbackOutcome === 'error'
       ? 'provider_error'
@@ -170,14 +165,14 @@ function SettingsContent() {
         if (dto.state === 'reconnect') {
           setMessage('Your Spotify connection expired. Reconnect to continue.');
         } else if (dto.state === 'provider_error') {
-          setMessage(PROVIDER_ERROR_COPY);
+          setMessage(t('spotify_provider_error'));
         } else if (callbackOutcome !== 'error') {
           setMessage(null);
         }
       } catch {
         if (!active) return;
         setState('provider_error');
-        setMessage(PROVIDER_ERROR_COPY);
+        setMessage(t('spotify_provider_error'));
       } finally {
         if (active) setStatusLoading(false);
       }
@@ -215,7 +210,7 @@ function SettingsContent() {
       }
     } catch {
       setState('provider_error');
-      setMessage(PROVIDER_ERROR_COPY);
+      setMessage(t('spotify_provider_error'));
       setMutationBusy(false);
     }
   };
@@ -235,7 +230,7 @@ function SettingsContent() {
       }, 1600);
     } catch {
       setState('provider_error');
-      setMessage(PROVIDER_ERROR_COPY);
+      setMessage(t('spotify_provider_error'));
       reloadStatus();
     } finally {
       setMutationBusy(false);
@@ -336,16 +331,16 @@ function SettingsContent() {
               <div className="mt-2 flex flex-wrap gap-2">
                 {user.native_language ? (
                   <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                    Home · {languageLabel(user.native_language)}
+                    {t('chip_home')} · {languageLabel(user.native_language)}
                   </span>
                 ) : null}
                 {user.target_language ? (
                   <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                    Learning · {languageLabel(user.target_language)}
+                    {t('chip_learning')} · {languageLabel(user.target_language)}
                   </span>
                 ) : null}
                 <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                  Style · {genreLabel(user.genre)}
+                  {t('chip_style')} · {genreLabel(user.genre)}
                 </span>
                 <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
                   {t('voice_label')} · {user.voice_gender === 'male' ? t('voice_male') : t('voice_female')}

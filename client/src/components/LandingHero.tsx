@@ -35,12 +35,12 @@ export function LandingHero() {
           </div>
 
           <h1 className="landing-hero-headline">
-            Master Vocabulary<br />
-            <span className="landing-hero-headline-accent">with Every Beat</span>
+            Learn real words<br />
+            <span className="landing-hero-headline-accent">from real songs</span>
           </h1>
 
           <p className="landing-hero-subtext">
-            Unlock language through rhythm and melody. Turn your favorite songs into powerful learning tools.
+            Each day Harmonix finds a Word of the Day in actual lyrics. Hear it, see the line, then save it to your library.
           </p>
 
           <div className="landing-hero-actions">
@@ -62,8 +62,8 @@ export function LandingHero() {
               <div className="landing-phone-header">
                 <span className="landing-phone-chevron">‹</span>
                 <div className="landing-phone-header-text">
-                  <p className="landing-phone-title">Bohemian Rhapsody</p>
-                  <p className="landing-phone-artist">Queen</p>
+                  <p className="landing-phone-title">Word of the Day</p>
+                  <p className="landing-phone-artist">Échame La Culpa</p>
                 </div>
               </div>
               <div className="landing-phone-cover">
@@ -92,13 +92,13 @@ export function LandingHero() {
             </div>
             {/* Floating vocab popover - top */}
             <div className="landing-popover landing-popover-1">
-              <span className="landing-popover-word">MELANCHOLY</span>
-              <p className="landing-popover-def">A deep sadness or gloom; a pensive mood</p>
+              <span className="landing-popover-word">CULPA</span>
+              <p className="landing-popover-def">Blame, fault — from a real Spanish lyric</p>
             </div>
             {/* Floating vocab popover - bottom */}
             <div className="landing-popover landing-popover-2">
-              <span className="landing-popover-word">GALILEO</span>
-              <p className="landing-popover-def">Reference to the famous astronomer in the lyrics</p>
+              <span className="landing-popover-word">Hear it</span>
+              <p className="landing-popover-def">Tap for pronunciation, then a 30s song clip</p>
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { useTranslation } from '@/lib/i18n';
 import type { ConnectionState } from '@/lib/spotifyContracts';
 
 export interface SpotifyConnectionCardProps {
@@ -19,24 +20,6 @@ export interface SpotifyConnectionCardProps {
   onCancelDisconnect?: () => void;
 }
 
-const COPY = {
-  connectTitle: 'Connect Spotify',
-  connectBody: 'Link your Spotify account to browse playlists in your Harmonix library.',
-  connecting: 'Connecting to Spotify…',
-  connected: 'Spotify connected',
-  reconnect: 'Reconnect Spotify',
-  reconnectBody: 'Your Spotify connection expired. Reconnect to continue.',
-  disconnect: 'Disconnect Spotify',
-  disconnecting: 'Disconnecting…',
-  disconnected: 'Spotify disconnected',
-  providerError: 'Spotify is unavailable right now. Your Harmonix library is still available. Try again.',
-  confirmBody:
-    'Disconnect Spotify? You’ll stop seeing Spotify playlists in Harmonix. You can reconnect at any time.',
-  confirmAction: 'Disconnect Spotify',
-  keepConnected: 'Keep connected',
-  viewLibrary: 'View Library',
-} as const;
-
 export function SpotifyConnectionCard({
   state,
   displayName,
@@ -48,51 +31,52 @@ export function SpotifyConnectionCard({
   onConfirmDisconnect,
   onCancelDisconnect,
 }: SpotifyConnectionCardProps) {
+  const { t } = useTranslation();
   const busy = state === 'connecting' || state === 'disconnecting';
   const showDisconnect =
     (state === 'connected' || state === 'reconnect' || state === 'provider_error') &&
     !busy;
 
-  let title: string = COPY.connectTitle;
-  let body: string = COPY.connectBody;
-  let primaryLabel: string | null = COPY.connectTitle;
+  let title: string = t('nav_connect_spotify');
+  let body: string = t('spotify_connect_body');
+  let primaryLabel: string | null = t('nav_connect_spotify');
   let primaryAction: (() => void) | undefined = onConnect;
   let statusIcon: ReactNode = null;
 
   if (state === 'connecting') {
-    title = COPY.connecting;
-    body = COPY.connectBody;
+    title = t('spotify_connecting');
+    body = t('spotify_connect_body');
     primaryLabel = null;
     statusIcon = <Loader2 className="h-5 w-5 animate-spin text-[#0B6B3A] dark:text-[#3DCF7A]" aria-hidden />;
   } else if (state === 'disconnecting') {
-    title = COPY.disconnecting;
-    body = COPY.confirmBody;
+    title = t('spotify_disconnecting');
+    body = t('spotify_confirm_disconnect');
     primaryLabel = null;
     statusIcon = <Loader2 className="h-5 w-5 animate-spin text-[#0B6B3A] dark:text-[#3DCF7A]" aria-hidden />;
   } else if (state === 'connected') {
-    title = COPY.connected;
+    title = t('spotify_connected');
     body = displayName
-      ? `Connected as ${displayName}. Browse playlists in your Library.`
-      : 'Your Spotify playlists are available in Library.';
-    primaryLabel = COPY.viewLibrary;
+      ? t('spotify_connected_browse', { name: displayName })
+      : t('spotify_playlists_available');
+    primaryLabel = t('view_library');
     primaryAction = undefined;
     statusIcon = <CheckCircle2 className="h-5 w-5 text-[#0B6B3A] dark:text-[#3DCF7A]" aria-hidden />;
   } else if (state === 'reconnect') {
-    title = COPY.reconnect;
-    body = message || COPY.reconnectBody;
-    primaryLabel = COPY.reconnect;
+    title = t('reconnect_spotify');
+    body = message || t('spotify_reconnect_body');
+    primaryLabel = t('reconnect_spotify');
     primaryAction = onReconnect ?? onConnect;
     statusIcon = <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden />;
   } else if (state === 'provider_error') {
-    title = 'Spotify connection issue';
-    body = message || COPY.providerError;
-    primaryLabel = COPY.reconnect;
+    title = t('spotify_connection_issue');
+    body = message || t('spotify_provider_error');
+    primaryLabel = t('reconnect_spotify');
     primaryAction = onReconnect ?? onConnect;
     statusIcon = <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" aria-hidden />;
   } else if (state === 'disconnected') {
-    title = COPY.disconnected;
-    body = 'You can connect again whenever you want.';
-    primaryLabel = COPY.connectTitle;
+    title = t('spotify_disconnected');
+    body = t('spotify_can_reconnect');
+    primaryLabel = t('nav_connect_spotify');
     primaryAction = onConnect;
   }
 
@@ -129,7 +113,7 @@ export function SpotifyConnectionCard({
               href="/playlists"
               className="inline-flex h-10 items-center justify-center rounded-md border border-[#0B6B3A] bg-[#0B6B3A] px-4 text-base font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B6B3A] focus-visible:ring-offset-2 dark:border-[#3DCF7A] dark:bg-[#3DCF7A] dark:text-[#0C1210]"
             >
-              {COPY.viewLibrary}
+              {t('view_library')}
             </Link>
           ) : primaryLabel && primaryAction ? (
             <Button
@@ -150,7 +134,7 @@ export function SpotifyConnectionCard({
               disabled={busy}
               className="h-10 text-base font-bold text-[#D32F2F] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D32F2F] disabled:opacity-50"
             >
-              {COPY.disconnect}
+              {t('spotify_disconnect')}
             </button>
           ) : null}
         </div>
@@ -164,7 +148,7 @@ export function SpotifyConnectionCard({
           className="mt-4 rounded-lg border border-[#D7E0DA] bg-[#F4F7F5] p-4 dark:border-[#2A3530] dark:bg-[#0C1210]"
         >
           <p id="spotify-disconnect-title" className="text-sm text-[#121612] dark:text-[#F2F5F3]">
-            {COPY.confirmBody}
+            {t('spotify_confirm_disconnect')}
           </p>
           <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
@@ -174,14 +158,14 @@ export function SpotifyConnectionCard({
               onClick={onCancelDisconnect}
               className="h-10 border border-[#D7E0DA] bg-white text-base font-bold text-[#121612] dark:border-[#2A3530] dark:bg-[#171E1B] dark:text-[#F2F5F3]"
             >
-              {COPY.keepConnected}
+              {t('spotify_keep_connected')}
             </Button>
             <Button
               type="button"
               onClick={onConfirmDisconnect}
               className="h-10 border border-[#D32F2F] bg-[#D32F2F] text-base font-bold text-white hover:bg-[#b71c1c]"
             >
-              {COPY.confirmAction}
+              {t('spotify_disconnect')}
             </Button>
           </div>
         </div>

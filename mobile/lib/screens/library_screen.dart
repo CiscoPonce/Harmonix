@@ -241,9 +241,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final chipLabel = switch (_spotifyState) {
       'connected' when (_spotifyDisplayName?.isNotEmpty ?? false) =>
         'Spotify · $_spotifyDisplayName',
-      'connected' => 'Spotify · Connected',
-      'reconnect' => 'Spotify · Reconnect',
-      _ => 'Connect Spotify',
+      'connected' => context.tr('spotify_connected_chip'),
+      'reconnect' => context.tr('spotify_reconnect_chip'),
+      _ => context.tr('connect_spotify'),
     };
 
     return SpotifyLibraryList(

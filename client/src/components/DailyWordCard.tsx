@@ -24,6 +24,31 @@ import { spotifyOpenUrlForSong } from "@/lib/spotifyOpen";
 
 const SUPPORTED_PRONUNCIATION_LANGUAGES = ["es", "fr", "de", "pt", "en", "it"];
 
+const DEVICE_TTS_LANG: Record<string, string> = {
+  es: "es-ES",
+  fr: "fr-FR",
+  de: "de-DE",
+  pt: "pt-BR",
+  it: "it-IT",
+  en: "en-US",
+};
+
+function speakOnDevice(word: string, lang: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      reject(new Error("no device tts"));
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = DEVICE_TTS_LANG[lang] || "en-US";
+    utterance.rate = 0.9;
+    utterance.onend = () => resolve();
+    utterance.onerror = () => reject(new Error("device tts failed"));
+    window.speechSynthesis.speak(utterance);
+  });
+}
+
 function pronunciationLang(
   data: DailyWordPayload | null | undefined,
   userTarget?: string | null
@@ -303,9 +328,9 @@ export function DailyWordCard({
     }
 
     if (!initial && hasBuffered) {
-      setStatusMessage("Loading next word…");
+      setStatusMessage(t('loading_next_word'));
     } else if (!initial) {
-      setStatusMessage("Matching a word in a real song…");
+      setStatusMessage(t('matching_real_song'));
     }
 
     try {
@@ -344,7 +369,7 @@ export function DailyWordCard({
         fetchQueueStatus();
       }
     }
-  }, [applyPayload, data, fetchQueueStatus, queueStatus?.ready]);
+  }, [applyPayload, data, fetchQueueStatus, queueStatus?.ready, t]);
 
   useEffect(() => {
     if (!user?.target_language) return;
@@ -369,8 +394,8 @@ export function DailyWordCard({
       } catch {
         /* ignore */
       }
-      const songLabel = fromTrackRequest.title?.trim() || "that song";
-      setStatusMessage(`Finding a word in ${songLabel}…`);
+      const songLabel = fromTrackRequest.title?.trim() || t('that_song');
+      setStatusMessage(t('creating_word_from', { title: songLabel }));
       try {
         const res = await apiFetch("/daily-word/from-track", {
           method: "POST",
@@ -390,7 +415,7 @@ export function DailyWordCard({
         setIsFlipped(true);
       } catch (err) {
         if (ac.signal.aborted || (err instanceof DOMException && err.name === "AbortError")) return;
-        setRefreshError(err instanceof Error ? err.message : "Couldn't load a word from that song");
+        setRefreshError(err instanceof Error ? err.message : t('no_word_available'));
       } finally {
         if (!ac.signal.aborted) {
           setRefreshing(false);
@@ -400,7 +425,7 @@ export function DailyWordCard({
       }
     })();
     return () => ac.abort();
-  }, [fromTrackRequest?.id, fromTrackRequest?.nonce, fromTrackRequest?.title, fromTrackRequest?.artist, applyPayload]);
+  }, [fromTrackRequest?.id, fromTrackRequest?.nonce, fromTrackRequest?.title, fromTrackRequest?.artist, applyPayload, t]);
 
   // Poll while stocking OR while cold-generating so the "ready" badge updates live.
   useEffect(() => {
@@ -461,15 +486,15 @@ export function DailyWordCard({
     setElapsedSec(0);
     const tick = setInterval(() => setElapsedSec((s) => s + 1), 1000);
     const timers = [
-      setTimeout(() => setStatusMessage("Searching Deezer for a real track…"), 6000),
-      setTimeout(() => setStatusMessage("Checking synced lyrics on LRCLib…"), 16000),
-      setTimeout(() => setStatusMessage("Still matching — cold generate can take up to a minute…"), 32000),
+      setTimeout(() => setStatusMessage(t('searching_real_track')), 6000),
+      setTimeout(() => setStatusMessage(t('checking_real_lyrics')), 16000),
+      setTimeout(() => setStatusMessage(t('still_matching')), 32000),
     ];
     return () => {
       clearInterval(tick);
       timers.forEach(clearTimeout);
     };
-  }, [refreshing, loading, data]);
+  }, [refreshing, loading, data, t]);
 
   const playDeezerClip = useCallback(async () => {
     const audio = audioRef.current;
@@ -822,9 +847,15 @@ export function DailyWordCard({
           objectUrl = null;
         }
         if (attempt === 1) {
-          setIsSpeaking(false);
-          setRefreshError(t('pronunciation_unavailable'));
-          setTimeout(() => setRefreshError(null), 3000);
+          try {
+            await speakOnDevice(data!.word.text, targetLang);
+            finish();
+            return;
+          } catch {
+            setIsSpeaking(false);
+            setRefreshError(t('pronunciation_unavailable'));
+            setTimeout(() => setRefreshError(null), 3000);
+          }
         }
       }
     }

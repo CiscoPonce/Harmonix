@@ -32,6 +32,8 @@ describe('Web Client i18n Translations', () => {
     assert.strictEqual(getTranslation('nav_discover', 'es'), 'Descubrir');
     assert.strictEqual(getTranslation('nav_discover', 'fr'), 'Découvrir');
     assert.strictEqual(getTranslation('nav_discover', 'de'), 'Entdecken');
+    assert.strictEqual(getTranslation('chip_home', 'es'), 'Inicio');
+    assert.strictEqual(getTranslation('harmonix_playlists', 'es'), 'Listas de Harmonix');
     assert.strictEqual(getTranslation('unknown_key_test', 'es'), 'unknown_key_test');
   });
 });

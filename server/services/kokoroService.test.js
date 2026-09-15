@@ -22,6 +22,19 @@ describe('Kokoro-82M ONNX Service Mapping', () => {
     assert.strictEqual(KOKORO_VOICES_FEMALE.en, 'af_heart');
   });
 
+  it('does not map German to an English Kokoro voice', () => {
+    assert.ok(!Object.prototype.hasOwnProperty.call(KOKORO_LANG_MAP, 'de'));
+    assert.ok(!Object.prototype.hasOwnProperty.call(KOKORO_VOICES_FEMALE, 'de'));
+    assert.ok(!Object.prototype.hasOwnProperty.call(KOKORO_VOICES_MALE, 'de'));
+  });
+
+  it('skips Kokoro for German instead of speaking English', async () => {
+    const svc = require('./kokoroService');
+    svc.__resetKokoroAvailabilityForTest();
+    assert.strictEqual(svc.kokoroSupportsLanguage('de'), false);
+    assert.strictEqual(await svc.generateKokoroAudio('Haus', 'de'), null);
+  });
+
   it('assigns male studio voices across languages', () => {
     assert.strictEqual(KOKORO_VOICES_MALE.it, 'im_nicola');
     assert.strictEqual(KOKORO_VOICES_MALE.es, 'em_alex');

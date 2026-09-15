@@ -2,13 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
 
+// Kokoro-82M has no German model. Never map `de` to English — that made
+// first-tap German words speak with af_heart / am_adam.
 const KOKORO_LANG_MAP = {
   it: 'it',
   es: 'es',
   fr: 'fr-fr',
   pt: 'pt-br',
   en: 'en-us',
-  de: 'en-us',
 };
 
 const KOKORO_VOICES_FEMALE = {
@@ -17,7 +18,6 @@ const KOKORO_VOICES_FEMALE = {
   fr: 'ff_siwis',
   pt: 'pf_dora',
   en: 'af_heart',
-  de: 'af_heart',
 };
 
 const KOKORO_VOICES_MALE = {
@@ -26,8 +26,11 @@ const KOKORO_VOICES_MALE = {
   fr: 'fm_denis',
   pt: 'pm_alex',
   en: 'am_adam',
-  de: 'am_adam',
 };
+
+function kokoroSupportsLanguage(langCode) {
+  return Boolean(KOKORO_LANG_MAP[langCode]);
+}
 
 function resolvePython() {
   const candidates = [
@@ -79,6 +82,7 @@ function __resetKokoroAvailabilityForTest() {
 
 function generateKokoroAudio(word, langCode = 'es', gender = 'female') {
   return new Promise((resolve) => {
+    if (!kokoroSupportsLanguage(langCode)) return resolve(null);
     if (isKokoroUnavailable()) return resolve(null);
     const pythonBin = resolvePython();
     const scriptPath = resolveKokoroScript();
@@ -87,7 +91,7 @@ function generateKokoroAudio(word, langCode = 'es', gender = 'female') {
       return resolve(null);
     }
 
-    const kokoroLang = KOKORO_LANG_MAP[langCode] || 'es';
+    const kokoroLang = KOKORO_LANG_MAP[langCode];
     const voiceMap = gender === 'male' ? KOKORO_VOICES_MALE : KOKORO_VOICES_FEMALE;
     const voice = voiceMap[langCode] || voiceMap.es;
 
@@ -120,6 +124,7 @@ function generateKokoroAudio(word, langCode = 'es', gender = 'female') {
 
 module.exports = {
   generateKokoroAudio,
+  kokoroSupportsLanguage,
   isKokoroUnavailable,
   markKokoroUnavailable,
   __resetKokoroAvailabilityForTest,

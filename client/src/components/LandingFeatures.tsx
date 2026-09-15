@@ -12,7 +12,7 @@ export function LandingFeatures() {
       icon: '🗣️',
       title: 'Rhythmic Pronunciation',
       subtitle: '',
-      description: 'Perfect pronunciation with native speaker tracks. Learn how words really sound in context.',
+      description: 'Hear the isolated word, then a short clip of the song it came from — so you know how it really sounds.',
     },
     {
       icon: '💜',

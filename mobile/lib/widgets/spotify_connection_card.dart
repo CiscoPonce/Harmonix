@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../theme/harmonix_theme.dart';
+import '../utils/i18n.dart';
 
 /// Settings-owned Spotify connection card (D-12-02 / D-12-03).
 class SpotifyConnectionCard extends StatelessWidget {
@@ -49,54 +50,49 @@ class SpotifyConnectionCard extends StatelessWidget {
 
     switch (state) {
       case 'connecting':
-        title = 'Connecting to Spotify…';
-        body =
-            'Link your Spotify account to browse playlists in your Harmonix library.';
+        title = context.tr('spotify_connecting');
+        body = context.tr('spotify_connect_body');
         primaryLabel = null;
         statusIcon = Icons.hourglass_top;
         statusColor = colors.accent;
       case 'disconnecting':
-        title = 'Disconnecting…';
-        body =
-            'Disconnect Spotify? You’ll stop seeing Spotify playlists in Harmonix. You can reconnect at any time.';
+        title = context.tr('spotify_disconnecting');
+        body = context.tr('spotify_confirm_disconnect');
         primaryLabel = null;
         statusIcon = Icons.hourglass_top;
         statusColor = colors.accent;
       case 'connected':
-        title = 'Spotify connected';
+        title = context.tr('spotify_connected');
         body = displayName != null && displayName!.isNotEmpty
-            ? 'Connected as $displayName. Browse playlists in your Library.'
-            : 'Your Spotify playlists are available in Library.';
+            ? context.tr('spotify_connected_browse', {'name': displayName})
+            : context.tr('spotify_playlists_available');
         primaryLabel = null;
         statusIcon = Icons.check_circle_outline;
         statusColor = colors.accent;
       case 'reconnect':
-        title = 'Reconnect Spotify';
-        body = message ??
-            'Your Spotify connection expired. Reconnect to continue.';
-        primaryLabel = 'Reconnect Spotify';
+        title = context.tr('reconnect_spotify');
+        body = message ?? context.tr('spotify_reconnect_body');
+        primaryLabel = context.tr('reconnect_spotify');
         primaryAction = onReconnect ?? onConnect;
         statusIcon = Icons.warning_amber_rounded;
         statusColor = const Color(0xFFB45309);
       case 'provider_error':
-        title = 'Spotify connection issue';
-        body = message ??
-            'Spotify is unavailable right now. Your Harmonix library is still available. Try again.';
-        primaryLabel = 'Reconnect Spotify';
+        title = context.tr('spotify_connection_issue');
+        body = message ?? context.tr('spotify_provider_error');
+        primaryLabel = context.tr('reconnect_spotify');
         primaryAction = onReconnect ?? onConnect;
         statusIcon = Icons.error_outline;
         statusColor = const Color(0xFFD32F2F);
       case 'disconnected':
-        title = 'Spotify disconnected';
-        body = 'You can connect again whenever you want.';
-        primaryLabel = 'Connect Spotify';
+        title = context.tr('spotify_disconnected');
+        body = context.tr('spotify_can_reconnect');
+        primaryLabel = context.tr('connect_spotify');
         primaryAction = onConnect;
         statusIcon = null;
       default:
-        title = 'Connect Spotify';
-        body =
-            'Link your Spotify account to browse playlists in your Harmonix library.';
-        primaryLabel = 'Connect Spotify';
+        title = context.tr('connect_spotify');
+        body = context.tr('spotify_connect_body');
+        primaryLabel = context.tr('connect_spotify');
         primaryAction = onConnect;
         statusIcon = null;
     }
@@ -163,7 +159,7 @@ class SpotifyConnectionCard extends StatelessWidget {
             if (confirmDisconnect) ...[
               const SizedBox(height: 12),
               Text(
-                'Disconnect Spotify? You’ll stop seeing Spotify playlists in Harmonix. You can reconnect at any time.',
+                context.tr('spotify_confirm_disconnect'),
                 style: TextStyle(fontSize: 14, color: colors.textMuted),
               ),
               const SizedBox(height: 12),
@@ -175,7 +171,7 @@ class SpotifyConnectionCard extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size(44, 44),
                       ),
-                      child: const Text('Keep connected'),
+                      child: Text(context.tr('spotify_keep_connected')),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -187,7 +183,7 @@ class SpotifyConnectionCard extends StatelessWidget {
                         foregroundColor: Colors.white,
                         minimumSize: const Size(44, 44),
                       ),
-                      child: const Text('Disconnect Spotify'),
+                      child: Text(context.tr('spotify_disconnect')),
                     ),
                   ),
                 ],
@@ -218,7 +214,7 @@ class SpotifyConnectionCard extends StatelessWidget {
                       foregroundColor: const Color(0xFFD32F2F),
                       minimumSize: const Size(44, 44),
                     ),
-                    child: const Text('Disconnect Spotify'),
+                    child: Text(context.tr('spotify_disconnect')),
                   ),
                 ),
               ],
