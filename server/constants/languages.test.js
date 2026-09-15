@@ -36,9 +36,11 @@ describe('Language constants', () => {
   it('rejects obvious English words when learning Spanish', () => {
     expect(wordMatchesTargetLanguage('screaming', 'es')).to.equal(false);
     expect(wordMatchesTargetLanguage('searching', 'es')).to.equal(false);
+    expect(wordMatchesTargetLanguage('blame', 'es')).to.equal(false);
     expect(wordMatchesTargetLanguage('contratos', 'es')).to.equal(true);
     expect(wordMatchesTargetLanguage('tranquila', 'es')).to.equal(true);
     expect(wordMatchesTargetLanguage('corazón', 'es')).to.equal(true);
+    expect(wordMatchesTargetLanguage('culpa', 'es')).to.equal(true);
   });
 
   it('accepts Italian words with accented characters', () => {

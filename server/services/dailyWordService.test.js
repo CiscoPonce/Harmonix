@@ -411,6 +411,17 @@ describe("Daily Word Service", () => {
     expect(getCachedDailyWord(userId, today, "es", "rock")).to.equal(null);
   });
 
+  it("skips cached daily word when the token is English and the learner is on Spanish", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    saveDailyWord(userId, today, {
+      date: today,
+      preferred_genre: "pop",
+      word: { text: "blame", translation: "blâme" },
+      song: { id: "1", title: "Échame La Culpa", artist: "Luis Fonsi", genre: "pop" },
+    });
+    expect(getCachedDailyWord(userId, today, "es", "pop")).to.equal(null);
+  });
+
   it("generates a validated daily word with mocked externals", async () => {
     const today = new Date().toISOString().slice(0, 10);
     db.prepare("DELETE FROM daily_words WHERE user_id = ? AND date = ?").run(userId, today);

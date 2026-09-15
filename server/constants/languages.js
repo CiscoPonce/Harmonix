@@ -60,6 +60,8 @@ const ENGLISH_IN_LYRICS = new Set([
   'beggin', 'begging', 'beggin\'', 'coming', 'leaving', 'losing', 'winning',
   'fighting', 'holding', 'falling', 'rising', 'burning', 'shining',
   'wondering', 'wandering', 'whispering',
+  'blame', 'blamed', 'blaming', 'care', 'cared', 'rule', 'rules',
+  'plane', 'planes',
 ]);
 
 /**
@@ -157,6 +159,7 @@ function wordMatchesTargetLanguage(word, langCode) {
     if (/[ãõ]/i.test(w) || /ção$|ções$|ões$/i.test(w)) return false;
     if (/[ñáéíóúü]/i.test(w)) return true;
     if (/^[a-z]+ing$/i.test(w)) return false;
+    if (/^[a-z]{4,}ed$/i.test(w)) return false;
     if (/^[a-z]+(tion|ness|ment|ful|less|able|ible|ous|ive|ized|izing)$/i.test(w)) return false;
     return /^[\p{L}áéíóúñüÁÉÍÓÚÑÜ'-]+$/u.test(w);
   }

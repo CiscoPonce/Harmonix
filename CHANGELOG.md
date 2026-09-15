@@ -7,6 +7,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 ## Unreleased
 
 * **tts:** isolated words were cached clicks; pad short prompts, EOS -2.0, reject clips under 180ms of voice, retry 3×, bust cache (`hq-v16-pad`)
+* **daily-word:** reject English slips like `blame` on Spanish cards
 * **daily-word:** skip unused AI + genre-widen when the catalog is exhausted so Next is not 13–50s
 * **ai:** Lightning-on-NIM with thinking off is the live gloss; skip empty 200s; MiniMax dropped
 * **deploy:** keep Coolify resource labels on api/web so the dashboard shows Running after GitHub redeploys
