@@ -19,6 +19,8 @@ progress:
 
 **2026-09-14 NIM/OpenRouter:** New NVIDIA Build key is live. Fast gloss uses Lightning with thinking off (~0.4–1.8s). Next-word was slow because the unused catalog is exhausted (`song_already_used`); we now skip unused AI + genre-widen and reuse a known song with a new word.
 
+**2026-09-16 word picking:** Spanish cards reject English bilingual slips (`really` / `-ly` adverbs). Chorus chants like `(Highs, highs, highs)` are not served, even when the unused-song catalog is empty.
+
 **2026-09-15 store polish:** Marketing homepage describes Word of the Day, not karaoke. Library/Settings leftover English follows the UI language. Kokoro has no German — first tap skips the English fake voice and uses device TTS (`de-DE`). Play Console listing and Spotify Premium/allowlist stay operator-side.
 
 **2026-09-15 TTS words:** Testers got Pocket clicks instead of words. Isolated-word path now pads short prompts, uses EOS -2.0, rejects clips under ~180ms of voice (retry 3×), trims silence, and busts the pronunciation cache. Pocket stays best for Spanish; other languages use Kokoro then device TTS.

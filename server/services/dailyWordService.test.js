@@ -33,6 +33,7 @@ const {
 const wordQueue = require("./wordQueueService");
 const aiService = require("./aiService");
 const glossCache = require("./glossCacheService");
+const { wordMatchesTargetLanguage } = require("../constants/languages");
 
 function stubSongPipeline(songCandidates) {
   const originalSongs = aiService.generateDailyWordSongs;
@@ -287,6 +288,36 @@ describe("Daily Word Service", () => {
     expect(picked.word.toLowerCase()).to.equal("corazón");
   });
 
+  it("does not pick English really from a bilingual Spanish verse", () => {
+    const lyrics = [
+      "Tengo en esta historia algo que confesar",
+      "I don't really, really wanna fake it no more",
+      "Y aunque duela tanto tengo que aceptar",
+    ].join("\n");
+    const picked = pickWordFromLyricsHeuristic(lyrics, "medium", new Set(), "es", {
+      songTitle: "Échame La Culpa",
+    });
+    expect(picked).to.not.equal(null);
+    expect(picked.word.toLowerCase()).to.not.be.oneOf(["really", "wanna", "fake", "more", "don't"]);
+    expect(wordMatchesTargetLanguage(picked.word, "es")).to.equal(true);
+  });
+
+  it("does not pick chorus chant Highs from Adele Hello", () => {
+    const lyrics = [
+      "Hello, it's me",
+      "I was wondering if after all these years you'd like to meet",
+      "To go over everything",
+      "(Highs, highs, highs, highs)",
+      "(Highs, highs, highs, highs)",
+    ].join("\n");
+    const picked = pickWordFromLyricsHeuristic(lyrics, "medium", new Set(), "en", {
+      songTitle: "Hello",
+      artist: "Adele",
+    });
+    expect(picked).to.not.equal(null);
+    expect(picked.word.toLowerCase()).to.not.equal("highs");
+  });
+
   it("skips title names and picks a translatable lyric from Hey Jude", () => {
     const lyrics = [
       "Hey Jude, don't make it bad",
@@ -417,6 +448,18 @@ describe("Daily Word Service", () => {
       date: today,
       preferred_genre: "pop",
       word: { text: "blame", translation: "blâme" },
+      song: { id: "1", title: "Échame La Culpa", artist: "Luis Fonsi", genre: "pop" },
+    });
+    expect(getCachedDailyWord(userId, today, "es", "pop")).to.equal(null);
+  });
+
+  it("skips cached daily word when the token is really on a Spanish card", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    saveDailyWord(userId, today, {
+      date: today,
+      preferred_genre: "pop",
+      language_code: "es",
+      word: { text: "really", translation: "truly" },
       song: { id: "1", title: "Échame La Culpa", artist: "Luis Fonsi", genre: "pop" },
     });
     expect(getCachedDailyWord(userId, today, "es", "pop")).to.equal(null);

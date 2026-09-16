@@ -98,6 +98,21 @@ function isLineInitialToken(token, line) {
   return tokens[0] === token;
 }
 
+/** Chorus chants like "(Highs, highs, highs, highs)" are not teachable vocabulary. */
+function isLyricChantFiller(token, line) {
+  const lower = String(token || "").toLowerCase();
+  const raw = String(line || "").trim();
+  if (!lower || !raw) return false;
+  const tokens = raw.match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜàâäçéèêëîïôùûüãõßàèéìòù]+/gu) || [];
+  if (!tokens.length) return true;
+  const same = tokens.filter((t) => t.toLowerCase() === lower).length;
+  if (same >= 3) return true;
+  if (/^[(\[].*[)\]]$/.test(raw) && tokens.every((t) => t.toLowerCase() === lower)) {
+    return true;
+  }
+  return false;
+}
+
 function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new Set(), langCode = "es", options = {}) {
   const diff = normalizeDifficulty(difficulty);
   const minLen = diff === 'easy' ? 3 : diff === 'hard' ? 7 : 4;
@@ -141,6 +156,7 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
       // Reject pure lyric filler / onomatopoeia
       if (/^(la|na|da|pa|ra|ta|bam|bum|pum|dun|tum)+$/i.test(lower)) continue;
       if (/^(oh+|ah+|uh+|mm+|hey+|yeah+|yea+)$/i.test(lower)) continue;
+      if (isLyricChantFiller(token, line)) continue;
       // Clipped lyric slang ("Holdin'") and artist names are not vocabulary.
       if (new RegExp(`(?:^|[^\\p{L}])${lower}'`, "iu").test(line)) continue;
       if (artistTokens.has(lower)) continue;

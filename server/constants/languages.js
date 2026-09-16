@@ -62,6 +62,7 @@ const ENGLISH_IN_LYRICS = new Set([
   'wondering', 'wandering', 'whispering',
   'blame', 'blamed', 'blaming', 'care', 'cared', 'rule', 'rules',
   'plane', 'planes',
+  'really', 'truly', 'wanna', 'gonna', 'gotta', 'fake', 'ain\'t',
 ]);
 
 /**
@@ -154,6 +155,15 @@ function wordMatchesTargetLanguage(word, langCode) {
 
   if (ENGLISH_IN_LYRICS.has(lower)) return false;
 
+  // English -ly adverbs in bilingual verses (really, truly, badly).
+  if (
+    code !== 'en' &&
+    /^[a-z]{3,}ly$/i.test(lower) &&
+    !/[áéíóúñüàâäçèéêëîïôùûÿãõößàèìò]/i.test(w)
+  ) {
+    return false;
+  }
+
   if (code === 'es') {
     // Reject strong Portuguese markers so PT songs are not accepted for Spanish learners.
     if (/[ãõ]/i.test(w) || /ção$|ções$|ões$/i.test(w)) return false;
@@ -211,7 +221,7 @@ function wordMatchesTargetLanguage(word, langCode) {
  */
 function countEnglishLyricMarkers(plain) {
   return (plain.match(
-    /\b(the|and|you|your|love|baby|tonight|feel|feeling|change|freedom|children|with|from|this|that|what|when|where|how|why|would|could|should|have|has|been|being|are|were|don'?t|can'?t|won'?t|i'?m|you'?re|we'?re|they'?re|listening|follow|followed|people|dream|dreams|believe|goodbye|hello|home|alone|again|together|better|never|always|forever|everything|something|nothing|everybody|watching|waiting|running|walking|talking|thinking|dreaming|beautiful|perfect|coming|leaving|beggin'?|begging|windows|future|closed|gorky|moskva)\b/gi
+    /\b(the|and|you|your|love|baby|tonight|feel|feeling|change|freedom|children|with|from|this|that|what|when|where|how|why|would|could|should|have|has|been|being|are|were|don'?t|can'?t|won'?t|i'?m|you'?re|we'?re|they'?re|listening|follow|followed|people|dream|dreams|believe|goodbye|hello|home|alone|again|together|better|never|always|forever|everything|something|nothing|everybody|watching|waiting|running|walking|talking|thinking|dreaming|beautiful|perfect|coming|leaving|beggin'?|begging|windows|future|closed|gorky|moskva|really|wanna|gonna|gotta)\b/gi
   ) || []).length;
 }
 

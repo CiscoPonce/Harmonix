@@ -6,7 +6,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
-* **landing:** Word of the Day copy instead of karaoke sing-along
+* **daily-word:** skip English slips like `really` on Spanish cards; skip chorus chants like `Highs`
 * **i18n:** Library + Settings leftover English strings follow the app language
 * **tts:** skip Kokoro for German (no de voice) so first tap uses device German TTS
 * **tts:** isolated words were cached clicks; pad short prompts, EOS -2.0, reject clips under 180ms of voice, retry 3×, bust cache (`hq-v16-pad`)
