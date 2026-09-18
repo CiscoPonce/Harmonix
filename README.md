@@ -1,7 +1,7 @@
 # Harmonix
 
 <!-- x-release-please-start-version -->
-**Version:** 0.0.3
+**Version:** 0.0.4
 <!-- x-release-please-end -->
 
 AI-first language learning through real music lyrics — validated against Deezer + LRCLib, with Spotify connect/export and web in-app playback.

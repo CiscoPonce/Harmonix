@@ -23,6 +23,38 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * **tts:** host Pocket-TTS can reload by language; stop returning silent WAVs on failure
 * **mobile/web:** show real IPA or pending copy (never part-of-speech as phonetics); Android polls for polish like web
 
+## [0.0.4](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.3...harmonix-v0.0.4) (2026-09-18)
+
+
+### Features
+
+* **ai:** make GLM-5.3-Flash the primary gloss model ([fe51d19](https://github.com/CiscoPonce/Harmonix/commit/fe51d1988b29b32e13eef0b8a397b2d10ed97f16))
+
+
+### Bug Fixes
+
+* **ai:** cool NIM for 30 minutes after 403/410 instead of retrying every request ([e1f70c5](https://github.com/CiscoPonce/Harmonix/commit/e1f70c5a424b21b6e891239f9ca074fb6b8fe906))
+* **ai:** keep OpenRouter fallback on free models only ([932be60](https://github.com/CiscoPonce/Harmonix/commit/932be60712d212a78caae3b1ead7c272a4e94c40))
+* **daily-word:** drop English slips like blame from Spanish cards ([3839e01](https://github.com/CiscoPonce/Harmonix/commit/3839e01ea919dc7d1206ffded463cfd1c6589748))
+* **daily-word:** never serve the same song twice ([973e2ce](https://github.com/CiscoPonce/Harmonix/commit/973e2ce16f3312b52286436569ca9a3eecd9f0d8))
+* **daily-word:** serve complete translation and IPA without slowing Next ([08bd85b](https://github.com/CiscoPonce/Harmonix/commit/08bd85b1df49bebae96577657202476a439ee729))
+* **daily-word:** show IPA without AI and speak the learner's language ([10e301b](https://github.com/CiscoPonce/Harmonix/commit/10e301b475087b5edd0b789e255c43acc29c66b0))
+* **daily-word:** skip dead AI song-pick when the unused catalog is empty ([1476d6e](https://github.com/CiscoPonce/Harmonix/commit/1476d6ed5989a42d67d3965ff376e9348fe3e196))
+* **daily-word:** skip English slips and chorus chants on cards ([3dd9b40](https://github.com/CiscoPonce/Harmonix/commit/3dd9b40fb40e62d99851b6dbe8bb51084496222d))
+* **daily-word:** skip exhausted-catalog AI waits and keep Coolify status live ([255251d](https://github.com/CiscoPonce/Harmonix/commit/255251d8b589ed481b5cb4d1deef97957f566bad))
+* **deploy:** persist Flash model lists in Coolify env ([5974b63](https://github.com/CiscoPonce/Harmonix/commit/5974b63a988c1475f635c104bfba4fcd66fe4ba3))
+* drop karaoke homepage copy, leftover English UI, and English Kokoro for German ([baad36b](https://github.com/CiscoPonce/Harmonix/commit/baad36b1598e1f6245552705dda72788742bdd5b))
+* **shelf:** show each discovered word once ([0453dd0](https://github.com/CiscoPonce/Harmonix/commit/0453dd078df41685eeb4cd4c6d6c77e56094f099))
+* **tests:** use a nonce word so queue IPA polish still exercises the AI path ([78d1428](https://github.com/CiscoPonce/Harmonix/commit/78d1428a5a160b9ac7d37264dd106a217a716ad4))
+* **tts:** stop caching silent Pocket clicks as spoken words ([f425e3b](https://github.com/CiscoPonce/Harmonix/commit/f425e3b25aebd97b68d82af80a5df8fdb97695d6))
+* **web:** restore Library i18n import so production can build ([42ab28f](https://github.com/CiscoPonce/Harmonix/commit/42ab28f8638428b472cfe20aafff97b96a3bd8b5))
+
+
+### Documentation
+
+* keep the NIM Flash changelog line next to the free OpenRouter fallback ([2f14f52](https://github.com/CiscoPonce/Harmonix/commit/2f14f521cd00b0dd687f5a38b08aa27fadd6fd93))
+* restore the NIM Flash changelog line next to the shelf fix ([44a4a25](https://github.com/CiscoPonce/Harmonix/commit/44a4a25f68e4b1f2d5cd39b485cec771af8cae6d))
+
 ## [0.0.3](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.2...harmonix-v0.0.3) (2026-09-06)
 
 
