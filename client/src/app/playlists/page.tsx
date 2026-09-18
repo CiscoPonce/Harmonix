@@ -18,6 +18,7 @@ import {
   startSpotifyAuth,
 } from '@/lib/api';
 import { PLAYLISTS_CHANGED_EVENT } from '@/lib/playlistEvents';
+import { useTranslation } from '@/lib/i18n';
 import { uniqueShelfWords } from '@/lib/shelf';
 import {
   capSpotifyPlaylistShelf,
