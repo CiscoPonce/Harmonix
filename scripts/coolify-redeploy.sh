@@ -85,6 +85,24 @@ cleanup_standbys() {
   sudo docker rm -f "$WEB_STANDBY" >/dev/null 2>&1 || true
 }
 
+# Compose recreates the live API from Coolify .env, which overrides code
+# defaults. Keep model lists in that file in sync with this script.
+sync_model_lists_to_coolify_env() {
+  local src="/data/coolify/services/${UUID}/.env"
+  local nim="${NVIDIA_NIM_MODELS:-z-ai/glm-5.3-flash,nvidia/nemotron-3.5-lightning-30b-a3b}"
+  local or="${OPENROUTER_MODELS:-z-ai/glm-5.3-flash,nvidia/nemotron-3.5-lightning:free}"
+  if ! sudo test -f "$src"; then
+    return 0
+  fi
+  local tmp
+  tmp=$(mktemp)
+  sudo grep -v -E '^(NVIDIA_NIM_MODELS|OPENROUTER_MODELS)=' "$src" > "$tmp" || true
+  printf 'NVIDIA_NIM_MODELS=%s\nOPENROUTER_MODELS=%s\n' "$nim" "$or" >> "$tmp"
+  sudo cp "$tmp" "$src"
+  rm -f "$tmp"
+  log "Coolify env models → ${nim} / ${or}"
+}
+
 # Overlay rotated provider secrets from Coolify .env onto a docker env-file.
 # Does not print secret values.
 overlay_coolify_provider_keys() {
@@ -235,6 +253,7 @@ else
 fi
 
 fix_sqlite_perms
+sync_model_lists_to_coolify_env
 trap cleanup_standbys EXIT
 
 start_api_standby
