@@ -798,32 +798,34 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
   };
 }
 
-function getUserDiscoveryHistory(userId) {
+function ingestDiscoveryPayload(payload, words, songIds, songKeys) {
+  if (!payload) return;
+  if (payload.word?.text) words.add(String(payload.word.text).toLowerCase());
+  if (payload.song?.id) songIds.add(String(payload.song.id));
+  if (payload.song?.artist && payload.song?.title) {
+    songKeys.add(
+      `${String(payload.song.artist).toLowerCase()}|${String(payload.song.title).toLowerCase()}`
+    );
+  }
+}
+
+function getDeliveredDiscoveryHistory(userId) {
   const words = new Set();
   const songIds = new Set();
   const songKeys = new Set();
-
-  const ingest = (payload) => {
-    if (!payload) return;
-    if (payload.word?.text) words.add(String(payload.word.text).toLowerCase());
-    if (payload.song?.id) songIds.add(String(payload.song.id));
-    if (payload.song?.artist && payload.song?.title) {
-      songKeys.add(
-        `${String(payload.song.artist).toLowerCase()}|${String(payload.song.title).toLowerCase()}`
-      );
-    }
-  };
-
   db.prepare(`
     SELECT word_json FROM daily_words WHERE user_id = ?
   `).all(userId).forEach((row) => {
-    try { ingest(JSON.parse(row.word_json)); } catch { /* ignore */ }
+    try { ingestDiscoveryPayload(JSON.parse(row.word_json), words, songIds, songKeys); } catch { /* ignore */ }
   });
+  return { words, songIds, songKeys };
+}
 
+function getUserDiscoveryHistory(userId) {
+  const { words, songIds, songKeys } = getDeliveredDiscoveryHistory(userId);
   for (const item of wordQueue.listReadyItems(userId)) {
-    ingest(item.payload);
+    ingestDiscoveryPayload(item.payload, words, songIds, songKeys);
   }
-
   return { words, songIds, songKeys };
 }
 
@@ -917,20 +919,14 @@ function filterUniquePayloads(userId, payloads) {
         ? `${String(payload.song.artist).toLowerCase()}|${String(payload.song.title).toLowerCase()}`
         : null;
 
-    // Prefer a new song for every new word until the unused catalog is gone.
-    // from-track extras opt in to more words from the same lyrics.
-    // song_repeated is the exhausted-catalog fallback: a new word from a
-    // known track, so song-key uniqueness must not drop it.
-    if (!payload.allow_same_song && !payload.song_repeated) {
-      if (songId && seenSongIds.has(songId)) continue;
-      if (songKey && seenSongKeys.has(songKey)) continue;
-    }
+    // Never enqueue two words from the same song. Next, refill, and
+    // search-from-track extras all go through this filter.
+    if (songId && seenSongIds.has(songId)) continue;
+    if (songKey && seenSongKeys.has(songKey)) continue;
 
     seenWords.add(word);
-    if (!payload.allow_same_song) {
-      if (songId) seenSongIds.add(songId);
-      if (songKey) seenSongKeys.add(songKey);
-    }
+    if (songId) seenSongIds.add(songId);
+    if (songKey) seenSongKeys.add(songKey);
     unique.push(payload);
   }
 
@@ -1247,11 +1243,6 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
         if (curatedResult.valid.length) {
           return curatedResult;
         }
-        // Unused titles that Deezer resolves to already-seen ids — catalog is
-        // exhausted in practice. Do not start a 12s AI song-pick.
-        if (curatedResult.lastError === "song_already_used") {
-          return curatedResult;
-        }
       }
 
       const aiPromise = fetchAiCandidates(user).catch((err) => {
@@ -1361,9 +1352,8 @@ async function deliverFromBatch(user, batch, fetchImpl, { fromQueue = false, pre
     console.log(`daily word batch: delivered 1 (${matching.length}/${batch.candidateCount} validated)`);
   }
   const delivered = deliverPayload(user.id, first, { fromQueue });
-  // One song, one word: the queue is stocked with *other* validated songs by
-  // finishBackground / refill. Same-song extras are only a last-resort fallback
-  // (queueSameSongFallback) when the whole pool is exhausted.
+  // One song, one word: the queue is stocked with other unused songs by
+  // finishBackground / refill. Never enqueue another word from a seen track.
   if (batch.finishBackground) {
     setImmediate(() => {
       batch.finishBackground().catch((err) => {
@@ -1427,24 +1417,6 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
     let lastError = "unknown";
     const preferenceEpoch = currentPreferenceEpoch(user.id);
     const requestedGenre = aiService.normalizeGenre(user.genre || "pop");
-    const langCode = normalizeLangCode(user.target_language || "es");
-
-    // Exhausted unused catalog, or unused titles that only resolve to songs
-    // already delivered (Deezer id collision). Skip unused AI + genre-widen.
-    if (
-      !hasUnusedSongCandidates(user.id, langCode, requestedGenre)
-    ) {
-      console.log(
-        `daily word batch: unused catalog empty for ${langCode}/${requestedGenre} — known-song fallback first`
-      );
-      const reuseBatch = await generateValidatedBatch(user, fetchImpl, {
-        stopAfter: USER_DELIVER_STOP_AFTER,
-        allowSongReuse: true,
-      });
-      if (reuseBatch.valid.length) {
-        return deliverFromBatch(user, markSongRepeated(reuseBatch), fetchImpl, { preferenceEpoch });
-      }
-    }
 
     for (let attempt = 0; attempt < maxAttempts && Date.now() < deadline; attempt++) {
       if (preferenceEpoch !== currentPreferenceEpoch(user.id)) {
@@ -1464,14 +1436,9 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
       if (lastError === "song_already_used") break;
     }
 
-    // On-style pool truly failed — one honest widen to mixed catalog (UI shows style_relaxed).
-    // Skip widen when every unused title mapped to a known track: mixed genre
-    // just spends more time on lyrics_wrong_language.
-    if (
-      requestedGenre !== "any"
-      && lastError !== "song_already_used"
-      && Date.now() < deadline
-    ) {
+    // On-style pool failed — one honest widen to mixed catalog (UI shows style_relaxed).
+    // Never reuse a song the learner already saw.
+    if (requestedGenre !== "any" && Date.now() < deadline) {
       if (preferenceEpoch !== currentPreferenceEpoch(user.id)) {
         const err = new Error("daily_word_stale_preferences");
         err.code = "stale_preferences";
@@ -1489,37 +1456,6 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
         return deliverFromBatch(user, marked, fetchImpl, { preferenceEpoch });
       }
       lastError = wideBatch.lastError || lastError;
-    }
-
-    // Every *new* song failed (on-style and widened). Before giving up, a new
-    // word from a song the learner already met — flagged so the card can say so.
-    if (Date.now() < deadline) {
-      if (preferenceEpoch !== currentPreferenceEpoch(user.id)) {
-        const err = new Error("daily_word_stale_preferences");
-        err.code = "stale_preferences";
-        throw err;
-      }
-      console.log(`daily word batch: no new songs for ${requestedGenre} — allowing a known song with a new word`);
-      const reuseBatch = await generateValidatedBatch(user, fetchImpl, {
-        stopAfter: USER_DELIVER_STOP_AFTER,
-        allowSongReuse: true,
-      });
-      if (reuseBatch.valid.length) {
-        return deliverFromBatch(user, markSongRepeated(reuseBatch), fetchImpl, { preferenceEpoch });
-      }
-      lastError = reuseBatch.lastError || lastError;
-    }
-
-    // Absolute last resort: more words from the learner's most recent song.
-    if (Date.now() < deadline) {
-      const queued = await queueSameSongFallback(user, fetchImpl);
-      if (queued > 0) {
-        const instant = await consumeNextDailyWord(user, fetchImpl);
-        if (instant) {
-          console.log(`daily word batch: served same-song fallback "${instant.word?.text}"`);
-          return instant;
-        }
-      }
     }
 
     const err = new Error("daily_word_generation_failed");
@@ -1545,10 +1481,6 @@ async function refillQueue(user, fetchImpl = fetch) {
 
   try {
     let emptyRounds = 0;
-    const langCode = normalizeLangCode(user.target_language || "es");
-    const genre = user.genre || "pop";
-    let unusedExhausted = !hasUnusedSongCandidates(user.id, langCode, genre);
-
     while (
       !abort.signal.aborted &&
       !batchGenerationInProgress.has(user.id) &&
@@ -1556,21 +1488,15 @@ async function refillQueue(user, fetchImpl = fetch) {
       emptyRounds < REFILL_BATCH_ROUNDS
     ) {
       const needed = wordQueue.QUEUE_MAX - wordQueue.countReady(user.id);
-      unusedExhausted = unusedExhausted || !hasUnusedSongCandidates(user.id, langCode, genre);
-      const batch = unusedExhausted
-        ? markSongRepeated(await generateValidatedBatch(user, fetchImpl, {
-          stopAfter: needed,
-          allowSongReuse: true,
-        }))
-        : await generateValidatedBatch(user, fetchImpl, { stopAfter: needed });
+      const batch = await generateValidatedBatch(user, fetchImpl, { stopAfter: needed });
       if (abort.signal.aborted || batchGenerationInProgress.has(user.id)) break;
 
       if (!batch.valid.length) {
         emptyRounds += 1;
-        if (batch.lastError === "song_already_used") unusedExhausted = true;
         console.warn(
           `queue refill round ${emptyRounds}/${REFILL_BATCH_ROUNDS}: 0/${batch.candidateCount || 5} valid (${batch.lastError})`
         );
+        if (batch.lastError === "song_already_used") break;
         continue;
       }
 
@@ -1635,20 +1561,27 @@ function purgeQueueWrongGenre(userId, userGenre) {
 }
 
 /**
- * FIFO, except never serve the same song twice in a row when another song is
- * ready. Same-song fallback items (see queueSameSongFallback) therefore wait
- * behind any fresh song the background refill managed to add meanwhile.
+ * FIFO, except never serve a song the learner already saw (including the
+ * last delivered card). If every queued item is a repeat, return null so
+ * Next generates a new unused song instead of looping the same track.
  */
 function pickNextQueueItem(userId, lastSongId) {
   const items = wordQueue.listReadyItems(userId);
   if (!items.length) return null;
-  const notSameSong = (item) => {
-    if (!lastSongId) return true;
-    const id = item.payload?.song?.id;
-    return id == null || String(id) !== lastSongId;
-  };
-  const pool = items.some(notSameSong) ? items.filter(notSameSong) : items;
-  return pool.find((item) => cardPresentationReady(item.payload?.word)) || pool[0];
+  const history = getDeliveredDiscoveryHistory(userId);
+  const unused = items.filter((item) => {
+    const id = item.payload?.song?.id != null ? String(item.payload.song.id) : null;
+    const key =
+      item.payload?.song?.artist && item.payload?.song?.title
+        ? `${String(item.payload.song.artist).toLowerCase()}|${String(item.payload.song.title).toLowerCase()}`
+        : null;
+    if (lastSongId && id === lastSongId) return false;
+    if (id && history.songIds.has(id)) return false;
+    if (key && history.songKeys.has(key)) return false;
+    return true;
+  });
+  if (!unused.length) return null;
+  return unused.find((item) => cardPresentationReady(item.payload?.word)) || unused[0];
 }
 
 async function consumeNextDailyWord(user, fetchImpl = fetch) {
@@ -1683,7 +1616,7 @@ async function consumeNextDailyWord(user, fetchImpl = fetch) {
     wordQueue.consumeById(item.id);
     const queued = item.payload;
 
-    const history = getUserDiscoveryHistory(user.id);
+    const history = getDeliveredDiscoveryHistory(user.id);
     const word = String(queued.word?.text || "").toLowerCase();
     if (word && history.words.has(word)) {
       console.warn(`daily word skip: duplicate queued word "${queued.word?.text}"`);
@@ -1696,10 +1629,8 @@ async function consumeNextDailyWord(user, fetchImpl = fetch) {
         ? `${String(queued.song.artist).toLowerCase()}|${String(queued.song.title).toLowerCase()}`
         : null;
     if (
-      !queued.allow_same_song &&
-      !queued.song_repeated &&
-      ((songId && history.songIds.has(songId)) ||
-        (songKey && history.songKeys.has(songKey)))
+      (songId && history.songIds.has(songId)) ||
+      (songKey && history.songKeys.has(songKey))
     ) {
       console.warn(
         `daily word skip: duplicate queued song "${queued.song?.artist} — ${queued.song?.title}"`
@@ -2439,15 +2370,21 @@ async function generateDailyWordFromTrack(user, trackId, fetchImpl = fetch) {
     song_title: track.title || "",
     genre: user.genre || "pop",
   };
-  const history = getUserDiscoveryHistory(user.id);
+  const history = getDeliveredDiscoveryHistory(user.id);
+  const songKey = `${String(track.artist?.name || "").toLowerCase()}|${String(track.title || "").toLowerCase()}`;
+  if (history.songIds.has(String(track.id)) || (songKey !== "|" && history.songKeys.has(songKey))) {
+    const err = new Error("song_already_used");
+    err.code = "song_already_used";
+    throw err;
+  }
   const result = await tryValidateSongCandidate(
     suggestion,
     user,
     date,
     history.words,
     fetchImpl,
-    new Set(),
-    { allowSongReuse: true, allowOutsidePreview: true, knownTrack: track }
+    new Set(history.songIds),
+    { allowSongReuse: false, allowOutsidePreview: true, knownTrack: track }
   );
   if (!result.picked) {
     const err = new Error(result.error || "generation_failed");

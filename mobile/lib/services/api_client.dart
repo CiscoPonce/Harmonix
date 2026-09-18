@@ -56,7 +56,7 @@ String friendlyDailyWordError({
     case 'generation_failed':
       return "Couldn't find a new word in a song right now. Please try again shortly.";
     case 'song_already_used':
-      return "We're finding a fresh song match — tap New word again in a moment.";
+      return "You've already learned from this song. We'll keep looking for a new one — try a different style or search.";
     case 'lyrics_not_found':
     case 'deezer_not_found':
     case 'lyrics_validation_failed':

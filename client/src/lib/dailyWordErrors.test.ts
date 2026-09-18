@@ -5,7 +5,7 @@ import { friendlyDailyWordReason } from './dailyWordErrors.ts';
 describe('friendlyDailyWordReason', () => {
   it('maps song_already_used to actionable copy', () => {
     const msg = friendlyDailyWordReason('song_already_used');
-    assert.ok(msg.toLowerCase().includes('fresh') || msg.toLowerCase().includes('moment'));
+    assert.ok(msg.toLowerCase().includes('already') || msg.toLowerCase().includes('search'));
     assert.equal(msg.includes('song_already_used'), false);
   });
 

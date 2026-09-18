@@ -6,6 +6,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
+* **daily-word:** never serve the same song twice on Next — fail honestly when unused songs are gone instead of looping a known track
 * **shelf:** show each discovered word once — polish no longer inserts a duplicate card
 * **ai:** GLM-5.3-Flash is the NIM primary; Lightning is backup; Muse dropped
 * **ai:** OpenRouter fallback is free Super then Lightning `:free` — no paid GLM slugs
@@ -15,7 +16,6 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * **tts:** skip Kokoro for German (no de voice) so first tap uses device German TTS
 * **tts:** isolated words were cached clicks; pad short prompts, EOS -2.0, reject clips under 180ms of voice, retry 3×, bust cache (`hq-v16-pad`)
 * **daily-word:** reject English slips like `blame` on Spanish cards
-* **daily-word:** skip unused AI + genre-widen when the catalog is exhausted so Next is not 13–50s
 * **ai:** Lightning-on-NIM with thinking off is the live gloss; skip empty 200s; MiniMax dropped
 * **deploy:** keep Coolify resource labels on api/web so the dashboard shows Running after GitHub redeploys
 * **ai:** 30-minute NIM cooldown on 403/410; skip remaining NIM models in the same request

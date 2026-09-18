@@ -876,7 +876,7 @@ describe("Daily Word Service", () => {
     expect(String(result.song.id)).to.equal("3");
   });
 
-  it("serves another word from the same song when the queue item allows it", async () => {
+  it("skips a queued word from a song already seen even when the item opts in", async () => {
     const today = new Date().toISOString().slice(0, 10);
     saveDailyWord(userId, today, {
       date: today,
@@ -889,6 +889,7 @@ describe("Daily Word Service", () => {
         language_code: "en",
         preferred_genre: "pop",
         allow_same_song: true,
+        song_repeated: true,
         word: { text: "waves", translation: "olas" },
         lyric: { snippet: "heat waves", timestamp: "0:35", timestamp_ms: 35000, line_index: 0, char_start: 5, char_end: 10 },
         song: { id: "99", title: "Heat Waves", artist: "Glass Animals", genre: "pop" },
@@ -898,8 +899,7 @@ describe("Daily Word Service", () => {
     db.prepare("UPDATE users SET target_language = 'en' WHERE id = ?").run(userId);
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     const result = await consumeNextDailyWord(user);
-    expect(result.word.text).to.equal("waves");
-    expect(String(result.song.id)).to.equal("99");
+    expect(result).to.equal(null);
   });
 
   it("keeps validating after the first word so extras can fill the queue", async () => {
@@ -1053,7 +1053,7 @@ describe("Daily Word Service", () => {
     expect(VALIDATE_CONCURRENCY).to.be.at.least(3).and.at.most(8);
   });
 
-  it("reuses a known song only after unused and widened passes fail", async () => {
+  it("does not reuse a known song after unused and widened passes fail", async () => {
     const today = new Date().toISOString().slice(0, 10);
     db.prepare("DELETE FROM daily_words WHERE user_id = ? AND date = ?").run(userId, today);
     // History already used Deezer id 100 (backdate so force cooldown does not fire)
@@ -1113,9 +1113,14 @@ describe("Daily Word Service", () => {
 
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     try {
-      const result = await generateDailyWord(user, { force: true, fetchImpl: mockFetch });
-      expect(result.word.text).to.be.a("string").and.not.empty;
-      expect(String(result.song.id)).to.equal("100");
+      let thrown = null;
+      try {
+        await generateDailyWord(user, { force: true, fetchImpl: mockFetch });
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).to.exist;
+      expect(thrown.code).to.equal("song_already_used");
     } finally {
       restore();
       aiService.getCuratedSongCandidates = originalCurated;
@@ -1123,7 +1128,7 @@ describe("Daily Word Service", () => {
     }
   });
 
-  it("does not wait on AI when unused titles all resolve to used Deezer ids", async () => {
+  it("asks AI for a new song when unused titles resolve to used Deezer ids", async () => {
     const today = new Date().toISOString().slice(0, 10);
     db.prepare("DELETE FROM daily_words WHERE user_id = ? AND date = ?").run(userId, today);
     saveDailyWord(userId, today, {
@@ -1149,8 +1154,7 @@ describe("Daily Word Service", () => {
     let aiCalls = 0;
     aiService.generateDailyWordSongs = async () => {
       aiCalls += 1;
-      await new Promise((r) => setTimeout(r, 8000));
-      return [{ song_title: "Fresh Unused", artist: "Fresh Artist", genre: "pop" }];
+      return [{ song_title: "Brand New", artist: "New Artist", genre: "pop" }];
     };
     const originalGloss = aiService.glossDailyWords;
     aiService.glossDailyWords = async (items) =>
@@ -1161,17 +1165,22 @@ describe("Daily Word Service", () => {
       }));
 
     const mockFetch = async (url) => {
+      const decoded = decodeURIComponent(String(url)).replace(/\+/g, " ");
+      if (url.includes("itunes.apple.com")) {
+        return { ok: true, status: 200, json: async () => ({ results: [] }) };
+      }
       if (url.includes("deezer.com/search")) {
+        const isNew = /Brand New|New Artist/i.test(decoded);
         return {
           ok: true,
           status: 200,
           json: async () => ({
             data: [{
-              id: 100,
-              title: "Old Hit",
+              id: isNew ? 999 : 100,
+              title: isNew ? "Brand New" : "Old Hit",
               duration: 200,
               preview: "https://cdn.example/preview.mp3",
-              artist: { name: "Old Artist" },
+              artist: { name: isNew ? "New Artist" : "Old Artist" },
             }],
           }),
         };
@@ -1190,12 +1199,10 @@ describe("Daily Word Service", () => {
     };
 
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
-    const started = Date.now();
     try {
       const result = await generateDailyWord(user, { force: true, fetchImpl: mockFetch });
-      expect(Date.now() - started).to.be.below(2500);
-      expect(aiCalls).to.equal(0);
-      expect(String(result.song.id)).to.equal("100");
+      expect(aiCalls).to.be.at.least(1);
+      expect(String(result.song.id)).to.equal("999");
       expect(result.word.text).to.be.a("string").and.not.empty;
     } finally {
       aiService.getCuratedSongCandidates = originalCurated;
@@ -1451,7 +1458,7 @@ describe("Daily Word Service", () => {
     }
   });
 
-  it("queueSameSongFallback marks extras as last-resort same-song items", async () => {
+  it("queueSameSongFallback does not enqueue words from a song already seen", async () => {
     const today = new Date().toISOString().slice(0, 10);
     saveDailyWord(userId, today, {
       date: today,
@@ -1473,12 +1480,8 @@ describe("Daily Word Service", () => {
     db.prepare("UPDATE users SET target_language = 'en' WHERE id = ?").run(userId);
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     const inserted = await queueSameSongFallback(user, fetch, { maxWords: 2 });
-    expect(inserted).to.be.at.least(1);
-    const item = wordQueue.peekNext(userId);
-    expect(item.payload.allow_same_song).to.equal(true);
-    expect(item.payload.same_song_fallback).to.equal(true);
-    expect(String(item.payload.song.id)).to.equal("404");
-    expect(String(item.payload.word.text).toLowerCase()).to.not.equal("royals");
+    expect(inserted).to.equal(0);
+    expect(wordQueue.peekNext(userId)).to.equal(null);
   });
 
   it("getRecentArtists lists newest distinct artists first", () => {
@@ -1521,7 +1524,7 @@ describe("Daily Word Service", () => {
     }
   });
 
-  it("filterUniquePayloads keeps same-song extras only when they opt in", () => {
+  it("filterUniquePayloads never keeps a second word from a seen song", () => {
     saveDailyWord(userId, "2026-06-01", {
       date: "2026-06-01",
       word: { text: "amor" },
@@ -1529,21 +1532,14 @@ describe("Daily Word Service", () => {
     });
     const blocked = filterUniquePayloads(userId, [
       { word: { text: "noche" }, song: { id: "1", title: "Song A", artist: "Artist A" } },
+      { word: { text: "luz" }, song: { id: "1", title: "Song A", artist: "Artist A" }, allow_same_song: true },
+      { word: { text: "sol" }, song: { id: "1", title: "Song A", artist: "Artist A" }, song_repeated: true },
+      { word: { text: "mar" }, song: { id: "2", title: "Song B", artist: "Artist B" } },
     ]);
-    expect(blocked).to.have.lengthOf(0);
-    const allowed = filterUniquePayloads(userId, [
-      { word: { text: "noche" }, song: { id: "1", title: "Song A", artist: "Artist A" }, allow_same_song: true },
-    ]);
-    expect(allowed).to.have.lengthOf(1);
-    expect(allowed[0].word.text).to.equal("noche");
-    const repeated = filterUniquePayloads(userId, [
-      { word: { text: "luz" }, song: { id: "1", title: "Song A", artist: "Artist A" }, song_repeated: true },
-    ]);
-    expect(repeated).to.have.lengthOf(1);
-    expect(repeated[0].word.text).to.equal("luz");
+    expect(blocked.map((p) => p.word.text)).to.deep.equal(["mar"]);
   });
 
-  it("reuses a known song immediately when the unused catalog is empty", async () => {
+  it("does not reuse a known song when the unused catalog is empty", async () => {
     const today = new Date().toISOString().slice(0, 10);
     db.prepare("DELETE FROM daily_words WHERE user_id = ? AND date = ?").run(userId, today);
     saveDailyWord(userId, today, {
@@ -1604,15 +1600,18 @@ describe("Daily Word Service", () => {
     };
 
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
-    const started = Date.now();
     try {
-      const result = await generateDailyWord(user, { force: true, fetchImpl: mockFetch });
-      expect(result.word.text).to.be.a("string").and.not.empty;
-      expect(result.word.text.toLowerCase()).to.not.equal("ayer");
-      expect(String(result.song.id)).to.equal("100");
-      expect(result.song_repeated).to.equal(true);
-      expect(aiCalls).to.equal(0);
-      expect(Date.now() - started).to.be.below(5000);
+      let thrown = null;
+      try {
+        await generateDailyWord(user, { force: true, fetchImpl: mockFetch });
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).to.exist;
+      expect(["song_already_used", "ai_timeout", "invalid_ai_daily_word_response", "generation_failed"]).to.include(
+        thrown.code
+      );
+      expect(aiCalls).to.be.at.least(1);
     } finally {
       restore();
       aiService.generateDailyWordSongs = originalSongs;
