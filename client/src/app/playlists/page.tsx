@@ -18,7 +18,7 @@ import {
   startSpotifyAuth,
 } from '@/lib/api';
 import { PLAYLISTS_CHANGED_EVENT } from '@/lib/playlistEvents';
-import { useTranslation } from '@/lib/i18n';
+import { uniqueShelfWords } from '@/lib/shelf';
 import {
   capSpotifyPlaylistShelf,
   mapSpotifyListError,
@@ -167,7 +167,7 @@ function LibraryContent() {
           if (!active) return;
           if (res.ok) {
             const data = await res.json();
-            setRecent(data.recent || []);
+            setRecent(uniqueShelfWords((data.recent || []) as RecentDiscovery[]));
           }
         } catch {
           /* Recent Discoveries remain optional; do not block Library. */

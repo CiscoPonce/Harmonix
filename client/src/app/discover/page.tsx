@@ -10,6 +10,7 @@ import { RecentWordFlipCard, type ShelfWord } from '@/components/RecentWordFlipC
 import { ReviewCountBadge } from '@/components/ReviewCountBadge';
 import { BadgeUnlockToast } from '@/components/BadgeUnlockToast';
 import { apiFetch } from '@/lib/api';
+import { uniqueShelfWords } from '@/lib/shelf';
 import { useTranslation } from '@/lib/i18n';
 
 type RecentWord = ShelfWord;
@@ -109,11 +110,10 @@ export default function DiscoverPage() {
         },
       };
       setTrending((prev) => {
-        const key = `${shelfItem.word.text}|${shelfItem.song?.id}`;
         const rest = prev.filter(
-          (p) => `${p.word.text}|${p.song?.id}` !== key
+          (p) => p.word.text.toLowerCase() !== shelfItem.word.text.toLowerCase()
         );
-        return [shelfItem, ...rest].slice(0, 8);
+        return uniqueShelfWords([shelfItem, ...rest]).slice(0, 8);
       });
     }
 
@@ -132,33 +132,35 @@ export default function DiscoverPage() {
       }
       if (recentRes.ok) {
         const data = await recentRes.json();
-        const recent = (data.recent || []) as RecentWord[];
+        const recent = uniqueShelfWords((data.recent || []) as RecentWord[]);
         // Prefer server rows, but never drop a richer local phrase if server omits it.
         setTrending((prev) => {
           const byKey = new Map<string, RecentWord>(
             prev.map((p) => [`${p.word.text}|${p.song?.id ?? ''}`, p])
           );
-          return recent.map((row) => {
-            const key = `${row.word.text}|${row.song?.id ?? ''}`;
-            const local = byKey.get(key);
-            const phrase = (
-              row.phrase || row.lyric?.snippet || local?.phrase || local?.lyric?.snippet || ''
-            ).trim();
-            if (!phrase) return row;
-            return {
-              ...row,
-              phrase,
-              lyric: row.lyric?.snippet
-                ? row.lyric
-                : local?.lyric || {
-                    snippet: phrase,
-                    timestamp: row.lyric?.timestamp,
-                    char_start: row.lyric?.char_start,
-                    char_end: row.lyric?.char_end,
-                  },
-              title: row.title || row.song?.title || local?.title || null,
-            };
-          });
+          return uniqueShelfWords(
+            recent.map((row) => {
+              const key = `${row.word.text}|${row.song?.id ?? ''}`;
+              const local = byKey.get(key);
+              const phrase = (
+                row.phrase || row.lyric?.snippet || local?.phrase || local?.lyric?.snippet || ''
+              ).trim();
+              if (!phrase) return row;
+              return {
+                ...row,
+                phrase,
+                lyric: row.lyric?.snippet
+                  ? row.lyric
+                  : local?.lyric || {
+                      snippet: phrase,
+                      timestamp: row.lyric?.timestamp,
+                      char_start: row.lyric?.char_start,
+                      char_end: row.lyric?.char_end,
+                    },
+                title: row.title || row.song?.title || local?.title || null,
+              };
+            })
+          );
         });
       }
     } catch {
@@ -187,7 +189,7 @@ export default function DiscoverPage() {
         }
         if (recentRes.ok) {
           const data = await recentRes.json();
-          setTrending(data.recent || []);
+          setTrending(uniqueShelfWords((data.recent || []) as RecentWord[]));
         }
       } catch {
         if (active) setTrending([]);
@@ -403,9 +405,9 @@ export default function DiscoverPage() {
               {t('shelf_empty_hint')}
             </p>
           ) : (
-            trending.slice(0, 8).map((item, i) => (
+            trending.slice(0, 8).map((item) => (
               <RecentWordFlipCard
-                key={`${item.id ?? item.word.text}-${item.song?.id || i}`}
+                key={`${String(item.word.text).toLowerCase()}-${item.song?.id || ''}`}
                 item={item}
               />
             ))

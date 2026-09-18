@@ -6,7 +6,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
-* **ai:** GLM-5.3-Flash is the NIM primary; Lightning is backup; Muse dropped
+* **shelf:** show each discovered word once — polish no longer inserts a duplicate card
 * **ai:** OpenRouter fallback is free Super then Lightning `:free` — no paid GLM slugs
 * **deploy:** write NIM/OpenRouter model lists into Coolify .env so compose recreate keeps Flash
 * **daily-word:** skip English slips like `really` on Spanish cards; skip chorus chants like `Highs`

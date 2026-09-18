@@ -1048,6 +1048,43 @@ function summarizeDailyWordPayload(payload, meta = {}) {
   };
 }
 
+function uniqueRecentSummaries(items) {
+  const seen = new Set();
+  const out = [];
+  for (const item of items || []) {
+    const key = String(item?.word?.text || "").toLowerCase().trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+/** Enrichment overwrites the existing card instead of inserting a second shelf row. */
+function updateOrInsertDailyWord(userId, date, payload) {
+  const needle = String(payload?.word?.text || "").toLowerCase().trim();
+  if (needle) {
+    const rows = db.prepare(
+      `SELECT id, word_json FROM daily_words WHERE user_id = ? ORDER BY generated_at DESC, id DESC LIMIT 80`
+    ).all(userId);
+    for (const row of rows) {
+      try {
+        const existing = JSON.parse(row.word_json);
+        if (String(existing?.word?.text || "").toLowerCase().trim() === needle) {
+          db.prepare("UPDATE daily_words SET word_json = ? WHERE id = ?").run(
+            JSON.stringify(payload),
+            row.id
+          );
+          return;
+        }
+      } catch {
+        /* next row */
+      }
+    }
+  }
+  saveDailyWord(userId, date, payload);
+}
+
 function getRecentDailyWords(userId, days = 7) {
   const dayWindow = Math.max(1, Math.min(parseInt(days, 10) || 7, 30));
   const maxEntries = 50;
@@ -1060,7 +1097,7 @@ function getRecentDailyWords(userId, days = 7) {
     LIMIT ?
   `).all(userId, `-${dayWindow - 1} days`, maxEntries);
 
-  return rows
+  const summarized = rows
     .map((row) => {
       try {
         return summarizeDailyWordPayload(JSON.parse(row.word_json), {
@@ -1072,6 +1109,7 @@ function getRecentDailyWords(userId, days = 7) {
       }
     })
     .filter(Boolean);
+  return uniqueRecentSummaries(summarized);
 }
 
 function computeDailyWordStreak(userId) {
@@ -2067,7 +2105,7 @@ function scheduleBackgroundGlossPolish(user, payload) {
             gloss_v: 2,
           },
         };
-        saveDailyWord(user.id, enriched.date || todayDate(), enriched);
+        updateOrInsertDailyWord(user.id, enriched.date || todayDate(), enriched);
         rememberAcceptedGloss(
           text,
           normalizeLangCode(user.target_language || "es"),
@@ -2179,7 +2217,7 @@ async function enrichIfNeeded(payload, user) {
     || w.part_of_speech !== prev.part_of_speech
     || w.gloss_v !== prev.gloss_v;
   if (changed && user?.id) {
-    saveDailyWord(user.id, enriched.date || todayDate(), enriched);
+    updateOrInsertDailyWord(user.id, enriched.date || todayDate(), enriched);
   }
   // If still thin after fast enrich, polish in background — do not block the user.
   if (wordMetaNeedsEnrichment(enriched.word) || shouldBackgroundPolish(enriched.word)) {
@@ -2500,6 +2538,8 @@ module.exports = {
   validateAllCandidates,
   getCachedDailyWord,
   saveDailyWord,
+  updateOrInsertDailyWord,
+  uniqueRecentSummaries,
   deliverPayload,
   summarizeDailyWordPayload,
   getRecentDailyWords,

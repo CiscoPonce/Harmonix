@@ -19,6 +19,8 @@ progress:
 
 **2026-09-14 NIM/OpenRouter:** New NVIDIA Build key is live. Fast gloss uses Lightning with thinking off (~0.4–1.8s). Next-word was slow because the unused catalog is exhausted (`song_already_used`); we now skip unused AI + genre-widen and reuse a known song with a new word.
 
+**2026-09-18 shelf:** Discover cards were duplicating words (`flame`, `trust`) because gloss polish inserted a second `daily_words` row. Recent lists now keep one card per word, and polish updates the existing row.
+
 **2026-09-18 NIM:** Gloss bake-off: `z-ai/glm-5.3-flash` is primary on NVIDIA (free Build endpoint). Lightning stays NIM backup. Muse is out. OpenRouter fallback is free only: Super `nvidia/nemotron-3-super-120b-a12b:free` then Lightning `:free`. No paid OpenRouter GLM.
 
 **2026-09-16 word picking:** Spanish cards reject English bilingual slips (`really` / `-ly` adverbs). Chorus chants like `(Highs, highs, highs)` are not served, even when the unused-song catalog is empty.

@@ -6,6 +6,7 @@ const {
   findWordOccurrence,
   getCachedDailyWord,
   saveDailyWord,
+  updateOrInsertDailyWord,
   getRecentDailyWords,
   validateAllCandidates,
   generateValidatedBatch,
@@ -168,6 +169,51 @@ describe("Daily Word Service", () => {
     // lyric optional when not stored — smoke that summary shape is stable
     expect(withLyric).to.have.property("lyric");
     expect(withLyric).to.have.property("audio");
+  });
+
+  it("collapses duplicate shelf words to the newest card", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
+    saveDailyWord(userId, today, {
+      date: today,
+      word: { text: "flame", translation: "flama" },
+      song: { id: "maps", title: "Maps", artist: "Maroon 5" },
+    });
+    saveDailyWord(userId, today, {
+      date: today,
+      word: { text: "Flame", translation: "flama" },
+      song: { id: "maps", title: "Maps", artist: "Maroon 5" },
+    });
+    saveDailyWord(userId, today, {
+      date: today,
+      word: { text: "trust", translation: "confianza" },
+      song: { id: "bl", title: "Blinding Lights", artist: "The Weeknd" },
+    });
+    const recent = getRecentDailyWords(userId, 14);
+    const texts = recent.map((entry) => entry.word.text.toLowerCase());
+    expect(texts.filter((w) => w === "flame")).to.have.lengthOf(1);
+    expect(texts).to.include.members(["flame", "trust"]);
+    expect(recent).to.have.lengthOf(2);
+  });
+
+  it("polish overwrites the existing daily-word row instead of duplicating it", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
+    saveDailyWord(userId, today, {
+      date: today,
+      word: { text: "flame", translation: "flama" },
+      song: { id: "maps", title: "Maps", artist: "Maroon 5" },
+    });
+    updateOrInsertDailyWord(userId, today, {
+      date: today,
+      word: { text: "flame", translation: "llama", pronunciation: "/fleɪm/" },
+      song: { id: "maps", title: "Maps", artist: "Maroon 5" },
+    });
+    const count = db.prepare("SELECT COUNT(*) AS n FROM daily_words WHERE user_id = ?").get(userId).n;
+    expect(count).to.equal(1);
+    const recent = getRecentDailyWords(userId, 7);
+    expect(recent).to.have.lengthOf(1);
+    expect(recent[0].word.translation).to.equal("llama");
   });
 
   it("returns cached payload without calling AI", async () => {

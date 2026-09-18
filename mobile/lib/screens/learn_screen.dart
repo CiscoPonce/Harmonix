@@ -17,6 +17,7 @@ import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
 import '../utils/hear_it_timing.dart';
 import '../utils/i18n.dart';
+import '../utils/shelf.dart';
 import '../widgets/add_to_playlist_sheet.dart';
 import '../widgets/word_flip_card.dart';
 import 'review_screen.dart';
@@ -118,10 +119,12 @@ class _LearnScreenState extends State<LearnScreen> {
       try {
         final recent = await api.recentDailyWords(days: 14);
         final raw = recent['recent'] as List? ?? [];
-        shelf = raw
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
+        shelf = uniqueShelfWords(
+          raw
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList(),
+        );
       } catch (_) {}
       try {
         final due = await api.progressDue(limit: 1);
