@@ -142,8 +142,8 @@ start_api_standby() {
     -e FRONTEND_PROXY_TARGET="http://web:3009" \
     -e TTS_SKIP_SPAWN=true \
     -e TTS_BASE_URL="${TTS_BASE_URL:-http://host.docker.internal:3002}" \
-    -e NVIDIA_NIM_MODELS="${NVIDIA_NIM_MODELS:-nvidia/nemotron-3.5-lightning-30b-a3b,meta/muse-glimmer-30b}" \
-    -e OPENROUTER_MODELS="${OPENROUTER_MODELS:-nvidia/nemotron-3.5-lightning:free}" \
+    -e NVIDIA_NIM_MODELS="${NVIDIA_NIM_MODELS:-z-ai/glm-5.3-flash,nvidia/nemotron-3.5-lightning-30b-a3b}" \
+    -e OPENROUTER_MODELS="${OPENROUTER_MODELS:-z-ai/glm-5.3-flash,nvidia/nemotron-3.5-lightning:free}" \
     -e PUBLIC_BASE_URL="https://${DOMAIN}" \
     -e FORCE_SECURE_COOKIES=true \
     -v "${VOL}:/data" \

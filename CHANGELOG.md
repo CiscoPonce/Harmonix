@@ -6,6 +6,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
+* **ai:** GLM-5.3-Flash is the NIM primary; Lightning is backup; Muse dropped. OpenRouter fallback is paid Flash then Lightning `:free`
 * **daily-word:** skip English slips like `really` on Spanish cards; skip chorus chants like `Highs`
 * **i18n:** Library + Settings leftover English strings follow the app language
 * **tts:** skip Kokoro for German (no de voice) so first tap uses device German TTS

@@ -38,19 +38,20 @@ const modelsEnv = process.env.NVIDIA_NIM_MODELS || process.env.NVIDIA_NIM_MODEL;
 const AVAILABLE_MODELS = modelsEnv
   ? modelsEnv.split(',').map(m => m.trim()).filter(Boolean)
   : [
-      // Lightning-on-NIM with thinking off is the live sub-second JSON gloss.
-      // Muse is slower (~12s) but a solid JSON backup. MiniMax M3 is 410 EOL.
+      // GLM-5.3-Flash is the live NIM gloss (bake-off 2026-09-18). Lightning
+      // is the NIM backup. Muse Glimmer times out and is no longer in the chain.
+      'z-ai/glm-5.3-flash',
       'nvidia/nemotron-3.5-lightning-30b-a3b',
-      'meta/muse-glimmer-30b',
     ];
 
 const OPENROUTER_MODELS = (process.env.OPENROUTER_MODELS
-  || 'nvidia/nemotron-3.5-lightning:free')
+  || 'z-ai/glm-5.3-flash,nvidia/nemotron-3.5-lightning:free')
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
 
 const FAST_MODELS = [
+  'z-ai/glm-5.3-flash',
   'nvidia/nemotron-3.5-lightning-30b-a3b',
 ];
 
@@ -134,8 +135,7 @@ function buildModelAttempts(primaryModel, { fast = false } = {}) {
   const skipNim = isNimInCooldown();
   const useOpenrouter = Boolean(openrouter) && !isOpenrouterInCooldown();
 
-  // Fast path: Lightning (thinking off) is the live sub-second gloss. OpenRouter
-  // is next if NIM fails. Muse stays on the slow chain for background polish.
+  // Fast path: Flash then Lightning on NIM. OpenRouter is next if NIM fails.
   if (fast) {
     if (!skipNim) {
       for (const model of nimChain) {

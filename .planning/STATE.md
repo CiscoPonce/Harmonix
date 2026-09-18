@@ -19,6 +19,8 @@ progress:
 
 **2026-09-14 NIM/OpenRouter:** New NVIDIA Build key is live. Fast gloss uses Lightning with thinking off (~0.4–1.8s). Next-word was slow because the unused catalog is exhausted (`song_already_used`); we now skip unused AI + genre-widen and reuse a known song with a new word.
 
+**2026-09-18 NIM:** Gloss bake-off: `z-ai/glm-5.3-flash` is primary (same trap quality, ~3× faster than Lightning). Lightning stays NIM backup. Muse timed out and is out of the chain. OpenRouter has paid `z-ai/glm-5.3-flash` (no `:free` slug) then `nvidia/nemotron-3.5-lightning:free`.
+
 **2026-09-16 word picking:** Spanish cards reject English bilingual slips (`really` / `-ly` adverbs). Chorus chants like `(Highs, highs, highs)` are not served, even when the unused-song catalog is empty.
 
 **2026-09-15 store polish:** Marketing homepage describes Word of the Day, not karaoke. Library/Settings leftover English follows the UI language. Kokoro has no German — first tap skips the English fake voice and uses device TTS (`de-DE`). Play Console listing and Spotify Premium/allowlist stay operator-side.

@@ -17,9 +17,10 @@ describe('AI Service', () => {
     openai.chat.completions.create = originalCreate;
   });
 
-  it('uses Nemotron Lightning as the default primary NIM model', () => {
-    expect(AVAILABLE_MODELS[0]).to.equal('nvidia/nemotron-3.5-lightning-30b-a3b');
-    expect(AVAILABLE_MODELS).to.include('meta/muse-glimmer-30b');
+  it('uses GLM-5.3-Flash as the default primary NIM model', () => {
+    expect(AVAILABLE_MODELS[0]).to.equal('z-ai/glm-5.3-flash');
+    expect(AVAILABLE_MODELS).to.include('nvidia/nemotron-3.5-lightning-30b-a3b');
+    expect(AVAILABLE_MODELS).to.not.include('meta/muse-glimmer-30b');
     expect(AVAILABLE_MODELS).to.not.include('minimaxai/minimax-m3');
   });
 
@@ -96,7 +97,7 @@ describe('AI Service', () => {
       ai.__setProviderCooldownsForTest();
     });
 
-    it('disables NIM thinking so Lightning returns JSON instead of a trace', async function () {
+    it('disables NIM thinking so Flash returns JSON instead of a trace', async function () {
       const ai = require('./aiService');
       if (!ai.openaiFast) this.skip();
       ai.__setProviderCooldownsForTest({ openrouterUntil: Date.now() + 60_000 });
@@ -111,7 +112,7 @@ describe('AI Service', () => {
           messages: [{ role: 'user', content: 'hi' }],
           max_tokens: 8,
         });
-        expect(seen.model).to.equal('nvidia/nemotron-3.5-lightning-30b-a3b');
+        expect(seen.model).to.equal('z-ai/glm-5.3-flash');
         expect(seen.chat_template_kwargs.enable_thinking).to.equal(false);
       } finally {
         ai.openaiFast.chat.completions.create = origFast;
@@ -214,7 +215,7 @@ describe('AI Service', () => {
 
     expect(result).to.be.an('array');
     expect(result[0].word).to.equal('test');
-    expect(capturedArgs.model).to.equal('nvidia/nemotron-3.5-lightning-30b-a3b');
+    expect(capturedArgs.model).to.equal('z-ai/glm-5.3-flash');
     expect(capturedArgs.messages[0].content).to.contain('English');
     expect(capturedArgs.messages[0].content).to.contain('A1');
     expect(capturedArgs.messages[1].content).to.contain(lyrics);
