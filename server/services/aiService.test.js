@@ -3,6 +3,7 @@ const {
   extractVocabulary,
   createChatCompletion,
   AVAILABLE_MODELS,
+  OPENROUTER_MODELS,
   openai,
 } = require('./aiService');
 
@@ -22,6 +23,13 @@ describe('AI Service', () => {
     expect(AVAILABLE_MODELS).to.include('nvidia/nemotron-3.5-lightning-30b-a3b');
     expect(AVAILABLE_MODELS).to.not.include('meta/muse-glimmer-30b');
     expect(AVAILABLE_MODELS).to.not.include('minimaxai/minimax-m3');
+  });
+
+  it('uses only OpenRouter :free models as fallback', () => {
+    expect(OPENROUTER_MODELS[0]).to.equal('nvidia/nemotron-3-super-120b-a12b:free');
+    expect(OPENROUTER_MODELS).to.include('nvidia/nemotron-3.5-lightning:free');
+    expect(OPENROUTER_MODELS.every((m) => m.endsWith(':free'))).to.equal(true);
+    expect(OPENROUTER_MODELS).to.not.include('z-ai/glm-5.3-flash');
   });
 
   describe('provider circuit breakers', () => {

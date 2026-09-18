@@ -45,7 +45,7 @@ const AVAILABLE_MODELS = modelsEnv
     ];
 
 const OPENROUTER_MODELS = (process.env.OPENROUTER_MODELS
-  || 'z-ai/glm-5.3-flash,nvidia/nemotron-3.5-lightning:free')
+  || 'nvidia/nemotron-3-super-120b-a12b:free,nvidia/nemotron-3.5-lightning:free')
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
