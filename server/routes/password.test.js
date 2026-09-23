@@ -103,4 +103,23 @@ describe('Password routes', () => {
     const updated = await auth.comparePassword('new-password-1', row.password_hash);
     assert.strictEqual(updated, true);
   });
+
+  it('accepts a new password of exactly 8 characters', async () => {
+    const token = auth.generateAccessToken({ id: userId, email });
+    const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId);
+    const current = await auth.comparePassword('new-password-1', row.password_hash)
+      ? 'new-password-1'
+      : password;
+    const res = await fetch(`${baseUrl}/api/auth/change-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ currentPassword: current, newPassword: 'eightchr' }),
+    });
+    assert.strictEqual(res.status, 200);
+    const next = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId);
+    assert.strictEqual(await auth.comparePassword('eightchr', next.password_hash), true);
+  });
 });

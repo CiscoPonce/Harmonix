@@ -1659,6 +1659,14 @@ describe("Daily Word Service", () => {
       song: { id: "s3", title: "E", artist: "F" },
     });
     expect(computeDailyWordStreak(userId, now)).to.equal(3);
+    db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
+    saveDailyWord(userId, "2026-09-24", {
+      date: "2026-09-24",
+      word: { text: "utc" },
+      song: { id: "s4", title: "G", artist: "H" },
+    });
+    const westOfUtc = new Date("2026-09-24T02:00:00.000Z");
+    expect(computeDailyWordStreak(userId, westOfUtc)).to.equal(1);
   });
 
   it("from-track avoids a lemma already waiting in the queue", async () => {

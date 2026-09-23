@@ -11,10 +11,12 @@ describe("Phase 18 catalog and limiter", () => {
     expect(spanish).to.include("reggaeton");
   });
 
-  it("mounts the daily-word limiter on Next", () => {
-    const layer = dailyWordRouter.stack.find(
-      (s) => s.route && s.route.path === "/next" && s.route.methods.post
-    );
-    expect(layer.route.stack[0].name).to.equal("dailyWordLimiter");
+  it("mounts the daily-word limiter on new, next, and from-track", () => {
+    for (const path of ["/new", "/next", "/from-track"]) {
+      const layer = dailyWordRouter.stack.find(
+        (s) => s.route && s.route.path === path && s.route.methods.post
+      );
+      expect(layer.route.stack[0].name, path).to.equal("dailyWordLimiter");
+    }
   });
 });

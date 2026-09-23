@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/api_client.dart';
+import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
+import '../utils/study_spacing.dart';
 
 /// SRS review — mirrors web `/review`.
 class ReviewScreen extends StatefulWidget {
@@ -138,7 +140,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     )
                   : Padding(
                       padding: const EdgeInsets.all(24),
-                      child: Column(
+                      child: Builder(
+                        builder: (context) {
+                          final spacing = studyLetterSpacing(
+                            context.watch<AuthState>().user?['dyslexia_font'],
+                          );
+                          return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
@@ -150,14 +157,18 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           Text(
                             (_due[_index]['word'] ?? '—').toString().toUpperCase(),
                             textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.displayLarge,
+                            style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                                  letterSpacing: spacing,
+                                ),
                           ),
                           const SizedBox(height: 16),
                           if (_revealed)
                             Text(
                               (_due[_index]['definition'] ?? '').toString(),
                               textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyLarge,
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    letterSpacing: spacing,
+                                  ),
                             )
                           else
                             TextButton(
@@ -177,6 +188,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
                             ),
                           ],
                         ],
+                      );
+                        },
                       ),
                     ),
     );

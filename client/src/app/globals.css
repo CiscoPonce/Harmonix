@@ -36,6 +36,12 @@ html {
   overflow-x: hidden;
 }
 
+/* Settings dyslexia toggle adds this class on <html> and keeps it across reloads. */
+html.font-dyslexic body {
+  letter-spacing: 0.06em;
+  word-spacing: 0.12em;
+}
+
 @layer base {
   body {
     @apply antialiased bg-white text-zinc-900 dark:bg-black dark:text-white overflow-x-hidden;

@@ -180,5 +180,17 @@ describe('User Preferences API Routes', () => {
       expect(res.body.genre).to.equal('rock');
       expect(wordQueue.countReady(userId)).to.equal(0);
     });
+
+    it('stores dyslexia_font as 0 or 1 and does not treat "0" as on', () => {
+      const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
+      const on = mockRes();
+      handler({ body: { dyslexia_font: '1' }, user: { id: 'up-test' } }, on);
+      expect(on.body.dyslexia_font).to.equal(1);
+      const off = mockRes();
+      handler({ body: { dyslexia_font: '0' }, user: { id: 'up-test' } }, off);
+      expect(off.body.dyslexia_font).to.equal(0);
+      const row = db.prepare('SELECT dyslexia_font FROM users WHERE id = ?').get('up-test');
+      expect(row.dyslexia_font).to.equal(0);
+    });
   });
 });

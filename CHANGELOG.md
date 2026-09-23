@@ -6,6 +6,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
+* **settings:** dyslexia spacing applies on the web page, the Android word card, the shelf, and review
 * **learner:** Phase 18 — purge the word queue when native language changes; drop duplicate queue cards; skip queued lemmas on song search; count streaks on a UTC calendar
 * **security:** rate-limit new-word routes (20/min); passwords must be at least 8 characters; bump `http-proxy-middleware` to 4.2.0
 * **library:** playlist list uses cached covers and does not call Deezer per row

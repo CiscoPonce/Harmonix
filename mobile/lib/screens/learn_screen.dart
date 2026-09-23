@@ -19,6 +19,7 @@ import '../theme/harmonix_theme.dart';
 import '../utils/hear_it_timing.dart';
 import '../utils/i18n.dart';
 import '../utils/shelf.dart';
+import '../utils/study_spacing.dart';
 import '../widgets/catalog_exhausted_actions.dart';
 import '../widgets/add_to_playlist_sheet.dart';
 import '../widgets/word_flip_card.dart';
@@ -572,7 +573,7 @@ class _LearnScreenState extends State<LearnScreen> {
     }
 
     final authUser = context.watch<AuthState>().user;
-    final dyslexia = authUser?['dyslexia_font'] == 1 || authUser?['dyslexia_font'] == true;
+    final studySpacing = studyLetterSpacing(authUser?['dyslexia_font']);
     final word = _word?['word'] as Map<String, dynamic>? ?? {};
     final lyric = _word?['lyric'] as Map<String, dynamic>? ?? {};
     final song = _word?['song'] as Map<String, dynamic>? ?? {};
@@ -656,7 +657,7 @@ class _LearnScreenState extends State<LearnScreen> {
                     style: Theme.of(context).textTheme.displayLarge?.copyWith(
                           color: colors.accent,
                           fontSize: 40,
-                          letterSpacing: dyslexia ? 1.6 : 0,
+                          letterSpacing: studySpacing,
                         ),
                   ),
                 ),
@@ -1008,6 +1009,7 @@ class _LearnScreenState extends State<LearnScreen> {
                                     style: TextStyle(
                                       fontWeight: FontWeight.w900,
                                       fontSize: 22,
+                                      letterSpacing: studySpacing,
                                       color: colors.accent,
                                     ),
                                   ),
@@ -1048,6 +1050,7 @@ class _LearnScreenState extends State<LearnScreen> {
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: 13,
+                                      letterSpacing: studySpacing,
                                       fontStyle: FontStyle.italic,
                                       fontWeight: FontWeight.w600,
                                       color: colors.textPrimary,

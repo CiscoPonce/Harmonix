@@ -17,6 +17,7 @@ import {
 } from '@/lib/api';
 import { LANGUAGES, languageLabel } from '@/lib/languages';
 import { useTranslation } from '@/lib/i18n';
+import { dyslexiaFontOn } from '@/lib/dyslexiaFont';
 import { visibleMusicStyles } from '@/lib/musicStyles';
 import {
   parseSpotifyCallbackOutcome,
@@ -89,7 +90,7 @@ function SettingsContent() {
     setTargetLanguage(user.target_language || '');
     setMusicStyle(normalizeGenre(user.genre));
     setVoiceGender(user.voice_gender === 'male' ? 'male' : 'female');
-    const dyslexiaOn = user.dyslexia_font === 1 || user.dyslexia_font === true;
+    const dyslexiaOn = dyslexiaFontOn(user.dyslexia_font);
     setDyslexicFont(dyslexiaOn);
     if (typeof document !== 'undefined') {
       document.documentElement.classList.toggle('font-dyslexic', dyslexiaOn);
