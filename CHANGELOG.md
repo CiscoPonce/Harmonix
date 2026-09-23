@@ -15,9 +15,9 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * **settings:** sync Spotify taste after connect and show last sync time; persist a dyslexia-friendly font on web and Android
 * **daily-word:** never serve the same song twice on Next — fail honestly when unused songs are gone instead of looping a known track
 * **shelf:** show each discovered word once — polish no longer inserts a duplicate card
-* **ai:** GLM-5.3-Flash is the NIM primary; Lightning is backup; Muse dropped
-* **ai:** OpenRouter fallback is free Super then Lightning `:free` — no paid GLM slugs
-* **deploy:** write NIM/OpenRouter model lists into Coolify .env so compose recreate keeps Flash
+* **ai:** GLM-5.3 is the NIM primary (live bake-off: ~0.5s gloss, ~2s song picks); Lightning then Flash are backups
+* **ai:** OpenRouter fallback is free Super only — Lightning `:free` returned placeholder JSON in bake-off
+* **deploy:** write NIM/OpenRouter model lists into Coolify .env so compose recreate keeps GLM-5.3
 * **daily-word:** skip English slips like `really` on Spanish cards; skip chorus chants like `Highs`
 * **i18n:** Library + Settings leftover English strings follow the app language
 * **tts:** skip Kokoro for German (no de voice) so first tap uses device German TTS

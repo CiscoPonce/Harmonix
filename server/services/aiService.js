@@ -38,21 +38,23 @@ const modelsEnv = process.env.NVIDIA_NIM_MODELS || process.env.NVIDIA_NIM_MODEL;
 const AVAILABLE_MODELS = modelsEnv
   ? modelsEnv.split(',').map(m => m.trim()).filter(Boolean)
   : [
-      // GLM-5.3-Flash is the live NIM gloss (bake-off 2026-09-18). Lightning
-      // is the NIM backup. Muse Glimmer times out and is no longer in the chain.
-      'z-ai/glm-5.3-flash',
+      // Live bake-off 2026-09-23: GLM-5.3 beats Flash on gloss (~0.5s vs ~2s) and
+      // song picks (~2s vs ~8s). Lightning is the fast NIM backup for song JSON.
+      'z-ai/glm-5.3',
       'nvidia/nemotron-3.5-lightning-30b-a3b',
+      'z-ai/glm-5.3-flash',
     ];
 
 const OPENROUTER_MODELS = (process.env.OPENROUTER_MODELS
-  || 'nvidia/nemotron-3-super-120b-a12b:free,nvidia/nemotron-3.5-lightning:free')
+  || 'nvidia/nemotron-3-super-120b-a12b:free')
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
 
 const FAST_MODELS = [
-  'z-ai/glm-5.3-flash',
+  'z-ai/glm-5.3',
   'nvidia/nemotron-3.5-lightning-30b-a3b',
+  'z-ai/glm-5.3-flash',
 ];
 
 const NIM_COOLDOWN_MS = parseInt(process.env.NIM_RATE_LIMIT_COOLDOWN_MS || '300000', 10);

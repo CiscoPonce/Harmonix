@@ -25,7 +25,7 @@ progress:
 
 **2026-09-18 shelf:** Discover cards were duplicating words (`flame`, `trust`) because gloss polish inserted a second `daily_words` row. Recent lists now keep one card per word, and polish updates the existing row.
 
-**2026-09-18 NIM:** Gloss bake-off: `z-ai/glm-5.3-flash` is primary on NVIDIA (free Build endpoint). Lightning stays NIM backup. Muse is out. OpenRouter fallback is free only: Super `nvidia/nemotron-3-super-120b-a12b:free` then Lightning `:free`. No paid OpenRouter GLM.
+**2026-09-23 NIM:** Live bake-off on production keys: `z-ai/glm-5.3` is primary (~468ms gloss, ~1.4–2s song JSON). `nvidia/nemotron-3.5-lightning-30b-a3b` is fast song backup (~2s). `z-ai/glm-5.3-flash` is slower (~2–8s) and demoted. OpenRouter fallback: Super `:free` only (Lightning `:free` returned placeholder songs; most other `:free` slugs 429).
 
 **2026-09-16 word picking:** Spanish cards reject English bilingual slips (`really` / `-ly` adverbs). Chorus chants like `(Highs, highs, highs)` are not served, even when the unused-song catalog is empty.
 

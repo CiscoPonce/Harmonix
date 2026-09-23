@@ -89,8 +89,8 @@ cleanup_standbys() {
 # defaults. Keep model lists in that file in sync with this script.
 sync_model_lists_to_coolify_env() {
   local src="/data/coolify/services/${UUID}/.env"
-  local nim="${NVIDIA_NIM_MODELS:-z-ai/glm-5.3-flash,nvidia/nemotron-3.5-lightning-30b-a3b}"
-  local or="${OPENROUTER_MODELS:-nvidia/nemotron-3-super-120b-a12b:free,nvidia/nemotron-3.5-lightning:free}"
+  local nim="${NVIDIA_NIM_MODELS:-z-ai/glm-5.3,nvidia/nemotron-3.5-lightning-30b-a3b,z-ai/glm-5.3-flash}"
+  local or="${OPENROUTER_MODELS:-nvidia/nemotron-3-super-120b-a12b:free}"
   if ! sudo test -f "$src"; then
     return 0
   fi
@@ -160,8 +160,8 @@ start_api_standby() {
     -e FRONTEND_PROXY_TARGET="http://web:3009" \
     -e TTS_SKIP_SPAWN=true \
     -e TTS_BASE_URL="${TTS_BASE_URL:-http://host.docker.internal:3002}" \
-    -e NVIDIA_NIM_MODELS="${NVIDIA_NIM_MODELS:-z-ai/glm-5.3-flash,nvidia/nemotron-3.5-lightning-30b-a3b}" \
-    -e OPENROUTER_MODELS="${OPENROUTER_MODELS:-nvidia/nemotron-3-super-120b-a12b:free,nvidia/nemotron-3.5-lightning:free}" \
+    -e NVIDIA_NIM_MODELS="${NVIDIA_NIM_MODELS:-z-ai/glm-5.3,nvidia/nemotron-3.5-lightning-30b-a3b,z-ai/glm-5.3-flash}" \
+    -e OPENROUTER_MODELS="${OPENROUTER_MODELS:-nvidia/nemotron-3-super-120b-a12b:free}" \
     -e PUBLIC_BASE_URL="https://${DOMAIN}" \
     -e FORCE_SECURE_COOKIES=true \
     -v "${VOL}:/data" \

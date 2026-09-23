@@ -18,16 +18,16 @@ describe('AI Service', () => {
     openai.chat.completions.create = originalCreate;
   });
 
-  it('uses GLM-5.3-Flash as the default primary NIM model', () => {
-    expect(AVAILABLE_MODELS[0]).to.equal('z-ai/glm-5.3-flash');
+  it('uses GLM-5.3 as the default primary NIM model', () => {
+    expect(AVAILABLE_MODELS[0]).to.equal('z-ai/glm-5.3');
     expect(AVAILABLE_MODELS).to.include('nvidia/nemotron-3.5-lightning-30b-a3b');
+    expect(AVAILABLE_MODELS).to.include('z-ai/glm-5.3-flash');
     expect(AVAILABLE_MODELS).to.not.include('meta/muse-glimmer-30b');
     expect(AVAILABLE_MODELS).to.not.include('minimaxai/minimax-m3');
   });
 
   it('uses only OpenRouter :free models as fallback', () => {
     expect(OPENROUTER_MODELS[0]).to.equal('nvidia/nemotron-3-super-120b-a12b:free');
-    expect(OPENROUTER_MODELS).to.include('nvidia/nemotron-3.5-lightning:free');
     expect(OPENROUTER_MODELS.every((m) => m.endsWith(':free'))).to.equal(true);
     expect(OPENROUTER_MODELS).to.not.include('z-ai/glm-5.3-flash');
   });
@@ -120,7 +120,7 @@ describe('AI Service', () => {
           messages: [{ role: 'user', content: 'hi' }],
           max_tokens: 8,
         });
-        expect(seen.model).to.equal('z-ai/glm-5.3-flash');
+        expect(seen.model).to.equal('z-ai/glm-5.3');
         expect(seen.chat_template_kwargs.enable_thinking).to.equal(false);
       } finally {
         ai.openaiFast.chat.completions.create = origFast;
@@ -223,7 +223,7 @@ describe('AI Service', () => {
 
     expect(result).to.be.an('array');
     expect(result[0].word).to.equal('test');
-    expect(capturedArgs.model).to.equal('z-ai/glm-5.3-flash');
+    expect(capturedArgs.model).to.equal('z-ai/glm-5.3');
     expect(capturedArgs.messages[0].content).to.contain('English');
     expect(capturedArgs.messages[0].content).to.contain('A1');
     expect(capturedArgs.messages[1].content).to.contain(lyrics);
