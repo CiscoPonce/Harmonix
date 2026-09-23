@@ -130,7 +130,7 @@ Two numbers, on purpose:
 | Track | Version | Where |
 |-------|---------|--------|
 | Android on Play | **1.0.8** (versionCode **11**) | `mobile/pubspec.yaml` — bump this for every Play upload |
-| Platform changelog | **0.0.3**, next cut via release-please | `CHANGELOG.md`, GitHub Releases |
+| Platform changelog | **0.0.4** ([harmonix-v0.0.4](https://github.com/CiscoPonce/Harmonix/releases/tag/harmonix-v0.0.4)) | `CHANGELOG.md`, GitHub Releases |
 
 The website has no store version. It ships from `main`.
 
