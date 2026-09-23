@@ -22,4 +22,4 @@
 
 ## Reporting
 
-For security issues in this private/personal deploy, contact the repo owner directly. Do not open public issues with secret values.
+This repository is public. Report a vulnerability by email to `hello@peeporunclub.co.uk`. Do not open a public GitHub issue that includes secrets, tokens, or user data.

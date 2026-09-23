@@ -43,10 +43,8 @@ Release builds must include native debug symbols (`debugSymbolLevel = SYMBOL_TAB
 
 Outputs:
 
-- AAB: `build/app/outputs/bundle/release/app-release.aab` ← upload to Play
-- APK: `build/app/outputs/flutter-apk/app-release.apk` ← team sideload QA
-
-Copy the APK to `../releases/Harmonix-android-release.apk` if desired.
+- AAB: `build/app/outputs/bundle/release/app-release.aab` ← upload to Play Internal testing
+- APK: `build/app/outputs/flutter-apk/app-release.apk` ← local QA only; do not commit it
 
 ## Application ID
 
@@ -82,14 +80,9 @@ Copy the APK to `../releases/Harmonix-android-release.apk` if desired.
 
 Audio is limited to **30-second Deezer previews** for language learning context. Full tracks open in an external player/browser.
 
-## After domain acquisition
+## Next Play upload
 
-```bash
-flutter build appbundle --release \
-  --dart-define=API_BASE=https://YOUR_NEW_DOMAIN/api
-```
-
-Re-upload AAB (bump `version` in `pubspec.yaml`, e.g. `1.0.1+2`).
+The production API is already `https://harmonix.peeporunclub.co.uk/api`. For the next store build, bump `version` in `pubspec.yaml` (for example `1.0.9+12`) and upload a new AAB. Never change application id `com.harmonix.app`.
 
 ## iOS (later)
 

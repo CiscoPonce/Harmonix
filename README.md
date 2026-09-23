@@ -1,7 +1,9 @@
 # Harmonix
 
+**Play Store app:** `1.0.8` (versionCode `11`) in [`mobile/pubspec.yaml`](mobile/pubspec.yaml)  
+**Live site:** https://harmonix.peeporunclub.co.uk — every push to `main` deploys  
 <!-- x-release-please-start-version -->
-**Version:** 0.0.3
+**Platform changelog:** 0.0.3
 <!-- x-release-please-end -->
 
 AI-first language learning through real music lyrics — validated against Deezer + LRCLib, with Spotify connect/export and web in-app playback.
@@ -57,7 +59,7 @@ See [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](
 server/          Express API + SQLite + Spotify/TTS/daily-word services
 client/          Next.js web
 mobile/          Flutter Android app (Play Store path)
-releases/        Latest tester APK: Harmonix-1.0.8.apk (also on GitHub release v0.0.3)
+releases/        Release notes only. Play installs come from an AAB, not APKs in git.
 docs/            Runbooks (Coolify, Spotify, mobile, releases)
 .planning/       ROADMAP, STATE, phase contexts & plans
 docker-compose.yml  Coolify/Docker: api + web (Phase 15)
@@ -84,23 +86,21 @@ npm install
 npm run dev            # :3009
 ```
 
-### Production (VPS)
+### Production
 
-**Public:** https://harmonix.peeporunclub.co.uk  
+**Public:** https://harmonix.peeporunclub.co.uk
 
-Primary path: Docker Compose on the VPS behind Coolify Traefik (see [docs/COOLIFY-DEPLOY.md](./docs/COOLIFY-DEPLOY.md)).
+Pushes to `main` run GitHub Actions: tests, then SSH to the VPS and `scripts/coolify-redeploy.sh` (Coolify Traefik, zero-downtime). Pocket-TTS stays on the host (`:3002`, systemd `harmonix-tts`).
+
+Manual rebuild on the VPS, if Actions is unavailable:
 
 ```bash
-# On the VPS (manual / current ops)
 cd /home/ubuntu/lyric
-git pull origin main
-docker compose build && docker compose up -d
-# Pocket-TTS stays on the host (:3002); systemd unit harmonix-tts
+git fetch origin main && git reset --hard origin/main
+HARMONIX_REDEPLOY_BOOTED=1 bash scripts/coolify-redeploy.sh
 ```
 
-Legacy rollback: `bash run_env.sh` (host Node + Next + ngrok).
-
-**Git → production deploy:** pushes to `main` trigger GitHub Actions → SSH → `scripts/coolify-redeploy.sh` (rebuild images + restart Coolify **Harmonix**).
+See [docs/COOLIFY-DEPLOY.md](./docs/COOLIFY-DEPLOY.md). Legacy host rollback only: `bash run_env.sh`.
 
 ## Security
 
@@ -111,11 +111,13 @@ Legacy rollback: `bash run_env.sh` (host Node + Next + ngrok).
 
 ## Tests
 
+GitHub Actions runs these on every push to `main`:
+
 ```bash
 cd server && npm test
+cd client && node --experimental-strip-types --test 'src/lib/*.test.ts'
+cd mobile && flutter analyze --fatal-infos && flutter test
 ```
-
-Known env-sensitive failures: Pocket-TTS not running; Spotify `/status` contract drift — see ops notes in `.planning/STATE.md`.
 
 ## Planning
 
@@ -123,7 +125,16 @@ Milestone **v1.9** (Phase 16 Flutter web parity) is complete. Production is Cool
 
 ## Releases
 
-Versioning via [release-please](https://github.com/googleapis/release-please). Commits on `main` use [Conventional Commits](https://www.conventionalcommits.org/).
+Two numbers, on purpose:
+
+| Track | Version | Where |
+|-------|---------|--------|
+| Android on Play | **1.0.8** (versionCode **11**) | `mobile/pubspec.yaml` — bump this for every Play upload |
+| Platform changelog | **0.0.3**, next cut via release-please | `CHANGELOG.md`, GitHub Releases |
+
+The website has no store version. It ships from `main`.
+
+[release-please](https://github.com/googleapis/release-please) opens the changelog pull request from [Conventional Commits](https://www.conventionalcommits.org/). Do not commit APKs. Testers install the signed AAB from Play Internal testing. See [docs/PLAY-CONSOLE-LISTING.md](docs/PLAY-CONSOLE-LISTING.md).
 
 ## License
 

@@ -68,7 +68,7 @@ Fresh **Zoho Mail** setup on GoDaddy DNS — see [`docs/MAILBOX-SETUP.md`](../..
 - [x] Create **`hello@peeporunclub.co.uk`** (dedicated user or alias)
 - [x] Zoho Admin → all mail records verified; Gmail → hello@ test passes
 - [x] Test: Gmail → `hello@…` arrives; reply from `hello@…` is not rejected
-- [ ] Privacy page mailto works: https://harmonix.peeporunclub.co.uk/privacy
+- [x] Privacy page mailto is `hello@peeporunclub.co.uk`: https://harmonix.peeporunclub.co.uk/privacy (`client/src/app/privacy/page.tsx`)
 
 If you use a different address, change `client/src/lib/contact.ts` first, then update `docs/PLAY-CONSOLE-LISTING.md`.
 
@@ -77,6 +77,15 @@ If you use a different address, change `client/src/lib/contact.ts` first, then u
 ---
 
 ## B. Play Console — create the app (17-02)
+
+Ready in the repo (do not re-do these):
+
+- Listing copy: [`docs/PLAY-CONSOLE-LISTING.md`](../../../docs/PLAY-CONSOLE-LISTING.md)
+- Icon `mobile/store/app-icon-512.png` and feature graphic `mobile/store/feature-graphic.png`
+- Signed AAB recipe and version `1.0.8` / `11` in [`mobile/PLAY-STORE.md`](../../../mobile/PLAY-STORE.md)
+- Privacy https://harmonix.peeporunclub.co.uk/privacy and support `hello@peeporunclub.co.uk`
+
+Still only possible inside Play Console:
 
 - [ ] Google Play developer account paid ($25) — [play.google.com/console](https://play.google.com/console)
 - [ ] **Create app:** name `Harmonix` · language English (UK) · type App · price Free

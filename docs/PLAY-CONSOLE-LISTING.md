@@ -32,7 +32,7 @@ Search a track. Harmonix picks a meaningful word from the lyric line, shows a cl
 
 • Word of the Day from real, synced lyrics
 • Search a song and learn a word from that track
-• Hear a 30-second preview (Apple / Deezer) — never a full song in-app
+• Hear a 30-second preview — never a full song in-app
 • Tap to flip the card and see the line in context
 • Pronunciation via on-device-quality TTS
 • Optional Spotify connect to export playlists and, on the web, play clips if you have Premium
@@ -100,7 +100,7 @@ Play reviewers must reach Discover after login.
 ```
 Log in with the credentials above. Home is Discover.
 Search “Hey Jude”, tap the first result, flip the card.
-Hear it plays a 30-second preview (Apple/iTunes when Deezer is unavailable).
+Hear it plays a 30-second preview.
 Spotify Connect is optional and limited to testers on the Spotify developer allowlist until Extended Quota is approved.
 ```
 

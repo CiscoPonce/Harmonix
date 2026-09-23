@@ -1,35 +1,15 @@
-# Harmonix Android releases
+# Releases
 
-| File / build | Type | Notes |
-|--------------|------|-------|
-| **[Harmonix-1.0.8.apk](./Harmonix-1.0.8.apk)** | Flutter **release** (signed) | **Current** — production API, one-song-per-card, Play listing build `1.0.8+11` |
-| [Harmonix-flutter-debug.apk](./Harmonix-flutter-debug.apk) | Older Flutter debug | Sideload only; superseded |
-| [Harmonix-debug.apk](./Harmonix-debug.apk) | Capacitor (not shipped) | WebView wrapper — do not give testers |
+Installable builds are not stored in this repository.
 
-Download (recommended):  
-**https://github.com/CiscoPonce/Harmonix/releases/tag/harmonix-v0.0.3**
+| Audience | What to install |
+|----------|-----------------|
+| Play testers | The Internal testing link after the signed AAB is uploaded |
+| Play production | The Play Store listing, after Internal testing is green |
+| Engineers | Build locally from `mobile/` — see [mobile/PLAY-STORE.md](../mobile/PLAY-STORE.md) |
 
-Play upload is the **AAB**, not this APK: `mobile/build/app/outputs/bundle/release/app-release.aab` (local, not in git).
+**Current Play candidate:** `1.0.8` (versionCode `11`), application id `com.harmonix.app`.
 
-## Install on Android
+The AAB is produced on the release machine and uploaded in Play Console. It is gitignored (`*.aab`, `*.apk`), along with `upload-keystore.jks` and `key.properties`.
 
-1. Download `Harmonix-1.0.8.apk` from the release page (or this folder).
-2. Enable **Install unknown apps** for your file manager or browser.
-3. Open the APK and install.
-
-Requires internet. API: `https://harmonix.peeporunclub.co.uk/api`.
-
-## Build
-
-```bash
-export JAVA_HOME="$HOME/.local/jdk/jdk-17"
-export PATH="$JAVA_HOME/bin:$HOME/flutter/bin:$PATH"
-cd mobile
-flutter build apk --release \
-  --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
-cp build/app/outputs/flutter-apk/app-release.apk ../releases/Harmonix-1.0.8.apk
-```
-
-### Play Store AAB
-
-See [mobile/PLAY-STORE.md](../mobile/PLAY-STORE.md). Application ID: `com.harmonix.app`.
+Platform changelog tags (`v0.0.x`) are separate from the Play version. See the Releases section in the [README](../README.md).

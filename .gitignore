@@ -61,10 +61,10 @@ gsd-core/
 **/models/
 **/scratch/
 
-# --- Large local APK duplicates (keep releases/ intentionally) ---
+# --- Installable binaries stay out of git (Play uses an AAB) ---
 /harmonix.apk
 *.apk
-!releases/*.apk
+*.aab
 
 # --- Planning scratch (core ROADMAP/STATE/phases stay tracked) ---
 .planning/research/
