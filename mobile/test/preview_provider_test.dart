@@ -42,7 +42,10 @@ void main() {
     test('never surfaces song_already_used raw code', () {
       final msg = friendlyDailyWordError(reason: 'song_already_used');
       expect(msg.contains('song_already_used'), isFalse);
-      expect(msg.toLowerCase(), contains('moment'));
+      expect(
+        msg.toLowerCase(),
+        anyOf(contains('already'), contains('search')),
+      );
     });
   });
 }
