@@ -1,7 +1,7 @@
 export type MusicStyle = { value: string; label: string };
 
 export function visibleMusicStyles(
-  styles: MusicStyle[],
+  styles: readonly MusicStyle[],
   available: string[] | null,
   current: string,
 ): MusicStyle[] {
