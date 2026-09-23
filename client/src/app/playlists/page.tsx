@@ -117,6 +117,7 @@ function LibraryContent() {
   useEffect(() => {
     if (callbackOutcome !== 'connected' || clearedSuccessQuery.current) return;
     clearedSuccessQuery.current = true;
+    apiFetch('/user/sync-spotify-profile', { method: 'POST' }).catch(() => {});
     // Keep ?spotify=connected briefly for announcement, then clean the URL.
     const t = window.setTimeout(() => {
       router.replace('/playlists', { scroll: false });

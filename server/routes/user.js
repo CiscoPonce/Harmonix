@@ -20,7 +20,7 @@ function rejectInvalidLanguage(res, field, value) {
 }
 
 function preferencesSelect() {
-  return 'SELECT native_language, target_language, genre, difficulty, cefr_level, voice_gender FROM users WHERE id = ?';
+  return 'SELECT native_language, target_language, genre, difficulty, cefr_level, voice_gender, dyslexia_font FROM users WHERE id = ?';
 }
 
 router.get('/preferences', (req, res) => {
@@ -29,6 +29,7 @@ router.get('/preferences', (req, res) => {
     const user = db.prepare(preferencesSelect()).get(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (!user.voice_gender) user.voice_gender = 'female';
+    user.dyslexia_font = user.dyslexia_font ? 1 : 0;
     res.json(user);
   } catch (err) {
     console.error('GET /api/user/preferences error:', err.message);
@@ -38,7 +39,7 @@ router.get('/preferences', (req, res) => {
 
 router.patch('/preferences', (req, res) => {
   const userId = req.user.id;
-  const { native_language, target_language, genre, difficulty, cefr_level, voice_gender } = req.body;
+  const { native_language, target_language, genre, difficulty, cefr_level, voice_gender, dyslexia_font } = req.body;
 
   if (rejectInvalidLanguage(res, 'native_language', native_language)) return;
   if (rejectInvalidLanguage(res, 'target_language', target_language)) return;
@@ -78,6 +79,9 @@ router.patch('/preferences', (req, res) => {
       difficulty,
       cefr_level,
       voice_gender,
+      dyslexia_font: dyslexia_font === undefined
+        ? undefined
+        : (dyslexia_font === true || dyslexia_font === 1 || dyslexia_font === '1' ? 1 : 0),
     })) {
       if (value !== undefined) {
         sets.push(`${key} = ?`);
@@ -93,7 +97,9 @@ router.patch('/preferences', (req, res) => {
       req.body.genre !== undefined && req.body.genre !== current?.genre;
     const languageChanged =
       target_language !== undefined && target_language !== current?.target_language;
-    if (languageChanged || genreChanged) {
+    const nativeChanged =
+      native_language !== undefined && native_language !== current?.native_language;
+    if (languageChanged || genreChanged || nativeChanged) {
       // Stop in-flight refill of the old catalog, drop queued mismatches,
       // and invalidate any in-flight generate/deliver for the previous style.
       dailyWordService.abortRefill(userId);
@@ -102,11 +108,30 @@ router.patch('/preferences', (req, res) => {
     }
     const user = db.prepare(preferencesSelect()).get(userId);
     if (user && !user.voice_gender) user.voice_gender = 'female';
+    if (user) user.dyslexia_font = user.dyslexia_font ? 1 : 0;
     res.json(user);
   } catch (err) {
     console.error('PATCH /api/user/preferences error:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+router.get('/available-genres', (req, res) => {
+  const aiService = require('../services/aiService');
+  const target = req.query.target_language || req.user?.target_language;
+  const row = target
+    ? null
+    : db.prepare('SELECT target_language FROM users WHERE id = ?').get(req.user.id);
+  const lang = target || row?.target_language || 'es';
+  res.json({ target_language: lang, genres: aiService.genresAvailableForLanguage(lang) });
+});
+
+router.get('/spotify-taste', (req, res) => {
+  const profile = spotifyProfile.getUserMusicProfile(req.user.id);
+  res.json({
+    last_synced_at: profile?.last_synced_at || null,
+    top_artists: profile?.top_artists || [],
+  });
 });
 
 router.post('/sync-spotify-profile', async (req, res) => {

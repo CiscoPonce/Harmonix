@@ -27,7 +27,7 @@ describe("Daily Word Routes", () => {
     const original = dailyWordService.generateDailyWord;
     dailyWordService.generateDailyWord = async () => ({ date: "2026-06-14", word: { text: "hola" } });
 
-    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/").route.stack[0].handle;
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/").route.stack.at(-1).handle;
     const req = { user: { id: userId } };
     const res = mockRes();
     await handler(req, res);
@@ -60,7 +60,7 @@ describe("Daily Word Routes", () => {
     save(dayOffset(5), "viejo");
     save(dayOffset(10), "muy-viejo");
 
-    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/recent").route.stack[0].handle;
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/recent").route.stack.at(-1).handle;
     const req = { user: { id: userId }, query: { days: "7" } };
     const res = mockRes();
     handler(req, res);
@@ -89,7 +89,7 @@ describe("Daily Word Routes", () => {
     save("segundo");
     save("tercero");
 
-    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/recent").route.stack[0].handle;
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/recent").route.stack.at(-1).handle;
     const req = { user: { id: userId }, query: { days: "7" } };
     const res = mockRes();
     handler(req, res);
@@ -106,7 +106,7 @@ describe("Daily Word Routes", () => {
       return { date: "2026-06-14", word: { text: "nuevo" } };
     };
 
-    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/new").route.stack[0].handle;
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/new").route.stack.at(-1).handle;
     const req = { user: { id: userId } };
     const res = mockRes();
     await handler(req, res);
@@ -117,7 +117,7 @@ describe("Daily Word Routes", () => {
   });
 
   it("GET /queue-status returns ready count", () => {
-    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/queue-status").route.stack[0].handle;
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/queue-status").route.stack.at(-1).handle;
     const req = { user: { id: userId } };
     const res = mockRes();
     handler(req, res);
@@ -147,7 +147,7 @@ describe("Daily Word Routes", () => {
       audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30, preview_provider: "deezer" },
     }));
 
-    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/next").route.stack[0].handle;
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/next").route.stack.at(-1).handle;
     const req = { user: { id: userId } };
     const res = mockRes();
     await handler(req, res);
@@ -184,7 +184,7 @@ describe("Daily Word Routes", () => {
       part_of_speech: "noun",
     });
 
-    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/next").route.stack[0].handle;
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/next").route.stack.at(-1).handle;
     const req = { user: { id: userId } };
     const res = mockRes();
     await handler(req, res);
@@ -212,7 +212,7 @@ describe("GET /pronounce", () => {
   });
 
   it("returns 400 when word param is missing", async () => {
-    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack[0].handle;
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack.at(-1).handle;
     const req = { user: { id: userId }, query: {} };
     const res = mockRes();
     await handler(req, res);
@@ -222,7 +222,7 @@ describe("GET /pronounce", () => {
 
   it("returns 404 for unsupported language", async () => {
     db.prepare("UPDATE users SET target_language = ? WHERE id = ?").run("zh", userId);
-    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack[0].handle;
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack.at(-1).handle;
     const req = { user: { id: userId }, query: { word: "hola" } };
     const res = mockRes();
     await handler(req, res);
@@ -238,7 +238,7 @@ describe("GET /pronounce", () => {
 
     // Do NOT mock getPronunciationForWord — let it check the cache for real.
     // If Pocket-TTS isn't running, a cache miss would throw. Passing = cache hit worked.
-    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack[0].handle;
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack.at(-1).handle;
     const req = { user: { id: userId }, query: { word: "testword" } };
     const res = mockRes();
     await handler(req, res);
@@ -257,7 +257,7 @@ describe("GET /pronounce", () => {
       return fakeWav;
     };
 
-    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack[0].handle;
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack.at(-1).handle;
     const req = { user: { id: userId }, query: { word: "newword" } };
     const res = mockRes();
     await handler(req, res);
@@ -272,7 +272,7 @@ describe("GET /pronounce", () => {
       word: { text: "late", translation: "tarde", line_translation: "noches tarde a mediados de junio" },
       song: { id: "99", title: "Heat Waves", artist: "Glass Animals" },
     });
-    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/from-track").route.stack[0].handle;
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/from-track").route.stack.at(-1).handle;
     const req = { user: { id: userId }, body: { trackId: "99" } };
     const res = mockRes();
     await handler(req, res);

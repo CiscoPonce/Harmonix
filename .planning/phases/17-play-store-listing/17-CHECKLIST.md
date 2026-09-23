@@ -56,6 +56,26 @@ If `flutter doctor` still complains about missing **cmdline-tools**, install the
 
 ---
 
+## A0. Support mailbox (do this before Play Console listing)
+
+The site and listing pack use **`hello@peeporunclub.co.uk`**. Operator confirmed on 2026-09-23 that Zoho Mail is receiving mail.
+
+Fresh **Zoho Mail** setup on GoDaddy DNS — see [`docs/MAILBOX-SETUP.md`](../../../docs/MAILBOX-SETUP.md).
+
+- [x] Sign up at Zoho Mail and add domain `peeporunclub.co.uk`
+- [x] Verify domain (GoDaddy one-click **or** manual TXT in GoDaddy DNS)
+- [x] Clear any default GoDaddy/Microsoft MX and old SPF; add Zoho MX + SPF + DKIM
+- [x] Create **`hello@peeporunclub.co.uk`** (dedicated user or alias)
+- [x] Zoho Admin → all mail records verified; Gmail → hello@ test passes
+- [x] Test: Gmail → `hello@…` arrives; reply from `hello@…` is not rejected
+- [ ] Privacy page mailto works: https://harmonix.peeporunclub.co.uk/privacy
+
+If you use a different address, change `client/src/lib/contact.ts` first, then update `docs/PLAY-CONSOLE-LISTING.md`.
+
+**Blocked until this section is done:** section B contact email and Data safety “request deletion” email.
+
+---
+
 ## B. Play Console — create the app (17-02)
 
 - [ ] Google Play developer account paid ($25) — [play.google.com/console](https://play.google.com/console)

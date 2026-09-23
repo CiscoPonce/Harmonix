@@ -17,6 +17,7 @@ import {
 } from '@/lib/api';
 import { LANGUAGES, languageLabel } from '@/lib/languages';
 import { useTranslation } from '@/lib/i18n';
+import { visibleMusicStyles } from '@/lib/musicStyles';
 import {
   parseSpotifyCallbackOutcome,
   type ConnectionState,
@@ -73,6 +74,8 @@ function SettingsContent() {
   const [langError, setLangError] = useState<string | null>(null);
   const [langSaved, setLangSaved] = useState(false);
   const [dyslexicFont, setDyslexicFont] = useState(false);
+  const [availableGenres, setAvailableGenres] = useState<string[] | null>(null);
+  const [tasteSyncedAt, setTasteSyncedAt] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -86,6 +89,35 @@ function SettingsContent() {
     setTargetLanguage(user.target_language || '');
     setMusicStyle(normalizeGenre(user.genre));
     setVoiceGender(user.voice_gender === 'male' ? 'male' : 'female');
+    const dyslexiaOn = user.dyslexia_font === 1 || user.dyslexia_font === true;
+    setDyslexicFont(dyslexiaOn);
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('font-dyslexic', dyslexiaOn);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!targetLanguage) return;
+    let cancelled = false;
+    apiFetch(`/user/available-genres?target_language=${encodeURIComponent(targetLanguage)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (!cancelled && Array.isArray(body?.genres)) setAvailableGenres(body.genres);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [targetLanguage]);
+
+  useEffect(() => {
+    if (!user) return;
+    apiFetch('/user/spotify-taste')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (body?.last_synced_at) setTasteSyncedAt(body.last_synced_at);
+      })
+      .catch(() => {});
   }, [user]);
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -94,8 +126,8 @@ function SettingsContent() {
       setPasswordError('New passwords do not match');
       return;
     }
-    if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
       return;
     }
     setPasswordBusy(true);
@@ -269,6 +301,7 @@ function SettingsContent() {
           target_language: nextTarget,
           genre: nextStyle,
           voice_gender: nextVoice,
+          dyslexia_font: dyslexicFont ? 1 : 0,
         }),
       });
       if (!res.ok) {
@@ -382,7 +415,7 @@ function SettingsContent() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 className="mt-1.5"
               />
             </div>
@@ -396,7 +429,7 @@ function SettingsContent() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 className="mt-1.5"
               />
             </div>
@@ -480,7 +513,7 @@ function SettingsContent() {
               {t('music_style_hint')}
             </p>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t('music_genre')}>
-              {MUSIC_STYLES.map((opt) => {
+              {visibleMusicStyles(MUSIC_STYLES, availableGenres, musicStyle).map((opt) => {
                 const active = musicStyle === opt.value;
                 return (
                   <button
@@ -595,6 +628,12 @@ function SettingsContent() {
           </div>
         </section>
 
+        {tasteSyncedAt && (
+          <p className="text-xs text-[#5C6B62] dark:text-[#9AABA0]">
+            Spotify taste synced {new Date(tasteSyncedAt).toLocaleString()}
+          </p>
+        )}
+
         <SpotifyConnectionCard
           state={cardState}
           displayName={displayName}
@@ -637,6 +676,11 @@ function SettingsContent() {
                   if (typeof document !== 'undefined') {
                     document.documentElement.classList.toggle('font-dyslexic', next);
                   }
+                  apiFetch('/user/preferences', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dyslexia_font: next ? 1 : 0 }),
+                  }).then(() => refreshUser()).catch(() => {});
                 }}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                   dyslexicFont ? 'bg-[#0B4D2E] dark:bg-[#3DCF7A]' : 'bg-gray-300 dark:bg-gray-700'

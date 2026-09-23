@@ -13,7 +13,8 @@ Put Harmonix on Google Play via **Internal testing first**, then Production when
 | Item | Where |
 |------|--------|
 | Live API + web | https://harmonix.peeporunclub.co.uk |
-| Privacy / terms | `/privacy`, `/terms` — mailbox `hello@peeporunclub.co.uk` |
+| Privacy / terms | `/privacy`, `/terms` — support address `hello@peeporunclub.co.uk` in code |
+| Support mailbox | **Not created yet** — operator step A0 in [17-CHECKLIST.md](./17-CHECKLIST.md); guide [docs/MAILBOX-SETUP.md](../../../docs/MAILBOX-SETUP.md) |
 | Listing copy + Data safety answers | [`docs/PLAY-CONSOLE-LISTING.md`](../../../docs/PLAY-CONSOLE-LISTING.md) |
 | App icon 512×512 | `mobile/store/app-icon-512.png` |
 | Feature graphic 1024×500 | `mobile/store/feature-graphic.png` |
@@ -27,7 +28,7 @@ Put Harmonix on Google Play via **Internal testing first**, then Production when
 |----|----------|
 | D-17-01 | Play Store client is **Flutter only** (`mobile/`). Capacitor stays unpublished. |
 | D-17-02 | Internal testing **before** Production. No production submit until Hear-it + login work on a tester phone. |
-| D-17-03 | Support mailbox is the domain address `hello@peeporunclub.co.uk` (swap in `client/src/lib/contact.ts` if the box name changes). |
+| D-17-03 | Support mailbox is `hello@peeporunclub.co.uk` on **Zoho Mail** (GoDaddy DNS). Swap in `client/src/lib/contact.ts` only if the address changes. |
 | D-17-04 | Upload keystore stays **off git** (`mobile/android/*.jks`, `key.properties`). Lose it and you cannot update the listing. |
 | D-17-05 | Audio in-app is **30-second previews** (iTunes fallback when Deezer 403s). Full tracks open externally. |
 | D-17-06 | Spotify Connect is optional for reviewers until Extended Quota is approved. |

@@ -192,6 +192,7 @@ export function DailyWordCard({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorReason, setErrorReason] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -349,16 +350,20 @@ export function DailyWordCard({
         const msg = friendlyDailyWordReason(body.reason, {
           retryAfterSec: body.retryAfterSec,
         });
-        throw new Error(msg);
+        const wrapped = new Error(msg) as Error & { reason?: string };
+        wrapped.reason = body.reason;
+        throw wrapped;
       }
       applyPayload(await res.json());
     } catch (err) {
       if (ac.signal.aborted || (err instanceof DOMException && err.name === "AbortError")) return;
       const msg = err instanceof Error ? err.message : "Failed to load daily word";
+      const reason = err instanceof Error ? (err as Error & { reason?: string }).reason || null : null;
       if (!initial && data) {
         setRefreshError(msg);
       } else {
         setError(msg);
+        setErrorReason(reason);
       }
     } finally {
       if (!ac.signal.aborted) {
@@ -409,12 +414,16 @@ export function DailyWordCard({
         if (ac.signal.aborted) return;
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(friendlyDailyWordReason(body.reason || body.error));
+          const wrapped = new Error(friendlyDailyWordReason(body.reason || body.error)) as Error & { reason?: string };
+          wrapped.reason = body.reason;
+          throw wrapped;
         }
         applyPayload(await res.json());
         setIsFlipped(true);
       } catch (err) {
         if (ac.signal.aborted || (err instanceof DOMException && err.name === "AbortError")) return;
+        const reason = err instanceof Error ? (err as Error & { reason?: string }).reason || null : null;
+        setErrorReason(reason);
         setRefreshError(err instanceof Error ? err.message : t('no_word_available'));
       } finally {
         if (!ac.signal.aborted) {
@@ -898,6 +907,23 @@ export function DailyWordCard({
     return (
       <div className="w-full max-w-3xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-8 space-y-4 text-center">
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{error || t('no_word_available')}</p>
+        {errorReason === "song_already_used" && (
+          <div className="flex flex-wrap justify-center gap-2">
+            <a
+              href="/settings"
+              className="rounded-full border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700"
+            >
+              {t("catalog_change_style")}
+            </a>
+            <button
+              type="button"
+              className="rounded-full border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700"
+              onClick={() => document.getElementById("discover-song-search")?.focus()}
+            >
+              {t("catalog_search_song")}
+            </button>
+          </div>
+        )}
         <Button onClick={() => loadDailyWord(false)} disabled={refreshing}>
           {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : t('try_again')}
         </Button>
@@ -1008,8 +1034,16 @@ export function DailyWordCard({
       )}
 
       {refreshError && (
-        <div className="px-6 py-3 bg-red-50 dark:bg-red-950/50 border-b border-red-200 dark:border-red-900 text-red-600 dark:text-red-300 text-xs font-medium text-center">
-          {refreshError}
+        <div className="px-6 py-3 bg-red-50 dark:bg-red-950/50 border-b border-red-200 dark:border-red-900 text-red-600 dark:text-red-300 text-xs font-medium text-center space-y-2">
+          <p>{refreshError}</p>
+          {errorReason === "song_already_used" && (
+            <div className="flex flex-wrap justify-center gap-2">
+              <a href="/settings" className="underline">{t("catalog_change_style")}</a>
+              <button type="button" className="underline" onClick={() => document.getElementById("discover-song-search")?.focus()}>
+                {t("catalog_search_song")}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

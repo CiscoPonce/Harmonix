@@ -6,6 +6,11 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
+* **learner:** Phase 18 — purge the word queue when native language changes; drop duplicate queue cards; skip queued lemmas on song search; count streaks on a UTC calendar
+* **security:** rate-limit new-word routes (20/min); passwords must be at least 8 characters; bump `http-proxy-middleware` to 4.2.0
+* **library:** playlist list uses cached covers and does not call Deezer per row
+* **discover:** when songs run out, offer change-style and search instead of repeating a track; hide music styles with an empty catalog
+* **settings:** sync Spotify taste after connect and show last sync time; persist a dyslexia-friendly font on web and Android
 * **daily-word:** never serve the same song twice on Next — fail honestly when unused songs are gone instead of looping a known track
 * **shelf:** show each discovered word once — polish no longer inserts a duplicate card
 * **ai:** GLM-5.3-Flash is the NIM primary; Lightning is backup; Muse dropped

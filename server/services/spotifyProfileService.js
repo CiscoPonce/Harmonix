@@ -32,13 +32,13 @@ async function syncUserProfile(userId) {
   let topTracksRes = null;
 
   try {
-    topArtistsRes = await spotifyService.fetchWithAuth(userId, '/me/top/artists?limit=20&time_range=medium_term');
+    topArtistsRes = await spotifyService.spotifyRequest(userId, '/me/top/artists?limit=20&time_range=medium_term');
   } catch (err) {
     console.warn(`[SpotifyProfile] Failed to fetch top artists for user ${userId}:`, err.message);
   }
 
   try {
-    topTracksRes = await spotifyService.fetchWithAuth(userId, '/me/top/tracks?limit=20&time_range=medium_term');
+    topTracksRes = await spotifyService.spotifyRequest(userId, '/me/top/tracks?limit=20&time_range=medium_term');
   } catch (err) {
     console.warn(`[SpotifyProfile] Failed to fetch top tracks for user ${userId}:`, err.message);
   }

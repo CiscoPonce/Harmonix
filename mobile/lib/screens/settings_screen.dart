@@ -31,6 +31,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _spotifyMessage;
   bool _confirmDisconnect = false;
   bool _consumedNavRecovery = false;
+  String? _styleLang;
+  List<(String, String)> _styles = kMusicStyles;
 
   @override
   void initState() {
@@ -156,6 +158,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _ensureStyles(String lang) {
+    if (_styleLang == lang) return;
+    _styleLang = lang;
+    context.read<ApiClient>().request(
+      'GET',
+      '/user/available-genres?target_language=$lang',
+    ).then((body) {
+      final genres = (body['genres'] as List?)?.map((e) => e.toString()).toSet();
+      if (!mounted || genres == null || genres.isEmpty) return;
+      setState(() {
+        _styles = kMusicStyles.where((s) => genres.contains(s.$1)).toList();
+      });
+    }, onError: (_) {});
+  }
+
   Future<void> _savePrefs(Map<String, String> patch, {String? successHint}) async {
     if (_prefsSaving) return;
     final auth = context.read<AuthState>();
@@ -191,6 +208,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final targetLang = normalizeLanguage(user['target_language']?.toString(), fallback: 'fr');
     final genre = normalizeGenre(user['genre']?.toString());
     final voice = normalizeVoiceGender(user['voice_gender']?.toString());
+    final dyslexia = user['dyslexia_font'] == 1 || user['dyslexia_font'] == true;
+    _ensureStyles(targetLang);
 
     if (_loading) {
       return Center(child: CircularProgressIndicator(color: colors.accent));
@@ -297,6 +316,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.tr('dyslexia_font'),
+                            style: TextStyle(fontWeight: FontWeight.w700, color: colors.textPrimary),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            context.tr('dyslexia_font_hint'),
+                            style: TextStyle(color: colors.textMuted, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: dyslexia,
+                      onChanged: _prefsSaving
+                          ? null
+                          : (on) => _savePrefs({'dyslexia_font': on ? '1' : '0'}),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 20),
                 Text(
                   context.tr('music_style').toUpperCase(),
@@ -312,7 +358,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    for (final s in kMusicStyles)
+                    for (final s in _styles)
                       ChoiceChip(
                         label: Text(s.$2),
                         selected: genre == s.$1,

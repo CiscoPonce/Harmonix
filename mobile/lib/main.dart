@@ -38,18 +38,26 @@ class _HarmonixAppState extends State<HarmonixApp> {
     _appLinks = AppLinks();
   }
 
-  void _bindAppLinksOnce() {
+  void _bindAppLinksOnce(BuildContext host) {
     if (_linksBound) return;
     _linksBound = true;
-    _consumeInitialLink();
-    _linkSub = _appLinks.uriLinkStream.listen(_nav.handleIncomingUri);
+    final api = host.read<ApiClient>();
+    _consumeInitialLink(api);
+    _linkSub = _appLinks.uriLinkStream.listen((uri) {
+      final handled = _nav.handleIncomingUri(uri);
+      if (handled && uri.queryParameters['spotify'] == 'connected') {
+        api.request('POST', '/user/sync-spotify-profile').catchError((_) => <String, dynamic>{});
+      }
+    });
   }
 
-  Future<void> _consumeInitialLink() async {
+  Future<void> _consumeInitialLink(ApiClient api) async {
     try {
       final uri = await _appLinks.getInitialLink();
-      if (uri != null) {
-        _nav.handleIncomingUri(uri);
+      if (uri == null) return;
+      final handled = _nav.handleIncomingUri(uri);
+      if (handled && uri.queryParameters['spotify'] == 'connected') {
+        await api.request('POST', '/user/sync-spotify-profile');
       }
     } catch (_) {
       // Platform channels unavailable in some test/desktop hosts — ignore.
@@ -95,7 +103,7 @@ class _HarmonixAppState extends State<HarmonixApp> {
 class _RootGate extends StatefulWidget {
   const _RootGate({required this.onAuthenticated});
 
-  final VoidCallback onAuthenticated;
+  final void Function(BuildContext context) onAuthenticated;
 
   @override
   State<_RootGate> createState() => _RootGateState();
@@ -108,7 +116,8 @@ class _RootGateState extends State<_RootGate> {
     if (!ready || _scheduledBind) return;
     _scheduledBind = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.onAuthenticated();
+      if (!mounted) return;
+      widget.onAuthenticated(context);
     });
   }
 

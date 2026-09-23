@@ -61,7 +61,19 @@ const authLimiter = rateLimit({
   handler: rateLimitJson('too_many_attempts', 'Too many attempts. Try again in a few minutes.'),
 });
 
-/** Public TTS costs real CPU; keep anonymous callers honest. */
+/** Authenticated daily-word generation. Keyed per user once auth has run. */
+function dailyWordLimiter(req, res, next) {
+  return dailyWordRateLimit(req, res, next);
+}
+
+const dailyWordRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: testMode ? 1000 : 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => String(req.user?.id || req.ip || 'anon'),
+  handler: rateLimitJson('rate_limited', 'Too many new-word requests. Slow down.'),
+});
 const pronounceLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: testMode ? 1000 : 30,
@@ -98,6 +110,7 @@ module.exports = {
   corsOrigin,
   securityHeaders,
   authLimiter,
+  dailyWordLimiter,
   pronounceLimiter,
   publicProxyLimiter,
   validateRegistration,

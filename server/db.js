@@ -82,6 +82,9 @@ const userPrefCols2 = db.prepare("PRAGMA table_info(users)").all();
 if (!userPrefCols2.some(col => col.name === 'voice_gender')) {
  db.exec("ALTER TABLE users ADD COLUMN voice_gender TEXT DEFAULT 'female'");
 }
+if (!userPrefCols2.some(col => col.name === 'dyslexia_font')) {
+ db.exec("ALTER TABLE users ADD COLUMN dyslexia_font INTEGER DEFAULT 0");
+}
 
 // Vocabulary tables
 db.exec(`

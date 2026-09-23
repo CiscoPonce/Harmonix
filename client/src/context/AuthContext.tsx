@@ -13,6 +13,7 @@ export interface User {
   difficulty?: string;
   cefr_level?: string;
   voice_gender?: 'female' | 'male' | string;
+  dyslexia_font?: number | boolean;
   is_spotify_connected?: boolean;
   spotify_display_name?: string;
 }

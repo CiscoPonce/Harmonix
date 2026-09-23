@@ -54,6 +54,35 @@ describe('Playlist API Routes', () => {
       expect(res.body.playlists).to.have.lengthOf(1);
       expect(res.body.playlists[0].name).to.equal('Test List');
     });
+
+    it('uses cached covers and does not call Deezer on the list', async () => {
+      const deezer = require('../services/deezerService');
+      const original = deezer.fetchTrack;
+      let calls = 0;
+      deezer.fetchTrack = async () => {
+        calls += 1;
+        throw new Error('deezer should not be called');
+      };
+      try {
+        const ids = ['pl-a', 'pl-b'];
+        ids.forEach((pid, i) => {
+          db.prepare('INSERT INTO playlists (id, user_id, name) VALUES (?, ?, ?)').run(pid, 'pl-owner', `List ${i}`);
+          db.prepare('INSERT INTO playlist_songs (id, playlist_id, song_id) VALUES (?, ?, ?)').run(`e-${pid}`, pid, `song-${i}`);
+          db.prepare('INSERT OR REPLACE INTO song_cache (song_id, track_json) VALUES (?, ?)').run(
+            `song-${i}`,
+            JSON.stringify({ cover: `https://cdn.example/cover-${i}.jpg` }),
+          );
+        });
+        const handler = playlistsRouter.stack.find(s => s.route.path === '/' && s.route.methods.get).route.stack[0].handle;
+        const res = mockRes();
+        await handler({ user: { id: 'pl-owner' } }, res);
+        expect(calls).to.equal(0);
+        expect(res.body.playlists).to.have.lengthOf(2);
+        expect(res.body.playlists[0].cover_urls[0]).to.match(/cover-/);
+      } finally {
+        deezer.fetchTrack = original;
+      }
+    });
   });
 
   describe('GET /:id', () => {

@@ -25,6 +25,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    if (_register && _password.text.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password must be at least 8 characters')),
+      );
+      return;
+    }
     setState(() => _busy = true);
     final auth = context.read<AuthState>();
     try {

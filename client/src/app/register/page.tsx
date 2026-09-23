@@ -21,6 +21,10 @@ export default function RegisterPage() {
       setError('Passwords do not match');
       return;
     }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
     
     setIsLoading(true);
     setError(null);
@@ -64,6 +68,7 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={8}
             />
           </div>
           <div className="space-y-2">

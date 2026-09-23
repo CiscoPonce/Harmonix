@@ -72,6 +72,22 @@ describe('Password routes', () => {
     assert.strictEqual(res.status, 401);
   });
 
+  it('rejects a new password shorter than 8 characters', async () => {
+    const token = auth.generateAccessToken({ id: userId, email });
+    const res = await fetch(`${baseUrl}/api/auth/change-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ currentPassword: password, newPassword: 'short1' }),
+    });
+    assert.strictEqual(res.status, 400);
+    const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId);
+    const unchanged = await auth.comparePassword(password, row.password_hash);
+    assert.strictEqual(unchanged, true);
+  });
+
   it('changes password when the current password matches', async () => {
     const token = auth.generateAccessToken({ id: userId, email });
     const res = await fetch(`${baseUrl}/api/auth/change-password`, {

@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: play-store-listing
 status: in_progress
-stopped_at: "2026-09-06 Phase 17 opened; JDK 17 installed user-local"
-last_updated: "2026-09-15T20:22:00.000Z"
+stopped_at: "2026-09-23 Phase 18 learner reliability complete; Phase 17 Play Console listing remains"
+last_updated: "2026-09-23T20:00:00.000Z"
 progress:
-  total_phases: 17
-  completed_phases: 16
+  total_phases: 18
+  completed_phases: 17
   percent: 94
 ---
 
@@ -15,7 +15,9 @@ progress:
 
 ## Current Focus
 
-**Phase 17 — Play Store listing.** Section A (keystore + signed AAB `1.0.8+11`) is done on this PC. Remaining: Play Console create-app, screenshots, Internal testing — [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](phases/17-play-store-listing/17-CHECKLIST.md). AAB: `mobile/build/app/outputs/bundle/release/app-release.aab`. Capacitor is not a release path.
+**Phase 17 — Play Store listing (current operator track).** Section A keystore + AAB `1.0.8+11` is done. **`hello@peeporunclub.co.uk` is live on Zoho** (confirmed 2026-09-23). Next: Play Console listing, screenshots, Internal testing — [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](phases/17-play-store-listing/17-CHECKLIST.md).
+
+**Phase 18 — Learner reliability (complete).** Native-language changes purge the word queue; duplicate queue cards are discarded; song search skips lemmas already queued; streaks use UTC. New-word routes are rate-limited, passwords are at least 8 characters, and playlist lists use cached covers. Exhausted catalogs offer a style change or a song search. Spotify taste syncs after connect, and the dyslexia font is saved on web and Android. Song reuse stays off.
 
 **2026-09-18 song uniqueness:** Next never reuses a song. Testers were getting repeats because exhausted-catalog fallback served a known track again. Unused catalog + AI new-song pick only; if nothing unused remains, the API fails honestly (`song_already_used`) instead of looping. Searching a song already learned from is also rejected.
 
@@ -57,7 +59,8 @@ progress:
 | Phase | Status |
 |------:|--------|
 | 1–16 | Complete |
-| 17 | In progress — Play Store listing |
+| 17 | In progress — Play Store listing (mailbox live) |
+| 18 | Complete — Learner reliability |
 
 ## Architecture (verified)
 

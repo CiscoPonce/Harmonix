@@ -204,7 +204,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 // Get Current User
 app.get('/api/auth/me', authenticateToken, (req, res) => {
   console.log('GET /api/auth/me - for user:', req.user.id);
-  const user = db.prepare('SELECT id, email, created_at, cefr_level, target_language, genre, difficulty, native_language, voice_gender FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT id, email, created_at, cefr_level, target_language, genre, difficulty, native_language, voice_gender, dyslexia_font FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.sendStatus(404);
   const spotify = db.prepare('SELECT spotify_user_id, spotify_display_name FROM user_spotify_tokens WHERE user_id = ?').get(req.user.id);
   user.is_spotify_connected = !!spotify;

@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const auth = require('../auth');
+const { PASSWORD_MIN } = require('../middleware/security');
 
 const RESET_DISABLED = {
   error: 'password_reset_disabled',
@@ -22,8 +23,8 @@ function passwordRoutes(authenticateToken) {
         error: 'Current password and new password are required',
       });
     }
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (newPassword.length < PASSWORD_MIN) {
+      return res.status(400).json({ error: `Password must be at least ${PASSWORD_MIN} characters` });
     }
     try {
       const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);

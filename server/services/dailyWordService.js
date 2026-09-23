@@ -196,8 +196,15 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
   return candidates[0];
 }
 
-function todayDate() {
-  return new Date().toISOString().slice(0, 10);
+function todayDate(now = new Date()) {
+  return now.toISOString().slice(0, 10);
+}
+
+function shiftUtcDate(isoDate, days) {
+  const [year, month, day] = String(isoDate).split("-").map((n) => parseInt(n, 10));
+  const cursor = new Date(Date.UTC(year, (month || 1) - 1, day || 1));
+  cursor.setUTCDate(cursor.getUTCDate() + days);
+  return cursor.toISOString().slice(0, 10);
 }
 
 function formatTimestamp(ms) {
@@ -1108,7 +1115,7 @@ function getRecentDailyWords(userId, days = 7) {
   return uniqueRecentSummaries(summarized);
 }
 
-function computeDailyWordStreak(userId) {
+function computeDailyWordStreak(userId, now = new Date()) {
   const dates = db.prepare(`
     SELECT DISTINCT date FROM daily_words WHERE user_id = ? ORDER BY date DESC
   `).all(userId).map((row) => row.date);
@@ -1116,19 +1123,15 @@ function computeDailyWordStreak(userId) {
   if (!dates.length) return 0;
 
   const dateSet = new Set(dates);
-  const cursor = new Date();
-  const today = todayDate();
-
-  if (!dateSet.has(today)) {
-    cursor.setDate(cursor.getDate() - 1);
+  let cursor = todayDate(now);
+  if (!dateSet.has(cursor)) {
+    cursor = shiftUtcDate(cursor, -1);
   }
 
   let streak = 0;
-  while (true) {
-    const key = cursor.toISOString().slice(0, 10);
-    if (!dateSet.has(key)) break;
+  while (dateSet.has(cursor)) {
     streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
+    cursor = shiftUtcDate(cursor, -1);
   }
 
   return streak;
@@ -1560,6 +1563,23 @@ function purgeQueueWrongGenre(userId, userGenre) {
   }
 }
 
+function discardRepeatedQueueItems(userId) {
+  const history = getDeliveredDiscoveryHistory(userId);
+  for (const item of wordQueue.listReadyItems(userId)) {
+    const payload = item.payload || {};
+    const word = String(payload.word?.text || "").toLowerCase();
+    const songId = payload.song?.id != null ? String(payload.song.id) : null;
+    const songKey =
+      payload.song?.artist && payload.song?.title
+        ? `${String(payload.song.artist).toLowerCase()}|${String(payload.song.title).toLowerCase()}`
+        : null;
+    const repeatedWord = word && history.words.has(word);
+    const repeatedSong =
+      (songId && history.songIds.has(songId)) || (songKey && history.songKeys.has(songKey));
+    if (repeatedWord || repeatedSong) wordQueue.discard(item.id);
+  }
+}
+
 /**
  * FIFO, except never serve a song the learner already saw (including the
  * last delivered card). If every queued item is a repeat, return null so
@@ -1570,6 +1590,8 @@ function pickNextQueueItem(userId, lastSongId) {
   if (!items.length) return null;
   const history = getDeliveredDiscoveryHistory(userId);
   const unused = items.filter((item) => {
+    const word = String(item.payload?.word?.text || "").toLowerCase();
+    if (word && history.words.has(word)) return false;
     const id = item.payload?.song?.id != null ? String(item.payload.song.id) : null;
     const key =
       item.payload?.song?.artist && item.payload?.song?.title
@@ -1589,6 +1611,7 @@ async function consumeNextDailyWord(user, fetchImpl = fetch) {
   const userGenre = user.genre || "pop";
   purgeQueueWrongLanguage(user.id, langCode);
   purgeQueueWrongGenre(user.id, userGenre);
+  discardRepeatedQueueItems(user.id);
   const maxSkips = wordQueue.QUEUE_MAX + 5;
   const lastSongId = (() => {
     const last = getLastDeliveredPayload(user.id);
@@ -1613,13 +1636,12 @@ async function consumeNextDailyWord(user, fetchImpl = fetch) {
       continue;
     }
 
-    wordQueue.consumeById(item.id);
     const queued = item.payload;
-
     const history = getDeliveredDiscoveryHistory(user.id);
     const word = String(queued.word?.text || "").toLowerCase();
     if (word && history.words.has(word)) {
       console.warn(`daily word skip: duplicate queued word "${queued.word?.text}"`);
+      wordQueue.discard(item.id);
       continue;
     }
 
@@ -1635,9 +1657,11 @@ async function consumeNextDailyWord(user, fetchImpl = fetch) {
       console.warn(
         `daily word skip: duplicate queued song "${queued.song?.artist} — ${queued.song?.title}"`
       );
+      wordQueue.discard(item.id);
       continue;
     }
 
+    wordQueue.consumeById(item.id);
     const delivered = deliverPayload(user.id, queued, { fromQueue: true });
     scheduleRefill(user, fetchImpl);
     return delivered;
@@ -2371,6 +2395,7 @@ async function generateDailyWordFromTrack(user, trackId, fetchImpl = fetch) {
     genre: user.genre || "pop",
   };
   const history = getDeliveredDiscoveryHistory(user.id);
+  const avoidWords = getUserDiscoveryHistory(user.id).words;
   const songKey = `${String(track.artist?.name || "").toLowerCase()}|${String(track.title || "").toLowerCase()}`;
   if (history.songIds.has(String(track.id)) || (songKey !== "|" && history.songKeys.has(songKey))) {
     const err = new Error("song_already_used");
@@ -2381,7 +2406,7 @@ async function generateDailyWordFromTrack(user, trackId, fetchImpl = fetch) {
     suggestion,
     user,
     date,
-    history.words,
+    avoidWords,
     fetchImpl,
     new Set(history.songIds),
     { allowSongReuse: false, allowOutsidePreview: true, knownTrack: track }

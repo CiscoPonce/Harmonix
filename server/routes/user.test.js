@@ -137,6 +137,27 @@ describe('User Preferences API Routes', () => {
       expect(wordQueue.countReady(userId)).to.equal(0);
     });
 
+    it('purges word queue when native_language changes', () => {
+      const userId = 'up-test';
+      db.prepare("UPDATE users SET native_language = 'en', target_language = 'es' WHERE id = ?").run(userId);
+      db.prepare('DELETE FROM user_word_queue WHERE user_id = ?').run(userId);
+      wordQueue.enqueuePayloads(userId, [{
+        date: '2026-07-09',
+        language_code: 'es',
+        word: { text: 'amor', translation: 'love' },
+        song: { id: '1', title: 'Song', artist: 'Artist' },
+        lyric: { snippet: 'amor', timestamp: '0:01', timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 4 },
+        audio: { preview_url: 'http://x', duration_seconds: 180, preview_offset: 30 },
+      }]);
+      expect(wordQueue.countReady(userId)).to.equal(1);
+      const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
+      const req = { body: { native_language: 'fr' }, user: { id: userId } };
+      const res = mockRes();
+      handler(req, res);
+      expect(res.body.native_language).to.equal('fr');
+      expect(wordQueue.countReady(userId)).to.equal(0);
+    });
+
     it('purges word queue when genre changes', () => {
       const userId = 'up-test';
       db.prepare('DELETE FROM user_word_queue WHERE user_id = ?').run(userId);

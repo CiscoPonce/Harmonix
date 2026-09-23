@@ -16,6 +16,8 @@ const {
   getRecentArtists,
   generateNextDailyWord,
   generateDailyWord,
+  generateDailyWordFromTrack,
+  computeDailyWordStreak,
   fetchAiCandidates,
   enrichIfNeeded,
   enrichPayloadWordMeta,
@@ -840,6 +842,10 @@ describe("Daily Word Service", () => {
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     const result = await consumeNextDailyWord(user);
     expect(result.word.text).to.equal("noche");
+    const leftover = db.prepare(
+      "SELECT word_json FROM user_word_queue WHERE user_id = ? AND consumed_at IS NULL"
+    ).all(userId);
+    expect(leftover.some((row) => String(row.word_json).includes("amor"))).to.equal(false);
   });
 
   it("skips queued items that reuse a song already in history", async () => {
@@ -1631,5 +1637,74 @@ describe("Daily Word Service", () => {
     }, user);
     expect(out.word.translation).to.equal("esperar");
     expect(out.word.gloss_v).to.equal(1);
+  });
+
+  it("computes the streak on a UTC calendar", () => {
+    expect(computeDailyWordStreak(userId)).to.equal(0);
+    saveDailyWord(userId, "2026-09-23", {
+      date: "2026-09-23",
+      word: { text: "hoy" },
+      song: { id: "s1", title: "A", artist: "B" },
+    });
+    saveDailyWord(userId, "2026-09-21", {
+      date: "2026-09-21",
+      word: { text: "gap" },
+      song: { id: "s2", title: "C", artist: "D" },
+    });
+    const now = new Date("2026-09-23T23:30:00.000Z");
+    expect(computeDailyWordStreak(userId, now)).to.equal(1);
+    saveDailyWord(userId, "2026-09-22", {
+      date: "2026-09-22",
+      word: { text: "ayer" },
+      song: { id: "s3", title: "E", artist: "F" },
+    });
+    expect(computeDailyWordStreak(userId, now)).to.equal(3);
+  });
+
+  it("from-track avoids a lemma already waiting in the queue", async () => {
+    wordQueue.enqueuePayloads(userId, [{
+      date: "2026-09-23",
+      language_code: "es",
+      preferred_genre: "pop",
+      word: { text: "amor", translation: "love" },
+      lyric: { snippet: "amor", timestamp: "0:35", timestamp_ms: 35000, line_index: 0, char_start: 3, char_end: 7 },
+      song: { id: "queue-song", title: "Queued", artist: "Queue", genre: "pop" },
+      audio: { preview_url: "http://x", duration_seconds: 180, preview_offset: 30 },
+    }]);
+    const restore = stubSongPipeline([]);
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const mockFetch = async (url) => {
+      const href = String(url);
+      if (href.includes("api.deezer.com/track/")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 88001,
+            title: "Fresh Track",
+            duration: 200,
+            preview: "https://cdn.example/preview.mp3",
+            artist: { name: "Fresh Artist" },
+          }),
+        };
+      }
+      if (href.includes("lrclib.net")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            syncedLyrics: "[00:35.00] El amor y la noche brillan\n[00:42.00] Siempre juntos\n[00:50.00] Para ti",
+            plainLyrics: "El amor y la noche brillan\nSiempre juntos\nPara ti",
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    };
+    try {
+      const result = await generateDailyWordFromTrack(user, "88001", mockFetch);
+      expect(result.word.text.toLowerCase()).to.not.equal("amor");
+    } finally {
+      restore();
+    }
   });
 });

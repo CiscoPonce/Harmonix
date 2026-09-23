@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require("../db");
 const dailyWordService = require("../services/dailyWordService");
 const wordQueue = require("../services/wordQueueService");
+const { dailyWordLimiter } = require("../middleware/security");
 const ttsService = require("../services/ttsService");
 
 function loadUser(userId) {
@@ -44,7 +45,7 @@ router.get("/queue-status", (req, res) => {
   res.json(wordQueue.getQueueStatus(req.user.id));
 });
 
-router.post("/next", async (req, res) => {
+router.post("/next", dailyWordLimiter, async (req, res) => {
   const started = Date.now();
   console.log(`POST /api/daily-word/next - user: ${req.user.id}`);
   try {
@@ -68,7 +69,7 @@ router.post("/next", async (req, res) => {
   }
 });
 
-router.post("/from-track", async (req, res) => {
+router.post("/from-track", dailyWordLimiter, async (req, res) => {
   const started = Date.now();
   const trackId = req.body?.trackId || req.body?.track_id || req.query.trackId;
   console.log(`POST /api/daily-word/from-track - user: ${req.user.id} track=${trackId}`);
@@ -91,7 +92,7 @@ router.post("/from-track", async (req, res) => {
 });
 
 router.get("/", (req, res) => handleDailyWord(req, res, false));
-router.post("/new", (req, res) => handleDailyWord(req, res, true));
+router.post("/new", dailyWordLimiter, (req, res) => handleDailyWord(req, res, true));
 
 router.get("/pronounce", async (req, res) => {
   const { word, lang } = req.query;

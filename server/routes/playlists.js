@@ -5,7 +5,7 @@ const db = require('../db');
 const badgeService = require('../services/badgeService');
 const {
   ensureTrackCover,
-  coversForPlaylist,
+  coversForPlaylistSync,
   upsertTrackCache,
 } = require('../services/coverArtService');
 
@@ -19,16 +19,14 @@ router.get('/', async (req, res) => {
       ORDER BY p.updated_at DESC
     `).all(userId);
 
-    const enriched = await Promise.all(
-      playlists.map(async (p) => {
-        const cover_urls = await coversForPlaylist(p.id, 4);
-        return {
-          ...p,
-          artwork_url: cover_urls[0] || null,
-          cover_urls,
-        };
-      })
-    );
+    const enriched = playlists.map((p) => {
+      const cover_urls = coversForPlaylistSync(p.id, 4);
+      return {
+        ...p,
+        artwork_url: cover_urls[0] || null,
+        cover_urls,
+      };
+    });
 
     res.json({ playlists: enriched });
   } catch (err) {

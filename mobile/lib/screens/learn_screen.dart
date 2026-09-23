@@ -14,10 +14,12 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/api_client.dart';
 import '../spotify/spotify_open.dart';
 import '../state/auth_state.dart';
+import '../state/home_navigation_controller.dart';
 import '../theme/harmonix_theme.dart';
 import '../utils/hear_it_timing.dart';
 import '../utils/i18n.dart';
 import '../utils/shelf.dart';
+import '../widgets/catalog_exhausted_actions.dart';
 import '../widgets/add_to_playlist_sheet.dart';
 import '../widgets/word_flip_card.dart';
 import 'review_screen.dart';
@@ -34,6 +36,7 @@ class _LearnScreenState extends State<LearnScreen> {
   final _pronouncePlayer = ap.AudioPlayer();
   final _tts = FlutterTts();
   final _searchQuery = TextEditingController();
+  final _searchFocus = FocusNode();
   Map<String, dynamic>? _word;
   Map<String, dynamic>? _queue;
   Map<String, dynamic>? _stats;
@@ -47,6 +50,7 @@ class _LearnScreenState extends State<LearnScreen> {
   bool _searching = false;
   String? _pickingTrackId;
   String? _error;
+  String? _errorReason;
   String? _trackedLang;
   String? _trackedGenre;
   AuthState? _auth;
@@ -89,6 +93,7 @@ class _LearnScreenState extends State<LearnScreen> {
     _metaPollTimer?.cancel();
     _auth?.removeListener(_onAuthChanged);
     _searchQuery.dispose();
+    _searchFocus.dispose();
     _previewPlayer.dispose();
     _pronouncePlayer.dispose();
     super.dispose();
@@ -143,6 +148,7 @@ class _LearnScreenState extends State<LearnScreen> {
       if (!mounted) return;
       setState(() {
         _error = e.message;
+        _errorReason = e.reason;
         if (e.queue != null) _queue = e.queue;
         if (next && _word != null) {
           // keep showing current word; surface error below
@@ -542,6 +548,17 @@ class _LearnScreenState extends State<LearnScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(_error!, textAlign: TextAlign.center),
+              if (_errorReason == 'song_already_used') ...[
+                const SizedBox(height: 12),
+                CatalogExhaustedActions(
+                  changeStyleLabel: context.tr('catalog_change_style'),
+                  searchLabel: context.tr('catalog_search_song'),
+                  onChangeStyle: () => context.read<HomeNavigationController>().selectTab(
+                        HomeNavigationController.settingsIndex,
+                      ),
+                  onSearch: () => _searchFocus.requestFocus(),
+                ),
+              ],
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () => _load(),
@@ -554,6 +571,8 @@ class _LearnScreenState extends State<LearnScreen> {
       );
     }
 
+    final authUser = context.watch<AuthState>().user;
+    final dyslexia = authUser?['dyslexia_font'] == 1 || authUser?['dyslexia_font'] == true;
     final word = _word?['word'] as Map<String, dynamic>? ?? {};
     final lyric = _word?['lyric'] as Map<String, dynamic>? ?? {};
     final song = _word?['song'] as Map<String, dynamic>? ?? {};
@@ -637,6 +656,7 @@ class _LearnScreenState extends State<LearnScreen> {
                     style: Theme.of(context).textTheme.displayLarge?.copyWith(
                           color: colors.accent,
                           fontSize: 40,
+                          letterSpacing: dyslexia ? 1.6 : 0,
                         ),
                   ),
                 ),
@@ -827,6 +847,7 @@ class _LearnScreenState extends State<LearnScreen> {
             ),
             child: TextField(
               controller: _searchQuery,
+              focusNode: _searchFocus,
               style: const TextStyle(color: Color(0xFF0C1210)),
               decoration: InputDecoration(
                 filled: true,

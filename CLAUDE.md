@@ -11,7 +11,7 @@ Core Value: Personalizing language learning through real music lyrics with 100% 
 - **Settings:** Languages, music style, voice gender, Spotify Connect, change password
 - **Live:** https://harmonix.peeporunclub.co.uk · branch `main`
 - **Android:** Flutter (`mobile/`) is the Play Store app. Capacitor is not shipped.
-- **Phases 1–16:** complete. **Phase 17:** Play Store listing — [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](.planning/phases/17-play-store-listing/17-CHECKLIST.md).
+- **Phases 1–16 and 18:** complete. **Phase 17:** Play Store listing — [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](.planning/phases/17-play-store-listing/17-CHECKLIST.md). **Phase 18:** Learner reliability — [`.planning/phases/18-learner-reliability/18-CONTEXT.md`](.planning/phases/18-learner-reliability/18-CONTEXT.md).
 
 ## Tech Stack
 - Backend: Node.js (Express) + SQLite
@@ -32,8 +32,8 @@ Core Value: Personalizing language learning through real music lyrics with 100% 
 ## Workflow (GSD)
 - Follow the Phased Roadmap in `.planning/ROADMAP.md`.
 - Track state in `.planning/STATE.md`.
-- Phases 1–16 are **complete**. Phase 17 (Play Store) is in progress.
+- Phases 1–16 and 18 are **complete**. Phase 17 (Play Store) is in progress.
 - **Production deploy:** `git push origin main` (Actions → `scripts/coolify-redeploy.sh`). Manual: SSH VPS and run that script. Legacy rollback only: `bash run_env.sh`.
 
 ---
-*Updated: September 6, 2026*
+*Updated: September 23, 2026*

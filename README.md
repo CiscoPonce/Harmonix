@@ -18,6 +18,7 @@ AI-first language learning through real music lyrics — validated against Deeze
 |------|--------|
 | Roadmap phases 1–16 | **Complete** (v1.9 Flutter web parity) |
 | Phase 17 Play Store | **In progress** — [17-CHECKLIST.md](.planning/phases/17-play-store-listing/17-CHECKLIST.md) |
+| Phase 18 Learner reliability | **Complete** — [18-CONTEXT.md](.planning/phases/18-learner-reliability/18-CONTEXT.md) |
 | Phase 15 Coolify deploy | **Live** — Traefik HTTPS + GH Actions zero-downtime deploy on `main` push |
 | Web home | Unified **Discover** (Word of the Day + practice + search) |
 | Nav | Discover · Library (`/playlists`) · Settings |

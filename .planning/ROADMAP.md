@@ -1,6 +1,6 @@
 # Harmonix Roadmap
 
-**Last reconciled:** 2026-09-06 — phases 1–16 complete; Phase 17 Play Store listing in progress  
+**Last reconciled:** 2026-09-23 — phases 1–16 and 18 complete; Phase 17 Play Store listing in progress (mailbox live)  
 **Live:** https://harmonix.peeporunclub.co.uk (Compose `api`+`web` + Coolify Traefik; host Pocket-TTS)
 
 ---
@@ -48,6 +48,7 @@
 | **15** | Coolify production deploy | **Complete** (domain + GH Actions zero-downtime deploy) |
 | **16** | Flutter web parity | **Complete** (Play Store client is Flutter only) |
 | **17** | Play Store listing | **In progress** |
+| **18** | Learner reliability | **Opened** (not started) |
 
 ### Phase 12 — Spotify API Integration ✅
 
@@ -204,9 +205,29 @@ Not a new phase — product refinements after Phase 14 close:
 
 **Context:** [`.planning/phases/17-play-store-listing/17-CONTEXT.md`](./phases/17-play-store-listing/17-CONTEXT.md)
 
-Graphics and mailbox are already in-repo. You still create the keystore, upload the AAB, take screenshots, and add testers.
+Listing graphics and copy are in-repo; keystore + AAB are done on the dev PC. **Support mailbox `hello@peeporunclub.co.uk` is live** (Zoho, confirmed 2026-09-23). Remaining: screenshots, Internal testing, and testers — [checklist](./phases/17-play-store-listing/17-CHECKLIST.md).
 
-### After Phase 17
+## Phase 18 — Learner reliability (complete)
+
+**Status:** Complete 2026-09-23  
+**Milestone:** v2.1  
+**Goal:** Correct queue, search, and streak behavior; cap AI cost; give an honest next step when songs run out; sync Spotify taste; persist dyslexia spacing.
+
+| Plan | Name | Status |
+|------|------|--------|
+| [18-01](./phases/18-learner-reliability/18-01-PLAN.md) | Queue, search, and streak correctness | Complete |
+| [18-02](./phases/18-learner-reliability/18-02-PLAN.md) | Rate limits, password length, proxy bump | Complete |
+| [18-03](./phases/18-learner-reliability/18-03-PLAN.md) | Library cover fetches | Complete |
+| [18-04](./phases/18-learner-reliability/18-04-PLAN.md) | Exhausted catalog and thin styles | Complete |
+| [18-05](./phases/18-learner-reliability/18-05-PLAN.md) | Spotify taste sync and dyslexia font | Complete |
+
+**Context:** [`.planning/phases/18-learner-reliability/18-CONTEXT.md`](./phases/18-learner-reliability/18-CONTEXT.md)
+
+Song reuse stays off. Phase 17 (Play Console) stays a separate operator track.
+
+### After Phase 18
 
 - Extended Spotify Quota when testers other than the developer need Connect
 - Containerize Pocket-TTS (optional)
+- Refresh-token revocation
+- iOS, after the Play listing is stable

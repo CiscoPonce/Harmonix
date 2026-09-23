@@ -1771,12 +1771,25 @@ Reply: { "words": [ { "word": "...", "translation": "...", "part_of_speech": "no
   }
 }
 
+function genresAvailableForLanguage(langCode) {
+  const { normalizeLangCode } = require("../constants/languages");
+  const lang = normalizeLangCode(langCode || "es");
+  const styles = ["any", "pop", "rock", "hip-hop", "reggaeton"];
+  return styles.filter((genre) => {
+    if (genre === "any") return true;
+    const verified = getVerifiedSongCandidates(lang, genre) || [];
+    const curated = getCuratedSongCandidates(lang, genre) || [];
+    return verified.length + curated.length > 0;
+  });
+}
+
 module.exports = {
   extractVocabulary,
   generateDailyWord,
   generateDailyWordSongs,
   getCuratedSongCandidates,
   getVerifiedSongCandidates,
+  genresAvailableForLanguage,
   normalizeGenre,
   normalizeCandidateGenre,
   genresCompatible,
