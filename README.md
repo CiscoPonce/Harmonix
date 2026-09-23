@@ -3,7 +3,7 @@
 **Play Store app:** `1.0.8` (versionCode `11`) in [`mobile/pubspec.yaml`](mobile/pubspec.yaml)  
 **Live site:** https://harmonix.peeporunclub.co.uk — every push to `main` deploys  
 <!-- x-release-please-start-version -->
-**Platform changelog:** 0.0.3
+**Platform changelog:** 0.0.4
 <!-- x-release-please-end -->
 
 AI-first language learning through real music lyrics — validated against Deezer + LRCLib, with Spotify connect/export and web in-app playback.
