@@ -695,6 +695,18 @@ function genreExamplesForLanguage(languageCode, genre) {
   return byLang[g] || '';
 }
 
+/** Drop "prefer songs like" examples the learner has already heard. */
+function examplesExcludingUsed(hits, avoidSet) {
+  if (!hits || !avoidSet?.size) return hits || '';
+  const kept = String(hits).split(/,\s*/).filter((part) => {
+    const match = part.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if (!match) return true;
+    const key = `${match[2].trim().toLowerCase()}|${match[1].trim().toLowerCase()}`;
+    return !avoidSet.has(key);
+  });
+  return kept.join(', ');
+}
+
 function parseCuratedSongs(hitsString, genre) {
   const results = [];
   const re = /([^,(]+?)\s*\(([^)]+)\)/g;
@@ -765,9 +777,10 @@ async function generateDailyWordSongs({
 }) {
   const langCode = normalizeLanguageCode(languageCode);
   const genreNorm = normalizeGenre(genre);
-  const hits = genreExamplesForLanguage(langCode, genreNorm);
+  const avoidSet = new Set((avoidSongs || []).map((k) => String(k).toLowerCase()));
+  const hits = examplesExcludingUsed(genreExamplesForLanguage(langCode, genreNorm), avoidSet);
   const avoidList = avoidSongs.length
-    ? `NEVER pick these already-used songs: ${avoidSongs.slice(-60).map((k) => k.replace("|", " - ")).join("; ")}.`
+    ? `NEVER pick these already-used songs: ${avoidSongs.slice(-150).map((k) => k.replace("|", " - ")).join("; ")}.`
     : "";
   // Discovery: a new song should ideally also mean a new voice. Soft rule so a
   // thin genre can still fall back to a known artist's other hits.
@@ -810,7 +823,9 @@ STRICT RULES:
 7. song_title must NOT be a single rare word — use the real commercial track name.
 8. Each song MUST be different from every other song you pick — and prefer 5 different artists.
 9. ${avoidList}${artistVariety}
-10. Prefer songs like: ${hits || '(famous catalog hits)'}${languageConfusionGuard}${genreGuard}${spotifyArtistsGuard}
+10. ${hits
+    ? `Prefer songs like: ${hits}`
+    : `The usual example hits are already used. Pick OTHER famous ${languageName} songs${genreNorm === 'any' ? '' : ` in "${genreNorm}"`} — not a repeat of the avoid list.`}${languageConfusionGuard}${genreGuard}${spotifyArtistsGuard}
 
 Reply with ONLY JSON:
 {
@@ -824,17 +839,21 @@ Reply with ONLY JSON:
 }`;
 
   let lastErr = null;
-  for (let attempt = 0; attempt < 1; attempt++) {
+  let repeated = [];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const userAsk = attempt === 0
+      ? `List 5 famous ${languageName}-language ${genreNorm} songs for a word-of-the-day playlist. Songs must be sung in ${languageName}. Return JSON only.`
+      : `Those picks were already used (${repeated.slice(0, 8).join('; ')}). List 5 DIFFERENT famous ${languageName}-language ${genreNorm} songs that are not in the avoid list. Return JSON only.`;
     try {
       const response = await Promise.race([
         createChatCompletion({
           messages: [
             { role: 'system', content: `reasoning_strength: low. ${systemPrompt}` },
-            { role: 'user', content: `List 5 famous ${languageName}-language ${genreNorm} songs for a word-of-the-day playlist. Songs must be sung in ${languageName}. Return JSON only.` },
+            { role: 'user', content: userAsk },
           ],
           response_format: { type: 'json_object' },
           max_tokens: 600,
-          temperature: 0.3,
+          temperature: attempt === 0 ? 0.3 : 0.8,
           top_p: 0.9,
         }),
         new Promise((_, reject) => {
@@ -876,7 +895,15 @@ Reply with ONLY JSON:
         lastErr = new Error('invalid_ai_daily_word_response');
         continue;
       }
-      return kept;
+      const fresh = avoidSet.size
+        ? kept.filter((c) => !avoidSet.has(songCandidateKey(c)))
+        : kept;
+      if (!fresh.length) {
+        repeated = kept.map((c) => `${c.artist} - ${c.song_title}`);
+        lastErr = new Error('invalid_ai_daily_word_response');
+        continue;
+      }
+      return fresh;
     } catch (err) {
       if (isRateLimitError(err)) {
         const e = new Error('ai_rate_limit');

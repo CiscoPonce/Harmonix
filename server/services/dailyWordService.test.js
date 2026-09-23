@@ -472,6 +472,48 @@ describe("Daily Word Service", () => {
     }
   });
 
+  it("asks again when every rock pick is a song the learner already heard", async () => {
+    const original = aiService.openai.chat.completions.create;
+    const prompts = [];
+    let calls = 0;
+    aiService.openai.chat.completions.create = async (args) => {
+      calls += 1;
+      prompts.push(args.messages.map((m) => m.content).join("\n"));
+      const candidates = calls === 1
+        ? [
+            { song_title: "Mr. Brightside", artist: "The Killers", genre: "rock" },
+            { song_title: "Yellow", artist: "Coldplay", genre: "rock" },
+          ]
+        : [
+            { song_title: "Born to Run", artist: "Bruce Springsteen", genre: "rock" },
+            { song_title: "Hotel California", artist: "Eagles", genre: "rock" },
+          ];
+      return { choices: [{ message: { content: JSON.stringify({ candidates }) } }] };
+    };
+    try {
+      const songs = await aiService.generateDailyWordSongs({
+        languageName: "English",
+        languageCode: "en",
+        genre: "rock",
+        difficulty: "medium",
+        avoidSongs: [
+          "the killers|mr. brightside",
+          "coldplay|yellow",
+          "imagine dragons|demons",
+          "imagine dragons|radioactive",
+          "imagine dragons|believer",
+          "coldplay|viva la vida",
+        ],
+      });
+      expect(calls).to.equal(2);
+      expect(prompts[0]).to.not.contain("Mr. Brightside");
+      expect(prompts[1]).to.contain("already used");
+      expect(songs.map((s) => s.song_title)).to.deep.equal(["Born to Run", "Hotel California"]);
+    } finally {
+      aiService.openai.chat.completions.create = original;
+    }
+  });
+
   it("getCuratedCandidatesForBatch stays inside the requested genre", () => {
     const batch = getCuratedCandidatesForBatch(userId, "es", "rock");
     expect(batch.length).to.be.greaterThan(0);

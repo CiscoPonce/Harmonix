@@ -27,6 +27,8 @@ progress:
 
 **2026-09-23 NIM:** Live bake-off on production keys: `z-ai/glm-5.3` is primary (~468ms gloss, ~1.4–2s song JSON). `nvidia/nemotron-3.5-lightning-30b-a3b` is fast song backup (~2s). `z-ai/glm-5.3-flash` is slower (~2–8s) and demoted. OpenRouter fallback: Super `:free` only (Lightning `:free` returned placeholder songs; most other `:free` slugs 429).
 
+**2026-09-23 next-word:** English rock example hits were all already heard (292 songs). Song pick now drops used examples and asks once more for different tracks instead of failing Next.
+
 **2026-09-16 word picking:** Spanish cards reject English bilingual slips (`really` / `-ly` adverbs). Chorus chants like `(Highs, highs, highs)` are not served, even when the unused-song catalog is empty.
 
 **2026-09-15 store polish:** Marketing homepage describes Word of the Day, not karaoke. Library/Settings leftover English follows the UI language. Kokoro has no German — first tap skips the English fake voice and uses device TTS (`de-DE`). Play Console listing and Spotify Premium/allowlist stay operator-side.
