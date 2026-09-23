@@ -1369,25 +1369,31 @@ async function deliverFromBatch(user, batch, fetchImpl, { fromQueue = false, pre
   return delivered;
 }
 
-async function withUserBatchLock(userId, fn) {
+function withUserBatchLock(userId, fn) {
   abortRefill(userId);
+  const epoch = currentPreferenceEpoch(userId);
+  const current = batchGenerationWaiters.get(userId);
+  if (current && current.epoch === epoch) return current.promise;
 
-  if (batchGenerationWaiters.has(userId)) {
-    return batchGenerationWaiters.get(userId);
-  }
+  const start = () => {
+    const again = batchGenerationWaiters.get(userId);
+    if (again && again.epoch === epoch) return again.promise;
+    const promise = (async () => {
+      batchGenerationInProgress.add(userId);
+      try {
+        return await fn();
+      } finally {
+        batchGenerationInProgress.delete(userId);
+        const slot = batchGenerationWaiters.get(userId);
+        if (slot && slot.promise === promise) batchGenerationWaiters.delete(userId);
+      }
+    })();
+    batchGenerationWaiters.set(userId, { epoch, promise });
+    return promise;
+  };
 
-  const run = (async () => {
-    batchGenerationInProgress.add(userId);
-    try {
-      return await fn();
-    } finally {
-      batchGenerationInProgress.delete(userId);
-      batchGenerationWaiters.delete(userId);
-    }
-  })();
-
-  batchGenerationWaiters.set(userId, run);
-  return run;
+  if (!current) return start();
+  return current.promise.then(start, start);
 }
 
 function markStyleRelaxed(batch, fromGenre) {
@@ -1418,6 +1424,7 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
     const started = Date.now();
     const deadline = started + maxMs;
     let lastError = "unknown";
+    let onStyleError = null;
     const preferenceEpoch = currentPreferenceEpoch(user.id);
     const requestedGenre = aiService.normalizeGenre(user.genre || "pop");
 
@@ -1436,7 +1443,10 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
       console.warn(
         `daily word batch attempt ${attempt + 1}/${maxAttempts}: 0/${batch.candidateCount || 5} passed (${lastError})`
       );
-      if (lastError === "song_already_used") break;
+      if (lastError === "song_already_used") {
+        onStyleError = lastError;
+        break;
+      }
     }
 
     // On-style pool failed — one honest widen to mixed catalog (UI shows style_relaxed).
@@ -1459,6 +1469,12 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
         return deliverFromBatch(user, marked, fetchImpl, { preferenceEpoch });
       }
       lastError = wideBatch.lastError || lastError;
+    }
+
+    // The unused catalog is gone and a new-song pick did not land. Tell the
+    // learner to change style or search, instead of a generic AI failure.
+    if (onStyleError === "song_already_used") {
+      lastError = "song_already_used";
     }
 
     const err = new Error("daily_word_generation_failed");
@@ -2543,5 +2559,6 @@ module.exports = {
   payloadMatchesUserGenre,
   abortRefill,
   bumpPreferenceEpoch,
+  withUserBatchLock,
   VALIDATE_CONCURRENCY,
 };

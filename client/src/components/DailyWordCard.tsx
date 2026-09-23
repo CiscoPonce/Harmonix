@@ -336,25 +336,32 @@ export function DailyWordCard({
 
     try {
       const endpoint = initial ? "/daily-word" : "/daily-word/next";
-      const res = await apiFetch(endpoint, {
-        method: initial ? "GET" : "POST",
-        signal: ac.signal,
-      });
-      if (ac.signal.aborted) return;
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        if (body.queue) setQueueStatus(body.queue);
-        if (body.reason) {
-          console.warn("daily-word unavailable:", body.reason);
-        }
-        const msg = friendlyDailyWordReason(body.reason, {
-          retryAfterSec: body.retryAfterSec,
+      let body: { reason?: string; queue?: QueueStatus; retryAfterSec?: number | null } = {};
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await apiFetch(endpoint, {
+          method: initial ? "GET" : "POST",
+          signal: ac.signal,
         });
-        const wrapped = new Error(msg) as Error & { reason?: string };
-        wrapped.reason = body.reason;
-        throw wrapped;
+        if (ac.signal.aborted) return;
+        if (res.ok) {
+          applyPayload(await res.json());
+          return;
+        }
+        body = await res.json().catch(() => ({})) as typeof body;
+        if (body.reason === "stale_preferences" && attempt === 0) continue;
+        break;
       }
-      applyPayload(await res.json());
+      if (ac.signal.aborted) return;
+      if (body.queue) setQueueStatus(body.queue);
+      if (body.reason) {
+        console.warn("daily-word unavailable:", body.reason);
+      }
+      const msg = friendlyDailyWordReason(body.reason, {
+        retryAfterSec: body.retryAfterSec,
+      });
+      const wrapped = new Error(msg) as Error & { reason?: string };
+      wrapped.reason = body.reason;
+      throw wrapped;
     } catch (err) {
       if (ac.signal.aborted || (err instanceof DOMException && err.name === "AbortError")) return;
       const msg = err instanceof Error ? err.message : "Failed to load daily word";

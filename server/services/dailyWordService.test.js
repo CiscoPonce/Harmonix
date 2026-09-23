@@ -31,6 +31,8 @@ const {
   hasUnusedSongCandidates,
   getUserDiscoveryHistory,
   purgeQueueWrongLanguage,
+  withUserBatchLock,
+  bumpPreferenceEpoch,
   VALIDATE_CONCURRENCY,
 } = require("./dailyWordService");
 const wordQueue = require("./wordQueueService");
@@ -1667,6 +1669,24 @@ describe("Daily Word Service", () => {
     });
     const westOfUtc = new Date("2026-09-24T02:00:00.000Z");
     expect(computeDailyWordStreak(userId, westOfUtc)).to.equal(1);
+  });
+
+  it("starts a fresh batch when preferences change during generation", async () => {
+    let releaseFirst;
+    const first = withUserBatchLock(userId, () => new Promise((resolve, reject) => {
+      releaseFirst = () => reject(Object.assign(new Error("stale"), { code: "stale_preferences" }));
+    }));
+    bumpPreferenceEpoch(userId);
+    const second = withUserBatchLock(userId, async () => "fresh");
+    releaseFirst();
+    let firstCode = null;
+    try {
+      await first;
+    } catch (err) {
+      firstCode = err.code;
+    }
+    expect(firstCode).to.equal("stale_preferences");
+    expect(await second).to.equal("fresh");
   });
 
   it("from-track avoids a lemma already waiting in the queue", async () => {

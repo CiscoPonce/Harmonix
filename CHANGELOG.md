@@ -6,6 +6,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
+* **daily-word:** a preference change no longer sticks Discover on “loading a new word”; an exhausted catalog offers a style change or a song search
 * **settings:** dyslexia spacing applies on the web page, the Android word card, the shelf, and review
 * **learner:** Phase 18 — purge the word queue when native language changes; drop duplicate queue cards; skip queued lemmas on song search; count streaks on a UTC calendar
 * **security:** rate-limit new-word routes (20/min); passwords must be at least 8 characters; bump `http-proxy-middleware` to 4.2.0

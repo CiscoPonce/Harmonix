@@ -100,7 +100,7 @@ class _LearnScreenState extends State<LearnScreen> {
     super.dispose();
   }
 
-  Future<void> _load({bool next = false}) async {
+  Future<void> _load({bool next = false, bool retriedStale = false}) async {
     final api = context.read<ApiClient>();
     setState(() {
       if (next) {
@@ -147,6 +147,10 @@ class _LearnScreenState extends State<LearnScreen> {
       _scheduleMetaPoll();
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (e.reason == 'stale_preferences' && !retriedStale) {
+        await _load(next: next, retriedStale: true);
+        return;
+      }
       setState(() {
         _error = e.message;
         _errorReason = e.reason;
