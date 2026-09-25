@@ -31,6 +31,20 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * **tts:** host Pocket-TTS can reload by language; stop returning silent WAVs on failure
 * **mobile/web:** show real IPA or pending copy (never part-of-speech as phonetics); Android polls for polish like web
 
+## [0.0.5](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.4...harmonix-v0.0.5) (2026-09-25)
+
+
+### Bug Fixes
+
+* **daily-word:** deepen song lists for every language and style ([0f19c43](https://github.com/CiscoPonce/Harmonix/commit/0f19c43b21cd81ef8a62e892dbd965dddd0118ca))
+* **daily-word:** look up more famous English rock songs before the model ([b96c573](https://github.com/CiscoPonce/Harmonix/commit/b96c573cf387232656f980b699e158f6f95b718a))
+* **gloss:** teach lady as dama and replace the stored ama hit ([793fa79](https://github.com/CiscoPonce/Harmonix/commit/793fa79b0b4ccdec4fbd2bf279b3f5b13d744fba))
+
+
+### Documentation
+
+* point the README release table at changelog 0.0.4 ([cc47735](https://github.com/CiscoPonce/Harmonix/commit/cc47735259526df0faa2b5bea123ded3e624ab25))
+
 ## [0.0.4](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.3...harmonix-v0.0.4) (2026-09-23)
 
 
