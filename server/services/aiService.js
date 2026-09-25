@@ -504,6 +504,42 @@ const VERIFIED_SONGS = {
     { song_title: 'Believer', artist: 'Imagine Dragons', genre: 'rock' },
     { song_title: 'Yellow', artist: 'Coldplay', genre: 'rock' },
     { song_title: 'Viva La Vida', artist: 'Coldplay', genre: 'rock' },
+    { song_title: 'Born to Run', artist: 'Bruce Springsteen', genre: 'rock' },
+    { song_title: 'Hotel California', artist: 'Eagles', genre: 'rock' },
+    { song_title: 'Seven Nation Army', artist: 'The White Stripes', genre: 'rock' },
+    { song_title: 'Sex on Fire', artist: 'Kings of Leon', genre: 'rock' },
+    { song_title: 'Chasing Cars', artist: 'Snow Patrol', genre: 'rock' },
+    { song_title: 'In the End', artist: 'Linkin Park', genre: 'rock' },
+    { song_title: 'Numb', artist: 'Linkin Park', genre: 'rock' },
+    { song_title: 'Bring Me to Life', artist: 'Evanescence', genre: 'rock' },
+    { song_title: 'Iris', artist: 'Goo Goo Dolls', genre: 'rock' },
+    { song_title: 'Basket Case', artist: 'Green Day', genre: 'rock' },
+    { song_title: 'Boulevard of Broken Dreams', artist: 'Green Day', genre: 'rock' },
+    { song_title: 'American Idiot', artist: 'Green Day', genre: 'rock' },
+    { song_title: 'Californication', artist: 'Red Hot Chili Peppers', genre: 'rock' },
+    { song_title: 'Under the Bridge', artist: 'Red Hot Chili Peppers', genre: 'rock' },
+    { song_title: 'Otherside', artist: 'Red Hot Chili Peppers', genre: 'rock' },
+    { song_title: 'Wish You Were Here', artist: 'Pink Floyd', genre: 'rock' },
+    { song_title: 'Comfortably Numb', artist: 'Pink Floyd', genre: 'rock' },
+    { song_title: 'Dream On', artist: 'Aerosmith', genre: 'rock' },
+    { song_title: 'Everlong', artist: 'Foo Fighters', genre: 'rock' },
+    { song_title: 'The Pretender', artist: 'Foo Fighters', genre: 'rock' },
+    { song_title: 'Learn to Fly', artist: 'Foo Fighters', genre: 'rock' },
+    { song_title: 'Creep', artist: 'Radiohead', genre: 'rock' },
+    { song_title: 'The Scientist', artist: 'Coldplay', genre: 'rock' },
+    { song_title: 'Fix You', artist: 'Coldplay', genre: 'rock' },
+    { song_title: 'Thunder', artist: 'Imagine Dragons', genre: 'rock' },
+    { song_title: "Don't Stop Me Now", artist: 'Queen', genre: 'rock' },
+    { song_title: 'Enter Sandman', artist: 'Metallica', genre: 'rock' },
+    { song_title: 'Nothing Else Matters', artist: 'Metallica', genre: 'rock' },
+    { song_title: 'November Rain', artist: "Guns N' Roses", genre: 'rock' },
+    { song_title: 'Highway to Hell', artist: 'AC/DC', genre: 'rock' },
+    { song_title: 'Thunderstruck', artist: 'AC/DC', genre: 'rock' },
+    { song_title: 'Sweet Home Alabama', artist: 'Lynyrd Skynyrd', genre: 'rock' },
+    { song_title: 'Smoke on the Water', artist: 'Deep Purple', genre: 'rock' },
+    { song_title: "Don't Look Back in Anger", artist: 'Oasis', genre: 'rock' },
+    { song_title: 'When You Were Young', artist: 'The Killers', genre: 'rock' },
+    { song_title: 'Jump', artist: 'Van Halen', genre: 'rock' },
     { song_title: 'Shape of You', artist: 'Ed Sheeran', genre: 'pop' },
     { song_title: 'Blinding Lights', artist: 'The Weeknd', genre: 'pop' },
     { song_title: 'Someone Like You', artist: 'Adele', genre: 'pop' },
@@ -654,7 +690,7 @@ const GENRE_HIT_EXAMPLES = {
   },
   en: {
     pop: 'Bad Guy (Billie Eilish), Shallow (Lady Gaga), Rolling in the Deep (Adele), Heat Waves (Glass Animals), Someone You Loved (Lewis Capaldi), Hello (Adele), Stay With Me (Sam Smith), Photograph (Ed Sheeran), Shape of You (Ed Sheeran), Blinding Lights (The Weeknd), Someone Like You (Adele), Counting Stars (OneRepublic), Royals (Lorde), Happier (Marshmello), Anti-Hero (Taylor Swift), As It Was (Harry Styles)',
-    rock: 'Mr. Brightside (The Killers), Demons (Imagine Dragons), Radioactive (Imagine Dragons), Yellow (Coldplay), Believer (Imagine Dragons), Viva La Vida (Coldplay)',
+    rock: 'Mr. Brightside (The Killers), Demons (Imagine Dragons), Radioactive (Imagine Dragons), Yellow (Coldplay), Believer (Imagine Dragons), Viva La Vida (Coldplay), Born to Run (Bruce Springsteen), Hotel California (Eagles), Seven Nation Army (The White Stripes), Sex on Fire (Kings of Leon), Chasing Cars (Snow Patrol), In the End (Linkin Park), Numb (Linkin Park), Bring Me to Life (Evanescence), Iris (Goo Goo Dolls), Basket Case (Green Day), Boulevard of Broken Dreams (Green Day), American Idiot (Green Day), Californication (Red Hot Chili Peppers), Under the Bridge (Red Hot Chili Peppers), Otherside (Red Hot Chili Peppers), Wish You Were Here (Pink Floyd), Comfortably Numb (Pink Floyd), Dream On (Aerosmith), Everlong (Foo Fighters), The Pretender (Foo Fighters), Learn to Fly (Foo Fighters), Creep (Radiohead), The Scientist (Coldplay), Fix You (Coldplay), Thunder (Imagine Dragons), Don\'t Stop Me Now (Queen), Enter Sandman (Metallica), Nothing Else Matters (Metallica), November Rain (Guns N\' Roses), Highway to Hell (AC/DC), Thunderstruck (AC/DC), Sweet Home Alabama (Lynyrd Skynyrd), Smoke on the Water (Deep Purple), Don\'t Look Back in Anger (Oasis), When You Were Young (The Killers), Jump (Van Halen)',
     'hip-hop': 'Lose Yourself (Eminem), Not Afraid (Eminem), HUMBLE. (Kendrick Lamar), God\'s Plan (Drake), Stronger (Kanye West), In Da Club (50 Cent), Empire State of Mind (Jay-Z)',
     any: 'Bad Guy (Billie Eilish), Rolling in the Deep (Adele), Heat Waves (Glass Animals), Mr. Brightside (The Killers)',
   },
@@ -780,7 +816,7 @@ async function generateDailyWordSongs({
   const avoidSet = new Set((avoidSongs || []).map((k) => String(k).toLowerCase()));
   const hits = examplesExcludingUsed(genreExamplesForLanguage(langCode, genreNorm), avoidSet);
   const avoidList = avoidSongs.length
-    ? `NEVER pick these already-used songs: ${avoidSongs.slice(-150).map((k) => k.replace("|", " - ")).join("; ")}.`
+    ? `NEVER pick these already-used songs: ${avoidSongs.slice(-40).map((k) => k.replace("|", " - ")).join("; ")}.`
     : "";
   // Discovery: a new song should ideally also mean a new voice. Soft rule so a
   // thin genre can still fall back to a known artist's other hits.

@@ -1233,7 +1233,7 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
       const userWaiting = stopAfter <= USER_DELIVER_STOP_AFTER;
       const curated = getCuratedCandidatesForBatch(user.id, langCode, genre).slice(
         0,
-        userWaiting ? 8 : 15
+        userWaiting ? 12 : 15
       );
 
       if (userWaiting && curated.length) {
@@ -1516,6 +1516,12 @@ async function refillQueue(user, fetchImpl = fetch) {
           `queue refill round ${emptyRounds}/${REFILL_BATCH_ROUNDS}: 0/${batch.candidateCount || 5} valid (${batch.lastError})`
         );
         if (batch.lastError === "song_already_used") break;
+        if (
+          emptyRounds >= 2
+          && (batch.lastError === "ai_timeout" || batch.lastError === "invalid_ai_daily_word_response")
+        ) {
+          break;
+        }
         continue;
       }
 

@@ -520,6 +520,16 @@ describe("Daily Word Service", () => {
     expect(batch.every((s) => aiService.genresCompatible(s.genre, "rock"))).to.equal(true);
   });
 
+  it("english rock has a deep unused-song pool beyond the first six hits", () => {
+    const rock = aiService.getCuratedSongCandidates("en", "rock");
+    const titles = rock.map((s) => s.song_title);
+    expect(rock.length).to.be.greaterThan(20);
+    expect(titles).to.include("Born to Run");
+    expect(titles).to.include("Hotel California");
+    expect(titles).to.include("Seven Nation Army");
+    expect(rock.every((s) => s.genre === "rock")).to.equal(true);
+  });
+
   it("skips cached daily word when genre no longer matches", () => {
     const today = new Date().toISOString().slice(0, 10);
     saveDailyWord(userId, today, {
