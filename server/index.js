@@ -391,14 +391,24 @@ app.listen(PORT, () => {
   if (process.env.NODE_ENV !== 'test') {
     try {
       const glossCache = require('./services/glossCacheService');
-      const { translationLooksSuspicious } = require('./services/aiService');
+      const { translationLooksSuspicious, commonGlossLookupDetailed, isTrustedGlossSource } = require('./services/aiService');
+      const repaired = glossCache.replaceSuspiciousStoredGlosses(
+        translationLooksSuspicious,
+        (text, from, to, line) => {
+          const hit = commonGlossLookupDetailed(text, from, to, line);
+          if (!hit?.translation) return null;
+          return { translation: hit.translation, trusted: isTrustedGlossSource(hit.source) };
+        },
+      );
+      if (repaired.updated > 0) {
+        console.log(`gloss cache: replaced ${repaired.updated} wrong stored meanings`);
+      }
       const inserted = glossCache.backfillFromDailyWords({
         isSuspicious: translationLooksSuspicious,
       });
       if (inserted > 0) {
         console.log(`gloss cache: warmed ${inserted} historical meanings (${glossCache.count()} total)`);
       }
-      const { commonGlossLookupDetailed, isTrustedGlossSource } = require("./services/aiService");
       // Bulk-dictionary / stem hits fill the blank but stay provisional (gloss_v 1)
       // so background polish re-checks them with the lyric line.
       const filled = glossCache.fillThinStoredWords((text, from, to, line) => {

@@ -61,4 +61,31 @@ describe("glossCacheService", () => {
     expect(glossCache.getGloss("zxqbackfillwaves", "en", "es")).to.equal("olas");
     expect(glossCache.getGloss("zxqbackfillthin", "en", "es")).to.equal(null);
   });
+
+  it("replaces a cached wrong-sense gloss on the shelf and in the cache", () => {
+    db.prepare("DELETE FROM daily_words WHERE user_id = ?").run("u-gloss-lady");
+    db.prepare("DELETE FROM users WHERE id = ?").run("u-gloss-lady");
+    db.prepare(`
+      INSERT INTO users (id, email, password_hash, native_language, target_language)
+      VALUES (?, ?, ?, ?, ?)
+    `).run("u-gloss-lady", "gloss-lady@test.local", "x", "es", "en");
+    db.prepare(`
+      INSERT INTO daily_words (user_id, date, word_json)
+      VALUES (?, ?, ?)
+    `).run("u-gloss-lady", "2026-09-24", JSON.stringify({
+      language_code: "en",
+      word: { text: "lady", translation: "ama", pronunciation: "/ˈleɪdi/", gloss_v: 2 },
+      lyric: { snippet: "There's a lady who's sure" },
+    }));
+    glossCache.rememberGloss("lady", "en", "es", "ama", "ai");
+
+    const repaired = glossCache.replaceSuspiciousStoredGlosses(
+      (word, translation) => word === "lady" && translation === "ama",
+      () => ({ translation: "dama", trusted: true }),
+    );
+    expect(repaired.updated).to.equal(1);
+    expect(glossCache.getGloss("lady", "en", "es")).to.equal("dama");
+    const row = db.prepare("SELECT word_json FROM daily_words WHERE user_id = ?").get("u-gloss-lady");
+    expect(JSON.parse(row.word_json).word.translation).to.equal("dama");
+  });
 });

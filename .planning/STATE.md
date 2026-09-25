@@ -29,7 +29,7 @@ progress:
 
 **2026-09-23 next-word:** English rock example hits were all already heard (292 songs). Song pick now drops used examples and asks once more for different tracks instead of failing Next.
 
-**2026-09-23 repo:** Public GitHub page points at the live site. Play candidate stays `1.0.8+11`. Platform changelog stays on release-please (`0.0.x`). APKs are not in git. Play Console create-app, screenshots, and Internal testing are still operator steps.
+**2026-09-25 gloss:** *lady* in “There's a lady who's sure” was the dictionary noun *ama*. Curated gloss is *dama*. Boot replaces that stored wrong-sense hit on the shelf and in the shared cache, and new writes of *ama* for *lady* are rejected.
 
 **2026-09-16 word picking:** Spanish cards reject English bilingual slips (`really` / `-ly` adverbs). Chorus chants like `(Highs, highs, highs)` are not served, even when the unused-song catalog is empty.
 

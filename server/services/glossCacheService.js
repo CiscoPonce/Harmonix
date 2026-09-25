@@ -256,11 +256,99 @@ function fillThinStoredWords(lookup) {
   return { updated };
 }
 
+/**
+ * Replace a stored meaning the quality check now rejects (dictionary wrong-sense
+ * hits such as lady → ama) with the curated gloss, on shelf cards, the queue,
+ * and the shared cache. Cards that already have IPA are included.
+ */
+function replaceSuspiciousStoredGlosses(isSuspicious, lookup) {
+  if (typeof isSuspicious !== "function" || typeof lookup !== "function") return { updated: 0 };
+  let updated = 0;
+  const dw = db.prepare(`
+    SELECT dw.id AS id, dw.word_json AS word_json, u.native_language AS native_language,
+           u.target_language AS target_language
+    FROM daily_words dw
+    JOIN users u ON u.id = dw.user_id
+  `).all();
+  const updDw = db.prepare("UPDATE daily_words SET word_json = ? WHERE id = ?");
+  const q = db.prepare(`
+    SELECT q.id AS id, q.word_json AS word_json, u.native_language AS native_language,
+           u.target_language AS target_language
+    FROM user_word_queue q
+    JOIN users u ON u.id = q.user_id
+    WHERE q.consumed_at IS NULL
+  `).all();
+  const updQ = db.prepare("UPDATE user_word_queue SET word_json = ? WHERE id = ?");
+
+  const replacementFor = (text, from, to, line, current) => {
+    if (!isSuspicious(text, current, line)) return null;
+    const hit = lookup(text, from, to, line);
+    const next = String((typeof hit === "string" ? hit : hit?.translation) || "").trim();
+    if (!next || next.toLowerCase() === String(current).toLowerCase()) return null;
+    if (isSuspicious(text, next, line)) return null;
+    const trusted = typeof hit === "string" ? true : hit?.trusted !== false;
+    return { translation: next, trusted };
+  };
+
+  const patch = (json, fromLang, toLang) => {
+    let payload;
+    try {
+      payload = JSON.parse(json);
+    } catch {
+      return null;
+    }
+    const text = payload?.word?.text;
+    const current = String(payload?.word?.translation || "").trim();
+    if (!text || !current) return null;
+    const from = normLang(payload?.language_code || fromLang);
+    const to = normLang(toLang);
+    const line = payload?.lyric?.snippet || null;
+    const next = replacementFor(text, from, to, line, current);
+    if (!next) return null;
+    payload.word = {
+      ...payload.word,
+      translation: next.translation,
+      gloss_v: next.trusted ? 2 : 1,
+    };
+    rememberGloss(text, from, to, next.translation, next.trusted ? "curated" : "repair");
+    return JSON.stringify(payload);
+  };
+
+  const tx = db.transaction(() => {
+    for (const row of dw) {
+      const next = patch(row.word_json, row.target_language, row.native_language);
+      if (next) {
+        updDw.run(next, row.id);
+        updated += 1;
+      }
+    }
+    for (const row of q) {
+      const next = patch(row.word_json, row.target_language, row.native_language);
+      if (next) {
+        updQ.run(next, row.id);
+        updated += 1;
+      }
+    }
+    const cached = db.prepare(
+      "SELECT word, from_lang, to_lang, translation FROM gloss_cache"
+    ).all();
+    for (const row of cached) {
+      const next = replacementFor(row.word, row.from_lang, row.to_lang, null, row.translation);
+      if (!next) continue;
+      rememberGloss(row.word, row.from_lang, row.to_lang, next.translation, next.trusted ? "curated" : "repair");
+      updated += 1;
+    }
+  });
+  tx();
+  return { updated };
+}
+
 module.exports = {
   getGloss,
   getGlossWithSource,
   rememberGloss,
   backfillFromDailyWords,
   fillThinStoredWords,
+  replaceSuspiciousStoredGlosses,
   count,
 };
