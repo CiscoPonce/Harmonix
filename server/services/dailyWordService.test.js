@@ -520,14 +520,17 @@ describe("Daily Word Service", () => {
     expect(batch.every((s) => aiService.genresCompatible(s.genre, "rock"))).to.equal(true);
   });
 
-  it("english rock has a deep unused-song pool beyond the first six hits", () => {
-    const rock = aiService.getCuratedSongCandidates("en", "rock");
-    const titles = rock.map((s) => s.song_title);
-    expect(rock.length).to.be.greaterThan(20);
-    expect(titles).to.include("Born to Run");
-    expect(titles).to.include("Hotel California");
-    expect(titles).to.include("Seven Nation Army");
-    expect(rock.every((s) => s.genre === "rock")).to.equal(true);
+  it("every learning language has a deep pool for pop, rock, and hip-hop", () => {
+    for (const lang of ["en", "es", "fr", "de", "pt", "it"]) {
+      for (const genre of ["pop", "rock", "hip-hop"]) {
+        const songs = aiService.getCuratedSongCandidates(lang, genre);
+        expect(songs.length, `${lang}/${genre}`).to.be.at.least(12);
+        expect(songs.every((s) => s.genre === genre), `${lang}/${genre}`).to.equal(true);
+      }
+    }
+    expect(aiService.getCuratedSongCandidates("es", "reggaeton").length).to.be.at.least(12);
+    expect(aiService.genresAvailableForLanguage("fr")).to.not.include("reggaeton");
+    expect(aiService.genresAvailableForLanguage("en")).to.not.include("reggaeton");
   });
 
   it("skips cached daily word when genre no longer matches", () => {

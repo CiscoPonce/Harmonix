@@ -29,7 +29,7 @@ progress:
 
 **2026-09-23 next-word:** English rock example hits were all already heard (292 songs). Song pick now drops used examples and asks once more for different tracks instead of failing Next.
 
-**2026-09-25 songs:** English rock catalog grew from 6 verified hits to a few dozen famous tracks (Springsteen, Eagles, Foo Fighters, and others). Next tries that list before the model. A refill that only times out stops after two rounds.
+**2026-09-25 songs:** The same deeper catalog now covers pop, rock, and hip-hop for English, Spanish, French, German, Portuguese, and Italian. Reggaeton stays a Spanish list. Each of those styles has at least 12 famous songs before the model is asked.
 
 **2026-09-16 word picking:** Spanish cards reject English bilingual slips (`really` / `-ly` adverbs). Chorus chants like `(Highs, highs, highs)` are not served, even when the unused-song catalog is empty.
 

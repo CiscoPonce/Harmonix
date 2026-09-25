@@ -6,7 +6,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
-* **daily-word:** English rock can draw on a larger famous-song list before asking the model, and a stalled refill stops after two timeouts
+* **daily-word:** every learning language now has a deeper pop, rock, and hip-hop song list; reggaeton stays Spanish-only
 * **daily-word:** when a style's example hits are already used, ask the model for different songs instead of failing Next
 * **settings:** dyslexia spacing applies on the web page, the Android word card, the shelf, and review
 * **learner:** Phase 18 — purge the word queue when native language changes; drop duplicate queue cards; skip queued lemmas on song search; count streaks on a UTC calendar
