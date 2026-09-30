@@ -70,8 +70,8 @@ def main() -> int:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=3002)
     parser.add_argument("--language", required=True)
-    parser.add_argument("--temperature", type=float, default=0.45)
-    parser.add_argument("--lsd-decode-steps", type=int, default=3)
+    parser.add_argument("--temperature", type=float, default=0.25)
+    parser.add_argument("--lsd-decode-steps", type=int, default=5)
     parser.add_argument(
         "--eos-threshold",
         type=float,

@@ -35,6 +35,8 @@ describe('TTS Service Voice & Accent Normalization', () => {
     assert.strictEqual(ttsService.ttsPromptForWord('perche', 'it'), 'perché.');
     assert.strictEqual(ttsService.ttsPromptForWord('BELLO', 'it'), 'BELLO.');
     assert.strictEqual(ttsService.ttsPromptForWord('mercoledi', 'it'), 'mercoledì.');
+    assert.strictEqual(ttsService.ttsPromptForWord('también', 'es'), 'también. también.');
+    assert.strictEqual(ttsService.ttsPromptForWord('tambien', 'es'), 'también. también.');
   });
 
   it('skip-spawn reloads Pocket-TTS when the host model language differs', async () => {

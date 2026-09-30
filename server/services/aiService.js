@@ -485,6 +485,55 @@ const VERIFIED_SONGS = {
     { song_title: '1977', artist: 'Ana Tijoux', genre: 'hip-hop' },
     { song_title: 'Labios Compartidos', artist: 'Maná', genre: 'rock' },
     { song_title: 'Flaca', artist: 'Andrés Calamaro', genre: 'rock' },
+    { song_title: 'La Tortura', artist: 'Shakira', genre: 'pop' },
+    { song_title: 'Estoy Aquí', artist: 'Shakira', genre: 'pop' },
+    { song_title: 'Ciega Sordomuda', artist: 'Shakira', genre: 'pop' },
+    { song_title: 'Inevitable', artist: 'Shakira', genre: 'pop' },
+    { song_title: 'Suerte', artist: 'Shakira', genre: 'pop' },
+    { song_title: 'Día de Enero', artist: 'Shakira', genre: 'pop' },
+    { song_title: 'Las de la Intuición', artist: 'Shakira', genre: 'pop' },
+    { song_title: 'Waka Waka', artist: 'Shakira', genre: 'pop' },
+    { song_title: 'Loba', artist: 'Shakira', genre: 'pop' },
+    { song_title: 'Me Enamora', artist: 'Juanes', genre: 'pop' },
+    { song_title: 'Es Por Ti', artist: 'Juanes', genre: 'pop' },
+    { song_title: 'Nada Valgo Sin Tu Amor', artist: 'Juanes', genre: 'pop' },
+    { song_title: 'Fotografía', artist: 'Juanes', genre: 'pop' },
+    { song_title: 'Corazón Partío', artist: 'Alejandro Sanz', genre: 'pop' },
+    { song_title: 'Amiga Mía', artist: 'Alejandro Sanz', genre: 'pop' },
+    { song_title: 'Y Si Fuera Ella', artist: 'Alejandro Sanz', genre: 'pop' },
+    { song_title: 'No Me Compares', artist: 'Alejandro Sanz', genre: 'pop' },
+    { song_title: 'Corre', artist: 'Jesse & Joy', genre: 'pop' },
+    { song_title: 'Llorar', artist: 'Jesse & Joy', genre: 'pop' },
+    { song_title: 'Eres Para Mí', artist: 'Julieta Venegas', genre: 'pop' },
+    { song_title: 'Lento', artist: 'Julieta Venegas', genre: 'pop' },
+    { song_title: 'El Presente', artist: 'Julieta Venegas', genre: 'pop' },
+    { song_title: 'Despechá', artist: 'Rosalía', genre: 'pop' },
+    { song_title: 'Malamente', artist: 'Rosalía', genre: 'pop' },
+    { song_title: 'Provenza', artist: 'Karol G', genre: 'pop' },
+    { song_title: 'Amargura', artist: 'Karol G', genre: 'pop' },
+    { song_title: 'El Barco', artist: 'Karol G', genre: 'pop' },
+    { song_title: 'Un Año', artist: 'Sebastián Yatra', genre: 'pop' },
+    { song_title: 'Traicionera', artist: 'Sebastián Yatra', genre: 'pop' },
+    { song_title: 'Como La Flor', artist: 'Selena', genre: 'pop' },
+    { song_title: 'Si Una Vez', artist: 'Selena', genre: 'pop' },
+    { song_title: 'La Copa de la Vida', artist: 'Ricky Martin', genre: 'pop' },
+    { song_title: 'María', artist: 'Ricky Martin', genre: 'pop' },
+    { song_title: 'Vuelve', artist: 'Ricky Martin', genre: 'pop' },
+    { song_title: 'Tal Vez', artist: 'Ricky Martin', genre: 'pop' },
+    { song_title: 'Subeme la Radio', artist: 'Enrique Iglesias', genre: 'pop' },
+    { song_title: 'El Perdedor', artist: 'Enrique Iglesias', genre: 'pop' },
+    { song_title: 'Cuando Me Enamoro', artist: 'Enrique Iglesias', genre: 'pop' },
+    { song_title: 'Colgando en tus manos', artist: 'Carlos Baute', genre: 'pop' },
+    { song_title: 'Solamente Tú', artist: 'Pablo Alborán', genre: 'pop' },
+    { song_title: 'La Incondicional', artist: 'Luis Miguel', genre: 'pop' },
+    { song_title: 'Ahora Te Puedes Marchar', artist: 'Luis Miguel', genre: 'pop' },
+    { song_title: 'El Triste', artist: 'José José', genre: 'pop' },
+    { song_title: 'Amar y Querer', artist: 'José José', genre: 'pop' },
+    { song_title: 'Querida', artist: 'Juan Gabriel', genre: 'pop' },
+    { song_title: 'Hasta Que Te Conocí', artist: 'Juan Gabriel', genre: 'pop' },
+    { song_title: 'Así Fue', artist: 'Juan Gabriel', genre: 'pop' },
+    { song_title: 'Abrázame Muy Fuerte', artist: 'Juan Gabriel', genre: 'pop' },
+    { song_title: 'Amor Eterno', artist: 'Rocío Dúrcal', genre: 'pop' },
   ],
   // Proven LRCLib hits first; secondary titles are fallbacks for pool size.
   en: [
@@ -683,7 +732,7 @@ function getVerifiedSongCandidates(languageCode, genre) {
 const GENRE_HIT_EXAMPLES = {
   es: {
     reggaeton: 'Gasolina (Daddy Yankee), Despacito (Luis Fonsi), Dákiti (Bad Bunny), Tití Me Preguntó (Bad Bunny), Con Calma (Daddy Yankee), Me Porto Bonito (Bad Bunny), Yo Perreo Sola (Bad Bunny), Pepas (Farruko), Danza Kuduro (Don Omar), Taki Taki (DJ Snake), Mi Gente (J Balvin), Tusa (Karol G), El Perdón (Nicky Jam), Caramelo (Ozuna)',
-    pop: 'Bailando (Enrique Iglesias), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives), Propuesta Indecente (Romeo Santos), Color Esperanza (Diego Torres), Sofía (Alvaro Soler), Fuiste Tú (Ricardo Arjona), Creo En Ti (Reik), Espacio Sideral (Jesse & Joy), Waka Waka (Shakira), Loba (Shakira), Limón y Sal (Julieta Venegas), Me Voy (Julieta Venegas), Andar Conmigo (Julieta Venegas), Tacones Rojos (Sebastián Yatra), Robarte un Beso (Carlos Vives), Duele el Corazón (Enrique Iglesias)',
+    pop: 'Bailando (Enrique Iglesias), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives), Propuesta Indecente (Romeo Santos), Color Esperanza (Diego Torres), Sofía (Alvaro Soler), Fuiste Tú (Ricardo Arjona), Creo En Ti (Reik), Espacio Sideral (Jesse & Joy), Waka Waka (Shakira), Loba (Shakira), Limón y Sal (Julieta Venegas), Me Voy (Julieta Venegas), Andar Conmigo (Julieta Venegas), Tacones Rojos (Sebastián Yatra), Robarte un Beso (Carlos Vives), Duele el Corazón (Enrique Iglesias), La Tortura (Shakira), Estoy Aquí (Shakira), Ciega Sordomuda (Shakira), Inevitable (Shakira), Suerte (Shakira), Día de Enero (Shakira), Las de la Intuición (Shakira), Me Enamora (Juanes), Es Por Ti (Juanes), Nada Valgo Sin Tu Amor (Juanes), Fotografía (Juanes), Corazón Partío (Alejandro Sanz), Amiga Mía (Alejandro Sanz), Y Si Fuera Ella (Alejandro Sanz), No Me Compares (Alejandro Sanz), Corre (Jesse & Joy), Llorar (Jesse & Joy), Eres Para Mí (Julieta Venegas), Lento (Julieta Venegas), El Presente (Julieta Venegas), Despechá (Rosalía), Malamente (Rosalía), Provenza (Karol G), Amargura (Karol G), El Barco (Karol G), Un Año (Sebastián Yatra), Traicionera (Sebastián Yatra), Como La Flor (Selena), Si Una Vez (Selena), La Copa de la Vida (Ricky Martin), María (Ricky Martin), Vuelve (Ricky Martin), Tal Vez (Ricky Martin), Subeme la Radio (Enrique Iglesias), El Perdedor (Enrique Iglesias), Cuando Me Enamoro (Enrique Iglesias), Colgando en tus manos (Carlos Baute), Solamente Tú (Pablo Alborán), La Incondicional (Luis Miguel), Ahora Te Puedes Marchar (Luis Miguel), El Triste (José José), Amar y Querer (José José), Querida (Juan Gabriel), Hasta Que Te Conocí (Juan Gabriel), Así Fue (Juan Gabriel), Abrázame Muy Fuerte (Juan Gabriel), Amor Eterno (Rocío Dúrcal)',
     rock: 'A Dios le Pido (Juanes), La Camisa Negra (Juanes), En El Muelle de San Blas (Maná), Clavado en Un Bar (Maná), Rayando el Sol (Maná), Labios Compartidos (Maná), Flaca (Andrés Calamaro), Cuando Pase El Temblor (Soda Stereo), De Música Ligera (Soda Stereo), Persiana Americana (Soda Stereo), Lamento Boliviano (Los Enanitos Verdes), El Amor Después del Amor (Fito Paez), Nada (Zoé), Labios Rotos (Zoé), Entre dos tierras (Héroes del Silencio), Maldito Duende (Héroes del Silencio), La Flaca (Jarabe de Palo), Depende (Jarabe de Palo)',
     'hip-hop': 'Latinoamérica (Calle 13), Atrévete-te-te (Calle 13), Pa\'l Norte (Calle 13), 1977 (Ana Tijoux), Mírala Miralo (Control Machete), Antipatriarca (Ana Tijoux), Somos Sur (Ana Tijoux), Sí Señor (Control Machete), La Vuelta al Mundo (Calle 13), El Aguante (Calle 13), A lo Cubano (Orishas), René (Residente)',
     any: 'Bailando (Enrique Iglesias), Gasolina (Daddy Yankee), Vivir Mi Vida (Marc Anthony), La Bicicleta (Carlos Vives), Propuesta Indecente (Romeo Santos)',
@@ -947,6 +996,8 @@ Reply with ONLY JSON:
         throw e;
       }
       lastErr = err;
+      // A second 12s wait does not help when the model is already stalled.
+      if (err.code === 'ai_timeout') break;
     }
   }
 

@@ -6,6 +6,8 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
+* **daily-word:** Spanish pop has a much larger famous-song list, and a stalled model is not asked twice
+* **tts:** Spanish words are spoken twice at natural speed, and Pocket uses a steadier decode so the voice is clearer
 * **daily-word:** every learning language now has a deeper pop, rock, and hip-hop song list; reggaeton stays Spanish-only
 * **daily-word:** when a style's example hits are already used, ask the model for different songs instead of failing Next
 * **settings:** dyslexia spacing applies on the web page, the Android word card, the shelf, and review

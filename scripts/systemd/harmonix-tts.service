@@ -17,8 +17,8 @@ ExecStart=/home/ubuntu/pocket-tts/.venv/bin/python \
   --host 0.0.0.0 \
   --port 3002 \
   --language spanish_24l \
-  --temperature 0.45 \
-  --lsd-decode-steps 3 \
+  --temperature 0.25 \
+  --lsd-decode-steps 5 \
   --eos-threshold -2.0
 Restart=on-failure
 RestartSec=5

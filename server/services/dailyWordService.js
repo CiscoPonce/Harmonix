@@ -1443,7 +1443,7 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
       console.warn(
         `daily word batch attempt ${attempt + 1}/${maxAttempts}: 0/${batch.candidateCount || 5} passed (${lastError})`
       );
-      if (lastError === "song_already_used") {
+      if (lastError === "song_already_used" || lastError === "ai_timeout") {
         onStyleError = lastError;
         break;
       }

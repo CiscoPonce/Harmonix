@@ -151,7 +151,7 @@ function reloadHostLanguage(pocketLang) {
 }
 
 /** Bump to invalidate SQLite pronunciation cache after quality/speed/accent changes. */
-const CACHE_VERSION = 'hq-v16-pad';
+const CACHE_VERSION = 'hq-v17-es-clear';
 
 /** Playback tempo (1.0 = natural speed, no phase distortion on sibilants). */
 const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.95');
@@ -352,6 +352,9 @@ function ttsPromptForWord(word, langCode = 'es') {
   const w = String(normalized || '').trim();
   if (!w) return w;
   if (/[.!?]$/.test(w)) return w;
+  // Pocket's Spanish model slurs a single token. Saying the word twice,
+  // at natural speed, is the clearer pronunciation learners hear.
+  if (langCode === 'es') return `${w}. ${w}.`;
   return `${w}.`;
 }
 
@@ -555,7 +558,9 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           const wavBuffer = await fetchFromPocketTTS(word, voice, langCode);
-          const slowed = await slowWav(wavBuffer, SPEECH_TEMPO);
+          // atempo smears Spanish sibilants. Keep Spanish at natural speed.
+          const tempo = langCode === 'es' ? 1 : SPEECH_TEMPO;
+          const slowed = await slowWav(wavBuffer, tempo);
           const padded = padWavWithSilence(slowed);
           if (wavLooksSilent(padded)) {
             lastErr = new Error(`Pocket-TTS audio was silent after processing (attempt ${attempt})`);

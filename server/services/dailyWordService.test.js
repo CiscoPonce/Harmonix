@@ -528,6 +528,8 @@ describe("Daily Word Service", () => {
         expect(songs.every((s) => s.genre === genre), `${lang}/${genre}`).to.equal(true);
       }
     }
+    expect(aiService.getCuratedSongCandidates("es", "pop").length).to.be.at.least(40);
+    expect(aiService.getCuratedSongCandidates("es", "pop").map((s) => s.song_title)).to.include("La Tortura");
     expect(aiService.getCuratedSongCandidates("es", "reggaeton").length).to.be.at.least(12);
     expect(aiService.genresAvailableForLanguage("fr")).to.not.include("reggaeton");
     expect(aiService.genresAvailableForLanguage("en")).to.not.include("reggaeton");
