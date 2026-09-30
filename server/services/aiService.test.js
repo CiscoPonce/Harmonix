@@ -335,6 +335,12 @@ describe('AI Service', () => {
     expect(translationLooksSuspicious('lady', 'ama')).to.equal(true);
     expect(translationLooksSuspicious('lady', 'dama')).to.equal(false);
     expect(commonGlossLookup('lady', 'en', 'es', "There's a lady who's sure")).to.equal('dama');
+    expect(translationLooksSuspicious('wheels', 'pez gordo')).to.equal(true);
+    expect(translationLooksSuspicious('wheel', 'pez gordo')).to.equal(true);
+    expect(translationLooksSuspicious('wheels', 'ruedas')).to.equal(false);
+    expect(commonGlossLookup('wheels', 'en', 'es')).to.equal('ruedas');
+    expect(commonGlossLookup('wheel', 'en', 'es')).to.equal('rueda');
+    expect(commonGlossLookup('bigwig', 'en', 'es')).to.equal('pez gordo');
     expect(translationLooksSuspicious('wondering', 'maravilla')).to.equal(true);
     expect(translationLooksSuspicious('wondering', 'preguntándose')).to.equal(false);
     const { commonGlossLookupDetailed, isTrustedGlossSource } = require('./aiService');

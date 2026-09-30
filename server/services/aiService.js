@@ -1092,6 +1092,8 @@ function translationLooksSuspicious(word, translation, line = null) {
   if (w === "hand" && /^(cacho|mano de obra)$/.test(t)) return true;
   // Bulk dictionary mapped "lady" to the rare noun "ama" (mistress / wet nurse).
   if (w === "lady" && /^amas?$/.test(t)) return true;
+  // "big wheel" / bigwig idiom. In lyrics, wheel means the object.
+  if ((w === "wheel" || w === "wheels") && /pez gordo/.test(t)) return true;
   if (w === "arms" && /^(armamento|armas)$/.test(t)) return true;
   if (w === "skin" && /^(m[aá]scara|pellejo)$/.test(t)) return true;
   if (w === "ear" && /^(espiga|mazorca)$/.test(t)) return true;
