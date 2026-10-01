@@ -39,6 +39,23 @@ describe('TTS Service Voice & Accent Normalization', () => {
     assert.strictEqual(ttsService.ttsPromptForWord('tambien', 'es'), 'también. también.');
   });
 
+  it('asks Kokoro for one Spanish utterance and prefers it over Pocket', () => {
+    assert.strictEqual(ttsService.kokoroPromptForWord('también', 'es'), 'también.');
+    assert.strictEqual(ttsService.kokoroPromptForWord('tambien', 'es'), 'también.');
+    assert.deepStrictEqual(
+      ttsService.selectPronunciationEngines('es', true, true),
+      ['kokoro', 'pocket'],
+    );
+    assert.deepStrictEqual(
+      ttsService.selectPronunciationEngines('en', true, true),
+      ['pocket', 'kokoro'],
+    );
+    assert.deepStrictEqual(
+      ttsService.selectPronunciationEngines('es', false, true),
+      ['pocket', 'kokoro'],
+    );
+  });
+
   it('skip-spawn reloads Pocket-TTS when the host model language differs', async () => {
     const ttsDaemon = require('./ttsDaemon');
     const prevSkip = process.env.TTS_SKIP_SPAWN;

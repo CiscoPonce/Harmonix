@@ -31,6 +31,7 @@ services:
       TTS_BASE_URL: ${TTS_BASE_URL:-http://host.docker.internal:3002}
       POCKET_TTS_HOST: ${POCKET_TTS_HOST:-host.docker.internal}
       TTS_PORT: ${TTS_PORT:-3002}
+      KOKORO_BASE_URL: ${KOKORO_BASE_URL:-http://host.docker.internal:3003}
       VALIDATE_CONCURRENCY: ${VALIDATE_CONCURRENCY:-4}
     volumes:
       - harmonix-data:/data

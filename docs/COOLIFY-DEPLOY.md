@@ -51,6 +51,19 @@ sudo systemctl restart harmonix-tts
 
 Keep `TTS_SKIP_SPAWN=true` on the Coolify `api` service so containers never fight the host daemon.
 
+### Host Kokoro (Spanish)
+
+Unit file: [`scripts/systemd/harmonix-kokoro.service`](../scripts/systemd/harmonix-kokoro.service). Spanish pronunciation calls this daemon first (`KOKORO_BASE_URL`, port `3003`, voices `ef_dora` / `em_alex`). Pocket on `:3002` is the fallback. English stays on Pocket.
+
+```bash
+sudo cp /home/ubuntu/lyric/scripts/systemd/harmonix-kokoro.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now harmonix-kokoro
+curl -sf http://127.0.0.1:3003/health
+```
+
+Coolify redeploy does not restart this unit. After shipping the Kokoro server, copy the unit and `systemctl restart harmonix-kokoro`.
+
 ### SQLite seed (one-time cutover)
 
 ```bash

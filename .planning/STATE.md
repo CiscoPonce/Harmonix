@@ -29,6 +29,8 @@ progress:
 
 **2026-09-23 next-word:** English rock example hits were all already heard (292 songs). Song pick now drops used examples and asks once more for different tracks instead of failing Next.
 
+**2026-10-01 sessions:** Logout clears the refresh cookie and the server-side refresh id. A copied refresh token cannot mint a new access token. Refresh rotates that id, and a password change does the same.
+
 **2026-09-30 gloss:** "wheels" in Sweet Home Alabama was stored as "pez gordo" (the bigwig idiom). The lyric sense is ruedas. That hit is rejected and replaced on the next boot.
 
 **2026-09-30 Spanish pop:** The Spanish pop catalog is now a few dozen famous songs (Shakira, Juanes, Luis Miguel, Juan Gabriel, and others) so Next does not wait on a stalled model after the first hits are used. A model timeout is not retried. Spanish pronunciation says the word twice at natural speed, and Pocket decode is steadier.
@@ -58,7 +60,7 @@ progress:
 | Library URL | `/playlists` (`/library` redirects) |
 | Containers | `api-rxwdj1k3qu51fqf8uwtal389` + `web-rxwdj1k3qu51fqf8uwtal389` |
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
-| TTS | Host systemd `harmonix-tts` on `:3002` (Spanish Pocket, EOS -2.0, pad-short); Kokoro then device TTS for other languages (German skips Kokoro — no de model); compose `TTS_SKIP_SPAWN=true` |
+| TTS | Host Pocket `:3002` for English and fallback; host Kokoro `:3003` speaks Spanish once (`ef_dora` / `em_alex`); compose `TTS_SKIP_SPAWN=true` |
 | Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` (Coolify UI status only; do not use Coolify Restart) |
 | Mobile | Flutter Play Store path (`mobile/`) |
 

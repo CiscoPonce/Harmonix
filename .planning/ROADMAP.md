@@ -48,7 +48,7 @@
 | **15** | Coolify production deploy | **Complete** (domain + GH Actions zero-downtime deploy) |
 | **16** | Flutter web parity | **Complete** (Play Store client is Flutter only) |
 | **17** | Play Store listing | **In progress** |
-| **18** | Learner reliability | **Opened** (not started) |
+| **18** | Learner reliability | **Complete** |
 
 ### Phase 12 — Spotify API Integration ✅
 
@@ -229,5 +229,5 @@ Song reuse stays off. Phase 17 (Play Console) stays a separate operator track.
 
 - Extended Spotify Quota when testers other than the developer need Connect
 - Containerize Pocket-TTS (optional)
-- Refresh-token revocation
+- Refresh-token revocation — done: logout, refresh rotation, and password change drop the previous refresh token
 - iOS, after the Play listing is stable

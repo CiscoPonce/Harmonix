@@ -353,6 +353,9 @@ const userLangCols = db.prepare("PRAGMA table_info(users)").all();
 if (!userLangCols.some(col => col.name === 'native_language')) {
   db.exec("ALTER TABLE users ADD COLUMN native_language TEXT DEFAULT 'en'");
 }
+if (!userLangCols.some(col => col.name === 'refresh_jti')) {
+  db.exec('ALTER TABLE users ADD COLUMN refresh_jti TEXT');
+}
 
 // Playlist and Gamification tables
 db.exec(`

@@ -37,7 +37,14 @@ function passwordRoutes(authenticateToken) {
       db.prepare(
         'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
       ).run(passwordHash, user.id);
-      res.json({ message: 'Password updated successfully' });
+      auth.revokeUserRefreshSessions(user.id);
+      const refreshToken = auth.issueRefreshSession(user);
+      res.cookie('refreshToken', refreshToken, auth.authCookieOptions(req));
+      res.json({
+        message: 'Password updated successfully',
+        accessToken: auth.generateAccessToken(user),
+        refreshToken,
+      });
     } catch (err) {
       console.error('POST /api/auth/change-password - error:', err.message);
       res.status(500).json({ error: 'Internal server error' });

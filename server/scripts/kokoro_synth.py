@@ -52,12 +52,10 @@ def main():
     try:
         samples, sample_rate = kokoro.create(word, voice=voice, speed=1.0, lang=lang)
     except Exception as err:
+        # Do not substitute an English voice. A failed Spanish word must fail
+        # so the API can fall back to Pocket instead of teaching the wrong sound.
         sys.stderr.write(f"Kokoro create error for {word} ({lang}/{voice}): {err}\n")
-        try:
-            samples, sample_rate = kokoro.create(word, voice="af_heart", speed=1.0, lang="en-us")
-        except Exception as err2:
-            sys.stderr.write(f"Kokoro fallback error for {word}: {err2}\n")
-            sys.exit(1)
+        sys.exit(1)
     trimmed = trim_pcm_silence(samples)
     phonemes = ""
     try:

@@ -1,4 +1,6 @@
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const {
   KOKORO_LANG_MAP,
   KOKORO_VOICES_FEMALE,
@@ -69,6 +71,49 @@ describe('Kokoro-82M ONNX Service Mapping', () => {
       svc.__resetKokoroAvailabilityForTest();
       if (disabled !== undefined) process.env.KOKORO_DISABLED = disabled;
     }
+  });
+
+  it('speaks Spanish through the host Kokoro service as one utterance', async () => {
+    const svc = require('./kokoroService');
+    const prevDisabled = process.env.KOKORO_DISABLED;
+    const prevUrl = process.env.KOKORO_BASE_URL;
+    delete process.env.KOKORO_DISABLED;
+    process.env.KOKORO_BASE_URL = 'http://127.0.0.1:3003';
+    svc.__resetKokoroAvailabilityForTest();
+    const origFetch = global.fetch;
+    const calls = [];
+    const wav = Buffer.alloc(64);
+    wav.write('RIFF', 0);
+    wav.write('WAVE', 8);
+    global.fetch = async (url, opts = {}) => {
+      calls.push({ url: String(url), body: opts.body });
+      return { ok: true, status: 200, arrayBuffer: async () => wav.buffer.slice(wav.byteOffset, wav.byteOffset + wav.byteLength) };
+    };
+    try {
+      const res = await svc.generateKokoroAudio('también.', 'es', 'female');
+      assert.ok(res && res.audio);
+      assert.strictEqual(res.audio.slice(0, 4).toString(), 'RIFF');
+      assert.strictEqual(calls.length, 1);
+      assert.ok(String(calls[0].url).endsWith('/tts'));
+      const body = JSON.parse(calls[0].body);
+      assert.strictEqual(body.text, 'también.');
+      assert.strictEqual(body.lang, 'es');
+      assert.strictEqual(body.voice, 'ef_dora');
+    } finally {
+      global.fetch = origFetch;
+      svc.__resetKokoroAvailabilityForTest();
+      if (prevUrl === undefined) delete process.env.KOKORO_BASE_URL;
+      else process.env.KOKORO_BASE_URL = prevUrl;
+      if (prevDisabled === undefined) delete process.env.KOKORO_DISABLED;
+      else process.env.KOKORO_DISABLED = prevDisabled;
+    }
+  });
+
+  it('does not substitute an English voice when Spanish synthesis fails', () => {
+    const src = fs.readFileSync(path.join(__dirname, '../scripts/kokoro_synth.py'), 'utf8');
+    const creates = src.match(/kokoro\.create\(/g) || [];
+    assert.strictEqual(creates.length, 1);
+    assert.ok(!src.includes('lang="en-us"'));
   });
 
   it('KOKORO_DISABLED=true short-circuits without spawning', async () => {

@@ -6,6 +6,8 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
+* **tts:** Spanish words are spoken once by host Kokoro (`ef_dora` / `em_alex`); Pocket remains the fallback
+* **security:** logout, refresh, and password change revoke the previous refresh token so a copied cookie cannot stay signed in
 * **daily-word:** stretched sounds like Ooowww are not taught as vocabulary
 * **legal:** privacy and terms are readable in light mode and describe what the app actually stores
 * **gloss:** wheels in a lyric means ruedas, not the idiom pez gordo

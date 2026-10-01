@@ -151,7 +151,7 @@ function reloadHostLanguage(pocketLang) {
 }
 
 /** Bump to invalidate SQLite pronunciation cache after quality/speed/accent changes. */
-const CACHE_VERSION = 'hq-v17-es-clear';
+const CACHE_VERSION = 'hq-v18-es-kokoro';
 
 /** Playback tempo (1.0 = natural speed, no phase distortion on sibilants). */
 const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.95');
@@ -352,10 +352,29 @@ function ttsPromptForWord(word, langCode = 'es') {
   const w = String(normalized || '').trim();
   if (!w) return w;
   if (/[.!?]$/.test(w)) return w;
-  // Pocket's Spanish model slurs a single token. Saying the word twice,
-  // at natural speed, is the clearer pronunciation learners hear.
+  // Pocket's Spanish model slurs a single token. The doubled prompt is only
+  // for that fallback. Kokoro speaks the word once.
   if (langCode === 'es') return `${w}. ${w}.`;
   return `${w}.`;
+}
+
+/** One clear utterance for Kokoro. The doubled Pocket prompt collapses into a blurt. */
+function kokoroPromptForWord(word, langCode = 'es') {
+  const normalized = normalizeWordForTTS(word, langCode);
+  const w = String(normalized || '').trim();
+  if (!w) return w;
+  if (/[.!?]$/.test(w)) return w;
+  return `${w}.`;
+}
+
+/**
+ * Spanish prefers the host Kokoro daemon when it is up. English stays on
+ * Pocket, which is the voice learners already hear clearly.
+ */
+function selectPronunciationEngines(langCode, kokoroReady, pocketReady) {
+  if (langCode === 'es' && kokoroReady) return ['kokoro', 'pocket'];
+  if (pocketReady || !kokoroReady) return ['pocket', 'kokoro'];
+  return ['kokoro', 'pocket'];
 }
 
 /**
@@ -540,10 +559,13 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
   const kokoroService = require('./kokoroService');
   const tryKokoro = async () => {
     try {
-      const kokoroRes = await kokoroService.generateKokoroAudio(word, langCode, voiceGender);
+      const prompt = kokoroPromptForWord(word, langCode);
+      const kokoroRes = await kokoroService.generateKokoroAudio(prompt, langCode, voiceGender);
       if (kokoroRes && kokoroRes.audio) {
-        cachePronunciation(word, kokoroRes.audio, langCode, voiceGender);
-        return kokoroRes.audio;
+        const padded = padWavWithSilence(kokoroRes.audio);
+        if (wavLooksSilent(padded)) return null;
+        cachePronunciation(word, padded, langCode, voiceGender);
+        return padded;
       }
     } catch (kErr) {
       console.warn('[ttsService] Kokoro audio skipped:', kErr.message || kErr);
@@ -582,13 +604,17 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
     return null;
   };
 
-  // Production: the host Pocket-TTS daemon can reload into the learner's
-  // language (~seconds on first swap, then ~300ms). Kokoro is usually
-  // unavailable in the API image, so go to Pocket first when skip-spawn.
-  const pocketFirst = pocketCanServe(langCode) || kokoroService.isKokoroUnavailable();
-  const order = pocketFirst ? [tryPocket, tryKokoro] : [tryKokoro, tryPocket];
-  for (const attempt of order) {
-    const audio = await attempt();
+  const engines = {
+    kokoro: tryKokoro,
+    pocket: tryPocket,
+  };
+  const order = selectPronunciationEngines(
+    langCode,
+    !kokoroService.isKokoroUnavailable(),
+    pocketCanServe(langCode),
+  );
+  for (const name of order) {
+    const audio = await engines[name]();
     if (audio) return audio;
   }
 
@@ -633,6 +659,8 @@ module.exports = {
   fadeInPcm,
   loudnessNormalizePcm,
   ttsPromptForWord,
+  kokoroPromptForWord,
+  selectPronunciationEngines,
   slowWav,
   getPronunciationForWord,
   preCachePronunciation,

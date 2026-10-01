@@ -1,0 +1,24 @@
+[Unit]
+Description=Harmonix Kokoro TTS (Spanish and other Kokoro languages)
+Documentation=https://github.com/CiscoPonce/Harmonix/blob/main/docs/COOLIFY-DEPLOY.md
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/lyric
+# Bind 0.0.0.0 so the API container can reach Kokoro the same way it reaches Pocket.
+Environment=PATH=/home/ubuntu/kokoro/.venv/bin:/usr/bin
+Environment=KOKORO_MODEL_DIR=/home/ubuntu/kokoro/models
+ExecStart=/home/ubuntu/kokoro/.venv/bin/python \
+  /home/ubuntu/lyric/server/scripts/kokoro_serve.py \
+  --host 0.0.0.0 \
+  --port 3003
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

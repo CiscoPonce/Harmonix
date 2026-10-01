@@ -47,20 +47,6 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(securityHeaders);
 
-/** Cookie options that work in WebView over ngrok HTTPS (Capacitor). */
-function authCookieOptions(req) {
-  const secure =
-    req.secure ||
-    req.headers['x-forwarded-proto'] === 'https' ||
-    process.env.FORCE_SECURE_COOKIES === 'true';
-  return {
-    httpOnly: true,
-    secure,
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  };
-}
-
 app.use(express.json({ limit: '256kb' }));
 app.use(cookieParser());
 // Reflecting every Origin with credentials let any site call the API with the
@@ -143,9 +129,9 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     }
 
     const accessToken = auth.generateAccessToken(user);
-    const refreshToken = auth.generateRefreshToken(user);
+    const refreshToken = auth.issueRefreshSession(user);
 
-    res.cookie('refreshToken', refreshToken, authCookieOptions(req));
+    res.cookie('refreshToken', refreshToken, auth.authCookieOptions(req));
 
     console.log('POST /api/auth/login - success');
     res.json({
@@ -177,24 +163,13 @@ app.post('/api/auth/refresh', authLimiter, (req, res) => {
   }
 
   try {
-    const decoded = auth.verifyRefreshToken(refreshToken);
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id);
-    
-    if (!user) {
-      console.log('POST /api/auth/refresh - user not found');
-      return res.sendStatus(401);
-    }
-
-    const accessToken = auth.generateAccessToken(user);
-    const newRefreshToken = auth.generateRefreshToken(user);
-
-    res.cookie('refreshToken', newRefreshToken, authCookieOptions(req));
-
+    const session = auth.rotateRefreshSession(refreshToken);
+    res.cookie('refreshToken', session.refreshToken, auth.authCookieOptions(req));
     console.log('POST /api/auth/refresh - success');
-    res.json({ accessToken, refreshToken: newRefreshToken });
+    res.json({ accessToken: session.accessToken, refreshToken: session.refreshToken });
   } catch (err) {
     console.log('POST /api/auth/refresh - error:', err.message);
-    return res.sendStatus(403);
+    return res.sendStatus(err.status === 401 ? 401 : 403);
   }
 });
 
@@ -214,9 +189,25 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 });
 
 
-// Logout
+// Logout. Drop the server-side refresh id so a copied cookie cannot mint new access tokens.
 app.post('/api/auth/logout', (req, res) => {
-  res.clearCookie('refreshToken', authCookieOptions(req));
+  const refreshToken = req.cookies.refreshToken || req.body?.refreshToken;
+  const header = req.headers.authorization;
+  const accessToken = header && header.split(' ')[1];
+  let accessUser = null;
+  if (accessToken) {
+    try {
+      accessUser = auth.verifyAccessToken(accessToken);
+    } catch {
+      accessUser = null;
+    }
+  }
+  if (accessUser?.id) {
+    auth.revokeUserRefreshSessions(accessUser.id);
+  } else {
+    auth.revokeRefreshSession(refreshToken);
+  }
+  res.clearCookie('refreshToken', auth.authCookieOptions(req));
   res.json({ message: 'Logged out successfully' });
 });
 

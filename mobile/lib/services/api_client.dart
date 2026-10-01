@@ -348,7 +348,12 @@ class ApiClient {
 
   Future<void> logout() async {
     try {
-      await request('POST', '/auth/logout', authRetry: false);
+      await request(
+        'POST',
+        '/auth/logout',
+        body: _refreshToken == null ? null : {'refreshToken': _refreshToken},
+        authRetry: false,
+      );
     } catch (_) {}
     await clearSession();
   }
