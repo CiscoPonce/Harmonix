@@ -6,6 +6,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
+* **legal:** privacy and terms are readable in light mode and describe what the app actually stores
 * **gloss:** wheels in a lyric means ruedas, not the idiom pez gordo
 * **daily-word:** Spanish pop has a much larger famous-song list, and a stalled model is not asked twice
 * **tts:** Spanish words are spoken twice at natural speed, and Pocket uses a steadier decode so the voice is clearer

@@ -336,6 +336,19 @@ html.font-dyslexic body {
   @apply text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-600;
 }
 
+/* Privacy and terms: dark-on-light in day mode, light-on-dark at night. */
+.legal-prose h2 {
+  @apply pt-6 text-lg font-semibold text-zinc-950 dark:text-white;
+}
+
+.legal-prose a {
+  @apply font-medium text-[#0B4D2E] underline decoration-[#0B4D2E]/40 underline-offset-2 hover:decoration-[#0B4D2E] dark:text-[#8EE7B0] dark:decoration-[#8EE7B0]/40 dark:hover:decoration-[#8EE7B0];
+}
+
+.legal-prose ul {
+  @apply list-disc space-y-1 pl-5;
+}
+
 /* Daily word flip card */
 .daily-word-flip-scene {
   perspective: 1200px;
