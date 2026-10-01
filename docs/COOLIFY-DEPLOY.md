@@ -62,6 +62,14 @@ sudo systemctl enable --now harmonix-kokoro
 curl -sf http://127.0.0.1:3003/health
 ```
 
+UFW allows Pocket on `:3002` only from the Docker networks. Kokoro needs the same rules or the API cannot connect:
+
+```bash
+sudo ufw allow from 10.0.1.0/24 to any port 3003 proto tcp comment 'Harmonix Kokoro from docker0'
+sudo ufw allow from 10.0.2.0/24 to any port 3003 proto tcp comment 'Harmonix Kokoro from coolify'
+sudo ufw allow from 172.16.0.0/12 to any port 3003 proto tcp comment 'Harmonix Kokoro from docker nets'
+```
+
 Coolify redeploy does not restart this unit. After shipping the Kokoro server, copy the unit and `systemctl restart harmonix-kokoro`.
 
 ### SQLite seed (one-time cutover)
