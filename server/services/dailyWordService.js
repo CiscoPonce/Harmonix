@@ -98,6 +98,24 @@ function isLineInitialToken(token, line) {
   return tokens[0] === token;
 }
 
+/**
+ * Sounds, not words: "oh", "yeah", "Ooowww", "whoa".
+ * A real word can repeat a letter twice ("book", "see") — three or more in a
+ * row, collapsing to a vowel-ish stub, is someone holding a note.
+ */
+function isVocalization(token) {
+  const lower = String(token || "").toLowerCase().replace(/[^a-z]/g, "");
+  if (!lower) return false;
+  if (/^(oh+|ah+|uh+|mm+|hmm+|hey+|yeah+|yea+|ooh+|woo+|whoa+|woah+|ow+|wow+|na+|la+|da+|ha+|ho+|yay+|yo+)$/i.test(lower)) {
+    return true;
+  }
+  if (/(.)\1{2,}/.test(lower)) {
+    const collapsed = lower.replace(/(.)\1+/g, "$1");
+    if (collapsed.length <= 3 && /^[owahmnyeu]+$/.test(collapsed)) return true;
+  }
+  return false;
+}
+
 /** Chorus chants like "(Highs, highs, highs, highs)" are not teachable vocabulary. */
 function isLyricChantFiller(token, line) {
   const lower = String(token || "").toLowerCase();
@@ -155,7 +173,7 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
       if (!wordMatchesTargetLanguage(token, langCode)) continue;
       // Reject pure lyric filler / onomatopoeia
       if (/^(la|na|da|pa|ra|ta|bam|bum|pum|dun|tum)+$/i.test(lower)) continue;
-      if (/^(oh+|ah+|uh+|mm+|hey+|yeah+|yea+)$/i.test(lower)) continue;
+      if (isVocalization(lower)) continue;
       if (isLyricChantFiller(token, line)) continue;
       // Clipped lyric slang ("Holdin'") and artist names are not vocabulary.
       if (new RegExp(`(?:^|[^\\p{L}])${lower}'`, "iu").test(line)) continue;
@@ -2505,8 +2523,40 @@ async function generateDailyWord(user, { force = false, fetchImpl = fetch } = {}
   return enrichIfNeeded(await generateAndDeliverBatch(user, fetchImpl), user);
 }
 
+/** Shelf cards that are sounds ("Ooowww") are not vocabulary. */
+function dropVocalizationCards(isVocal) {
+  if (typeof isVocal !== "function") return { removed: 0 };
+  let removed = 0;
+  const tables = ["daily_words", "user_word_queue"];
+  const tx = db.transaction(() => {
+    for (const table of tables) {
+      const exists = db.prepare(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?"
+      ).get(table);
+      if (!exists) continue;
+      const rows = db.prepare(`SELECT id, word_json FROM ${table}`).all();
+      const del = db.prepare(`DELETE FROM ${table} WHERE id = ?`);
+      for (const row of rows) {
+        let text = "";
+        try {
+          text = JSON.parse(row.word_json)?.word?.text || "";
+        } catch {
+          continue;
+        }
+        if (!isVocal(text)) continue;
+        del.run(row.id);
+        removed += 1;
+      }
+    }
+  });
+  tx();
+  return { removed };
+}
+
 module.exports = {
   todayDate,
+  isVocalization,
+  dropVocalizationCards,
   formatTimestamp,
   previewOffset,
   previewWindow,

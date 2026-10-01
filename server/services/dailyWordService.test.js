@@ -352,6 +352,24 @@ describe("Daily Word Service", () => {
     expect(wordMatchesTargetLanguage(picked.word, "es")).to.equal(true);
   });
 
+  it("does not pick a stretched vocalization like Ooowww", () => {
+    const lyrics = [
+      "I get up, and nothing gets me down",
+      "You got it tough, I've seen the toughest around",
+      "Ooowww",
+      "Ah, might as well jump",
+    ].join("\n");
+    const picked = pickWordFromLyricsHeuristic(lyrics, "medium", new Set(), "en", {
+      songTitle: "Jump",
+      artist: "Van Halen",
+    });
+    expect(picked).to.be.ok;
+    expect(picked.word.toLowerCase()).to.not.match(/o{2,}w+|whoa|ooh|ah+/);
+    expect(["nothing", "down", "tough", "toughest", "might", "jump", "around", "seen"]).to.include(
+      picked.word.toLowerCase()
+    );
+  });
+
   it("does not pick chorus chant Highs from Adele Hello", () => {
     const lyrics = [
       "Hello, it's me",

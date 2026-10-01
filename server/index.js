@@ -390,6 +390,11 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT} (frontend proxy → ${frontendTarget})`);
   if (process.env.NODE_ENV !== 'test') {
     try {
+      const dailyWordService = require('./services/dailyWordService');
+      const dropped = dailyWordService.dropVocalizationCards(dailyWordService.isVocalization);
+      if (dropped.removed > 0) {
+        console.log(`daily word: removed ${dropped.removed} sound-only cards`);
+      }
       const glossCache = require('./services/glossCacheService');
       const { translationLooksSuspicious, commonGlossLookupDetailed, isTrustedGlossSource } = require('./services/aiService');
       const repaired = glossCache.replaceSuspiciousStoredGlosses(
