@@ -946,7 +946,7 @@ Reply with ONLY JSON:
           max_tokens: 600,
           temperature: attempt === 0 ? 0.3 : 0.8,
           top_p: 0.9,
-        }, { fast: true }),
+        }),
         new Promise((_, reject) => {
           setTimeout(() => {
             const err = new Error('ai_timeout');
