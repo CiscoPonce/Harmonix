@@ -1189,7 +1189,26 @@ function assertForceCooldown(userId) {
   }
 }
 
-async function fetchAiCandidates(user) {
+const CHART_SONG_LIMIT = 10;
+
+/** Current iTunes chart for this language and style, skipping songs already taught. */
+async function fetchChartCandidates(user, fetchImpl = fetch) {
+  const langCode = normalizeLangCode(user.target_language || "es");
+  const genre = user.genre || "pop";
+  try {
+    const chart = await deezer.fetchItunesChartSongs(langCode, genre, fetchImpl);
+    const fresh = filterUnusedSongCandidates(user.id, chart).slice(0, CHART_SONG_LIMIT);
+    if (fresh.length) {
+      console.log(`daily word: ${fresh.length} unused chart songs for ${langCode}/${genre}`);
+    }
+    return fresh;
+  } catch (err) {
+    console.warn(`daily word: chart lookup failed (${err.message || err})`);
+    return [];
+  }
+}
+
+async function fetchAiCandidates(user, fetchImpl = fetch) {
   const langCode = normalizeLangCode(user.target_language || "es");
   const genre = user.genre || "pop";
   const languageName = languageNameFromCode(langCode);
@@ -1216,9 +1235,13 @@ async function fetchAiCandidates(user) {
     return filterUnusedSongCandidates(user.id, list);
   } catch (err) {
     if (err.code === "ai_rate_limit") throw err;
+    const chart = await fetchChartCandidates(user, fetchImpl);
     const curated = getCuratedCandidatesForBatch(user.id, langCode, genre);
-    console.warn(`daily word: AI song pick failed (${err.code || err.message}), using ${curated.length} curated hits`);
-    return curated.slice(0, 8);
+    const merged = mergeCandidateLists(chart, curated).slice(0, 8);
+    console.warn(
+      `daily word: AI song pick failed (${err.code || err.message}), using ${chart.length} chart songs and ${curated.length} curated hits`
+    );
+    return merged;
   }
 }
 
@@ -1266,7 +1289,22 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
         }
       }
 
-      const aiPromise = fetchAiCandidates(user).catch((err) => {
+      // Famous-list misses and model timeouts were leaving Next with nothing.
+      // The live chart is the next pool, and it does not wait on the model.
+      if (userWaiting) {
+        const chart = await fetchChartCandidates(user, fetchImpl);
+        if (chart.length) {
+          const chartResult = await validateAllCandidates(chart, date, user, fetchImpl, {
+            ...options,
+            tryCuratedFirst: false,
+            stopAfter,
+            relaxSongReuse,
+          });
+          if (chartResult.valid.length) return chartResult;
+        }
+      }
+
+      const aiPromise = fetchAiCandidates(user, fetchImpl).catch((err) => {
         if (err.code === "ai_rate_limit") throw err;
         console.warn(`daily word: AI song pick failed (${err.code || err.message})`);
         return [];
@@ -1284,9 +1322,10 @@ async function generateValidatedBatch(user, fetchImpl = fetch, options = {}) {
 
       // User-facing cold path: curated already failed above — validate AI picks next.
       // Background refill still prefers curated-first for throughput.
+      const chart = userWaiting ? [] : await fetchChartCandidates(user, fetchImpl);
       merged = userWaiting
         ? mergeCandidateLists(candidates, [])
-        : mergeCandidateLists(curated, candidates);
+        : mergeCandidateLists(mergeCandidateLists(chart, curated), candidates);
       if (userWaiting && !merged.length && curated.length) {
         merged = curated;
       }
@@ -2580,6 +2619,7 @@ module.exports = {
   computeDailyWordStreak,
   getDailyWordStats,
   fetchAiCandidates,
+  fetchChartCandidates,
   generateValidatedBatch,
   refillQueue,
   consumeNextDailyWord,

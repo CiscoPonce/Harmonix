@@ -3,6 +3,24 @@ const DEEZER_SEARCH_URL = 'https://api.deezer.com/search';
 const ITUNES_SEARCH_URL = 'https://itunes.apple.com/search';
 const ITUNES_LOOKUP_URL = 'https://itunes.apple.com/lookup';
 
+/** Apple RSS storefront for each learning language. */
+const ITUNES_STOREFRONT = {
+  en: 'us',
+  es: 'es',
+  fr: 'fr',
+  de: 'de',
+  pt: 'br',
+  it: 'it',
+};
+
+/** Apple genre ids for the styles Harmonix teaches. */
+const ITUNES_CHART_GENRE = {
+  pop: 14,
+  rock: 21,
+  'hip-hop': 18,
+  reggaeton: 12,
+};
+
 // Some cloud egress IPs get Akamai 403 without a browser-like User-Agent.
 const DEEZER_HEADERS = {
   'User-Agent':
@@ -178,6 +196,44 @@ async function searchCatalog(query, fetchImpl = fetch, limit = 15) {
     console.warn(`itunes catalog search failed (${err.message})`);
     return [];
   }
+}
+
+function itunesStorefront(langCode, genre) {
+  const lang = String(langCode || 'en').toLowerCase();
+  if (lang === 'es' && genre === 'reggaeton') return 'mx';
+  return ITUNES_STOREFRONT[lang] || 'us';
+}
+
+function itunesChartUrl(langCode, genre, limit = 25) {
+  const country = itunesStorefront(langCode, genre);
+  const genreId = genre && genre !== 'any' ? ITUNES_CHART_GENRE[genre] : null;
+  const genrePath = genreId ? `/genre=${genreId}` : '';
+  const cap = Math.min(Math.max(Number(limit) || 25, 1), 25);
+  return `https://itunes.apple.com/${country}/rss/topsongs/limit=${cap}${genrePath}/json`;
+}
+
+/** Apple RSS entry → the same { artist, song_title, genre } shape as curated hits. */
+function parseItunesChart(payload, genre = 'pop') {
+  const raw = payload?.feed?.entry || payload?.feed?.results || [];
+  const list = Array.isArray(raw) ? raw : [raw];
+  const style = genre && genre !== 'any' ? genre : 'pop';
+  const out = [];
+  for (const item of list) {
+    if (!item) continue;
+    const title = String(item['im:name']?.label || item.name || '').trim();
+    const artist = String(item['im:artist']?.label || item.artistName || '').trim();
+    if (!title || !artist) continue;
+    out.push({ song_title: title, artist, genre: style });
+  }
+  return out;
+}
+
+async function fetchItunesChartSongs(langCode, genre, fetchImpl = fetch, limit = 25) {
+  const url = itunesChartUrl(langCode, genre, limit);
+  const res = await fetchWithTimeout(url, fetchImpl, 4000);
+  if (!res.ok) throw new Error(`itunes_chart_http_${res.status}`);
+  const data = await res.json();
+  return parseItunesChart(data, genre);
 }
 
 async function searchItunesTracks(query, fetchImpl = fetch, limit = 15) {
@@ -393,6 +449,9 @@ module.exports = {
   searchCatalog,
   searchItunesTracks,
   searchItunesTrack,
+  itunesChartUrl,
+  parseItunesChart,
+  fetchItunesChartSongs,
   fetchTrack,
   fetchItunesTrack,
   resolvePreviewForTrackId,

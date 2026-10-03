@@ -19,6 +19,7 @@ const {
   generateDailyWordFromTrack,
   computeDailyWordStreak,
   fetchAiCandidates,
+  fetchChartCandidates,
   enrichIfNeeded,
   enrichPayloadWordMeta,
   backfillQueueMetadata,
@@ -638,6 +639,104 @@ describe("Daily Word Service", () => {
     expect(wordQueue.countReady(userId)).to.equal(0);
 
     restore();
+  });
+
+  it("asks the iTunes chart for songs the learner has not heard", async () => {
+    const deezer = require("./deezerService");
+    const original = deezer.fetchItunesChartSongs;
+    deezer.fetchItunesChartSongs = async () => [
+      { song_title: "Already Heard", artist: "Old Artist", genre: "rock" },
+      { song_title: "Chart Hit", artist: "New Artist", genre: "rock" },
+    ];
+    saveDailyWord(userId, "2026-08-01", {
+      date: "2026-08-01",
+      word: { text: "old" },
+      song: { id: "1", title: "Already Heard", artist: "Old Artist" },
+    });
+    db.prepare("UPDATE users SET target_language = 'en', genre = 'rock' WHERE id = ?").run(userId);
+    try {
+      const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+      const found = await fetchChartCandidates(user, async () => {
+        throw new Error("chart stub should not fetch");
+      });
+      expect(found).to.deep.equal([
+        { song_title: "Chart Hit", artist: "New Artist", genre: "rock" },
+      ]);
+    } finally {
+      deezer.fetchItunesChartSongs = original;
+    }
+  });
+
+  it("teaches from the chart before asking the model when famous songs are used up", async () => {
+    const deezer = require("./deezerService");
+    const pool = getFullSongCandidatePool("en", "rock");
+    pool.forEach((song, i) => {
+      saveDailyWord(userId, `2026-05-${String((i % 28) + 1).padStart(2, "0")}`, {
+        date: `2026-05-${String((i % 28) + 1).padStart(2, "0")}`,
+        word: { text: `heard${i}` },
+        song: { id: String(7000 + i), title: song.song_title, artist: song.artist },
+      });
+    });
+    db.prepare("UPDATE users SET target_language = 'en', genre = 'rock', native_language = 'es' WHERE id = ?").run(userId);
+    const originalChart = deezer.fetchItunesChartSongs;
+    const originalSongs = aiService.generateDailyWordSongs;
+    const originalGloss = aiService.glossDailyWords;
+    const originalRefine = aiService.refineGlosses;
+    let aiCalls = 0;
+    deezer.fetchItunesChartSongs = async () => [
+      { song_title: "Chart Hit", artist: "New Artist", genre: "rock" },
+    ];
+    aiService.generateDailyWordSongs = async () => {
+      aiCalls += 1;
+      return [{ song_title: "Should Not Ask", artist: "Model", genre: "rock" }];
+    };
+    aiService.glossDailyWords = async (items) =>
+      items.map((item) => ({ translation: `${item.word}-es`, part_of_speech: "noun", pronunciation: "/x/" }));
+    aiService.refineGlosses = async (items, glosses) => glosses;
+    const mockFetch = async (url) => {
+      const href = String(url);
+      if (href.includes("deezer.com/search")) {
+        const query = decodeURIComponent(href.split("q=")[1] || "");
+        if (!/chart hit/i.test(query)) {
+          return { ok: true, json: async () => ({ data: [] }) };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            data: [{
+              id: 88001,
+              title: "Chart Hit",
+              duration: 200,
+              preview: "https://cdn.example/chart.mp3",
+              artist: { name: "New Artist" },
+            }],
+          }),
+        };
+      }
+      if (String(url).includes("lrclib.net")) {
+        return {
+          ok: true,
+          json: async () => ({
+            syncedLyrics: "[00:35.00] The lights go down tonight\n[00:42.00] We keep moving on",
+            plainLyrics: "The lights go down tonight",
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+    try {
+      const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+      const batch = await generateValidatedBatch(user, mockFetch, { stopAfter: 1 });
+      expect(aiCalls).to.equal(0);
+      expect(batch.valid.length).to.be.at.least(1);
+      expect(batch.valid[0].song.title).to.equal("Chart Hit");
+      expect(batch.valid[0].song.artist).to.equal("New Artist");
+    } finally {
+      deezer.fetchItunesChartSongs = originalChart;
+      aiService.generateDailyWordSongs = originalSongs;
+      aiService.glossDailyWords = originalGloss;
+      aiService.refineGlosses = originalRefine;
+    }
   });
 
   it("still asks AI for new songs when the unused curated catalog is empty", async () => {

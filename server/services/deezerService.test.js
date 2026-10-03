@@ -81,6 +81,38 @@ describe('deezerService', () => {
     expect(track.id).to.equal(1741494317);
   });
 
+  it('builds an iTunes chart URL for every learning language and style', () => {
+    const storefronts = { en: 'us', es: 'es', fr: 'fr', de: 'de', pt: 'br', it: 'it' };
+    const styles = { pop: 14, rock: 21, 'hip-hop': 18 };
+    for (const [lang, country] of Object.entries(storefronts)) {
+      for (const [style, genreId] of Object.entries(styles)) {
+        expect(deezer.itunesChartUrl(lang, style)).to.equal(
+          `https://itunes.apple.com/${country}/rss/topsongs/limit=25/genre=${genreId}/json`
+        );
+      }
+      expect(deezer.itunesChartUrl(lang, 'any')).to.equal(
+        `https://itunes.apple.com/${country}/rss/topsongs/limit=25/json`
+      );
+    }
+    expect(deezer.itunesChartUrl('es', 'reggaeton')).to.equal(
+      'https://itunes.apple.com/mx/rss/topsongs/limit=25/genre=12/json'
+    );
+  });
+
+  it('parses an iTunes chart into unused-song candidates', () => {
+    const songs = deezer.parseItunesChart({
+      feed: {
+        entry: [
+          { 'im:name': { label: 'Make Me Love You' }, 'im:artist': { label: 'Nickelback' } },
+          { 'im:name': { label: '' }, 'im:artist': { label: 'Nope' } },
+        ],
+      },
+    }, 'rock');
+    expect(songs).to.deep.equal([
+      { song_title: 'Make Me Love You', artist: 'Nickelback', genre: 'rock' },
+    ]);
+  });
+
   it('falls back to iTunes when Deezer search fails', async () => {
     const mockFetch = async (url) => {
       if (url.includes('api.deezer.com')) {
