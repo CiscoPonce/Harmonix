@@ -7,6 +7,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 ## Unreleased
 
 * **daily-word:** when the famous list is used up, Next tries the current iTunes chart for that language and style before asking the model
+* **ai:** song picks ask Lightning first, because GLM-5.3 is timing out and the 12s limit never reached the backup
 * **tts:** Spanish words are spoken once by host Kokoro (`ef_dora` / `em_alex`); Pocket remains the fallback
 * **security:** logout, refresh, and password change revoke the previous refresh token so a copied cookie cannot stay signed in
 * **daily-word:** stretched sounds like Ooowww are not taught as vocabulary

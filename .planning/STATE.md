@@ -29,6 +29,8 @@ progress:
 
 **2026-09-23 next-word:** English rock example hits were all already heard (292 songs). Song pick now drops used examples and asks once more for different tracks instead of failing Next.
 
+**2026-10-03 next-word:** GLM-5.3 is timing out, so an empty famous list never reached Lightning. Song picks now ask Lightning first. When the famous list is used up, Next tries the current iTunes chart for that language and style before the model.
+
 **2026-10-01 sessions:** Logout clears the refresh cookie and the server-side refresh id. A copied refresh token cannot mint a new access token. Refresh rotates that id, and a password change does the same.
 
 **2026-09-30 gloss:** "wheels" in Sweet Home Alabama was stored as "pez gordo" (the bigwig idiom). The lyric sense is ruedas. That hit is rejected and replaced on the next boot.

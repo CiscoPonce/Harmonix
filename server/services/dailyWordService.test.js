@@ -717,8 +717,8 @@ describe("Daily Word Service", () => {
         return {
           ok: true,
           json: async () => ({
-            syncedLyrics: "[00:35.00] The lights go down tonight\n[00:42.00] We keep moving on",
-            plainLyrics: "The lights go down tonight",
+            syncedLyrics: "[00:35.00] The lights go down tonight\n[00:42.00] We keep moving on\n[00:48.00] Silver cities in the rain\n[00:55.00] Hold on tight",
+            plainLyrics: "The lights go down tonight\nWe keep moving on\nSilver cities in the rain",
           }),
         };
       }

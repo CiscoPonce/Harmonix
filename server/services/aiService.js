@@ -229,8 +229,11 @@ async function tryChatCompletion(params, { fast = false, label = 'ChatCompletion
   throw lastErr || new Error('All chat completion models failed');
 }
 
-async function createChatCompletion(params) {
-  return tryChatCompletion(params, { fast: false, label: 'ChatCompletion' });
+async function createChatCompletion(params, options = {}) {
+  return tryChatCompletion(params, {
+    fast: Boolean(options.fast),
+    label: options.label || 'ChatCompletion',
+  });
 }
 
 function parseJsonContent(raw) {
@@ -931,7 +934,10 @@ Reply with ONLY JSON:
       : `Those picks were already used (${repeated.slice(0, 8).join('; ')}). List 5 DIFFERENT famous ${languageName}-language ${genreNorm} songs that are not in the avoid list. Return JSON only.`;
     try {
       const response = await Promise.race([
+        // GLM-5.3 is the gloss primary, but it is timing out on song picks and
+        // the 12s race never reaches Lightning. Ask Lightning first.
         createChatCompletion({
+          model: 'nvidia/nemotron-3.5-lightning-30b-a3b',
           messages: [
             { role: 'system', content: `reasoning_strength: low. ${systemPrompt}` },
             { role: 'user', content: userAsk },
@@ -940,7 +946,7 @@ Reply with ONLY JSON:
           max_tokens: 600,
           temperature: attempt === 0 ? 0.3 : 0.8,
           top_p: 0.9,
-        }),
+        }, { fast: true }),
         new Promise((_, reject) => {
           setTimeout(() => {
             const err = new Error('ai_timeout');
