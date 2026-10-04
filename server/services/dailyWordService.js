@@ -1038,6 +1038,7 @@ function summarizeDailyWordPayload(payload, meta = {}) {
         ),
         duration_seconds: payload.audio?.duration_seconds ?? null,
         preview_offset: payload.audio?.preview_offset ?? 30,
+        preview_provider: payload.audio?.preview_provider ?? null,
       }
     : null;
   return {
@@ -1059,6 +1060,7 @@ function summarizeDailyWordPayload(payload, meta = {}) {
           snippet: payload.lyric.snippet || "",
           timestamp: payload.lyric.timestamp || "",
           timestamp_ms: payload.lyric.timestamp_ms ?? null,
+          line_end_ms: payload.lyric.line_end_ms ?? null,
           char_start: payload.lyric.char_start ?? 0,
           char_end: payload.lyric.char_end ?? 0,
           in_preview: payload.lyric.in_preview ?? null,

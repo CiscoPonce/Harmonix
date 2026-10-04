@@ -29,9 +29,9 @@ describe('Web Client i18n Translations', () => {
   });
 
   it('translates correctly with fallback to English for unknown keys', () => {
-    assert.strictEqual(getTranslation('nav_discover', 'es'), 'Descubrir');
-    assert.strictEqual(getTranslation('nav_discover', 'fr'), 'Découvrir');
-    assert.strictEqual(getTranslation('nav_discover', 'de'), 'Entdecken');
+    assert.strictEqual(getTranslation('nav_discover', 'es'), 'Palabra');
+    assert.strictEqual(getTranslation('nav_discover', 'fr'), 'Mot');
+    assert.strictEqual(getTranslation('nav_discover', 'de'), 'Wort');
     assert.strictEqual(getTranslation('chip_home', 'es'), 'Inicio');
     assert.strictEqual(getTranslation('harmonix_playlists', 'es'), 'Listas de Harmonix');
     assert.strictEqual(getTranslation('unknown_key_test', 'es'), 'unknown_key_test');

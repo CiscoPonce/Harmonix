@@ -8,6 +8,7 @@ import '../theme/harmonix_theme.dart';
 import '../utils/i18n.dart';
 import '../widgets/spotify_library_list.dart';
 import 'playlist_detail_screen.dart';
+import 'word_detail_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -256,6 +257,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
       onwardUrl: _onwardUrl,
       onRefresh: _refreshBlocked ? null : _load,
       onOpenPlaylist: _openPlaylist,
+      onOpenRecent: (item) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => WordDetailScreen(payload: item)),
+        );
+      },
       onOpenSettings: _openSettings,
       onCreatePlaylist: _createPlaylist,
       header: Row(

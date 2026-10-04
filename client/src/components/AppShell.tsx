@@ -16,7 +16,7 @@ import { HarmonixWordmark } from '@/components/HarmonixWordmark';
 import { useTranslation } from '@/lib/i18n';
 
 const NAV = [
-  { href: '/discover', key: 'nav_discover', label: 'Discover', icon: Compass },
+  { href: '/discover', key: 'nav_discover', label: 'Word', icon: Compass },
   { href: '/playlists', key: 'nav_shelf', label: 'Library', icon: Library },
   { href: '/settings', key: 'settings_title', label: 'Settings', icon: Settings },
 ] as const;

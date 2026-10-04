@@ -1,16 +1,18 @@
 import 'package:flutter/foundation.dart';
 
-/// Three-tab shell indices and one-shot Spotify App Link routing (D-12-04).
+/// Discover, Library, and the account icon (Settings). Spotify App Links may
+/// select Library or the account tab once (D-12-04).
 ///
-/// Ordinary default is Discover (unified home). Trusted HTTPS App Links may
-/// select Library or Settings exactly once. Provider secrets in query strings
-/// are never retained.
+/// Ordinary default is Discover (unified home). Provider secrets in query
+/// strings are never retained.
 class HomeNavigationController extends ChangeNotifier {
   HomeNavigationController({int initialIndex = discoverIndex})
       : _index = initialIndex;
 
   static const int discoverIndex = 0;
   static const int libraryIndex = 1;
+
+  /// Account icon in the bottom bar, beside Library. Opens Settings.
   static const int settingsIndex = 2;
 
   /// Backward-compatible alias — Learn folded into Discover.

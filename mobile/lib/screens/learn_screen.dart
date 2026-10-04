@@ -593,41 +593,18 @@ class _LearnScreenState extends State<LearnScreen> {
         (word['line_translation'] ?? lyric['line_translation'] ?? '').toString().trim();
     final colors = HarmonixColors.of(context);
 
-    return RefreshIndicator(
+    return Column(
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final cardHeight = (constraints.maxHeight - 300).clamp(320.0, 372.0);
+              return RefreshIndicator(
       color: colors.accent,
       onRefresh: () => _load(),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: colors.border,
-                child: Icon(Icons.person, size: 18, color: colors.textMuted),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'Harmonix',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Container(width: 28, height: 2, color: colors.accent),
-              const SizedBox(width: 8),
-              Text(context.tr('word_of_the_day').toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
-              if (ready != null) ...[
-                const Spacer(),
-                Text(
-                  context.tr('n_ready', {'n': ready}),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: colors.accent),
-                ),
-              ],
-            ],
-          ),
           if (_word?['style_relaxed'] == true) ...[
             const SizedBox(height: 8),
             Text(
@@ -644,9 +621,9 @@ class _LearnScreenState extends State<LearnScreen> {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.textMuted),
             ),
           ],
-          const SizedBox(height: 20),
+          const SizedBox(height: 4),
           WordFlipCard(
-            height: 300,
+            height: cardHeight,
             canFlip: (lyric['snippet']?.toString().trim().isNotEmpty ?? false) ||
                 (song['title']?.toString().trim().isNotEmpty ?? false),
             front: Column(
@@ -660,7 +637,7 @@ class _LearnScreenState extends State<LearnScreen> {
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.displayLarge?.copyWith(
                           color: colors.accent,
-                          fontSize: 40,
+                          fontSize: 46,
                           letterSpacing: studySpacing,
                         ),
                   ),
@@ -758,7 +735,7 @@ class _LearnScreenState extends State<LearnScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Wrap(
             alignment: WrapAlignment.center,
             spacing: 12,
@@ -790,7 +767,15 @@ class _LearnScreenState extends State<LearnScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 16),
+          if (ready != null) ...[
+            Text(
+              context.tr('n_ready', {'n': ready}),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.textMuted),
+            ),
+            const SizedBox(height: 8),
+          ],
           OutlinedButton(
             onPressed: _nexting ? null : () => _load(next: true),
             style: OutlinedButton.styleFrom(
@@ -804,7 +789,7 @@ class _LearnScreenState extends State<LearnScreen> {
             const SizedBox(height: 12),
             Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           if (_stats != null || _dueCount > 0) ...[
             Wrap(
               alignment: WrapAlignment.center,
@@ -842,106 +827,8 @@ class _LearnScreenState extends State<LearnScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
           ],
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: HarmonixColors.brand,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: TextField(
-              controller: _searchQuery,
-              focusNode: _searchFocus,
-              style: const TextStyle(color: Color(0xFF0C1210)),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                hintText: context.tr('search_hint'),
-                hintStyle: const TextStyle(color: Color(0xFF9AABA0)),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF7A8A80)),
-                suffixIcon: IconButton(
-                  onPressed: _searching ? null : _search,
-                  icon: _searching
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.arrow_forward, color: HarmonixColors.brand),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(999),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onSubmitted: (_) => _search(),
-            ),
-          ),
-          if (_searchResults.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              context.tr('search_intro'),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.textMuted),
-            ),
-          ],
-          const SizedBox(height: 4),
-          ..._searchResults.map((raw) {
-            final item = raw as Map<String, dynamic>;
-            final title = item['title']?.toString() ?? 'Track';
-            final artist = item['artist'] is Map
-                ? (item['artist'] as Map)['name']?.toString()
-                : item['artist']?.toString();
-            final id = item['id']?.toString();
-            final busy = _pickingTrackId != null;
-            final isThis = _pickingTrackId == id;
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.music_note, color: colors.accent),
-              title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text(
-                isThis
-                    ? context.tr('creating_word')
-                    : (artist ?? ''),
-              ),
-              trailing: id == null
-                  ? null
-                  : isThis
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              context.tr('learn_word').toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                color: colors.accent,
-                              ),
-                            ),
-                            IconButton(
-                              tooltip: context.tr('open_in_spotify'),
-                              icon: const Icon(Icons.open_in_new, size: 18),
-                              onPressed: () async {
-                                final uri = Uri.parse(
-                                  spotifyOpenUrlForSong(artist: artist ?? '', title: title),
-                                );
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-              onTap: id == null || busy
-                  ? null
-                  : () => _learnFromTrack(id, title: title, artist: artist),
-            );
-          }),
           if (_shelf.isNotEmpty) ...[
             const SizedBox(height: 28),
             Text(context.tr('your_shelf').toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
@@ -1092,6 +979,125 @@ class _LearnScreenState extends State<LearnScreen> {
         ],
       ),
     );
+            },
+          ),
+        ),
+        if (_searchResults.isNotEmpty)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 160),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              children: _searchResultTiles(colors),
+            ),
+          ),
+        _songSearchDock(colors),
+      ],
+    );
+  }
+
+  Widget _songSearchDock(HarmonixColors colors) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        decoration: BoxDecoration(
+          color: HarmonixColors.brand,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: TextField(
+          controller: _searchQuery,
+          focusNode: _searchFocus,
+          style: const TextStyle(color: Color(0xFF0C1210)),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            isDense: true,
+            hintText: context.tr('search_hint'),
+            hintStyle: const TextStyle(color: Color(0xFF9AABA0)),
+            prefixIcon: const Icon(Icons.search, color: Color(0xFF7A8A80)),
+            suffixIcon: IconButton(
+              onPressed: _searching ? null : _search,
+              icon: _searching
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.arrow_forward, color: HarmonixColors.brand),
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(999),
+              borderSide: BorderSide.none,
+            ),
+          ),
+          onSubmitted: (_) => _search(),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _searchResultTiles(HarmonixColors colors) {
+    return [
+      Text(
+        context.tr('search_intro'),
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.textMuted),
+      ),
+      ..._searchResults.map((raw) {
+        final item = raw as Map<String, dynamic>;
+        final title = item['title']?.toString() ?? 'Track';
+        final artist = item['artist'] is Map
+            ? (item['artist'] as Map)['name']?.toString()
+            : item['artist']?.toString();
+        final id = item['id']?.toString();
+        final busy = _pickingTrackId != null;
+        final isThis = _pickingTrackId == id;
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.music_note, color: colors.accent),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(
+            isThis ? context.tr('creating_word') : (artist ?? ''),
+          ),
+          trailing: id == null
+              ? null
+              : isThis
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          context.tr('learn_word').toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: colors.accent,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: context.tr('open_in_spotify'),
+                          icon: const Icon(Icons.open_in_new, size: 18),
+                          onPressed: () async {
+                            final uri = Uri.parse(
+                              spotifyOpenUrlForSong(artist: artist ?? '', title: title),
+                            );
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+          onTap: id == null || busy
+              ? null
+              : () => _learnFromTrack(id, title: title, artist: artist),
+        );
+      }),
+    ];
   }
 }
 

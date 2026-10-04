@@ -4,6 +4,7 @@ import 'package:harmonix_mobile/screens/home_shell.dart';
 import 'package:harmonix_mobile/services/api_client.dart';
 import 'package:harmonix_mobile/state/auth_state.dart';
 import 'package:harmonix_mobile/state/home_navigation_controller.dart';
+import 'package:harmonix_mobile/state/theme_controller.dart';
 import 'package:harmonix_mobile/theme/harmonix_theme.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -54,6 +55,7 @@ Widget _harness(Widget child, {HomeNavigationController? nav}) {
     providers: [
       Provider<ApiClient>.value(value: client),
       ChangeNotifierProvider(create: (_) => AuthState(client)),
+      ChangeNotifierProvider(create: (_) => ThemeController()),
       ChangeNotifierProvider(
         create: (_) => nav ?? HomeNavigationController(),
       ),
@@ -161,6 +163,25 @@ void main() {
     await tester.pumpWidget(_harness(const HomeShell(), nav: nav));
     await tester.pumpAndSettle();
     expect(nav.index, HomeNavigationController.discoverIndex);
-    expect(find.text('Discover'), findsWidgets);
+    expect(find.text('Word'), findsWidgets);
+    expect(find.text('Account'), findsOneWidget);
+    expect(find.text('Harmonix'), findsNothing);
+    expect(find.byIcon(Icons.account_circle_outlined), findsOneWidget);
+  });
+
+  testWidgets('account icon sits beside Library and opens Settings', (tester) async {
+    await tester.pumpWidget(_harness(const HomeShell()));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationDestination), findsNWidgets(3));
+    final library = tester.getCenter(find.text('Library'));
+    final account = tester.getCenter(find.text('Account'));
+    expect(account.dx, greaterThan(library.dx));
+
+    await tester.tap(find.text('Account'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings'), findsWidgets);
+    expect(find.byType(NavigationDestination), findsNWidgets(3));
   });
 }

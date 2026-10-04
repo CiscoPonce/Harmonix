@@ -60,8 +60,8 @@ class _HomeShellState extends State<HomeShell> {
         onDestinationSelected: nav.selectTab,
         destinations: [
           NavigationDestination(
-            icon: const Icon(Icons.explore_outlined),
-            selectedIcon: const Icon(Icons.explore),
+            icon: const Icon(Icons.abc_outlined),
+            selectedIcon: const Icon(Icons.abc),
             label: context.tr('nav_discover'),
           ),
           NavigationDestination(
@@ -70,9 +70,9 @@ class _HomeShellState extends State<HomeShell> {
             label: context.tr('nav_shelf'),
           ),
           NavigationDestination(
-            icon: const Icon(Icons.settings_outlined),
-            selectedIcon: const Icon(Icons.settings),
-            label: context.tr('nav_settings'),
+            icon: const Icon(Icons.account_circle_outlined),
+            selectedIcon: const Icon(Icons.account_circle),
+            label: context.tr('nav_account'),
           ),
         ],
       ),

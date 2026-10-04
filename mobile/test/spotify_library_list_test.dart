@@ -19,6 +19,7 @@ class SpotifyLibraryListArgs {
     this.spotifyLoading = false,
     this.onRefresh,
     this.onOpenPlaylist,
+    this.onOpenRecent,
     this.onwardUrl,
   });
 
@@ -29,6 +30,7 @@ class SpotifyLibraryListArgs {
   final bool spotifyLoading;
   final Future<void> Function()? onRefresh;
   final void Function(ProviderPlaylist playlist)? onOpenPlaylist;
+  final void Function(Map<String, dynamic> item)? onOpenRecent;
   final String? onwardUrl;
 }
 
@@ -42,6 +44,7 @@ Widget? buildSpotifyLibraryList(SpotifyLibraryListArgs args) {
     onwardUrl: args.onwardUrl,
     onRefresh: args.onRefresh,
     onOpenPlaylist: args.onOpenPlaylist,
+    onOpenRecent: args.onOpenRecent,
   );
 }
 
@@ -95,11 +98,11 @@ void main() {
     await tester.pumpWidget(_harness(list));
     expect(find.text('HARMONIX PLAYLISTS'), findsOneWidget);
     expect(find.text('SPOTIFY PLAYLISTS'), findsOneWidget);
-    expect(find.text('RECENT DISCOVERIES'), findsOneWidget);
+    expect(find.text('RECENT WORDS'), findsOneWidget);
 
     final hY = tester.getTopLeft(find.text('HARMONIX PLAYLISTS')).dy;
     final sY = tester.getTopLeft(find.text('SPOTIFY PLAYLISTS')).dy;
-    final rY = tester.getTopLeft(find.text('RECENT DISCOVERIES')).dy;
+    final rY = tester.getTopLeft(find.text('RECENT WORDS')).dy;
     expect(hY, lessThan(sY));
     expect(sY, lessThan(rY));
     expect(find.text('Harmonix List'), findsOneWidget);
@@ -228,5 +231,27 @@ void main() {
     final text = tester.widget<Text>(find.text(longName));
     expect(text.maxLines, 1);
     expect(text.overflow, TextOverflow.ellipsis);
+  });
+
+  testWidgets('tapping a recent word opens that card', (tester) async {
+    Map<String, dynamic>? opened;
+    final list = buildSpotifyLibraryList(
+      SpotifyLibraryListArgs(
+        harmonixPlaylists: const [],
+        spotifyPlaylists: const [],
+        recentDiscoveries: const [
+          {
+            'word': {'text': 'father', 'translation': 'padre'},
+            'song': {'title': 'Welcome to the Black Parade', 'artist': 'My Chemical Romance'},
+          },
+        ],
+        onOpenRecent: (item) => opened = item,
+      ),
+    )!;
+    await tester.pumpWidget(_harness(list));
+    await tester.tap(find.text('father'));
+    await tester.pump();
+    expect(opened?['word'], isA<Map>());
+    expect((opened?['word'] as Map)['text'], 'father');
   });
 }

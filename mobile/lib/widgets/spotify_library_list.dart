@@ -42,6 +42,7 @@ class SpotifyLibraryList extends StatelessWidget {
     this.onwardUrl,
     this.onRefresh,
     this.onOpenPlaylist,
+    this.onOpenRecent,
     this.onOpenSettings,
     this.onCreatePlaylist,
     this.header,
@@ -56,6 +57,7 @@ class SpotifyLibraryList extends StatelessWidget {
   final String? onwardUrl;
   final Future<void> Function()? onRefresh;
   final void Function(ProviderPlaylist playlist)? onOpenPlaylist;
+  final void Function(Map<String, dynamic> item)? onOpenRecent;
   final VoidCallback? onOpenSettings;
   final VoidCallback? onCreatePlaylist;
   final Widget? header;
@@ -156,6 +158,10 @@ class SpotifyLibraryList extends StatelessWidget {
             final artist = item['artist']?.toString();
             return ListTile(
               contentPadding: EdgeInsets.zero,
+              onTap: onOpenRecent == null ? null : () => onOpenRecent!(item),
+              trailing: onOpenRecent == null
+                  ? null
+                  : Icon(Icons.chevron_right, color: colors.textMuted),
               title: Text(
                 word['text']?.toString() ?? title ?? '',
                 style: const TextStyle(fontWeight: FontWeight.w800),

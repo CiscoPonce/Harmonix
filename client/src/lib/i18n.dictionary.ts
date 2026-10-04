@@ -4,7 +4,7 @@ export type LanguageCode = 'en' | 'es' | 'fr' | 'de' | 'pt' | 'it';
 export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   en: {
     // Navigation
-    nav_discover: 'Discover',
+    nav_discover: 'Word',
     nav_shelf: 'Library',
     nav_stats: 'Stats',
     nav_admin: 'Admin',
@@ -90,7 +90,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   },
   es: {
     // Navigation
-    nav_discover: 'Descubrir',
+    nav_discover: 'Palabra',
     nav_shelf: 'Biblioteca',
     nav_stats: 'Estadísticas',
     nav_admin: 'Admin',
@@ -176,7 +176,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   },
   fr: {
     // Navigation
-    nav_discover: 'Découvrir',
+    nav_discover: 'Mot',
     nav_shelf: 'Bibliothèque',
     nav_stats: 'Statistiques',
     nav_admin: 'Admin',
@@ -262,7 +262,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   },
   de: {
     // Navigation
-    nav_discover: 'Entdecken',
+    nav_discover: 'Wort',
     nav_shelf: 'Bibliothek',
     nav_stats: 'Statistiken',
     nav_admin: 'Admin',
@@ -348,7 +348,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   },
   pt: {
     // Navigation
-    nav_discover: 'Descobrir',
+    nav_discover: 'Palavra',
     nav_shelf: 'Biblioteca',
     nav_stats: 'Estatísticas',
     nav_admin: 'Admin',
@@ -434,7 +434,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   },
   it: {
     // Navigation
-    nav_discover: 'Scopri',
+    nav_discover: 'Parola',
     nav_shelf: 'Libreria',
     nav_stats: 'Statistiche',
     nav_admin: 'Admin',
@@ -624,7 +624,7 @@ const EXTRA: Record<LanguageCode, Record<string, string>> = {
     still_matching: 'Still matching — this can take up to a minute…',
     harmonix_playlists: 'Harmonix Playlists',
     spotify_playlists: 'Spotify Playlists',
-    recent_discoveries: 'Recent Discoveries',
+    recent_discoveries: 'Recent words',
     personal_collection: 'Personal collection',
     library_tagline: 'Songs and words you’re learning, in one library.',
     library_ready: 'Your library is ready for music',
@@ -758,7 +758,7 @@ const EXTRA: Record<LanguageCode, Record<string, string>> = {
     still_matching: 'Sigue buscando — puede tardar hasta un minuto…',
     harmonix_playlists: 'Listas de Harmonix',
     spotify_playlists: 'Listas de Spotify',
-    recent_discoveries: 'Descubrimientos recientes',
+    recent_discoveries: 'Palabras recientes',
     personal_collection: 'Colección personal',
     library_tagline: 'Canciones y palabras que estás aprendiendo, en una biblioteca.',
     library_ready: 'Tu biblioteca está lista para la música',
@@ -892,7 +892,7 @@ const EXTRA: Record<LanguageCode, Record<string, string>> = {
     still_matching: 'Toujours en recherche — cela peut prendre jusqu’à une minute…',
     harmonix_playlists: 'Playlists Harmonix',
     spotify_playlists: 'Playlists Spotify',
-    recent_discoveries: 'Découvertes récentes',
+    recent_discoveries: 'Mots récents',
     personal_collection: 'Collection personnelle',
     library_tagline: 'Les chansons et les mots que vous apprenez, dans une bibliothèque.',
     library_ready: 'Votre bibliothèque est prête pour la musique',
@@ -1026,7 +1026,7 @@ const EXTRA: Record<LanguageCode, Record<string, string>> = {
     still_matching: 'Suche läuft noch — das kann bis zu einer Minute dauern…',
     harmonix_playlists: 'Harmonix-Playlists',
     spotify_playlists: 'Spotify-Playlists',
-    recent_discoveries: 'Neue Entdeckungen',
+    recent_discoveries: 'Letzte Wörter',
     personal_collection: 'Persönliche Sammlung',
     library_tagline: 'Songs und Wörter, die du lernst — in einer Bibliothek.',
     library_ready: 'Deine Bibliothek ist bereit für Musik',
@@ -1160,7 +1160,7 @@ const EXTRA: Record<LanguageCode, Record<string, string>> = {
     still_matching: 'Ainda procurando — isso pode levar até um minuto…',
     harmonix_playlists: 'Playlists do Harmonix',
     spotify_playlists: 'Playlists do Spotify',
-    recent_discoveries: 'Descobertas recentes',
+    recent_discoveries: 'Palavras recentes',
     personal_collection: 'Coleção pessoal',
     library_tagline: 'Músicas e palavras que você está aprendendo, em uma biblioteca.',
     library_ready: 'Sua biblioteca está pronta para a música',
@@ -1294,7 +1294,7 @@ const EXTRA: Record<LanguageCode, Record<string, string>> = {
     still_matching: 'Sto ancora cercando — può volerci fino a un minuto…',
     harmonix_playlists: 'Playlist Harmonix',
     spotify_playlists: 'Playlist Spotify',
-    recent_discoveries: 'Scoperte recenti',
+    recent_discoveries: 'Parole recenti',
     personal_collection: 'Collezione personale',
     library_tagline: 'Canzoni e parole che stai imparando, in una biblioteca.',
     library_ready: 'La tua biblioteca è pronta per la musica',
