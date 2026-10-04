@@ -10,13 +10,35 @@ permissions:
 jobs:
   upload-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
-      - name: Upload debug APK to GitHub Release
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build release APK
+        working-directory: mobile
+        run: flutter build apk --release --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
+
+      - name: Name the APK from the app version
+        id: apk
+        run: |
+          version=$(awk '/^version:/ {print $2}' mobile/pubspec.yaml | cut -d+ -f1)
+          cp mobile/build/app/outputs/flutter-apk/app-release.apk "Harmonix-${version}.apk"
+          echo "file=Harmonix-${version}.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "${{ github.event.release.tag_name }}" \
-            "releases/Harmonix-debug.apk#Harmonix-debug.apk" \
+            "${{ steps.apk.outputs.file }}" \
             --clobber

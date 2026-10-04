@@ -19,8 +19,8 @@ Initial release: **v0.0.1** (displayed as v0.01).
    changelog and version file updates.
 3. When you merge that PR, release-please tags the release and publishes a
    GitHub Release.
-4. The **attach-apk-to-release** workflow uploads `releases/Harmonix-debug.apk`
-   to each published release.
+4. The **attach-apk-to-release** workflow builds the Flutter release APK and
+   uploads `Harmonix-<version>.apk` to that GitHub Release.
 
 ## Commit examples
 
