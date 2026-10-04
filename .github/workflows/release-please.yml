@@ -13,9 +13,54 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # A release created with GITHUB_TOKEN does not start a separate workflow,
+  # so the APK has to be built in this same run.
+  upload-apk:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build release APK
+        working-directory: mobile
+        run: flutter build apk --release --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
+
+      - name: Name the APK from the app version
+        id: apk
+        run: |
+          version=$(awk '/^version:/ {print $2}' mobile/pubspec.yaml | cut -d+ -f1)
+          cp mobile/build/app/outputs/flutter-apk/app-release.apk "Harmonix-${version}.apk"
+          echo "file=Harmonix-${version}.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.release-please.outputs.tag_name }}" \
+            "${{ steps.apk.outputs.file }}" \
+            --clobber
