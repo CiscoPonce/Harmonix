@@ -1,4 +1,4 @@
-# Phase 17 — remaining steps (do these)
+# Phase 17 — Play Console record
 
 Operator checklist. Copy and Data safety text live in
 [`docs/PLAY-CONSOLE-LISTING.md`](../../../docs/PLAY-CONSOLE-LISTING.md).
@@ -72,8 +72,6 @@ Fresh **Zoho Mail** setup on GoDaddy DNS — see [`docs/MAILBOX-SETUP.md`](../..
 
 If you use a different address, change `client/src/lib/contact.ts` first, then update `docs/PLAY-CONSOLE-LISTING.md`.
 
-**Blocked until this section is done:** section B contact email and Data safety “request deletion” email.
-
 ---
 
 ## B. Play Console — create the app (17-02)
@@ -85,53 +83,54 @@ Ready in the repo (do not re-do these):
 - Signed AAB recipe and version `1.0.13` / `16` in [`mobile/PLAY-STORE.md`](../../../mobile/PLAY-STORE.md)
 - Privacy https://harmonix.peeporunclub.co.uk/privacy and support `hello@peeporunclub.co.uk`
 
-Still only possible inside Play Console:
+Done in Play Console (2026-10-10):
 
-- [ ] Google Play developer account paid ($25) — [play.google.com/console](https://play.google.com/console)
-- [ ] **Create app:** name `Harmonix` · language English (UK) · type App · price Free
-- [ ] Store listing — paste from `docs/PLAY-CONSOLE-LISTING.md`
-- [ ] Upload `mobile/store/app-icon-512.png` (512×512)
-- [ ] Upload `mobile/store/feature-graphic.png` (1024×500)
-- [ ] Upload **2–4 phone screenshots** (you take these): Word card + search, flipped lyric, Library recent word, Account/Settings
-- [ ] Privacy policy URL: `https://harmonix.peeporunclub.co.uk/privacy`
-- [ ] Contact email: `hello@peeporunclub.co.uk` (change `client/src/lib/contact.ts` if the mailbox name is different)
-- [ ] Data safety form — answers in the listing pack
-- [ ] Content rating questionnaire — target **13+**, no ads, no IAP
-- [ ] App category: Education (or Music & Audio if Console prefers)
+- [x] Google Play developer account paid ($25) — [play.google.com/console](https://play.google.com/console)
+- [x] **Create app:** name `Harmonix` · language English (UK) · type App · price Free · id `uk.co.peeporunclub.harmonix`
+- [x] Store listing — paste from `docs/PLAY-CONSOLE-LISTING.md`
+- [x] Upload `mobile/store/app-icon-512.png` (512×512)
+- [x] Upload `mobile/store/feature-graphic.png` (1024×500)
+- [x] Upload **2–4 phone screenshots** (you take these): Word card + search, flipped lyric, Library recent word, Account/Settings
+- [x] Privacy policy URL: `https://harmonix.peeporunclub.co.uk/privacy`
+- [x] Contact email: `hello@peeporunclub.co.uk` (change `client/src/lib/contact.ts` if the mailbox name is different)
+- [x] Data safety form — answers in the listing pack
+- [x] Content rating questionnaire — target **13+**, no ads, no IAP. Result: PEGI 3, ESRB E
+- [x] App category: Education (or Music & Audio if Console prefers)
 
 ---
 
 ## C. Internal testing (17-03)
 
-- [ ] Register a **reviewer** account on the live site (or in-app). Save email + password.
-- [ ] Play Console → **App content → App access** → add those credentials + the note in the listing pack
-- [ ] **Testing → Internal testing** → create a release → upload `app-release.aab` (version `1.0.13`, code `16`)
-- [ ] Add tester Gmail addresses
-- [ ] Each tester opens the Internal testing link and installs from Play (not a random APK)
-- [ ] On a phone, confirm:
-  - [ ] Login / register works and lands on the Word tab
-  - [ ] Word card shows a real Spanish (or native) meaning — not junk like `cacho`
-  - [ ] Search “Hey Jude” returns tracks
-  - [ ] Hear-it plays a ~30s preview
-  - [ ] Flip card shows the lyric line
-- [ ] Spotify Connect: only testers on the Spotify developer allowlist, until Extended Quota is approved. Reviewers can skip Connect.
+- [x] Register a **reviewer** account on the live site (or in-app). Save email + password.
+- [x] Play Console → **App content → App access** → add those credentials + the note in the listing pack
+- [x] **Testing → Internal testing** → create a release → upload `app-release.aab` (version `1.0.13`, code `16`)
+- [x] Add tester Gmail addresses
+- [x] Each tester opens the Internal testing link and installs from Play (not a random APK)
+- [x] On a phone, confirm:
+  - [x] Login / register works and lands on the Word tab
+  - [x] Word card shows a real Spanish (or native) meaning — not junk like `cacho`
+  - [x] Search “Hey Jude” returns tracks
+  - [x] Hear-it plays a ~30s preview
+  - [x] Flip card shows the lyric line
+- [x] Spotify Connect: only testers on the Spotify developer allowlist, until Extended Quota is approved. Reviewers can skip Connect.
 
 ---
 
-## D. Production (only after C is green)
+## D. Public release
 
-- [ ] Complete any remaining Console declarations (ads, news, government, target audience)
-- [ ] Promote the Internal testing release to **Production** (or upload the same AAB to Production)
+Console declarations are done (ads, news, government, health, target audience). Closed testing for `1.0.13` is submitted. New personal accounts cannot go straight to production.
+
+- [x] Complete any remaining Console declarations (ads, news, government, target audience)
+- [ ] 12 testers opt in to the **closed** test and stay opted in for 14 days
+- [ ] **Solicitar acceso a producción**, then publish the same `1.0.13` bundle
 - [ ] Store listing is public
 - [ ] Watch for Play review questions at `hello@peeporunclub.co.uk`
-
-Do **not** start D if Hear-it or login failed in C.
 
 ---
 
 ## E. After the first upload (later updates)
 
-1. Bump `mobile/pubspec.yaml` version (`1.0.9+12`, then `1.0.10+13`, …).
+1. Bump `mobile/pubspec.yaml` version above `1.0.13+16`.
 2. Rebuild the AAB with the same keystore.
 3. Upload a new Internal testing / Production release.
 

@@ -1,6 +1,6 @@
 # Phase 17 — Play Store listing
 
-**Status:** In progress (opened 2026-09-06)  
+**Status:** Complete (2026-10-10). Public Play release waits on 12 closed-test testers for 14 days.  
 **Milestone:** v2.0  
 **Surfaces:** Flutter Android (`mobile/`) only. Capacitor is not shipped.
 
@@ -14,7 +14,7 @@ Put Harmonix on Google Play via **Internal testing first**, then Production when
 |------|--------|
 | Live API + web | https://harmonix.peeporunclub.co.uk |
 | Privacy / terms | `/privacy`, `/terms` — support address `hello@peeporunclub.co.uk` in code |
-| Support mailbox | **Not created yet** — operator step A0 in [17-CHECKLIST.md](./17-CHECKLIST.md); guide [docs/MAILBOX-SETUP.md](../../../docs/MAILBOX-SETUP.md) |
+| Support mailbox | `hello@peeporunclub.co.uk` on Zoho, live |
 | Listing copy + Data safety answers | [`docs/PLAY-CONSOLE-LISTING.md`](../../../docs/PLAY-CONSOLE-LISTING.md) |
 | App icon 512×512 | `mobile/store/app-icon-512.png` |
 | Feature graphic 1024×500 | `mobile/store/feature-graphic.png` |
@@ -34,17 +34,15 @@ Put Harmonix on Google Play via **Internal testing first**, then Production when
 | D-17-06 | Spotify Connect is optional for reviewers until Extended Quota is approved. |
 | D-17-07 | Testers install from the **Play Internal testing link**, not a sideload debug APK. |
 
-## Remaining work
+## Play release
 
-Follow **[17-CHECKLIST.md](./17-CHECKLIST.md)** — that file is the operator list.
+The phase is complete. The public listing opens after 12 people opt in to the closed test and stay opted in for 14 days.
 
-Plans (same work, split for tracking):
-
-| Plan | Name |
-|------|------|
-| [17-01](./17-01-PLAN.md) | Keystore + signed AAB on this PC |
-| [17-02](./17-02-PLAN.md) | Play Console listing, Data safety, content rating |
-| [17-03](./17-03-PLAN.md) | Internal testing, reviewer login, then Production |
+| Plan | Name | Status |
+|------|------|--------|
+| [17-01](./17-01-PLAN.md) | Keystore + signed AAB on this PC | Complete |
+| [17-02](./17-02-PLAN.md) | Play Console listing, Data safety, content rating | Complete |
+| [17-03](./17-03-PLAN.md) | Internal testing, reviewer login, closed test | Complete |
 
 ## Non-goals
 

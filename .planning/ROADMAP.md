@@ -1,6 +1,6 @@
 # Harmonix Roadmap
 
-**Last reconciled:** 2026-10-10 — phases 1–16 and 18 complete; Phase 17 Play Store closed testing submitted (`1.0.13`), public launch soon  
+**Last reconciled:** 2026-10-10 — phases 1–18 complete. Public Play listing waits on 12 closed-test testers for 14 days.  
 **Live:** https://harmonix.peeporunclub.co.uk (Compose `api`+`web` + Coolify Traefik; host Pocket-TTS)
 
 ---
@@ -25,7 +25,7 @@
 **Deploy (production):** `docker compose` on VPS + Coolify Traefik domain; TTS via host systemd `harmonix-tts`.  
 **Rollback:** `bash run_env.sh` (host Node + Next + ngrok). See `docs/COOLIFY-DEPLOY.md`.  
 **Auth:** JWT access + httpOnly refresh cookie.  
-**Learning core:** AI song candidates → Deezer match → LRCLib synced lyrics → queue (`user_word_queue`) → Daily Word on unified **Discover** home.  
+**Learning core:** AI song candidates → Deezer match (iTunes fallback) → LRCLib synced lyrics → queue (`user_word_queue`) → Word of the Day on the **Word** tab.  
 **Preferences:** Settings edits home/learning languages, music style (genre), and TTS voice gender; genre change purges the word queue.
 
 ---
@@ -47,7 +47,7 @@
 | **14** | Production Parity & Ship | **Complete** |
 | **15** | Coolify production deploy | **Complete** (domain + GH Actions zero-downtime deploy) |
 | **16** | Flutter web parity | **Complete** (Play Store client is Flutter only) |
-| **17** | Play Store listing | **In progress** |
+| **17** | Play Store listing | **Complete** (closed test submitted; public release waits on Google’s tester rule) |
 | **18** | Learner reliability | **Complete** |
 
 ### Phase 12 — Spotify API Integration ✅
@@ -190,22 +190,21 @@ Not a new phase — product refinements after Phase 14 close:
 
 ---
 
-## Phase 17 — Play Store listing (in progress)
+## Phase 17 — Play Store listing ✅
 
-**Status:** Opened 2026-09-06  
+**Status:** Complete 2026-10-10  
 **Milestone:** v2.0  
-**Goal:** Internal testing, then Production. Flutter AAB only.
+**Goal:** Ship the Flutter app to Google Play. Internal testing is installed. Closed testing for `1.0.13` is submitted.
 
 | Plan | Name | Status |
 |------|------|--------|
-| [17-CHECKLIST](./phases/17-play-store-listing/17-CHECKLIST.md) | Remaining operator steps | **Do this** |
-| [17-01](./phases/17-play-store-listing/17-01-PLAN.md) | Keystore + signed AAB | Open (JDK 17 is on this PC) |
-| [17-02](./phases/17-play-store-listing/17-02-PLAN.md) | Console listing + Data safety | Open — copy in `docs/PLAY-CONSOLE-LISTING.md` |
-| [17-03](./phases/17-play-store-listing/17-03-PLAN.md) | Internal testing → Production | Blocked on 17-01 + 17-02 |
+| [17-01](./phases/17-play-store-listing/17-01-PLAN.md) | Keystore + signed AAB | Complete |
+| [17-02](./phases/17-play-store-listing/17-02-PLAN.md) | Console listing + Data safety | Complete |
+| [17-03](./phases/17-play-store-listing/17-03-PLAN.md) | Internal testing, then closed testing | Complete |
 
 **Context:** [`.planning/phases/17-play-store-listing/17-CONTEXT.md`](./phases/17-play-store-listing/17-CONTEXT.md)
 
-Listing, data safety, and the internal-test install are done. Closed testing for `1.0.13` (`uk.co.peeporunclub.harmonix`) is submitted. **Harmonix is launching on the Play Store soon**, after 12 testers stay opted in for 14 days. Support mailbox `hello@peeporunclub.co.uk` is live. Checklist: [17-CHECKLIST.md](./phases/17-play-store-listing/17-CHECKLIST.md).
+The public Play listing is not a further product phase. It opens after 12 closed-test testers stay opted in for 14 days, then **Solicitar acceso a producción**. Application id `uk.co.peeporunclub.harmonix`, version `1.0.13` (version code 16). Support mailbox `hello@peeporunclub.co.uk` is live.
 
 ## Phase 18 — Learner reliability (complete)
 
@@ -223,7 +222,7 @@ Listing, data safety, and the internal-test install are done. Closed testing for
 
 **Context:** [`.planning/phases/18-learner-reliability/18-CONTEXT.md`](./phases/18-learner-reliability/18-CONTEXT.md)
 
-Song reuse stays off. Phase 17 (Play Console) stays a separate operator track.
+Song reuse stays off. Phases 1–18 are complete.
 
 ### After Phase 18
 

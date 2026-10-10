@@ -16,8 +16,6 @@ Harmonix teaches vocabulary from the lyrics of songs people already listen to. E
 
 The Word tab is the home: a word of the day, practice, and song search. Library keeps Harmonix and Spotify playlists, and a recent word opens its full card. On Android, Account is Settings, and the last word stays readable offline.
 
-Product history is in [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](./.planning/STATE.md). The Play listing checklist is [17-CHECKLIST.md](.planning/phases/17-play-store-listing/17-CHECKLIST.md).
-
 ## Features
 
 - **Word of the Day** — Personalized word in a real lyric, buffered queue for fast next words
@@ -109,7 +107,7 @@ cd mobile && flutter analyze --fatal-infos && flutter test
 
 ## Planning
 
-Milestone **v1.9** (Phase 16 Flutter web parity) is complete. Production is Coolify Traefik. Android Play Store path is **Flutter only**. The Play app is in closed testing and launching soon. Privacy URL is `/privacy`.
+Phases 1–18 are complete. Production is Coolify Traefik. The Android app is Flutter only and is in Google Play closed testing, with the public listing to follow. Privacy URL is `/privacy`.
 
 ## Releases
 

@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: play-store-listing
-status: in_progress
-stopped_at: "2026-09-23 Phase 18 learner reliability complete; Phase 17 Play Console listing remains"
-last_updated: "2026-10-10T21:35:00.000Z"
+status: complete
+stopped_at: "2026-10-10 Phases 1–18 complete. Public Play listing waits on 12 closed-test testers for 14 days."
+last_updated: "2026-10-10T22:50:00.000Z"
 progress:
   total_phases: 18
-  completed_phases: 17
-  percent: 94
+  completed_phases: 18
+  percent: 100
 ---
 
 # Project State — Harmonix
 
 ## Current Focus
 
-**Phase 17 — Play Store listing (current operator track).** Closed testing for Flutter `1.0.13` (versionCode `16`, application id `uk.co.peeporunclub.harmonix`) is submitted. Internal testing is already installed from Play. Public launch is soon, after 12 closed-test testers stay opted in for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.** Checklist: [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](phases/17-play-store-listing/17-CHECKLIST.md).
+**Phases 1–18 are complete.** Flutter `1.0.13` (versionCode `16`, application id `uk.co.peeporunclub.harmonix`) is on Play internal testing, and the closed test is submitted. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
 
 **Phase 18 — Learner reliability (complete).** Native-language changes purge the word queue; duplicate queue cards are discarded; song search skips lemmas already queued; streaks use UTC. New-word routes are rate-limited, passwords are at least 8 characters, and playlist lists use cached covers. Exhausted catalogs offer a style change or a song search. Spotify taste syncs after connect, and the dyslexia font is saved on web and Android. Song reuse stays off.
 
@@ -71,7 +71,7 @@ progress:
 | Phase | Status |
 |------:|--------|
 | 1–16 | Complete |
-| 17 | In progress — closed testing submitted; Play launch soon |
+| 17 | Complete — closed test submitted; public release waits on Google’s tester rule |
 | 18 | Complete — Learner reliability |
 
 ## Architecture (verified)
