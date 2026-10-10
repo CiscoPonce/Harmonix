@@ -12,6 +12,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 ### Android
 - Offline: cache the last daily word and recent Library words for reading, flip, and device TTS when the network is unavailable.
 - Login stays dim until email and password are filled, then uses the theme accent in light and dark mode.
+- Play application id is `uk.co.peeporunclub.harmonix` because `com.harmonix.app` was already registered.
 
 * **android:** the home tab is Word, and a recent word in Library opens its card so you can hear it, open Spotify, save it, or share it
 * **android:** the account icon sits beside Library and opens Settings, the word stays the focus, and song search stays at the bottom of the screen

@@ -3,7 +3,7 @@
 Copy these fields into [Google Play Console](https://play.google.com/console).
 Do **not** submit Production until Internal testing works on a real phone.
 
-**Application ID:** `com.harmonix.app`  
+**Application ID:** `uk.co.peeporunclub.harmonix`  
 **Version for this upload:** `1.0.13` (versionCode `16`)  
 **Default language:** English (UK)  
 **Type:** App · **Price:** Free  

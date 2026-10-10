@@ -18,8 +18,8 @@ Put Harmonix on Google Play via **Internal testing first**, then Production when
 | Listing copy + Data safety answers | [`docs/PLAY-CONSOLE-LISTING.md`](../../../docs/PLAY-CONSOLE-LISTING.md) |
 | App icon 512×512 | `mobile/store/app-icon-512.png` |
 | Feature graphic 1024×500 | `mobile/store/feature-graphic.png` |
-| Application ID | `com.harmonix.app` |
-| Flutter version for this upload | `1.0.8+11` in `mobile/pubspec.yaml` |
+| Application ID | `uk.co.peeporunclub.harmonix` |
+| Flutter version for this upload | `1.0.13+16` in `mobile/pubspec.yaml` |
 | JDK 17 on this PC | `$HOME/.local/jdk/jdk-17` (Temurin, user-local — no sudo) |
 
 ## Decisions locked

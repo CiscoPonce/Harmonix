@@ -33,7 +33,7 @@ android {
 
 
     defaultConfig {
-        applicationId = "com.harmonix.app"
+        applicationId = "uk.co.peeporunclub.harmonix"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

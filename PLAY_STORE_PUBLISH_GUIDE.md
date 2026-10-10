@@ -1,6 +1,6 @@
 # 🚀 Play Store Publishing & Release Guide for Harmonix
 
-Step-by-step checklist to prepare, build, and publish **Harmonix** (`com.harmonix.app`) to the Google Play Store.
+Step-by-step checklist to prepare, build, and publish **Harmonix** (`uk.co.peeporunclub.harmonix`) to the Google Play Store.
 
 ---
 

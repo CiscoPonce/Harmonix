@@ -8,7 +8,7 @@ Installable builds are not stored in this repository.
 | Play production | The Play Store listing, after Internal testing is green |
 | Engineers | Build locally from `mobile/` — see [mobile/PLAY-STORE.md](../mobile/PLAY-STORE.md) |
 
-**Current Play candidate:** `1.0.13` (versionCode `16`), application id `com.harmonix.app`.
+**Current Play candidate:** `1.0.13` (versionCode `16`), application id `uk.co.peeporunclub.harmonix`.
 
 The AAB is produced on the release machine and uploaded in Play Console. It is gitignored (`*.aab`, `*.apk`), along with `upload-keystore.jks` and `key.properties`.
 

@@ -135,4 +135,4 @@ Do **not** start D if Hear-it or login failed in C.
 2. Rebuild the AAB with the same keystore.
 3. Upload a new Internal testing / Production release.
 
-Application ID `com.harmonix.app` must never change.
+Application ID `uk.co.peeporunclub.harmonix` must never change.
