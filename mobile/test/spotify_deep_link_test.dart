@@ -9,6 +9,7 @@ import 'package:harmonix_mobile/theme/harmonix_theme.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const kSentinel = 'NOT_IMPLEMENTED_SPOTIFY_LINK';
 
@@ -68,6 +69,11 @@ Widget _harness(Widget child, {HomeNavigationController? nav}) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   test('Discover is the ordinary default tab index (0)', () {
     final nav = HomeNavigationController();
     expect(nav.index, HomeNavigationController.discoverIndex);

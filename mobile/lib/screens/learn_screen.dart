@@ -114,13 +114,17 @@ class _LearnScreenState extends State<LearnScreen> {
     });
     OfflineWordCache? wordCache;
     if (!next) {
-      wordCache = await OfflineWordCache.open();
-      final cached = wordCache.loadLastDailyWord();
-      if (cached != null && mounted) {
-        setState(() {
-          _word = cached;
-          _loading = false;
-        });
+      try {
+        wordCache = await OfflineWordCache.open();
+        final cached = wordCache.loadLastDailyWord();
+        if (cached != null && mounted) {
+          setState(() {
+            _word = cached;
+            _loading = false;
+          });
+        }
+      } catch (_) {
+        /* Cache is optional — still load from the network. */
       }
     }
     try {
