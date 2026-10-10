@@ -11,7 +11,7 @@ Harmonix teaches vocabulary from the lyrics of songs people already listen to. E
 **Google Play** — Closed testing is submitted. Public release follows 12 opted-in testers for 14 days.
 
 <!-- x-release-please-start-version -->
-**Platform release:** 0.0.6
+**Platform release:** 0.0.7
 <!-- x-release-please-end -->
 
 The Word tab is the home: a word of the day, practice, and song search. Library keeps Harmonix and Spotify playlists, and a recent word opens its full card. On Android, Account is Settings, and the last word stays readable offline.
