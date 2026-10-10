@@ -1,38 +1,22 @@
 # Harmonix
 
-**Play Store app:** `1.0.13` (versionCode `16`), application id `uk.co.peeporunclub.harmonix`, in [`mobile/pubspec.yaml`](mobile/pubspec.yaml)  
-**Live site:** https://harmonix.peeporunclub.co.uk — every push to `main` deploys  
-<!-- x-release-please-start-version -->
-**Platform changelog:** 0.0.6
-<!-- x-release-please-end -->
+**Learn words through music.**
 
-**Google Play:** closed testing for 1.0.13 is submitted. Harmonix is launching on the Play Store soon, after 12 testers have stayed opted in for 14 days.
-
-AI-first language learning through real music lyrics. Words are checked against Deezer, iTunes, and LRCLib. Spotify connects for library export and in-app playback. Previews stay at 30 seconds.
+Harmonix teaches vocabulary from the lyrics of songs people already listen to. Each word comes from a real line, is checked against the recording, and can be heard in a 30-second preview. The web app is live. The Android app has completed internal testing and is in Google Play closed testing, with a public launch to follow.
 
 ![Harmonix Logo](./logoharmonix.png)
 
-**Tagline:** Learn Words Through Music  
-**Live:** https://harmonix.peeporunclub.co.uk  
-**Default branch:** `main` (all product work lands here)
+**Web** — [harmonix.peeporunclub.co.uk](https://harmonix.peeporunclub.co.uk)  
+**Android** — `1.0.13` (version code 16) · `uk.co.peeporunclub.harmonix`  
+**Google Play** — Closed testing is submitted. Public release follows 12 opted-in testers for 14 days.
 
-## Status
+<!-- x-release-please-start-version -->
+**Platform release:** 0.0.6
+<!-- x-release-please-end -->
 
-| Item | State |
-|------|--------|
-| Roadmap phases 1–16 | **Complete** (v1.9 Flutter web parity) |
-| Phase 17 Play Store | **Closed testing** — 1.0.13 is with Google. Public launch is soon. [17-CHECKLIST.md](.planning/phases/17-play-store-listing/17-CHECKLIST.md) |
-| Phase 18 Learner reliability | **Complete** — [18-CONTEXT.md](.planning/phases/18-learner-reliability/18-CONTEXT.md) |
-| Phase 15 Coolify deploy | **Live** — Traefik HTTPS + GH Actions zero-downtime deploy on `main` push |
-| Home | **Word** tab: Word of the Day, practice, and song search |
-| Nav | Word · Library (`/playlists`) · Settings. On Android, Account opens Settings. |
-| Library | Recent words open the full word card (preview, Spotify, playlist, share) |
-| Android offline | The last word and recent words stay readable without a network |
-| Settings | Languages · music style · voice gender · Spotify · password |
-| Mobile | **Flutter only** for Play Store (`mobile/`). Capacitor is not a release path. |
-| Branches | Product work is on `main` only |
+The Word tab is the home: a word of the day, practice, and song search. Library keeps Harmonix and Spotify playlists, and a recent word opens its full card. On Android, Account is Settings, and the last word stays readable offline.
 
-See [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](./.planning/STATE.md).
+Product history is in [`.planning/ROADMAP.md`](./.planning/ROADMAP.md) and [`.planning/STATE.md`](./.planning/STATE.md). The Play listing checklist is [17-CHECKLIST.md](.planning/phases/17-play-store-listing/17-CHECKLIST.md).
 
 ## Features
 
