@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: play-store-listing
 status: in_progress
 stopped_at: "2026-09-23 Phase 18 learner reliability complete; Phase 17 Play Console listing remains"
-last_updated: "2026-09-23T20:00:00.000Z"
+last_updated: "2026-10-10T21:35:00.000Z"
 progress:
   total_phases: 18
   completed_phases: 17
@@ -15,7 +15,7 @@ progress:
 
 ## Current Focus
 
-**Phase 17 — Play Store listing (current operator track).** Section A keystore + AAB `1.0.8+11` is done. **`hello@peeporunclub.co.uk` is live on Zoho** (confirmed 2026-09-23). Next: Play Console listing, screenshots, Internal testing — [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](phases/17-play-store-listing/17-CHECKLIST.md).
+**Phase 17 — Play Store listing (current operator track).** Closed testing for Flutter `1.0.13` (versionCode `16`, application id `uk.co.peeporunclub.harmonix`) is submitted. Internal testing is already installed from Play. Public launch is soon, after 12 closed-test testers stay opted in for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.** Checklist: [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](phases/17-play-store-listing/17-CHECKLIST.md).
 
 **Phase 18 — Learner reliability (complete).** Native-language changes purge the word queue; duplicate queue cards are discarded; song search skips lemmas already queued; streaks use UTC. New-word routes are rate-limited, passwords are at least 8 characters, and playlist lists use cached covers. Exhausted catalogs offer a style change or a song search. Spotify taste syncs after connect, and the dyslexia font is saved on web and Android. Song reuse stays off.
 
@@ -64,14 +64,14 @@ progress:
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
 | TTS | Host Pocket `:3002` for English and fallback; host Kokoro `:3003` speaks Spanish once (`ef_dora` / `em_alex`); compose `TTS_SKIP_SPAWN=true` |
 | Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` (Coolify UI status only; do not use Coolify Restart) |
-| Mobile | Flutter Play Store path (`mobile/`) |
+| Mobile | Flutter `1.0.13` (`uk.co.peeporunclub.harmonix`) on Play internal testing; closed test submitted |
 
 ## Phase status
 
 | Phase | Status |
 |------:|--------|
 | 1–16 | Complete |
-| 17 | In progress — Play Store listing (mailbox live) |
+| 17 | In progress — closed testing submitted; Play launch soon |
 | 18 | Complete — Learner reliability |
 
 ## Architecture (verified)

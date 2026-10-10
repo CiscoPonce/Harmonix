@@ -1,6 +1,6 @@
 # Harmonix Roadmap
 
-**Last reconciled:** 2026-09-23 — phases 1–16 and 18 complete; Phase 17 Play Store listing in progress (mailbox live)  
+**Last reconciled:** 2026-10-10 — phases 1–16 and 18 complete; Phase 17 Play Store closed testing submitted (`1.0.13`), public launch soon  
 **Live:** https://harmonix.peeporunclub.co.uk (Compose `api`+`web` + Coolify Traefik; host Pocket-TTS)
 
 ---
@@ -205,7 +205,7 @@ Not a new phase — product refinements after Phase 14 close:
 
 **Context:** [`.planning/phases/17-play-store-listing/17-CONTEXT.md`](./phases/17-play-store-listing/17-CONTEXT.md)
 
-Listing graphics and copy are in-repo; keystore + AAB are done on the dev PC. **Support mailbox `hello@peeporunclub.co.uk` is live** (Zoho, confirmed 2026-09-23). Remaining: screenshots, Internal testing, and testers — [checklist](./phases/17-play-store-listing/17-CHECKLIST.md).
+Listing, data safety, and the internal-test install are done. Closed testing for `1.0.13` (`uk.co.peeporunclub.harmonix`) is submitted. **Harmonix is launching on the Play Store soon**, after 12 testers stay opted in for 14 days. Support mailbox `hello@peeporunclub.co.uk` is live. Checklist: [17-CHECKLIST.md](./phases/17-play-store-listing/17-CHECKLIST.md).
 
 ## Phase 18 — Learner reliability (complete)
 
