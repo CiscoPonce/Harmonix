@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/api_client.dart';
+import '../services/offline_word_cache.dart';
 import '../spotify/spotify_contracts.dart';
 import '../state/home_navigation_controller.dart';
 import '../theme/harmonix_theme.dart';
@@ -28,6 +29,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool _harmonixLoading = true;
   bool _spotifyLoading = true;
   bool _recentLoading = true;
+  bool _recentFromCache = false;
   int? _rateLimitUntilMs;
   bool _refreshBlocked = false;
 
@@ -83,17 +85,27 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     final recentFuture = () async {
       try {
+        final cache = await OfflineWordCache.open();
+        final cached = cache.loadRecentWords();
+        if (mounted && cached.isNotEmpty) {
+          setState(() => _recent = cached);
+        }
         final recentRes = await api.recentDailyWords();
         final recent = recentRes['recent'] as List? ?? [];
         if (!mounted) return;
+        final rows = recent
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        await cache.saveRecentWords(rows);
         setState(() {
-          _recent = recent
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
+          _recent = rows;
+          _recentFromCache = false;
         });
-      } catch (_) {
-        /* Recent Discoveries remain optional. */
+      } catch (e) {
+        if (mounted && _recent.isNotEmpty && looksLikeOfflineError(e)) {
+          setState(() => _recentFromCache = true);
+        }
       } finally {
         if (mounted) setState(() => _recentLoading = false);
       }
@@ -247,7 +259,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
       _ => context.tr('connect_spotify'),
     };
 
-    return SpotifyLibraryList(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_recentFromCache && !_recentLoading && _recent.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+            child: Text(
+              context.tr('offline_cached_recent'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.textMuted,
+                  ),
+            ),
+          ),
+        Expanded(
+          child: SpotifyLibraryList(
       harmonixPlaylists: _harmonix,
       spotifyPlaylists: _spotify,
       recentDiscoveries: _recent,
@@ -293,6 +319,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ],
       ),
+          ),
+        ),
+      ],
     );
   }
 }

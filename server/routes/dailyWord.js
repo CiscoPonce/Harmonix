@@ -35,6 +35,14 @@ async function handleDailyWord(req, res, force) {
   }
 }
 
+router.get("/saved/:id", (req, res) => {
+  const entry = dailyWordService.getDailyWordEntryById(req.user.id, req.params.id);
+  if (!entry) {
+    return res.status(404).json({ error: "not_found" });
+  }
+  res.json({ entry });
+});
+
 router.get("/recent", (req, res) => {
   const days = req.query.days || 7;
   const recent = dailyWordService.getRecentDailyWords(req.user.id, days);

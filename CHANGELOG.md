@@ -6,6 +6,12 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
+### Web
+- Library recent words open the full word card (Hear it, playlist, Spotify, share) instead of the legacy player.
+
+### Android
+- Offline: cache the last daily word and recent Library words for reading, flip, and device TTS when the network is unavailable.
+
 * **android:** the home tab is Word, and a recent word in Library opens its card so you can hear it, open Spotify, save it, or share it
 * **android:** the account icon sits beside Library and opens Settings, the word stays the focus, and song search stays at the bottom of the screen
 * **daily-word:** when the famous list is used up, Next tries the current iTunes chart for that language and style before asking the model

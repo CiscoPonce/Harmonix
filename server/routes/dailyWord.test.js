@@ -70,6 +70,30 @@ describe("Daily Word Routes", () => {
     expect(res.body.recent[1].word.text).to.equal("viejo");
   });
 
+  it("GET /saved/:id returns one saved daily word entry", () => {
+    db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
+    const today = new Date().toISOString().slice(0, 10);
+    const payload = {
+      date: today,
+      word: { text: "saved", translation: "guardado" },
+      lyric: { snippet: "hello saved", timestamp: "0:10" },
+      song: { id: "555", title: "Track", artist: "Band" },
+    };
+    const info = db.prepare(`
+      INSERT INTO daily_words (user_id, date, word_json)
+      VALUES (?, ?, ?)
+    `).run(userId, today, JSON.stringify(payload));
+
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/saved/:id").route.stack.at(-1).handle;
+    const req = { user: { id: userId }, params: { id: String(info.lastInsertRowid) } };
+    const res = mockRes();
+    handler(req, res);
+
+    expect(res.body.entry.word.text).to.equal("saved");
+    expect(res.body.entry.song.id).to.equal("555");
+    expect(res.body.entry.lyric.snippet).to.equal("hello saved");
+  });
+
   it("GET /recent returns every word discovered today, not just the latest", () => {
     db.prepare("DELETE FROM daily_words WHERE user_id = ?").run(userId);
 

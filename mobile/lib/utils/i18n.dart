@@ -332,6 +332,10 @@ class AppI18n {
       'harmonix_playlists': 'HARMONIX PLAYLISTS',
       'spotify_playlists': 'SPOTIFY PLAYLISTS',
       'recent_discoveries': 'RECENT WORDS',
+      'offline_cached_word':
+          'Offline — showing your last saved word. Flip the card and use device pronunciation; reconnect for previews and new words.',
+      'offline_cached_recent':
+          'Offline — showing recent words from your last visit. Reconnect to refresh the list.',
       'no_playlists_yet': 'No playlists yet',
       'no_spotify_playlists': 'No Spotify playlists found',
       'open_more_spotify': 'Open more playlists in Spotify',
@@ -414,6 +418,10 @@ class AppI18n {
       'harmonix_playlists': 'LISTAS DE HARMONIX',
       'spotify_playlists': 'LISTAS DE SPOTIFY',
       'recent_discoveries': 'PALABRAS RECIENTES',
+      'offline_cached_word':
+          'Sin conexión — mostramos tu última palabra guardada. Gira la tarjeta y usa la pronunciación del dispositivo; vuelve a conectarte para escuchar y palabras nuevas.',
+      'offline_cached_recent':
+          'Sin conexión — palabras recientes de tu última visita. Vuelve a conectarte para actualizar.',
       'no_playlists_yet': 'Aún no hay listas',
       'no_spotify_playlists': 'No se encontraron listas de Spotify',
       'open_more_spotify': 'Ver más listas en Spotify',
@@ -496,6 +504,10 @@ class AppI18n {
       'harmonix_playlists': 'PLAYLISTS HARMONIX',
       'spotify_playlists': 'PLAYLISTS SPOTIFY',
       'recent_discoveries': 'MOTS RÉCENTS',
+      'offline_cached_word':
+          'Hors ligne — dernier mot enregistré. Retournez la carte et la prononciation locale ; reconnectez-vous pour les extraits et les nouveaux mots.',
+      'offline_cached_recent':
+          'Hors ligne — mots récents de votre dernière visite. Reconnectez-vous pour actualiser.',
       'no_playlists_yet': 'Pas encore de playlists',
       'no_spotify_playlists': 'Aucune playlist Spotify trouvée',
       'open_more_spotify': 'Voir plus de playlists dans Spotify',
@@ -578,6 +590,10 @@ class AppI18n {
       'harmonix_playlists': 'HARMONIX-PLAYLISTS',
       'spotify_playlists': 'SPOTIFY-PLAYLISTS',
       'recent_discoveries': 'LETZTE WÖRTER',
+      'offline_cached_word':
+          'Offline — zuletzt gespeichertes Wort. Karte wenden und Geräte-Aussprache nutzen; für Hörproben und neue Wörter wieder verbinden.',
+      'offline_cached_recent':
+          'Offline — zuletzt gespeicherte Wörter. Verbinden, um die Liste zu aktualisieren.',
       'no_playlists_yet': 'Noch keine Playlists',
       'no_spotify_playlists': 'Keine Spotify-Playlists gefunden',
       'open_more_spotify': 'Weitere Playlists in Spotify öffnen',
@@ -660,6 +676,10 @@ class AppI18n {
       'harmonix_playlists': 'PLAYLISTS DO HARMONIX',
       'spotify_playlists': 'PLAYLISTS DO SPOTIFY',
       'recent_discoveries': 'PALAVRAS RECENTES',
+      'offline_cached_word':
+          'Offline — última palavra salva. Vire o cartão e use a pronúncia do dispositivo; reconecte para prévias e palavras novas.',
+      'offline_cached_recent':
+          'Offline — palavras recentes da última visita. Reconecte para atualizar.',
       'no_playlists_yet': 'Ainda não há playlists',
       'no_spotify_playlists': 'Nenhuma playlist do Spotify encontrada',
       'open_more_spotify': 'Ver mais playlists no Spotify',
@@ -742,6 +762,10 @@ class AppI18n {
       'harmonix_playlists': 'PLAYLIST HARMONIX',
       'spotify_playlists': 'PLAYLIST SPOTIFY',
       'recent_discoveries': 'PAROLE RECENTI',
+      'offline_cached_word':
+          'Offline — ultima parola salvata. Gira la scheda e usa la pronuncia del dispositivo; riconnettiti per anteprime e nuove parole.',
+      'offline_cached_recent':
+          'Offline — parole recenti dell’ultima visita. Riconnettiti per aggiornare.',
       'no_playlists_yet': 'Nessuna playlist ancora',
       'no_spotify_playlists': 'Nessuna playlist Spotify trovata',
       'open_more_spotify': 'Apri altre playlist in Spotify',

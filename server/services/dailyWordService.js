@@ -1135,6 +1135,25 @@ function getRecentDailyWords(userId, days = 7) {
   return uniqueRecentSummaries(summarized);
 }
 
+function getDailyWordEntryById(userId, entryId) {
+  const id = parseInt(entryId, 10);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const row = db.prepare(`
+    SELECT id, word_json, generated_at
+    FROM daily_words
+    WHERE user_id = ? AND id = ?
+  `).get(userId, id);
+  if (!row) return null;
+  try {
+    return summarizeDailyWordPayload(JSON.parse(row.word_json), {
+      id: row.id,
+      generated_at: row.generated_at,
+    });
+  } catch {
+    return null;
+  }
+}
+
 function computeDailyWordStreak(userId, now = new Date()) {
   const dates = db.prepare(`
     SELECT DISTINCT date FROM daily_words WHERE user_id = ? ORDER BY date DESC
@@ -2618,6 +2637,7 @@ module.exports = {
   deliverPayload,
   summarizeDailyWordPayload,
   getRecentDailyWords,
+  getDailyWordEntryById,
   computeDailyWordStreak,
   getDailyWordStats,
   fetchAiCandidates,

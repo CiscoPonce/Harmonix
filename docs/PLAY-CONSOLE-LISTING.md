@@ -4,7 +4,7 @@ Copy these fields into [Google Play Console](https://play.google.com/console).
 Do **not** submit Production until Internal testing works on a real phone.
 
 **Application ID:** `com.harmonix.app`  
-**Version for this upload:** `1.0.8` (versionCode `11`)  
+**Version for this upload:** `1.0.12` (versionCode `15`)  
 **Default language:** English (UK)  
 **Type:** App · **Price:** Free  
 **Contact / support:** `hello@peeporunclub.co.uk`  
@@ -54,7 +54,7 @@ Privacy: https://harmonix.peeporunclub.co.uk/privacy
 |-------|------|------|
 | App icon | `mobile/store/app-icon-512.png` | 512×512 PNG |
 | Feature graphic | `mobile/store/feature-graphic.png` | 1024×500 PNG |
-| Phone screenshots | Take 2–4 from the emulator or a device (Discover card, search, flipped card, Settings) | Phone |
+| Phone screenshots | Take 2–4 from the emulator or a device (Word card + Next/search, flipped lyric, Library recent word, Account/Settings) | Phone |
 
 Screenshots are the one asset this repo cannot invent honestly — capture them after login.
 
@@ -91,17 +91,18 @@ Screenshots are the one asset this repo cannot invent honestly — capture them 
 
 ## 5. App access (reviewers)
 
-Play reviewers must reach Discover after login.
+Play reviewers must reach the Word tab after login.
 
 1. Create a dedicated reviewer account on the live site (or register in-app).
 2. Play Console → **App content → App access** → add that email + password.
 3. Leave a note:
 
 ```
-Log in with the credentials above. Home is Discover.
+Log in with the credentials above. Home is the Word tab (bottom bar).
 Search “Hey Jude”, tap the first result, flip the card.
 Hear it plays a 30-second preview.
-Spotify Connect is optional and limited to testers on the Spotify developer allowlist until Extended Quota is approved.
+Library → recent words opens the same card with hear / playlist / Spotify / share.
+Spotify Connect is optional (Account tab) and limited to testers on the Spotify developer allowlist until Extended Quota is approved.
 ```
 
 ---
@@ -115,7 +116,7 @@ Spotify Connect is optional and limited to testers on the Spotify developer allo
 5. Upload keystore is already on this PC (`mobile/android/upload-keystore.jks` + `key.properties`, gitignored). Back up `KEYSTORE-BACKUP.txt` **offline** tonight.
 6. Signed AAB is ready:
 
-`mobile/build/app/outputs/bundle/release/app-release.aab` (1.0.8 / 11)
+`mobile/build/app/outputs/bundle/release/app-release.aab` (1.0.12 / 15)
 
 Rebuild if needed:
 
@@ -140,7 +141,7 @@ Repo + this PC are ready. Remaining clicks:
 - Google Play developer account ($25) if not paid
 - Create the Harmonix app and paste this listing pack
 - Upload icon + feature graphic from `mobile/store/`
-- **2–4 phone screenshots** from a real device or emulator (Discover card, search, flipped card, Settings)
+- **2–4 phone screenshots** from a real device or emulator (Word card, flipped lyric, Library, Account)
 - Data safety + content rating (answers above)
 - Internal testing: upload the AAB, add tester Gmails
 - Reviewer login in App access (create one on the live site)

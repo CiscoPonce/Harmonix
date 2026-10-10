@@ -21,6 +21,9 @@ import {
 } from "@/lib/sharePostcard";
 import { FolderPlus, Loader2, Music2, Play, Pause, RefreshCw, Share2, Sparkles, RotateCw, Volume2, ExternalLink } from "lucide-react";
 import { spotifyOpenUrlForSong } from "@/lib/spotifyOpen";
+import type { DailyWordPayload } from "@/lib/dailyWordPayload";
+
+export type { DailyWordPayload };
 
 const SUPPORTED_PRONUNCIATION_LANGUAGES = ["es", "fr", "de", "pt", "en", "it"];
 
@@ -65,51 +68,6 @@ interface QueueStatus {
   refilling: boolean;
   target: number;
   max: number;
-}
-
-interface DailyWordPayload {
-  date: string;
-  cached?: boolean;
-  from_queue?: boolean;
-  language_code?: string;
-  word: {
-    text: string;
-    translation: string;
-    part_of_speech?: string | null;
-    pronunciation?: string | null;
-    difficulty?: string;
-    line_translation?: string | null;
-  };
-  lyric: {
-    snippet: string;
-    timestamp: string;
-    timestamp_ms: number;
-    line_end_ms?: number | null;
-    line_index: number;
-    char_start: number;
-    char_end: number;
-    in_preview?: boolean | null;
-    line_translation?: string | null;
-  };
-  song: {
-    id: string;
-    title: string;
-    artist: string;
-    genre?: string | null;
-    cover?: string | null;
-  };
-  audio: {
-    preview_url: string;
-    duration_seconds: number;
-    preview_offset: number;
-    preview_end?: number;
-    preview_provider?: string | null;
-  };
-  style_relaxed?: boolean;
-  style_relaxed_from?: string | null;
-  same_song_fallback?: boolean;
-  song_repeated?: boolean;
-  queue?: QueueStatus;
 }
 
 function highlightWord(snippet: string, start: number, end: number) {
@@ -180,16 +138,21 @@ export function DailyWordCard({
   onWordChange,
   fromTrackRequest = null,
   onFromTrackSettled,
+  staticPayload = null,
+  savedView = false,
 }: {
   onWordChange?: (payload?: DailyWordPayload) => void;
   fromTrackRequest?: { id: string; title?: string; artist?: string; nonce: number } | null;
   onFromTrackSettled?: () => void;
+  /** When set, show this word only (Library saved entry) — no Next / queue fetch. */
+  staticPayload?: DailyWordPayload | null;
+  savedView?: boolean;
 }) {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [data, setData] = useState<DailyWordPayload | null>(null);
+  const [data, setData] = useState<DailyWordPayload | null>(staticPayload);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!staticPayload);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorReason, setErrorReason] = useState<string | null>(null);
@@ -384,6 +347,7 @@ export function DailyWordCard({
   }, [applyPayload, data, fetchQueueStatus, queueStatus?.ready, t]);
 
   useEffect(() => {
+    if (savedView) return;
     if (!user?.target_language) return;
     setData(null);
     setError(null);
@@ -392,10 +356,16 @@ export function DailyWordCard({
     loadDailyWord(true);
     fetchQueueStatus();
     return () => loadAbortRef.current?.abort();
-  }, [user?.target_language, user?.native_language, user?.genre]);
+  }, [savedView, user?.target_language, user?.native_language, user?.genre]);
 
   useEffect(() => {
-    if (!fromTrackRequest?.id) return;
+    if (!staticPayload) return;
+    applyPayload(staticPayload);
+    setLoading(false);
+  }, [staticPayload, applyPayload]);
+
+  useEffect(() => {
+    if (savedView || !fromTrackRequest?.id) return;
     const ac = new AbortController();
     (async () => {
       setRefreshing(true);
@@ -441,7 +411,7 @@ export function DailyWordCard({
       }
     })();
     return () => ac.abort();
-  }, [fromTrackRequest?.id, fromTrackRequest?.nonce, fromTrackRequest?.title, fromTrackRequest?.artist, applyPayload, t]);
+  }, [savedView, fromTrackRequest?.id, fromTrackRequest?.nonce, fromTrackRequest?.title, fromTrackRequest?.artist, applyPayload, t]);
 
   // Poll while stocking OR while cold-generating so the "ready" badge updates live.
   useEffect(() => {
@@ -1054,38 +1024,40 @@ export function DailyWordCard({
         </div>
       )}
 
-      <div className="px-4 py-3 sm:px-6 border-b border-zinc-100 dark:border-zinc-900 flex flex-row items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-900/40">
-        <div className="flex items-center gap-2 min-w-0 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-500 dark:text-zinc-400">
-          <Sparkles className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
-          <span className="shrink-0">{t('word_of_the_day')}</span>
-          {readyCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px] shrink-0">
-              {t('n_ready', { n: readyCount })}
-            </span>
-          )}
-          {(queueStatus?.refilling || (refreshing && readyCount === 0)) && !showHeavyOverlay && (
-            <span className="text-zinc-400 dark:text-zinc-600 truncate">
-              · {queueStatus?.refilling ? t('queue_stocking') : t('queue_matching')}
-            </span>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => loadDailyWord(false)}
-            disabled={refreshing}
-            className="gap-2 whitespace-nowrap text-[10px] font-bold uppercase tracking-wide sm:tracking-widest"
-          >
-            {refreshing ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="h-3.5 w-3.5" />
+      {!savedView ? (
+        <div className="px-4 py-3 sm:px-6 border-b border-zinc-100 dark:border-zinc-900 flex flex-row items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-900/40">
+          <div className="flex items-center gap-2 min-w-0 text-[10px] font-bold uppercase tracking-wide sm:tracking-widest text-zinc-500 dark:text-zinc-400">
+            <Sparkles className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+            <span className="shrink-0">{t('word_of_the_day')}</span>
+            {readyCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black text-[9px] shrink-0">
+                {t('n_ready', { n: readyCount })}
+              </span>
             )}
-            {readyCount > 0 ? t('next_word') : t('new_word')}
-          </Button>
+            {(queueStatus?.refilling || (refreshing && readyCount === 0)) && !showHeavyOverlay && (
+              <span className="text-zinc-400 dark:text-zinc-600 truncate">
+                · {queueStatus?.refilling ? t('queue_stocking') : t('queue_matching')}
+              </span>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => loadDailyWord(false)}
+              disabled={refreshing}
+              className="gap-2 whitespace-nowrap text-[10px] font-bold uppercase tracking-wide sm:tracking-widest"
+            >
+              {refreshing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              {readyCount > 0 ? t('next_word') : t('new_word')}
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : null}
       <p className="border-b border-zinc-100 px-4 py-2 text-[11px] text-zinc-500 dark:border-zinc-900 dark:text-zinc-400 sm:px-6">
         {readyCount > 0
           ? t('n_buffered_instant', { n: readyCount })

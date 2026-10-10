@@ -12,6 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_client.dart';
+import '../services/offline_word_cache.dart';
 import '../spotify/spotify_open.dart';
 import '../state/auth_state.dart';
 import '../state/home_navigation_controller.dart';
@@ -52,6 +53,7 @@ class _LearnScreenState extends State<LearnScreen> {
   String? _pickingTrackId;
   String? _error;
   String? _errorReason;
+  bool _offlineWord = false;
   String? _trackedLang;
   String? _trackedGenre;
   AuthState? _auth;
@@ -110,6 +112,17 @@ class _LearnScreenState extends State<LearnScreen> {
       }
       _error = null;
     });
+    OfflineWordCache? wordCache;
+    if (!next) {
+      wordCache = await OfflineWordCache.open();
+      final cached = wordCache.loadLastDailyWord();
+      if (cached != null && mounted) {
+        setState(() {
+          _word = cached;
+          _loading = false;
+        });
+      }
+    }
     try {
       final payload = next ? await api.nextDailyWord() : await api.getDailyWord();
       Map<String, dynamic>? queue;
@@ -137,12 +150,18 @@ class _LearnScreenState extends State<LearnScreen> {
         dueCount = (due['count'] as num?)?.toInt() ?? 0;
       } catch (_) {}
       if (!mounted) return;
+      final cache = wordCache ?? await OfflineWordCache.open();
+      await cache.saveLastDailyWord(Map<String, dynamic>.from(payload));
+      if (shelf.isNotEmpty) {
+        await cache.saveRecentWords(shelf);
+      }
       setState(() {
         _word = payload;
         _queue = queue ?? payload['queue'] as Map<String, dynamic>?;
         _stats = stats;
         _shelf = shelf;
         _dueCount = dueCount;
+        _offlineWord = false;
       });
       _scheduleMetaPoll();
     } on ApiException catch (e) {
@@ -155,7 +174,10 @@ class _LearnScreenState extends State<LearnScreen> {
         _error = e.message;
         _errorReason = e.reason;
         if (e.queue != null) _queue = e.queue;
-        if (next && _word != null) {
+        if (_word != null && looksLikeOfflineError(e)) {
+          _offlineWord = true;
+          _error = null;
+        } else if (next && _word != null) {
           // keep showing current word; surface error below
         } else if (!next) {
           _word = null;
@@ -163,7 +185,14 @@ class _LearnScreenState extends State<LearnScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString());
+      if (_word != null && looksLikeOfflineError(e)) {
+        setState(() {
+          _offlineWord = true;
+          _error = null;
+        });
+      } else {
+        setState(() => _error = e.toString());
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -605,6 +634,13 @@ class _LearnScreenState extends State<LearnScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
         children: [
+          if (_offlineWord) ...[
+            const SizedBox(height: 8),
+            Text(
+              context.tr('offline_cached_word'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.textMuted),
+            ),
+          ],
           if (_word?['style_relaxed'] == true) ...[
             const SizedBox(height: 8),
             Text(

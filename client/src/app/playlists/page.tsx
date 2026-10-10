@@ -664,26 +664,37 @@ function LibraryContent() {
           ) : (
             <ul className="space-y-2">
               {recent.map((item, idx) => {
-                const title = item.song?.title || item.word.text;
-                const artist = item.song?.artist || item.word.translation || 'Artist Name';
-                const key = item.id != null ? `rd-${item.id}` : `rd-${idx}-${title}`;
-                const href = item.song?.id ? `/player/${encodeURIComponent(item.song.id)}` : null;
+                const wordLine = item.word.translation
+                  ? `${item.word.text} · ${item.word.translation}`
+                  : item.word.text;
+                const songLine =
+                  item.song?.artist && item.song?.title
+                    ? `${item.song.artist} — ${item.song.title}`
+                    : item.song?.title || '';
+                const key = item.id != null ? `rd-${item.id}` : `rd-${idx}-${item.word.text}`;
+                const href =
+                  item.id != null ? `/playlists/word/${encodeURIComponent(String(item.id))}` : null;
                 const row = (
                   <div className="flex items-center gap-3 rounded-lg border border-[#D7E0DA] bg-white px-3 py-3 dark:border-[#2A3530] dark:bg-[#171E1B]">
-                    <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#0B6B3A] text-[#0B6B3A] dark:border-[#3DCF7A] dark:text-[#3DCF7A]"
-                      aria-hidden
-                    >
-                      ▶
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-base font-bold" title={title}>
-                        {title}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-base font-bold" title={wordLine}>
+                        {wordLine}
                       </p>
-                      <p className="truncate text-sm text-[#5C6B62] dark:text-[#9AABA0]" title={artist}>
-                        {artist}
-                      </p>
+                      {songLine ? (
+                        <p
+                          className="truncate text-sm text-[#5C6B62] dark:text-[#9AABA0]"
+                          title={songLine}
+                        >
+                          {songLine}
+                        </p>
+                      ) : null}
                     </div>
+                    {href ? (
+                      <ChevronRight
+                        className="h-5 w-5 shrink-0 text-[#9AABA0]"
+                        aria-hidden
+                      />
+                    ) : null}
                   </div>
                 );
                 return (
