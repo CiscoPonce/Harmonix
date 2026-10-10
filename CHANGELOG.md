@@ -50,6 +50,25 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * **tts:** host Pocket-TTS can reload by language; stop returning silent WAVs on failure
 * **mobile/web:** show real IPA or pending copy (never part-of-speech as phonetics); Android polls for polish like web
 
+## [0.0.6](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.5...harmonix-v0.0.6) (2026-10-10)
+
+
+### Features
+
+* open saved words as cards and keep them offline ([8bf1471](https://github.com/CiscoPonce/Harmonix/commit/8bf1471de09e8ba1a3da3ce9498c5f7ac2297da6))
+
+
+### Bug Fixes
+
+* **android:** do not block the word screen if the offline cache is unavailable ([b4703c0](https://github.com/CiscoPonce/Harmonix/commit/b4703c0ada3645c792e7e60f41dd48fbe0e434aa))
+* **android:** light the Login button once the password is entered ([997b543](https://github.com/CiscoPonce/Harmonix/commit/997b543e216ab0fae17983604c45a4e296fc42c2))
+* **android:** use the Play application id uk.co.peeporunclub.harmonix ([e221c88](https://github.com/CiscoPonce/Harmonix/commit/e221c88010d491293e57427857e5e60d5e1c704b))
+
+
+### Documentation
+
+* record the Play closed test and the 1.0.13 app ([1ea2110](https://github.com/CiscoPonce/Harmonix/commit/1ea2110ec1a81c92dd584f26c1789979942ea3dd))
+
 ## [0.0.5](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.4...harmonix-v0.0.5) (2026-10-04)
 
 

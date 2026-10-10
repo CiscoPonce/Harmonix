@@ -3,7 +3,7 @@
 **Play Store app:** `1.0.13` (versionCode `16`), application id `uk.co.peeporunclub.harmonix`, in [`mobile/pubspec.yaml`](mobile/pubspec.yaml)  
 **Live site:** https://harmonix.peeporunclub.co.uk — every push to `main` deploys  
 <!-- x-release-please-start-version -->
-**Platform changelog:** 0.0.5
+**Platform changelog:** 0.0.6
 <!-- x-release-please-end -->
 
 **Google Play:** closed testing for 1.0.13 is submitted. Harmonix is launching on the Play Store soon, after 12 testers have stayed opted in for 14 days.
