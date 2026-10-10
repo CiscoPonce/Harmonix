@@ -50,6 +50,14 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * **tts:** host Pocket-TTS can reload by language; stop returning silent WAVs on failure
 * **mobile/web:** show real IPA or pending copy (never part-of-speech as phonetics); Android polls for polish like web
 
+## [0.0.7](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.6...harmonix-v0.0.7) (2026-10-10)
+
+
+### Documentation
+
+* close phases 1–18 now that the Play app is in closed testing ([12efda9](https://github.com/CiscoPonce/Harmonix/commit/12efda9568c1579433ca1f45c921a287a7a95e4b))
+* give the README a product opening ([f422535](https://github.com/CiscoPonce/Harmonix/commit/f422535286d91dc3e0e7a70732f83cbad78d18eb))
+
 ## [0.0.6](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.5...harmonix-v0.0.6) (2026-10-10)
 
 
