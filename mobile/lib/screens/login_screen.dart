@@ -18,7 +18,23 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _busy = false;
 
   @override
+  void initState() {
+    super.initState();
+    _email.addListener(_onFieldsChanged);
+    _password.addListener(_onFieldsChanged);
+  }
+
+  void _onFieldsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _canSubmit =>
+      !_busy && _email.text.trim().isNotEmpty && _password.text.isNotEmpty;
+
+  @override
   void dispose() {
+    _email.removeListener(_onFieldsChanged);
+    _password.removeListener(_onFieldsChanged);
     _email.dispose();
     _password.dispose();
     super.dispose();
@@ -55,6 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = HarmonixColors.of(context);
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -88,9 +105,12 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
               FilledButton(
-                onPressed: _busy ? null : _submit,
+                onPressed: _canSubmit ? _submit : null,
                 style: FilledButton.styleFrom(
-                  backgroundColor: HarmonixColors.brand,
+                  backgroundColor: colors.accent,
+                  disabledBackgroundColor: colors.border,
+                  foregroundColor: colors.onAccent,
+                  disabledForegroundColor: colors.textMuted,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: Text(_busy ? 'Please wait…' : (_register ? 'Register' : 'Login')),

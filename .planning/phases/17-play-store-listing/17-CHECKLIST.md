@@ -44,7 +44,7 @@ flutter build appbundle --release \
   --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
 ```
 
-- [x] Artifact exists: `mobile/build/app/outputs/bundle/release/app-release.aab` (rebuild for each upload; current target `1.0.12` / `15`)
+- [x] Artifact exists: `mobile/build/app/outputs/bundle/release/app-release.aab` (rebuild for each upload; current target `1.0.13` / `16`)
 - [ ] Optional sideload QA APK (not for Play):
 
 ```bash
@@ -82,7 +82,7 @@ Ready in the repo (do not re-do these):
 
 - Listing copy: [`docs/PLAY-CONSOLE-LISTING.md`](../../../docs/PLAY-CONSOLE-LISTING.md)
 - Icon `mobile/store/app-icon-512.png` and feature graphic `mobile/store/feature-graphic.png`
-- Signed AAB recipe and version `1.0.12` / `15` in [`mobile/PLAY-STORE.md`](../../../mobile/PLAY-STORE.md)
+- Signed AAB recipe and version `1.0.13` / `16` in [`mobile/PLAY-STORE.md`](../../../mobile/PLAY-STORE.md)
 - Privacy https://harmonix.peeporunclub.co.uk/privacy and support `hello@peeporunclub.co.uk`
 
 Still only possible inside Play Console:
@@ -105,7 +105,7 @@ Still only possible inside Play Console:
 
 - [ ] Register a **reviewer** account on the live site (or in-app). Save email + password.
 - [ ] Play Console → **App content → App access** → add those credentials + the note in the listing pack
-- [ ] **Testing → Internal testing** → create a release → upload `app-release.aab` (version `1.0.12`, code `15`)
+- [ ] **Testing → Internal testing** → create a release → upload `app-release.aab` (version `1.0.13`, code `16`)
 - [ ] Add tester Gmail addresses
 - [ ] Each tester opens the Internal testing link and installs from Play (not a random APK)
 - [ ] On a phone, confirm:

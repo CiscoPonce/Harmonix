@@ -4,7 +4,7 @@ Copy these fields into [Google Play Console](https://play.google.com/console).
 Do **not** submit Production until Internal testing works on a real phone.
 
 **Application ID:** `com.harmonix.app`  
-**Version for this upload:** `1.0.12` (versionCode `15`)  
+**Version for this upload:** `1.0.13` (versionCode `16`)  
 **Default language:** English (UK)  
 **Type:** App · **Price:** Free  
 **Contact / support:** `hello@peeporunclub.co.uk`  
@@ -116,7 +116,7 @@ Spotify Connect is optional (Account tab) and limited to testers on the Spotify 
 5. Upload keystore is already on this PC (`mobile/android/upload-keystore.jks` + `key.properties`, gitignored). Back up `KEYSTORE-BACKUP.txt` **offline** tonight.
 6. Signed AAB is ready:
 
-`mobile/build/app/outputs/bundle/release/app-release.aab` (1.0.12 / 15)
+`mobile/build/app/outputs/bundle/release/app-release.aab` (1.0.13 / 16)
 
 Rebuild if needed:
 

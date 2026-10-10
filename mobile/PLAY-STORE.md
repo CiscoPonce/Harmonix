@@ -82,7 +82,7 @@ Audio is limited to **30-second Deezer previews** for language learning context.
 
 ## Next Play upload
 
-The production API is already `https://harmonix.peeporunclub.co.uk/api`. Current Play candidate: `1.0.12+15` in `pubspec.yaml`. For each new store upload, bump the version (name + code) and rebuild the AAB. Never change application id `com.harmonix.app`.
+The production API is already `https://harmonix.peeporunclub.co.uk/api`. Current Play candidate: `1.0.13+16` in `pubspec.yaml`. For each new store upload, bump the version (name + code) and rebuild the AAB. Never change application id `com.harmonix.app`.
 
 ## iOS (later)
 
