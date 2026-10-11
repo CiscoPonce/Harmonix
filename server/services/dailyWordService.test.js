@@ -20,6 +20,7 @@ const {
   computeDailyWordStreak,
   fetchAiCandidates,
   fetchChartCandidates,
+  rememberUnteachableSong,
   enrichIfNeeded,
   enrichPayloadWordMeta,
   backfillQueueMetadata,
@@ -79,6 +80,7 @@ describe("Daily Word Service", () => {
     db.prepare("DELETE FROM user_word_queue WHERE user_id = ?").run(userId);
     db.prepare("DELETE FROM user_queue_refill WHERE user_id = ?").run(userId);
     db.exec("DELETE FROM gloss_cache");
+    db.exec("DELETE FROM song_pick_rejects");
     // Avoid stale LRC from prior runs (preview-window checks depend on timestamps).
     try {
       db.prepare("DELETE FROM song_lyrics_snapshot").run();
@@ -639,6 +641,28 @@ describe("Daily Word Service", () => {
     expect(wordQueue.countReady(userId)).to.equal(0);
 
     restore();
+  });
+
+  it("skips chart songs that cannot be taught inside the preview", async () => {
+    const deezer = require("./deezerService");
+    const original = deezer.fetchItunesChartSongs;
+    deezer.fetchItunesChartSongs = async () => [
+      { song_title: "Enter Sandman", artist: "Metallica", genre: "rock" },
+      { song_title: "Fresh Rock", artist: "New Band", genre: "rock" },
+    ];
+    rememberUnteachableSong("Metallica", "Enter Sandman", "lyric_outside_preview");
+    db.prepare("UPDATE users SET target_language = 'en', genre = 'rock' WHERE id = ?").run(userId);
+    try {
+      const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+      const found = await fetchChartCandidates(user, async () => {
+        throw new Error("chart stub should not fetch");
+      });
+      expect(found).to.deep.equal([
+        { song_title: "Fresh Rock", artist: "New Band", genre: "rock" },
+      ]);
+    } finally {
+      deezer.fetchItunesChartSongs = original;
+    }
   });
 
   it("asks the iTunes chart for songs the learner has not heard", async () => {

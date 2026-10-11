@@ -204,12 +204,59 @@ function itunesStorefront(langCode, genre) {
   return ITUNES_STOREFRONT[lang] || 'us';
 }
 
-function itunesChartUrl(langCode, genre, limit = 25) {
-  const country = itunesStorefront(langCode, genre);
+/** Extra Apple storefronts so one genre is more than a single country's top 25. */
+const ITUNES_CHART_STOREFRONTS = {
+  en: ['us', 'gb', 'au', 'ca'],
+  es: ['es', 'mx', 'ar', 'co'],
+  fr: ['fr', 'be', 'ca', 'ch'],
+  de: ['de', 'at', 'ch'],
+  pt: ['br', 'pt'],
+  it: ['it'],
+};
+
+const REGGAETON_STOREFRONTS = ['mx', 'co', 'ar', 'es', 'us'];
+
+const ITUNES_CHART_LIMIT = 100;
+const CHART_CACHE_MS = 6 * 60 * 60 * 1000;
+const chartCache = new Map();
+
+function itunesChartStorefronts(langCode, genre) {
+  if (genre === 'reggaeton') return REGGAETON_STOREFRONTS;
+  const lang = String(langCode || 'en').toLowerCase();
+  const list = ITUNES_CHART_STOREFRONTS[lang];
+  if (list && list.length) return list;
+  return [itunesStorefront(lang, genre)];
+}
+
+function itunesChartUrl(langCode, genre, limit = ITUNES_CHART_LIMIT, storefront = null) {
+  const country = storefront || itunesStorefront(langCode, genre);
   const genreId = genre && genre !== 'any' ? ITUNES_CHART_GENRE[genre] : null;
   const genrePath = genreId ? `/genre=${genreId}` : '';
-  const cap = Math.min(Math.max(Number(limit) || 25, 1), 25);
+  const cap = Math.min(Math.max(Number(limit) || ITUNES_CHART_LIMIT, 1), ITUNES_CHART_LIMIT);
   return `https://itunes.apple.com/${country}/rss/topsongs/limit=${cap}${genrePath}/json`;
+}
+
+function itunesChartUrls(langCode, genre, limit = ITUNES_CHART_LIMIT) {
+  return itunesChartStorefronts(langCode, genre).map((country) =>
+    itunesChartUrl(langCode, genre, limit, country)
+  );
+}
+
+function interleaveChartLists(lists) {
+  const seen = new Set();
+  const out = [];
+  const max = Math.max(0, ...lists.map((list) => list.length));
+  for (let i = 0; i < max; i += 1) {
+    for (const list of lists) {
+      const item = list[i];
+      if (!item) continue;
+      const key = `${String(item.artist).toLowerCase()}|${String(item.song_title).toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(item);
+    }
+  }
+  return out;
 }
 
 /** Apple RSS entry → the same { artist, song_title, genre } shape as curated hits. */
@@ -228,12 +275,30 @@ function parseItunesChart(payload, genre = 'pop') {
   return out;
 }
 
-async function fetchItunesChartSongs(langCode, genre, fetchImpl = fetch, limit = 25) {
-  const url = itunesChartUrl(langCode, genre, limit);
-  const res = await fetchWithTimeout(url, fetchImpl, 4000);
-  if (!res.ok) throw new Error(`itunes_chart_http_${res.status}`);
-  const data = await res.json();
-  return parseItunesChart(data, genre);
+async function fetchItunesChartSongs(langCode, genre, fetchImpl = fetch, limit = ITUNES_CHART_LIMIT) {
+  const cacheKey = `${String(langCode || 'en').toLowerCase()}|${genre || 'any'}|${limit}`;
+  if (fetchImpl === fetch) {
+    const hit = chartCache.get(cacheKey);
+    if (hit && Date.now() - hit.at < CHART_CACHE_MS && hit.songs.length) return hit.songs;
+  }
+
+  const urls = itunesChartUrls(langCode, genre, limit);
+  const lists = await Promise.all(urls.map(async (url) => {
+    try {
+      const res = await fetchWithTimeout(url, fetchImpl, 8000);
+      if (!res.ok) throw new Error(`itunes_chart_http_${res.status}`);
+      const data = await res.json();
+      return parseItunesChart(data, genre && genre !== 'any' ? genre : 'pop');
+    } catch (err) {
+      console.warn(`itunes chart failed ${url} (${err.message || err})`);
+      return [];
+    }
+  }));
+  const songs = interleaveChartLists(lists);
+  if (fetchImpl === fetch && songs.length) {
+    chartCache.set(cacheKey, { songs, at: Date.now() });
+  }
+  return songs;
 }
 
 async function searchItunesTracks(query, fetchImpl = fetch, limit = 15) {
@@ -450,6 +515,7 @@ module.exports = {
   searchItunesTracks,
   searchItunesTrack,
   itunesChartUrl,
+  itunesChartUrls,
   parseItunesChart,
   fetchItunesChartSongs,
   fetchTrack,

@@ -265,6 +265,14 @@ db.exec(
 // different neighbouring responses on repeat calls, so we cannot trust a
 // post-hoc `/api/lyrics` call to match the version aligned originally).
 db.exec(`
+ CREATE TABLE IF NOT EXISTS song_pick_rejects (
+ song_key TEXT PRIMARY KEY,
+ reason TEXT NOT NULL,
+ updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+ )
+`);
+
+db.exec(`
  CREATE TABLE IF NOT EXISTS song_lyrics_snapshot (
  song_id TEXT PRIMARY KEY,
  synced_lyrics TEXT NOT NULL,

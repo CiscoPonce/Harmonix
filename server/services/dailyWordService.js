@@ -469,19 +469,19 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
           continue;
         }
         console.warn(`daily word reject: lyrics_not_found ${label}`);
-        return { error: lastError };
+        return rejectUnteachable(suggestion, lastError);
       }
 
       const syncCheck = validation.validateSongSync({ duration: track.duration }, lyricsData.syncedLyrics);
       if (!syncCheck.valid) {
         console.warn(`daily word reject: lyrics_validation_failed ${label} (${syncCheck.issues.join(", ")})`);
-        return { error: "lyrics_validation_failed" };
+        return rejectUnteachable(suggestion, "lyrics_validation_failed");
       }
 
       const plain = plainFromLyricsData(lyricsData);
       if (!lyricsMatchTargetLanguage(plain, langCode)) {
         console.warn(`daily word reject: lyrics_wrong_language ${label} (want ${langCode})`);
-        return { error: "lyrics_wrong_language" };
+        return rejectUnteachable(suggestion, "lyrics_wrong_language");
       }
 
       const duration = track.duration;
@@ -543,7 +543,7 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
 
       if (!picked || !occurrence) {
         console.warn(`daily word reject: no_suitable_word ${label}`);
-        return { error: "no_suitable_word" };
+        return rejectUnteachable(suggestion, "no_suitable_word");
       }
 
       if (!occurrence.in_preview && !allowOutsidePreview) {
@@ -551,7 +551,7 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
           `daily word reject: lyric outside preview window ${label} ` +
             `(t=${occurrence.timestamp} window=${formatTimestamp(previewStart * 1000)}-${formatTimestamp(previewEnd * 1000)})`
         );
-        return { error: "lyric_outside_preview" };
+        return rejectUnteachable(suggestion, "lyric_outside_preview");
       }
 
       return {
@@ -718,7 +718,8 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
       lastError = result.error;
       if (!relaxSongReuse && result.error === "song_already_used" && partials.length === 0) {
         unusedMappedToKnown += 1;
-        if (unusedMappedToKnown >= 3) stopped = true;
+        // A few remasters of songs already taught must not abandon the rest of a chart.
+        if (ranked.length <= 8 && unusedMappedToKnown >= 3) stopped = true;
       }
     }
     return result;
@@ -1210,17 +1211,58 @@ function assertForceCooldown(userId) {
   }
 }
 
-const CHART_SONG_LIMIT = 10;
+const CHART_ATTEMPT_LIMIT = 36;
 
-/** Current iTunes chart for this language and style, skipping songs already taught. */
+const UNTEACHABLE_REASONS = new Set([
+  "lyric_outside_preview",
+  "lyrics_not_found",
+  "no_suitable_word",
+  "lyrics_validation_failed",
+  "lyrics_wrong_language",
+]);
+
+function songPickKey(artist, title) {
+  return `${String(artist || "").trim().toLowerCase()}|${String(title || "").trim().toLowerCase()}`;
+}
+
+function rememberUnteachableSong(artist, title, reason) {
+  if (!UNTEACHABLE_REASONS.has(reason)) return;
+  const key = songPickKey(artist, title);
+  if (!key || key === "|") return;
+  db.prepare(`
+    INSERT INTO song_pick_rejects (song_key, reason, updated_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(song_key) DO UPDATE SET
+      reason = excluded.reason,
+      updated_at = CURRENT_TIMESTAMP
+  `).run(key, reason);
+}
+
+function rejectUnteachable(suggestion, reason) {
+  rememberUnteachableSong(suggestion?.artist, suggestion?.song_title, reason);
+  return { error: reason };
+}
+
+function rejectedSongKeys() {
+  return new Set(db.prepare("SELECT song_key FROM song_pick_rejects").all().map((row) => row.song_key));
+}
+
+/** Current iTunes charts for this language and style, skipping songs already taught or impossible to teach. */
 async function fetchChartCandidates(user, fetchImpl = fetch) {
   const langCode = normalizeLangCode(user.target_language || "es");
   const genre = user.genre || "pop";
   try {
     const chart = await deezer.fetchItunesChartSongs(langCode, genre, fetchImpl);
-    const fresh = filterUnusedSongCandidates(user.id, chart).slice(0, CHART_SONG_LIMIT);
+    const rejected = rejectedSongKeys();
+    const fresh = filterUnusedSongCandidates(user.id, chart)
+      .filter((candidate) => !rejected.has(songPickKey(candidate.artist, candidate.song_title)))
+      .slice(0, CHART_ATTEMPT_LIMIT);
     if (fresh.length) {
-      console.log(`daily word: ${fresh.length} unused chart songs for ${langCode}/${genre}`);
+      console.log(
+        `daily word: ${fresh.length} unused chart songs for ${langCode}/${genre} (${chart.length} on the charts)`
+      );
+    } else if (chart.length) {
+      console.log(`daily word: chart has ${chart.length} ${langCode}/${genre} songs and none left to teach`);
     }
     return fresh;
   } catch (err) {
@@ -2642,6 +2684,8 @@ module.exports = {
   getDailyWordStats,
   fetchAiCandidates,
   fetchChartCandidates,
+  rememberUnteachableSong,
+  songPickKey,
   generateValidatedBatch,
   refillQueue,
   consumeNextDailyWord,

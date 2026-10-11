@@ -87,16 +87,54 @@ describe('deezerService', () => {
     for (const [lang, country] of Object.entries(storefronts)) {
       for (const [style, genreId] of Object.entries(styles)) {
         expect(deezer.itunesChartUrl(lang, style)).to.equal(
-          `https://itunes.apple.com/${country}/rss/topsongs/limit=25/genre=${genreId}/json`
+          `https://itunes.apple.com/${country}/rss/topsongs/limit=100/genre=${genreId}/json`
         );
       }
       expect(deezer.itunesChartUrl(lang, 'any')).to.equal(
-        `https://itunes.apple.com/${country}/rss/topsongs/limit=25/json`
+        `https://itunes.apple.com/${country}/rss/topsongs/limit=100/json`
       );
     }
     expect(deezer.itunesChartUrl('es', 'reggaeton')).to.equal(
-      'https://itunes.apple.com/mx/rss/topsongs/limit=25/genre=12/json'
+      'https://itunes.apple.com/mx/rss/topsongs/limit=100/genre=12/json'
     );
+  });
+
+  it('asks several country charts for one style', () => {
+    const rock = deezer.itunesChartUrls('en', 'rock');
+    expect(rock).to.deep.equal([
+      'https://itunes.apple.com/us/rss/topsongs/limit=100/genre=21/json',
+      'https://itunes.apple.com/gb/rss/topsongs/limit=100/genre=21/json',
+      'https://itunes.apple.com/au/rss/topsongs/limit=100/genre=21/json',
+      'https://itunes.apple.com/ca/rss/topsongs/limit=100/genre=21/json',
+    ]);
+    expect(deezer.itunesChartUrls('es', 'reggaeton')).to.include(
+      'https://itunes.apple.com/co/rss/topsongs/limit=100/genre=12/json'
+    );
+  });
+
+  it('merges country charts and keeps each song once', async () => {
+    const mockFetch = async (url) => {
+      const country = String(url).split('/')[3];
+      const title = country === 'gb' ? 'Fisherman\'s Blues' : 'Enter Sandman';
+      const artist = country === 'gb' ? 'The Waterboys' : 'Metallica';
+      return {
+        ok: true,
+        json: async () => ({
+          feed: {
+            entry: [
+              { 'im:name': { label: title }, 'im:artist': { label: artist } },
+              { 'im:name': { label: 'Enter Sandman' }, 'im:artist': { label: 'Metallica' } },
+            ],
+          },
+        }),
+      };
+    };
+    const songs = await deezer.fetchItunesChartSongs('en', 'rock', mockFetch);
+    expect(songs.map((song) => song.song_title)).to.deep.equal([
+      'Enter Sandman',
+      'Fisherman\'s Blues',
+    ]);
+    expect(songs.every((song) => song.genre === 'rock')).to.equal(true);
   });
 
   it('parses an iTunes chart into unused-song candidates', () => {
