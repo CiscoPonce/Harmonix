@@ -242,6 +242,37 @@ function itunesChartUrls(langCode, genre, limit = ITUNES_CHART_LIMIT) {
   );
 }
 
+function itunesAlbumChartUrl(langCode, genre, limit = ITUNES_CHART_LIMIT, storefront = null) {
+  return itunesChartUrl(langCode, genre, limit, storefront).replace('/rss/topsongs/', '/rss/topalbums/');
+}
+
+const ALBUM_LOOKUP_CAP = 80;
+const ALBUM_LOOKUP_BATCH = 20;
+
+function parseItunesAlbumIds(payload) {
+  const raw = payload?.feed?.entry || [];
+  const list = Array.isArray(raw) ? raw : [raw];
+  const ids = [];
+  for (const item of list) {
+    const id = String(item?.id?.attributes?.['im:id'] || '').trim();
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+
+function parseItunesLookupTracks(payload, genre = 'pop') {
+  const style = genre && genre !== 'any' ? genre : 'pop';
+  const out = [];
+  for (const item of payload?.results || []) {
+    if (item?.wrapperType !== 'track' || item?.kind !== 'song') continue;
+    const title = String(item.trackName || '').trim();
+    const artist = String(item.artistName || '').trim();
+    if (!title || !artist) continue;
+    out.push({ song_title: title, artist, genre: style });
+  }
+  return out;
+}
+
 function interleaveChartLists(lists) {
   const seen = new Set();
   const out = [];
@@ -294,6 +325,61 @@ async function fetchItunesChartSongs(langCode, genre, fetchImpl = fetch, limit =
       return [];
     }
   }));
+  const songs = interleaveChartLists(lists);
+  if (fetchImpl === fetch && songs.length) {
+    chartCache.set(cacheKey, { songs, at: Date.now() });
+  }
+  return songs;
+}
+
+async function fetchItunesAlbumTracks(langCode, genre, fetchImpl = fetch) {
+  const style = genre && genre !== 'any' ? genre : 'pop';
+  const cacheKey = `albums|${String(langCode || 'en').toLowerCase()}|${genre || 'any'}`;
+  if (fetchImpl === fetch) {
+    const hit = chartCache.get(cacheKey);
+    if (hit && Date.now() - hit.at < CHART_CACHE_MS && hit.songs.length) return hit.songs;
+  }
+
+  const urls = itunesChartStorefronts(langCode, genre).map((country) =>
+    itunesAlbumChartUrl(langCode, genre, ITUNES_CHART_LIMIT, country)
+  );
+  const idLists = await Promise.all(urls.map(async (url) => {
+    try {
+      const res = await fetchWithTimeout(url, fetchImpl, 8000);
+      if (!res.ok) throw new Error(`itunes_album_chart_http_${res.status}`);
+      const data = await res.json();
+      return parseItunesAlbumIds(data);
+    } catch (err) {
+      console.warn(`itunes album chart failed ${url} (${err.message || err})`);
+      return [];
+    }
+  }));
+  const albumIds = [];
+  const seenIds = new Set();
+  const max = Math.max(0, ...idLists.map((list) => list.length));
+  for (let i = 0; i < max && albumIds.length < ALBUM_LOOKUP_CAP; i += 1) {
+    for (const list of idLists) {
+      const id = list[i];
+      if (!id || seenIds.has(id)) continue;
+      seenIds.add(id);
+      albumIds.push(id);
+      if (albumIds.length >= ALBUM_LOOKUP_CAP) break;
+    }
+  }
+
+  const lists = [];
+  for (let i = 0; i < albumIds.length; i += ALBUM_LOOKUP_BATCH) {
+    const batch = albumIds.slice(i, i + ALBUM_LOOKUP_BATCH);
+    const url = `${ITUNES_LOOKUP_URL}?id=${batch.join(',')}&entity=song`;
+    try {
+      const res = await fetchWithTimeout(url, fetchImpl, 8000);
+      if (!res.ok) throw new Error(`itunes_lookup_http_${res.status}`);
+      const data = await res.json();
+      lists.push(parseItunesLookupTracks(data, style));
+    } catch (err) {
+      console.warn(`itunes album lookup failed (${err.message || err})`);
+    }
+  }
   const songs = interleaveChartLists(lists);
   if (fetchImpl === fetch && songs.length) {
     chartCache.set(cacheKey, { songs, at: Date.now() });
@@ -518,6 +604,10 @@ module.exports = {
   itunesChartUrls,
   parseItunesChart,
   fetchItunesChartSongs,
+  fetchItunesAlbumTracks,
+  itunesAlbumChartUrl,
+  parseItunesAlbumIds,
+  parseItunesLookupTracks,
   fetchTrack,
   fetchItunesTrack,
   resolvePreviewForTrackId,

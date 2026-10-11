@@ -665,6 +665,32 @@ describe("Daily Word Service", () => {
     }
   });
 
+  it("teaches from genre albums after the song charts are used up", async () => {
+    const deezer = require("./deezerService");
+    const originalChart = deezer.fetchItunesChartSongs;
+    const originalAlbums = deezer.fetchItunesAlbumTracks;
+    deezer.fetchItunesChartSongs = async () => [
+      { song_title: "Enter Sandman", artist: "Metallica", genre: "rock" },
+    ];
+    deezer.fetchItunesAlbumTracks = async () => [
+      { song_title: "Heat Above", artist: "Greta Van Fleet", genre: "rock" },
+    ];
+    rememberUnteachableSong("Metallica", "Enter Sandman", "lyric_outside_preview");
+    db.prepare("UPDATE users SET target_language = 'en', genre = 'rock' WHERE id = ?").run(userId);
+    try {
+      const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+      const found = await fetchChartCandidates(user, async () => {
+        throw new Error("chart stub should not fetch");
+      });
+      expect(found).to.deep.equal([
+        { song_title: "Heat Above", artist: "Greta Van Fleet", genre: "rock" },
+      ]);
+    } finally {
+      deezer.fetchItunesChartSongs = originalChart;
+      deezer.fetchItunesAlbumTracks = originalAlbums;
+    }
+  });
+
   it("asks the iTunes chart for songs the learner has not heard", async () => {
     const deezer = require("./deezerService");
     const original = deezer.fetchItunesChartSongs;

@@ -8,6 +8,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ### Daily word
 - Next keeps a chosen style by reading the top 100 songs from each country's chart for that style, and it does not retry songs whose lyric cannot be taught in the 30-second preview.
+- When those song charts are used up, Next stays in the style and teaches from tracks on that genre's top albums before it offers a song from another style.
 
 ### Web
 - Library recent words open the full word card (Hear it, playlist, Spotify, share) instead of the legacy player.

@@ -137,6 +137,48 @@ describe('deezerService', () => {
     expect(songs.every((song) => song.genre === 'rock')).to.equal(true);
   });
 
+  it('reads tracks from a genre album chart when the song chart is not enough', async () => {
+    expect(deezer.itunesAlbumChartUrl('en', 'rock', 100, 'us')).to.equal(
+      'https://itunes.apple.com/us/rss/topalbums/limit=100/genre=21/json'
+    );
+    const ids = deezer.parseItunesAlbumIds({
+      feed: { entry: [{ id: { attributes: { 'im:id': '99' } } }, { id: {} }] },
+    });
+    expect(ids).to.deep.equal(['99']);
+    const tracks = deezer.parseItunesLookupTracks({
+      results: [
+        { wrapperType: 'collection', collectionName: 'Palace' },
+        { wrapperType: 'track', kind: 'song', artistName: 'Greta Van Fleet', trackName: 'Heat Above' },
+      ],
+    }, 'rock');
+    expect(tracks).to.deep.equal([
+      { song_title: 'Heat Above', artist: 'Greta Van Fleet', genre: 'rock' },
+    ]);
+
+    const mockFetch = async (url) => {
+      const href = String(url);
+      if (href.includes('/rss/topalbums/')) {
+        const id = href.includes('/gb/') ? '2' : '1';
+        return {
+          ok: true,
+          json: async () => ({ feed: { entry: [{ id: { attributes: { 'im:id': id } } }] } }),
+        };
+      }
+      expect(href).to.include('lookup?id=');
+      return {
+        ok: true,
+        json: async () => ({
+          results: [
+            { wrapperType: 'track', kind: 'song', artistName: 'Greta Van Fleet', trackName: 'Heat Above' },
+            { wrapperType: 'track', kind: 'song', artistName: 'Greta Van Fleet', trackName: 'Broken Bells' },
+          ],
+        }),
+      };
+    };
+    const songs = await deezer.fetchItunesAlbumTracks('en', 'rock', mockFetch);
+    expect(songs.map((song) => song.song_title)).to.deep.equal(['Heat Above', 'Broken Bells']);
+  });
+
   it('parses an iTunes chart into unused-song candidates', () => {
     const songs = deezer.parseItunesChart({
       feed: {

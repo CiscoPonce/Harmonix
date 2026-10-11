@@ -1254,15 +1254,25 @@ async function fetchChartCandidates(user, fetchImpl = fetch) {
   try {
     const chart = await deezer.fetchItunesChartSongs(langCode, genre, fetchImpl);
     const rejected = rejectedSongKeys();
-    const fresh = filterUnusedSongCandidates(user.id, chart)
-      .filter((candidate) => !rejected.has(songPickKey(candidate.artist, candidate.song_title)))
-      .slice(0, CHART_ATTEMPT_LIMIT);
-    if (fresh.length) {
+    const unused = (candidates) => filterUnusedSongCandidates(user.id, candidates)
+      .filter((candidate) => !rejected.has(songPickKey(candidate.artist, candidate.song_title)));
+    let pool = unused(chart);
+    let source = "charts";
+    if (!pool.length) {
+      const albums = await deezer.fetchItunesAlbumTracks(langCode, genre, fetchImpl);
+      pool = unused(albums);
+      source = "albums";
+      if (albums.length) {
+        console.log(
+          `daily word: song charts for ${langCode}/${genre} are used up — ${pool.length} tracks left on genre albums`
+        );
+      }
+    }
+    const fresh = pool.slice(0, CHART_ATTEMPT_LIMIT);
+    if (fresh.length && source === "charts") {
       console.log(
         `daily word: ${fresh.length} unused chart songs for ${langCode}/${genre} (${chart.length} on the charts)`
       );
-    } else if (chart.length) {
-      console.log(`daily word: chart has ${chart.length} ${langCode}/${genre} songs and none left to teach`);
     }
     return fresh;
   } catch (err) {
