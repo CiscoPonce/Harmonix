@@ -151,7 +151,7 @@ function reloadHostLanguage(pocketLang) {
 }
 
 /** Bump to invalidate SQLite pronunciation cache after quality/speed/accent changes. */
-const CACHE_VERSION = 'hq-v18-es-kokoro';
+const CACHE_VERSION = 'hq-v19-en-af-heart';
 
 /** Playback tempo (1.0 = natural speed, no phase distortion on sibilants). */
 const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.95');
@@ -368,11 +368,14 @@ function kokoroPromptForWord(word, langCode = 'es') {
 }
 
 /**
- * Spanish prefers the host Kokoro daemon when it is up. English stays on
- * Pocket, which is the voice learners already hear clearly.
+ * Spanish uses Kokoro. English female uses Kokoro af_heart, because Pocket's
+ * alba voice is low enough to be heard as male. English male stays on Pocket.
  */
-function selectPronunciationEngines(langCode, kokoroReady, pocketReady) {
-  if (langCode === 'es' && kokoroReady) return ['kokoro', 'pocket'];
+function selectPronunciationEngines(langCode, kokoroReady, pocketReady, gender = 'female') {
+  const g = normalizeVoiceGender(gender);
+  if (kokoroReady && (langCode === 'es' || (langCode === 'en' && g === 'female'))) {
+    return ['kokoro', 'pocket'];
+  }
   if (pocketReady || !kokoroReady) return ['pocket', 'kokoro'];
   return ['kokoro', 'pocket'];
 }
@@ -612,6 +615,7 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
     langCode,
     !kokoroService.isKokoroUnavailable(),
     pocketCanServe(langCode),
+    voiceGender,
   );
   for (const name of order) {
     const audio = await engines[name]();

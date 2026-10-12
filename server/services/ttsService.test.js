@@ -48,6 +48,10 @@ describe('TTS Service Voice & Accent Normalization', () => {
     );
     assert.deepStrictEqual(
       ttsService.selectPronunciationEngines('en', true, true),
+      ['kokoro', 'pocket'],
+    );
+    assert.deepStrictEqual(
+      ttsService.selectPronunciationEngines('en', true, true, 'male'),
       ['pocket', 'kokoro'],
     );
     assert.deepStrictEqual(
