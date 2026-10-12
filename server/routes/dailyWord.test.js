@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const dailyWordRouter = require("./dailyWord");
 const dailyWordService = require("../services/dailyWordService");
 const ttsService = require("../services/ttsService");
+const auth = require("../auth");
 const db = require("../db");
 
 const mockRes = () => {
@@ -226,7 +227,7 @@ describe("GET /pronounce", () => {
 
   beforeEach(() => {
     db.prepare("INSERT OR IGNORE INTO users (id, email, password_hash) VALUES (?, ?, ?)").run(userId, "pronounce@test.com", "x");
-    db.prepare("UPDATE users SET target_language = ? WHERE id = ?").run("es", userId);
+    db.prepare("UPDATE users SET target_language = ?, voice_gender = ? WHERE id = ?").run("es", "female", userId);
     db.prepare("DELETE FROM word_pronunciation_cache WHERE word = 'testword'").run();
     db.prepare("DELETE FROM word_pronunciation_cache WHERE word = 'newword'").run();
   });
@@ -287,6 +288,63 @@ describe("GET /pronounce", () => {
     await handler(req, res);
     expect(calledWith).to.deep.equal(["newword", "es", "female"]);
     expect(res.statusCode).to.equal(200);
+    expect(res.headers["Cache-Control"]).to.equal("private, no-store");
+  });
+
+  it("uses saved voice_gender from the bearer token when the route is not pre-authenticated", async () => {
+    db.prepare("UPDATE users SET voice_gender = ?, target_language = ? WHERE id = ?").run("male", "en", userId);
+    const token = auth.generateAccessToken({ id: userId, email: "pronounce@test.com" });
+    const fakeWav = Buffer.alloc(48, 1);
+    fakeWav.writeUInt32LE(56, 0);
+
+    let calledWith = null;
+    ttsService.getPronunciationForWord = async (word, lang, gender) => {
+      calledWith = [word, lang, gender];
+      return fakeWav;
+    };
+
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack.at(-1).handle;
+    const req = {
+      headers: { authorization: `Bearer ${token}` },
+      query: { word: "newword", lang: "en", voice: "female" },
+    };
+    const res = mockRes();
+    await handler(req, res);
+    expect(calledWith).to.deep.equal(["newword", "en", "male"]);
+    expect(res.statusCode).to.equal(200);
+    expect(res.headers["Cache-Control"]).to.equal("private, no-store");
+  });
+
+  it("returns 401 for a bad pronounce token instead of the female default", async () => {
+    let called = false;
+    ttsService.getPronunciationForWord = async () => {
+      called = true;
+      return Buffer.alloc(48, 1);
+    };
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack.at(-1).handle;
+    const req = {
+      headers: { authorization: "Bearer not-a-token" },
+      query: { word: "newword", lang: "en" },
+    };
+    const res = mockRes();
+    await handler(req, res);
+    expect(res.statusCode).to.equal(401);
+    expect(called).to.equal(false);
+  });
+
+  it("ignores a voice query when nobody is signed in", async () => {
+    const fakeWav = Buffer.alloc(48, 1);
+    fakeWav.writeUInt32LE(56, 0);
+    let calledWith = null;
+    ttsService.getPronunciationForWord = async (word, lang, gender) => {
+      calledWith = [word, lang, gender];
+      return fakeWav;
+    };
+    const handler = dailyWordRouter.stack.find((s) => s.route.path === "/pronounce").route.stack.at(-1).handle;
+    const req = { headers: {}, query: { word: "newword", lang: "en", voice: "male" } };
+    const res = mockRes();
+    await handler(req, res);
+    expect(calledWith).to.deep.equal(["newword", "en", "female"]);
   });
 
   it("POST /from-track returns a word from the chosen song", async () => {

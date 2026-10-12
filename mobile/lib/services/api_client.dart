@@ -13,6 +13,17 @@ const String kApiBase = String.fromEnvironment(
   defaultValue: 'https://harmonix.peeporunclub.co.uk/api',
 );
 
+/// Query for GET /daily-word/pronounce. `voice` splits any HTTP cache by gender.
+Map<String, String> pronounceQuery(String word, {String? lang, String? voiceGender}) {
+  final query = <String, String>{'word': word};
+  final language = lang?.trim();
+  if (language != null && language.isNotEmpty) query['lang'] = language;
+  if (voiceGender == 'male' || voiceGender == 'female') {
+    query['voice'] = voiceGender!;
+  }
+  return query;
+}
+
 bool wavLooksSilent(Uint8List bytes, {int minPeak = 200}) {
   if (bytes.length < 44 + 128) return true;
   var peak = 0;
@@ -243,15 +254,16 @@ class ApiClient {
   }
 
   /// Authenticated binary GET for Pocket-TTS WAV pronunciation.
+  ///
+  /// [voiceGender] is a cache key only. The server speaks the gender saved
+  /// on the account.
   Future<Uint8List> pronounceWord(
     String word, {
     String? lang,
+    String? voiceGender,
     bool authRetry = true,
   }) async {
-    final query = <String, String>{'word': word};
-    if (lang != null && lang.trim().isNotEmpty) {
-      query['lang'] = lang.trim();
-    }
+    final query = pronounceQuery(word, lang: lang, voiceGender: voiceGender);
     final uri = _uri('/daily-word/pronounce', query);
     final res = await _client.get(
       uri,
@@ -260,7 +272,9 @@ class ApiClient {
 
     if (res.statusCode == 401 && authRetry) {
       final refreshed = await refresh();
-      if (refreshed) return pronounceWord(word, lang: lang, authRetry: false);
+      if (refreshed) {
+        return pronounceWord(word, lang: lang, voiceGender: voiceGender, authRetry: false);
+      }
     }
 
     if (res.statusCode >= 400) {

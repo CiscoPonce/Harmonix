@@ -56,10 +56,14 @@ app.use(cors({
   credentials: true,
 }));
 
+function readBearerToken(req) {
+  const authHeader = req.headers['authorization'];
+  return authHeader && authHeader.split(' ')[1];
+}
+
 // Middleware to protect routes
 const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const token = readBearerToken(req);
 
   if (!token) return res.sendStatus(401);
 
@@ -69,6 +73,19 @@ const authenticateToken = (req, res, next) => {
     next();
   } catch (err) {
     return res.sendStatus(403);
+  }
+};
+
+// Pronounce stays available without an account (female preview). A logged-in
+// app sends a bearer token; that token must select the saved voice gender.
+const authenticateTokenOptional = (req, res, next) => {
+  const token = readBearerToken(req);
+  if (!token) return next();
+  try {
+    req.user = auth.verifyAccessToken(token);
+    return next();
+  } catch (err) {
+    return res.sendStatus(401);
   }
 };
 
@@ -329,9 +346,12 @@ app.use('/api/vocab', authenticateToken, vocabRouter);
 app.use('/api/study', authenticateToken, studyRouter);
 app.use('/api/progress', authenticateToken, progressRouter);
 app.use('/api/validation', authenticateToken, validationRouter);
-// Allow public pronunciation lookup for daily words; require authentication for other daily-word routes
+// Pronounce accepts anonymous previews. Logged-in requests still attach the
+// account so voice_gender is read. Other daily-word routes require auth.
 app.use('/api/daily-word', (req, res, next) => {
-  if (req.path === '/pronounce') return pronounceLimiter(req, res, next);
+  if (req.path === '/pronounce') {
+    return authenticateTokenOptional(req, res, () => pronounceLimiter(req, res, next));
+  }
   authenticateToken(req, res, next);
 }, dailyWordRouter);
 app.use('/api/playlists', authenticateToken, playlistsRouter);

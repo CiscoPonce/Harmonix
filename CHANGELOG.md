@@ -7,6 +7,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 ## Unreleased
 
 ### TTS
+- Changing voice gender in Settings is used the next time you press the speaker. Pronounce ignored the signed-in account, so it always spoke the female voice, and browsers could replay that clip for a day.
 - English female pronunciation uses Kokoro af_heart. Pocket alba was low enough to sound male, and the old clips are not reused.
 
 ### Daily word

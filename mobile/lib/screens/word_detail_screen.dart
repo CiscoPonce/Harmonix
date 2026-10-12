@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../constants/learning_prefs.dart';
 import '../services/api_client.dart';
 import '../spotify/spotify_open.dart';
 import '../state/auth_state.dart';
@@ -105,14 +106,16 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
     final text = _word['text']?.toString().trim() ?? '';
     if (text.isEmpty) return;
     final api = context.read<ApiClient>();
-    final lang = context.read<AuthState>().user?['target_language']?.toString();
+    final user = context.read<AuthState>().user;
+    final lang = user?['target_language']?.toString();
+    final gender = normalizeVoiceGender(user?['voice_gender']?.toString());
     try {
       await _pronouncePlayer.stop();
       await _previewPlayer.stop();
     } catch (_) {}
     if (mounted) setState(() => _speaking = true);
     try {
-      final bytes = await api.pronounceWord(text, lang: lang);
+      final bytes = await api.pronounceWord(text, lang: lang, voiceGender: gender);
       if (!mounted) return;
       final session = await AudioSession.instance;
       await session.configure(const AudioSessionConfiguration.speech());

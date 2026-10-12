@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const auth = require("../auth");
 const dailyWordService = require("../services/dailyWordService");
 const wordQueue = require("../services/wordQueueService");
 const { dailyWordLimiter } = require("../middleware/security");
@@ -10,6 +11,32 @@ function loadUser(userId) {
   return db.prepare(
     "SELECT id, email, cefr_level, native_language, target_language, genre, difficulty, voice_gender FROM users WHERE id = ?"
   ).get(userId);
+}
+
+function bearerToken(req) {
+  const header = req.headers?.authorization || req.headers?.Authorization || "";
+  const match = /^Bearer\s+(\S+)/i.exec(String(header).trim());
+  return match ? match[1] : "";
+}
+
+/**
+ * Guests get no account (female preview). A bearer token, or req.user from
+ * optional auth, selects the saved voice_gender. The `voice` query is only a
+ * client cache key and must not override the account.
+ */
+function resolvePronounceUser(req) {
+  if (req.user?.id) {
+    return { user: loadUser(req.user.id) || null };
+  }
+  const token = bearerToken(req);
+  if (!token) return { user: null };
+  try {
+    const payload = auth.verifyAccessToken(token);
+    if (!payload?.id) return { user: null };
+    return { user: loadUser(payload.id) || null };
+  } catch {
+    return { unauthorized: true };
+  }
 }
 
 async function handleDailyWord(req, res, force) {
@@ -108,7 +135,11 @@ router.get("/pronounce", async (req, res) => {
     return res.status(400).json({ error: "word required" });
   }
 
-  const user = req.user ? loadUser(req.user.id) : null;
+  const resolved = resolvePronounceUser(req);
+  if (resolved.unauthorized) {
+    return res.sendStatus(401);
+  }
+  const user = resolved.user;
   const langCode = (lang && ttsService.SUPPORTED_LANGUAGES.includes(lang.toString().trim()))
     ? lang.toString().trim()
     : (user?.target_language || "es");
@@ -125,7 +156,8 @@ router.get("/pronounce", async (req, res) => {
     const buf = Buffer.isBuffer(audioBuffer) ? audioBuffer : Buffer.from(audioBuffer);
     res.setHeader("Content-Type", "audio/wav");
     res.setHeader("Content-Length", buf.length.toString());
-    res.setHeader("Cache-Control", "public, max-age=86400");
+    // The clip depends on the account's voice_gender, which is not in the URL.
+    res.setHeader("Cache-Control", "private, no-store");
     res.send(buf);
   } catch (err) {
     console.error("GET /api/daily-word/pronounce error:", err.stack || err.message);

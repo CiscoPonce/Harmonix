@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../constants/learning_prefs.dart';
 import '../services/api_client.dart';
 import '../services/offline_word_cache.dart';
 import '../spotify/spotify_open.dart';
@@ -305,6 +306,9 @@ class _LearnScreenState extends State<LearnScreen> {
 
   Future<void> _speakWord(String text, {String? lang}) async {
     final api = context.read<ApiClient>();
+    final gender = normalizeVoiceGender(
+      context.read<AuthState>().user?['voice_gender']?.toString(),
+    );
     try {
       await _pronouncePlayer.stop();
       await _pronouncePlayer.release();
@@ -314,7 +318,7 @@ class _LearnScreenState extends State<LearnScreen> {
 
     Object? lastError;
     try {
-      final bytes = await api.pronounceWord(text, lang: lang);
+      final bytes = await api.pronounceWord(text, lang: lang, voiceGender: gender);
       if (!mounted) return;
 
       final session = await AudioSession.instance;

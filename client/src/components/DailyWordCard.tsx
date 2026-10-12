@@ -22,6 +22,7 @@ import {
 import { FolderPlus, Loader2, Music2, Play, Pause, RefreshCw, Share2, Sparkles, RotateCw, Volume2, ExternalLink } from "lucide-react";
 import { spotifyOpenUrlForSong } from "@/lib/spotifyOpen";
 import type { DailyWordPayload } from "@/lib/dailyWordPayload";
+import { pronunciationClipKey, pronouncePath } from "@/lib/pronounceRequest";
 
 export type { DailyWordPayload };
 
@@ -164,7 +165,7 @@ export function DailyWordCard({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const pronunciationAudioRef = useRef<HTMLAudioElement | null>(null);
   const pronunciationBlobUrlRef = useRef<string | null>(null);
-  const pronunciationWordRef = useRef<string | null>(null);
+  const pronunciationClipRef = useRef<string | null>(null);
   const hearStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioProviderRef = useRef<'spotify' | 'deezer' | null>(null);
   const [hearBusy, setHearBusy] = useState(false);
@@ -233,10 +234,11 @@ export function DailyWordCard({
   useEffect(() => {
     const word = data?.word?.text?.trim();
     const lang = pronunciationLang(data, user?.target_language);
+    const clipKey = word ? pronunciationClipKey(word, user?.voice_gender) : "";
     if (!word || !SUPPORTED_PRONUNCIATION_LANGUAGES.includes(lang)) {
       return;
     }
-    if (pronunciationWordRef.current === word && pronunciationBlobUrlRef.current) {
+    if (pronunciationClipRef.current === clipKey && pronunciationBlobUrlRef.current) {
       return;
     }
     let cancelled = false;
@@ -244,8 +246,8 @@ export function DailyWordCard({
     (async () => {
       try {
         const res = await apiFetch(
-          `/daily-word/pronounce?word=${encodeURIComponent(word)}&lang=${encodeURIComponent(lang)}`,
-          { signal: ac.signal }
+          pronouncePath(word, lang, user?.voice_gender),
+          { signal: ac.signal, cache: "no-store" }
         );
         if (!res.ok || cancelled) return;
         const blob = await res.blob();
@@ -254,7 +256,7 @@ export function DailyWordCard({
           URL.revokeObjectURL(pronunciationBlobUrlRef.current);
         }
         pronunciationBlobUrlRef.current = URL.createObjectURL(blob);
-        pronunciationWordRef.current = word;
+        pronunciationClipRef.current = clipKey;
       } catch {
         /* non-fatal — tap will fetch on demand */
       }
@@ -263,7 +265,7 @@ export function DailyWordCard({
       cancelled = true;
       ac.abort();
     };
-  }, [data?.word?.text, data?.language_code, user?.target_language]);
+  }, [data?.word?.text, data?.language_code, user?.target_language, user?.voice_gender]);
 
   useEffect(() => {
     return () => {
@@ -796,10 +798,11 @@ export function DailyWordCard({
       await audio.play();
     };
 
-    // Instant path: already prefetched for this word.
+    const clipKey = pronunciationClipKey(data?.word?.text || "", user?.voice_gender);
+    // Instant path: already prefetched for this word and voice.
     if (
       pronunciationBlobUrlRef.current
-      && pronunciationWordRef.current === data?.word?.text?.trim()
+      && pronunciationClipRef.current === clipKey
     ) {
       try {
         await playFromUrl(pronunciationBlobUrlRef.current);
@@ -812,7 +815,9 @@ export function DailyWordCard({
     const targetLang = pronunciationLang(data, user?.target_language);
     for (let attempt = 0; attempt <= 1; attempt++) {
       try {
-        const res = await apiFetch(`/daily-word/pronounce?word=${encodeURIComponent(data!.word.text)}&lang=${encodeURIComponent(targetLang)}`);
+        const res = await apiFetch(pronouncePath(data!.word.text, targetLang, user?.voice_gender), {
+          cache: "no-store",
+        });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || "Pronunciation unavailable");
@@ -824,7 +829,7 @@ export function DailyWordCard({
         objectUrl = URL.createObjectURL(blob);
         ownsUrl = false; // keep in prefetch cache for replay
         pronunciationBlobUrlRef.current = objectUrl;
-        pronunciationWordRef.current = data!.word.text.trim();
+        pronunciationClipRef.current = clipKey;
         await playFromUrl(objectUrl);
         return;
       } catch {
