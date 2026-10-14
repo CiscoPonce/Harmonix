@@ -29,6 +29,8 @@ progress:
 
 **2026-09-23 next-word:** English rock example hits were all already heard (292 songs). Song pick now drops used examples and asks once more for different tracks instead of failing Next.
 
+**2026-10-14 NIM:** Lightning is the primary model again. GLM-5.3 timed out on every live call, and GLM-5.3 Flash timed out on a direct probe. Both stay in the list after Lightning. `nvidia/kumo-tabular` is a self-hosted table classifier, not a hosted chat model, so it is not in this chain.
+
 **2026-10-03 next-word:** GLM-5.3 is timing out, so an empty famous list never reached Lightning. Song picks now ask Lightning first. When the famous list is used up, Next tries the current iTunes chart for that language and style before the model.
 
 **2026-10-01 sessions:** Logout clears the refresh cookie and the server-side refresh id. A copied refresh token cannot mint a new access token. Refresh rotates that id, and a password change does the same.

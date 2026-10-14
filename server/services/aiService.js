@@ -38,10 +38,10 @@ const modelsEnv = process.env.NVIDIA_NIM_MODELS || process.env.NVIDIA_NIM_MODEL;
 const AVAILABLE_MODELS = modelsEnv
   ? modelsEnv.split(',').map(m => m.trim()).filter(Boolean)
   : [
-      // Live bake-off 2026-09-23: GLM-5.3 beats Flash on gloss (~0.5s vs ~2s) and
-      // song picks (~2s vs ~8s). Lightning is the fast NIM backup for song JSON.
-      'z-ai/glm-5.3',
+      // 14 Oct 2026: GLM-5.3 and Flash timed out on the live key. Lightning
+      // answered a gloss in 305ms, so it is first. GLM stays as a later backup.
       'nvidia/nemotron-3.5-lightning-30b-a3b',
+      'z-ai/glm-5.3',
       'z-ai/glm-5.3-flash',
     ];
 
@@ -51,11 +51,7 @@ const OPENROUTER_MODELS = (process.env.OPENROUTER_MODELS
   .map((m) => m.trim())
   .filter(Boolean);
 
-const FAST_MODELS = [
-  'z-ai/glm-5.3',
-  'nvidia/nemotron-3.5-lightning-30b-a3b',
-  'z-ai/glm-5.3-flash',
-];
+const FAST_MODELS = AVAILABLE_MODELS;
 
 const NIM_COOLDOWN_MS = parseInt(process.env.NIM_RATE_LIMIT_COOLDOWN_MS || '300000', 10);
 /** 403/410 mean the key or model is dead — retrying every 5 min just stalls Next. */
@@ -137,7 +133,7 @@ function buildModelAttempts(primaryModel, { fast = false } = {}) {
   const skipNim = isNimInCooldown();
   const useOpenrouter = Boolean(openrouter) && !isOpenrouterInCooldown();
 
-  // Fast path: Flash then Lightning on NIM. OpenRouter is next if NIM fails.
+  // Fast path follows the NIM list, Lightning first. OpenRouter is next if NIM fails.
   if (fast) {
     if (!skipNim) {
       for (const model of nimChain) {
