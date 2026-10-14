@@ -393,7 +393,10 @@ export function DailyWordCard({
         if (ac.signal.aborted) return;
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          const wrapped = new Error(friendlyDailyWordReason(body.reason || body.error)) as Error & { reason?: string };
+          const wrapped = new Error(friendlyDailyWordReason(body.reason || body.error, {
+            detectedLanguage: body.detected_language,
+            targetLanguage: body.target_language,
+          })) as Error & { reason?: string };
           wrapped.reason = body.reason;
           throw wrapped;
         }

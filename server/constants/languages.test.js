@@ -140,6 +140,18 @@ describe('Language constants', () => {
     expect(lyricsMatchTargetLanguage(atemlos, 'de')).to.equal(true);
   });
 
+  it('rejects a Portuguese chorus when the learner is studying English', () => {
+    const { lyricsMatchTargetLanguage, sniffLyricLanguage } = require('./languages');
+    const portuguese =
+      'Essa tá quente. A parada mais pra frente. Não tá, não prende. Segura, mas tá quente.';
+    const english =
+      'I love you tonight and I will never leave you again because you are my home';
+    expect(sniffLyricLanguage(portuguese)).to.equal('pt');
+    expect(lyricsMatchTargetLanguage(portuguese, 'en')).to.equal(false);
+    expect(sniffLyricLanguage(english)).to.equal('en');
+    expect(lyricsMatchTargetLanguage(english, 'en')).to.equal(true);
+  });
+
   it('sniffs English Beggin lyrics as incompatible with Italian', () => {
     const { lyricsMatchTargetLanguage } = require('./languages');
     const beggin =

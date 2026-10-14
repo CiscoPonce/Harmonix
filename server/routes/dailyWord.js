@@ -108,8 +108,9 @@ router.post("/from-track", dailyWordLimiter, async (req, res) => {
   const started = Date.now();
   const trackId = req.body?.trackId || req.body?.track_id || req.query.trackId;
   console.log(`POST /api/daily-word/from-track - user: ${req.user.id} track=${trackId}`);
+  let user = null;
   try {
-    const user = loadUser(req.user.id);
+    user = loadUser(req.user.id);
     if (!user) return res.sendStatus(404);
     const payload = await dailyWordService.generateDailyWordFromTrack(user, trackId);
     console.log(`POST /api/daily-word/from-track - success in ${Date.now() - started}ms: ${payload.word.text}`);
@@ -121,6 +122,8 @@ router.post("/from-track", dailyWordLimiter, async (req, res) => {
     res.status(reason === "track_required" ? 400 : 503).json({
       error: "daily_word_unavailable",
       reason,
+      detected_language: err.detectedLanguage || null,
+      target_language: user?.target_language || null,
       queue: wordQueue.getQueueStatus(req.user.id),
     });
   }

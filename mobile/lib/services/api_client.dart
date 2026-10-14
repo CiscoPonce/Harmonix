@@ -55,10 +55,27 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+const _learningLanguageNames = {
+  'en': 'English',
+  'es': 'Spanish',
+  'fr': 'French',
+  'de': 'German',
+  'pt': 'Portuguese',
+  'it': 'Italian',
+};
+
+String? _learningLanguageName(String? code) {
+  final key = code?.trim().toLowerCase();
+  if (key == null || key.isEmpty) return null;
+  return _learningLanguageNames[key];
+}
+
 String friendlyDailyWordError({
   String? reason,
   int? retryAfterSec,
   String? fallback,
+  String? detectedLanguage,
+  String? targetLanguage,
 }) {
   switch (reason) {
     case 'invalid_ai_daily_word_response':
@@ -74,8 +91,17 @@ String friendlyDailyWordError({
     case 'lyric_outside_preview':
     case 'no_suitable_word':
       return "Couldn't match a song with synced lyrics right now. Try again shortly.";
-    case 'lyrics_wrong_language':
-      return 'That song didn\'t match your learning language. Trying another…';
+    case 'lyrics_wrong_language': {
+      final target = _learningLanguageName(targetLanguage);
+      final detected = _learningLanguageName(detectedLanguage);
+      if (detected != null && target != null) {
+        return 'This song looks $detected. You\'re learning $target, so search for a song sung in $target.';
+      }
+      if (target != null) {
+        return 'This song isn\'t in $target. Harmonix teaches English, Spanish, French, German, Portuguese, and Italian. Search for a song sung in $target.';
+      }
+      return 'That song isn\'t in your learning language. Search for a song sung in the language you\'re learning.';
+    }
     case 'stale_preferences':
     case 'daily_word_stale_preferences':
       return 'Your learning preferences changed — loading a new word…';
@@ -199,6 +225,8 @@ class ApiClient {
             reason: reason ?? rawError,
             retryAfterSec: retry,
             fallback: rawError,
+            detectedLanguage: data['detected_language'] as String?,
+            targetLanguage: data['target_language'] as String?,
           )
         : (rawError ?? 'Request failed ($status)');
     return ApiException(

@@ -2,7 +2,7 @@ const db = require("../db");
 const aiService = require("./aiService");
 const validation = require("./validationService");
 const alignment = require("../utils/alignment");
-const { languageNameFromCode, wordMatchesTargetLanguage, lyricsMatchTargetLanguage, normalizeLangCode, getLyricStopwords } = require("../constants/languages");
+const { languageNameFromCode, wordMatchesTargetLanguage, lyricsMatchTargetLanguage, sniffLyricLanguage, normalizeLangCode, getLyricStopwords } = require("../constants/languages");
 const { isLyricProperName, isLyricLightVerb } = require("../constants/lyricProperNames");
 const {
   effectiveCefr,
@@ -480,8 +480,14 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
 
       const plain = plainFromLyricsData(lyricsData);
       if (!lyricsMatchTargetLanguage(plain, langCode)) {
-        console.warn(`daily word reject: lyrics_wrong_language ${label} (want ${langCode})`);
-        return rejectUnteachable(suggestion, "lyrics_wrong_language");
+        const detectedLanguage = sniffLyricLanguage(plain);
+        console.warn(`daily word reject: lyrics_wrong_language ${label} (want ${langCode}, saw ${detectedLanguage || "unknown"})`);
+        // Another supported language is still teachable for that learner.
+        // Remember only songs that are not one of the six teaching languages.
+        if (detectedLanguage && detectedLanguage !== langCode) {
+          return { error: "lyrics_wrong_language", detectedLanguage };
+        }
+        return { ...rejectUnteachable(suggestion, "lyrics_wrong_language"), detectedLanguage };
       }
 
       const duration = track.duration;
@@ -2566,6 +2572,7 @@ async function generateDailyWordFromTrack(user, trackId, fetchImpl = fetch) {
   if (!result.picked) {
     const err = new Error(result.error || "generation_failed");
     err.code = result.error || "generation_failed";
+    if (result.detectedLanguage) err.detectedLanguage = result.detectedLanguage;
     throw err;
   }
 

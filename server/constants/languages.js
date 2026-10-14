@@ -234,6 +234,62 @@ function countSpanishLyricMarkers(plain) {
   ) || []).length;
 }
 
+function countPortugueseLyricMarkers(plain) {
+  return (String(plain).match(
+    /[ãõç]|ção|ções|ões|\bnão\b|\bvocê\b|\bvocês\b|\bpra\b|\btá\b|\bessa\b/gi
+  ) || []).length;
+}
+
+function countFrenchLyricMarkers(plain) {
+  return (String(plain).match(
+    /[àâäçéèêëîïôùûüÿœæ]|(\b(je|tu|il|elle|nous|vous|les|des|une|aux|est|pas|que|qui|dans|pour|avec|sur|mais|plus|tout|tous|cette|mon|ton|son|très|aussi)\b)/gi
+  ) || []).length;
+}
+
+function countGermanLyricMarkers(plain) {
+  return (String(plain).match(
+    /[äöüß]|(\b(und|nicht|ich|du|wir|ihr|sie|der|die|das|ein|eine|einem|einen|einer|mit|auf|für|auch|noch|schon|wenn|denn|aber|oder|mein|dein|sein|keine|keinen|immer|wieder|liebe|nacht|herz|durch|ohne|über|unter|gegen|zwischen|Männer|Atemlos|Luftballons)\b)/gi
+  ) || []).length;
+}
+
+function countItalianLyricMarkers(plain) {
+  return (String(plain).match(
+    /[àèéìòù]|(\b(che|non|sono|della|delle|degli|con|per|una|uno|mio|mia|tuo|tua|anche|quando|dove|come|più|sempre|amore|cuore|vita|notte)\b)/gi
+  ) || []).length;
+}
+
+/**
+ * Best supported lyric language, or null when the text is too short or mixed.
+ * Supported languages: English, Spanish, French, German, Portuguese, Italian.
+ */
+function sniffLyricLanguage(plainLyrics) {
+  const plain = String(plainLyrics || '');
+  if (!plain.trim()) return null;
+  const scores = {
+    en: countEnglishLyricMarkers(plain),
+    es: countSpanishLyricMarkers(plain),
+    pt: countPortugueseLyricMarkers(plain),
+    fr: countFrenchLyricMarkers(plain),
+    de: countGermanLyricMarkers(plain),
+    it: countItalianLyricMarkers(plain),
+  };
+  let best = null;
+  let bestScore = 0;
+  let second = 0;
+  for (const [code, score] of Object.entries(scores)) {
+    if (score > bestScore) {
+      second = bestScore;
+      best = code;
+      bestScore = score;
+    } else if (score > second) {
+      second = score;
+    }
+  }
+  if (!best || bestScore < 3) return null;
+  if (second >= 3 && bestScore < second + 2) return null;
+  return best;
+}
+
 /**
  * Cheap lyric-language sniff to reject wrong-language tracks (EN in DE, ES in PT, etc.).
  * Returns true when lyrics look compatible with the target language.
@@ -298,6 +354,11 @@ function lyricsMatchTargetLanguage(plainLyrics, langCode) {
     return true;
   }
 
+  if (code === 'en') {
+    const detected = sniffLyricLanguage(plain);
+    return !detected || detected === 'en';
+  }
+
   return true;
 }
 
@@ -312,4 +373,5 @@ module.exports = {
   getLyricStopwords,
   wordMatchesTargetLanguage,
   lyricsMatchTargetLanguage,
+  sniffLyricLanguage,
 };

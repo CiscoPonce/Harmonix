@@ -23,6 +23,25 @@ describe('friendlyDailyWordReason', () => {
     }
   });
 
+  it('names the song language and the language being learned', () => {
+    const msg = friendlyDailyWordReason('lyrics_wrong_language', {
+      detectedLanguage: 'pt',
+      targetLanguage: 'en',
+    });
+    assert.match(msg, /Portuguese/);
+    assert.match(msg, /English/);
+    assert.equal(msg.includes('lyrics_wrong_language'), false);
+  });
+
+  it('says when a searched song is not one of the teaching languages', () => {
+    const msg = friendlyDailyWordReason('lyrics_wrong_language', {
+      targetLanguage: 'en',
+    });
+    assert.match(msg, /English/);
+    assert.match(msg, /Portuguese/);
+    assert.match(msg, /Italian/);
+  });
+
   it('keeps cooldown retry seconds', () => {
     assert.match(friendlyDailyWordReason('cooldown_active', { retryAfterSec: 12 }), /12/);
   });
