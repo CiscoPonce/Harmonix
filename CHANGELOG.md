@@ -13,12 +13,16 @@ All notable changes to Harmonix are documented here. Releases are managed by
 - Changing voice gender in Settings is used the next time you press the speaker. Pronounce ignored the signed-in account, so it always spoke the female voice, and browsers could replay that clip for a day.
 - English female pronunciation uses Kokoro af_heart. Pocket alba was low enough to sound male, and the old clips are not reused.
 
+### Android
+- 1.0.14: Get Started opens account creation. It was opening language setup with no login, so Connect Spotify and Skip failed with a 401.
+
 ### Daily word
 - Searching a song that is not in the language you are learning is refused. A Portuguese song is no longer taught as English, and the message names the song language and the language you are learning.
 - Next keeps a chosen style by reading the top 100 songs from each country's chart for that style, and it does not retry songs whose lyric cannot be taught in the 30-second preview.
 - When those song charts are used up, Next stays in the style and teaches from tracks on that genre's top albums before it offers a song from another style.
 
 ### Web
+- The admin dashboard shows cards served, whether a tester came back, and the latest word and song. Practice reviews stay in the data, and they are no longer the headline, because that count is still zero.
 - Library recent words open the full word card (Hear it, playlist, Spotify, share) instead of the legacy player.
 
 ### Android

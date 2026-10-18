@@ -39,6 +39,112 @@ describe('Admin API Routes', () => {
     const body = await res.json();
     assert.strictEqual(typeof body.total_users, 'number');
     assert.strictEqual(typeof body.spotify_connected_count, 'number');
+    assert.strictEqual(typeof body.cards_served_7d, 'number');
+    assert.strictEqual(typeof body.people_with_card_7d, 'number');
+    assert.strictEqual(typeof body.one_sitting_14d, 'number');
+    assert.strictEqual(typeof body.returned_14d, 'number');
+  });
+
+  it('GET /api/admin/users reports cards, return visits, and the latest word', async () => {
+    const stamp = (date) => date.toISOString().slice(0, 19).replace('T', ' ');
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const ids = ['admin-visit-return', 'admin-visit-once', 'admin-visit-mismatch'];
+    const cleanup = () => {
+      for (const id of ids) {
+        db.prepare('DELETE FROM daily_words WHERE user_id = ?').run(id);
+        db.prepare('DELETE FROM users WHERE id = ?').run(id);
+      }
+    };
+    cleanup();
+
+    const insertUser = db.prepare(`
+      INSERT INTO users (id, email, password_hash, native_language, target_language, genre, created_at)
+      VALUES (?, ?, 'hash', ?, ?, 'pop', ?)
+    `);
+    const insertCard = db.prepare(`
+      INSERT INTO daily_words (user_id, date, word_json, generated_at)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    insertUser.run('admin-visit-return', 'admin-visit-return@harmonix.test', 'en', 'es', stamp(yesterday));
+    insertCard.run(
+      'admin-visit-return',
+      stamp(yesterday).slice(0, 10),
+      JSON.stringify({
+        language_code: 'es',
+        word: { text: 'amor', translation: 'love' },
+        song: { title: 'Amor Prohibido', artist: 'Selena' },
+      }),
+      stamp(yesterday),
+    );
+    insertCard.run(
+      'admin-visit-return',
+      stamp(now).slice(0, 10),
+      JSON.stringify({
+        language_code: 'es',
+        word: { text: 'quiero', translation: 'I want' },
+        song: { title: 'Suerte', artist: { name: 'Shakira' } },
+      }),
+      stamp(now),
+    );
+
+    insertUser.run('admin-visit-once', 'admin-visit-once@harmonix.test', 'en', 'es', stamp(now));
+    insertCard.run(
+      'admin-visit-once',
+      stamp(now).slice(0, 10),
+      JSON.stringify({
+        language_code: 'es',
+        word: { text: 'viento', translation: 'wind' },
+        song: { title: 'Eres para Mí', artist: 'Julieta Venegas' },
+      }),
+      stamp(now),
+    );
+
+    insertUser.run('admin-visit-mismatch', 'admin-visit-mismatch@harmonix.test', 'en', 'pt', stamp(now));
+    insertCard.run(
+      'admin-visit-mismatch',
+      stamp(now).slice(0, 10),
+      JSON.stringify({
+        language_code: 'es',
+        word: { text: 'volveré', translation: 'I will return' },
+        song: { title: 'Y, ¿Si fuera ella?', artist: 'Alejandro Sanz' },
+      }),
+      stamp(now),
+    );
+
+    try {
+      const res = await fetch(`${baseUrl}/api/admin/users`);
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      const byEmail = Object.fromEntries(body.users.map((user) => [user.email, user]));
+
+      const returned = byEmail['admin-visit-return@harmonix.test'];
+      assert.strictEqual(returned.cards_served, 2);
+      assert.strictEqual(returned.days_with_card, 2);
+      assert.strictEqual(returned.visit, 'returned');
+      assert.strictEqual(returned.native_language, 'en');
+      assert.strictEqual(returned.target_language, 'es');
+      assert.strictEqual(returned.latest_card.word, 'quiero');
+      assert.strictEqual(returned.latest_card.translation, 'I want');
+      assert.strictEqual(returned.latest_card.song_title, 'Suerte');
+      assert.strictEqual(returned.latest_card.song_artist, 'Shakira');
+      assert.strictEqual(returned.off_language_cards, 0);
+      assert.ok(returned.last_card_at);
+
+      const once = byEmail['admin-visit-once@harmonix.test'];
+      assert.strictEqual(once.cards_served, 1);
+      assert.strictEqual(once.visit, 'once');
+      assert.strictEqual(once.latest_card.word, 'viento');
+
+      const mismatch = byEmail['admin-visit-mismatch@harmonix.test'];
+      assert.strictEqual(mismatch.visit, 'once');
+      assert.strictEqual(mismatch.off_language_cards, 1);
+      assert.strictEqual(mismatch.latest_card.language_code, 'es');
+      assert.strictEqual(mismatch.target_language, 'pt');
+    } finally {
+      cleanup();
+    }
   });
 
   it('GET /api/admin/users returns user list', async () => {

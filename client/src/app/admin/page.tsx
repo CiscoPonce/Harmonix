@@ -7,9 +7,8 @@ import {
   Music, 
   Sparkles, 
   CheckCircle2, 
-  Activity, 
+  Activity,
   RefreshCw, 
-  BookOpen, 
   ShieldAlert,
   Loader2,
   Headphones
@@ -25,24 +24,61 @@ interface AdminMetrics {
   spotify_connected_count: number;
   spotify_connected_pct: number;
   total_words_learned: number;
+  cards_served_7d: number;
+  people_with_card_7d: number;
+  one_sitting_14d: number;
+  returned_14d: number;
   total_queue_ready: number;
   total_quizzes_completed: number;
   total_playlists_created: number;
   timestamp: string;
 }
 
+interface LatestCard {
+  word: string | null;
+  translation: string | null;
+  song_title: string | null;
+  song_artist: string | null;
+  language_code: string | null;
+}
+
 interface UserRow {
   id: string;
   email: string;
+  native_language: string | null;
   target_language: string;
   genre: string;
   voice_gender: string;
   is_admin: boolean;
   words_learned: number;
+  cards_served: number;
+  days_with_card: number;
+  visit: 'none' | 'once' | 'same_day' | 'returned';
+  last_card_at: string | null;
+  latest_card: LatestCard | null;
+  off_language_cards: number;
   queue_ready: number;
   spotify_connected: boolean;
   spotify_display_name: string | null;
   created_at: string;
+}
+
+function formatUk(iso: string | null) {
+  if (!iso) return '—';
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso));
+}
+
+function visitLabel(visit: UserRow['visit']) {
+  if (visit === 'returned') return 'Came back';
+  if (visit === 'same_day') return 'Same day';
+  if (visit === 'once') return 'One card';
+  return 'No card';
 }
 
 export default function AdminPage() {
@@ -150,7 +186,7 @@ export default function AdminPage() {
               Project Testing Dashboard
             </h1>
             <p className="mt-1 text-sm text-[#4E5D56] dark:text-[#A0B0A7]">
-              Live overview of beta test users, Spotify connections, and word queue health.
+              Who came back, the card they saw, and whether that card matches the language they are learning.
             </p>
           </div>
 
@@ -213,27 +249,27 @@ export default function AdminPage() {
 
             <div className="rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-sm dark:border-[#2A3530] dark:bg-[#171E1B]">
               <div className="flex items-center justify-between text-[#4E5D56] dark:text-[#A0B0A7]">
-                <span className="text-sm font-medium">Words Mastered</span>
-                <BookOpen className="h-5 w-5 text-[#0B4D2E] dark:text-[#3DCF7A]" />
+                <span className="text-sm font-medium">Cards served, 7 days</span>
+                <Sparkles className="h-5 w-5 text-[#0B4D2E] dark:text-[#3DCF7A]" />
               </div>
               <div className="mt-3 text-3xl font-bold text-[#0C1210] dark:text-[#F2F5F3]">
-                {metrics.total_words_learned}
+                {metrics.cards_served_7d}
               </div>
               <p className="mt-1 text-xs text-[#4E5D56] dark:text-[#A0B0A7]">
-                SRS progress reps completed
+                {metrics.people_with_card_7d} people received a card
               </p>
             </div>
 
             <div className="rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-sm dark:border-[#2A3530] dark:bg-[#171E1B]">
               <div className="flex items-center justify-between text-[#4E5D56] dark:text-[#A0B0A7]">
-                <span className="text-sm font-medium">Queue Buffer Health</span>
-                <Sparkles className="h-5 w-5 text-amber-500" />
+                <span className="text-sm font-medium">Came back, 14 days</span>
+                <Activity className="h-5 w-5 text-[#0B4D2E] dark:text-[#3DCF7A]" />
               </div>
               <div className="mt-3 text-3xl font-bold text-[#0C1210] dark:text-[#F2F5F3]">
-                {metrics.total_queue_ready}
+                {metrics.returned_14d}
               </div>
               <p className="mt-1 text-xs text-[#4E5D56] dark:text-[#A0B0A7]">
-                Total ready words in buffer
+                {metrics.one_sitting_14d} left after one sitting
               </p>
             </div>
           </div>
@@ -250,22 +286,68 @@ export default function AdminPage() {
               <thead className="border-b border-[#E4EBE6] bg-[#F7F8F6] text-xs font-semibold uppercase text-[#4E5D56] dark:border-[#2A3530] dark:bg-[#121A17] dark:text-[#A0B0A7]">
                 <tr>
                   <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Target Lang</th>
-                  <th className="px-4 py-3">Genre</th>
+                  <th className="px-4 py-3">Learning</th>
+                  <th className="px-4 py-3">Cards</th>
+                  <th className="px-4 py-3">Last card</th>
+                  <th className="px-4 py-3">Visit</th>
+                  <th className="px-4 py-3">Latest word</th>
+                  <th className="px-4 py-3">Song</th>
                   <th className="px-4 py-3">Spotify</th>
-                  <th className="px-4 py-3">Words Learned</th>
-                  <th className="px-4 py-3">Queue Ready</th>
-                  <th className="px-4 py-3">Joined</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E4EBE6] dark:divide-[#2A3530]">
-                {users.map((u) => (
+                {users.map((u) => {
+                  const card = u.latest_card;
+                  const wordLine = card?.word
+                    ? `${card.word}${card.translation ? ` → ${card.translation}` : ''}`
+                    : '—';
+                  const songLine = [card?.song_title, card?.song_artist].filter(Boolean).join(' — ');
+                  const cardLang = card?.language_code?.toLowerCase();
+                  const targetLang = u.target_language?.toLowerCase();
+                  const latestMismatch = Boolean(cardLang && targetLang && cardLang !== targetLang);
+                  return (
                   <tr key={u.id} className="hover:bg-[#F7F8F6] dark:hover:bg-[#121A17]">
                     <td className="px-4 py-3 font-medium">
                       {u.email} {u.is_admin && <span className="ml-1.5 rounded bg-[#0B4D2E]/10 px-1.5 py-0.5 text-xs text-[#0B4D2E] dark:bg-[#3DCF7A]/20 dark:text-[#3DCF7A]">Admin</span>}
                     </td>
-                    <td className="px-4 py-3 uppercase">{u.target_language}</td>
-                    <td className="px-4 py-3 capitalize">{u.genre}</td>
+                    <td className="px-4 py-3 uppercase">
+                      {(u.native_language || '—')} → {u.target_language}
+                      <div className="mt-0.5 text-xs capitalize normal-case text-[#4E5D56] dark:text-[#A0B0A7]">{u.genre}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-semibold">{u.cards_served}</span>
+                      <div className="text-xs text-[#4E5D56] dark:text-[#A0B0A7]">{u.queue_ready} waiting</div>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-[#4E5D56] dark:text-[#A0B0A7]">
+                      {formatUk(u.last_card_at)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={
+                        u.visit === 'returned'
+                          ? 'text-xs font-medium text-[#0B4D2E] dark:text-[#3DCF7A]'
+                          : u.visit === 'once'
+                            ? 'text-xs font-medium text-amber-700 dark:text-amber-400'
+                            : 'text-xs text-[#4E5D56] dark:text-[#A0B0A7]'
+                      }>
+                        {visitLabel(u.visit)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div>{wordLine}</div>
+                      {latestMismatch && (
+                        <div className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                          Card is {cardLang}. Account learns {targetLang}.
+                        </div>
+                      )}
+                      {!latestMismatch && u.off_language_cards > 0 && (
+                        <div className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                          {u.off_language_cards} card{u.off_language_cards === 1 ? '' : 's'} in another language
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-[#4E5D56] dark:text-[#A0B0A7]">
+                      {songLine || '—'}
+                    </td>
                     <td className="px-4 py-3">
                       {u.spotify_connected ? (
                         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#1DB954]">
@@ -273,16 +355,12 @@ export default function AdminPage() {
                           {u.spotify_display_name || 'Connected'}
                         </span>
                       ) : (
-                        <span className="text-xs text-[#A0B0A7]">Disconnected</span>
+                        <span className="text-xs text-[#A0B0A7]">Not connected</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-semibold">{u.words_learned}</td>
-                    <td className="px-4 py-3">{u.queue_ready}</td>
-                    <td className="px-4 py-3 text-xs text-[#4E5D56] dark:text-[#A0B0A7]">
-                      {new Date(u.created_at).toLocaleDateString()}
-                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

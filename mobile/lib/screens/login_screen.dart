@@ -5,7 +5,10 @@ import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.startInRegister = false});
+
+  /// Get Started opens account creation. Login stays the default.
+  final bool startInRegister;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -20,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    _register = widget.startInRegister;
     _email.addListener(_onFieldsChanged);
     _password.addListener(_onFieldsChanged);
   }

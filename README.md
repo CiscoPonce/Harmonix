@@ -7,7 +7,7 @@ Harmonix teaches vocabulary from the lyrics of songs people already listen to. E
 ![Harmonix Logo](./logoharmonix.png)
 
 **Web** — [harmonix.peeporunclub.co.uk](https://harmonix.peeporunclub.co.uk)  
-**Android** — `1.0.13` (version code 16) · `uk.co.peeporunclub.harmonix`  
+**Android** — `1.0.14` (version code 17) · `uk.co.peeporunclub.harmonix`  
 **Google Play** — Closed testing is submitted. Public release follows 12 opted-in testers for 14 days.
 
 <!-- x-release-please-start-version -->
@@ -115,7 +115,7 @@ Two numbers, on purpose:
 
 | Track | Version | Where |
 |-------|---------|--------|
-| Android on Play | **1.0.13** (versionCode **16**), id `uk.co.peeporunclub.harmonix` | `mobile/pubspec.yaml` — bump this for every Play upload |
+| Android on Play | **1.0.14** (versionCode **17**), id `uk.co.peeporunclub.harmonix` | `mobile/pubspec.yaml` — bump this for every Play upload |
 | Platform changelog | The **Platform changelog** line at the top of this file | `CHANGELOG.md`, [GitHub Releases](https://github.com/CiscoPonce/Harmonix/releases) |
 
 The website has no store version. It ships from `main`.

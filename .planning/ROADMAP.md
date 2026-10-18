@@ -204,7 +204,7 @@ Not a new phase — product refinements after Phase 14 close:
 
 **Context:** [`.planning/phases/17-play-store-listing/17-CONTEXT.md`](./phases/17-play-store-listing/17-CONTEXT.md)
 
-The public Play listing is not a further product phase. It opens after 12 closed-test testers stay opted in for 14 days, then **Solicitar acceso a producción**. Application id `uk.co.peeporunclub.harmonix`, version `1.0.13` (version code 16). Support mailbox `hello@peeporunclub.co.uk` is live.
+The public Play listing is not a further product phase. It opens after 12 closed-test testers stay opted in for 14 days, then **Solicitar acceso a producción**. Application id `uk.co.peeporunclub.harmonix`. Next closed-test upload is `1.0.14` (version code 17). Support mailbox `hello@peeporunclub.co.uk` is live.
 
 ## Phase 18 — Learner reliability (complete)
 

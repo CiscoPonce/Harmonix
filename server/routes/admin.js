@@ -55,6 +55,34 @@ router.get('/metrics', requireAdmin, async (req, res) => {
       WHERE consumed_at IS NULL AND expires_at > datetime('now')
     `).get().count;
 
+    const cardsServed7d = db.prepare(`
+      SELECT COUNT(*) as count FROM daily_words
+      WHERE generated_at >= datetime('now', '-7 days')
+    `).get().count;
+
+    const peopleWithCard7d = db.prepare(`
+      SELECT COUNT(DISTINCT user_id) as count FROM daily_words
+      WHERE generated_at >= datetime('now', '-7 days')
+    `).get().count;
+
+    const oneSitting14d = db.prepare(`
+      SELECT COUNT(*) as count FROM (
+        SELECT user_id FROM daily_words
+        GROUP BY user_id
+        HAVING COUNT(DISTINCT date(generated_at)) = 1
+           AND MAX(generated_at) >= datetime('now', '-14 days')
+      )
+    `).get().count;
+
+    const returned14d = db.prepare(`
+      SELECT COUNT(*) as count FROM (
+        SELECT user_id FROM daily_words
+        GROUP BY user_id
+        HAVING COUNT(DISTINCT date(generated_at)) > 1
+           AND MAX(generated_at) >= datetime('now', '-14 days')
+      )
+    `).get().count;
+
     // Quizzes completed
     const totalQuizzesCompleted = db.prepare(`
       SELECT COUNT(*) as count FROM quiz_sessions WHERE completed_at IS NOT NULL
@@ -71,6 +99,10 @@ router.get('/metrics', requireAdmin, async (req, res) => {
       spotify_connected_count: spotifyConnectedCount,
       spotify_connected_pct: spotifyConnectedPct,
       total_words_learned: totalWordsLearned,
+      cards_served_7d: cardsServed7d,
+      people_with_card_7d: peopleWithCard7d,
+      one_sitting_14d: oneSitting14d,
+      returned_14d: returned14d,
       total_queue_ready: totalQueueReady,
       total_quizzes_completed: totalQuizzesCompleted,
       total_playlists_created: totalPlaylistsCreated,
@@ -82,6 +114,47 @@ router.get('/metrics', requireAdmin, async (req, res) => {
   }
 });
 
+function asIso(value) {
+  if (!value) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  if (s.endsWith('Z') || /[+-]\d\d:?\d\d$/.test(s)) {
+    const parsed = new Date(s);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+  const parsed = new Date(`${s.replace(' ', 'T')}Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function latestCard(wordJson) {
+  if (!wordJson) return null;
+  let data;
+  try {
+    data = JSON.parse(wordJson);
+  } catch {
+    return null;
+  }
+  const word = data.word && typeof data.word === 'object' ? data.word : {};
+  const song = data.song && typeof data.song === 'object' ? data.song : {};
+  const artist = typeof song.artist === 'string'
+    ? song.artist
+    : (song.artist && song.artist.name) || null;
+  return {
+    word: word.text || null,
+    translation: word.translation || null,
+    song_title: song.title || null,
+    song_artist: artist,
+    language_code: data.language_code || null,
+  };
+}
+
+function visitLabel(cards, days) {
+  if (!cards) return 'none';
+  if (days > 1) return 'returned';
+  if (cards > 1) return 'same_day';
+  return 'once';
+}
+
 /**
  * GET /api/admin/users
  * Returns user list with learning & connection details.
@@ -89,28 +162,46 @@ router.get('/metrics', requireAdmin, async (req, res) => {
 router.get('/users', requireAdmin, (req, res) => {
   try {
     const rows = db.prepare(`
-      SELECT u.id, u.email, u.target_language, u.genre, u.voice_gender, u.is_admin, u.created_at,
+      SELECT u.id, u.email, u.native_language, u.target_language, u.genre, u.voice_gender, u.is_admin, u.created_at,
              (SELECT COUNT(*) FROM user_vocab_progress WHERE user_id = u.id AND reps > 0) as words_learned,
+             (SELECT COUNT(*) FROM daily_words WHERE user_id = u.id) as cards_served,
+             (SELECT COUNT(DISTINCT date(generated_at)) FROM daily_words WHERE user_id = u.id) as days_with_card,
+             (SELECT MAX(generated_at) FROM daily_words WHERE user_id = u.id) as last_card_at,
+             (SELECT word_json FROM daily_words WHERE user_id = u.id ORDER BY generated_at DESC, id DESC LIMIT 1) as latest_word_json,
+             (SELECT COUNT(*) FROM daily_words d
+               WHERE d.user_id = u.id
+                 AND json_extract(d.word_json, '$.language_code') IS NOT NULL
+                 AND lower(json_extract(d.word_json, '$.language_code')) != lower(COALESCE(u.target_language, ''))
+             ) as off_language_cards,
              (SELECT COUNT(*) FROM user_word_queue WHERE user_id = u.id AND consumed_at IS NULL AND expires_at > datetime('now')) as queue_ready,
              t.spotify_display_name, t.spotify_user_id
       FROM users u
       LEFT JOIN user_spotify_tokens t ON u.id = t.user_id
-      ORDER BY u.created_at DESC
+      ORDER BY (
+        SELECT MAX(generated_at) FROM daily_words d WHERE d.user_id = u.id
+      ) DESC, u.created_at DESC
       LIMIT 100
     `).all();
 
     const users = rows.map((r) => ({
       id: r.id,
       email: r.email,
+      native_language: r.native_language,
       target_language: r.target_language,
       genre: r.genre,
       voice_gender: r.voice_gender,
       is_admin: Boolean(r.is_admin),
       words_learned: r.words_learned || 0,
+      cards_served: r.cards_served || 0,
+      days_with_card: r.days_with_card || 0,
+      visit: visitLabel(r.cards_served || 0, r.days_with_card || 0),
+      last_card_at: asIso(r.last_card_at),
+      latest_card: latestCard(r.latest_word_json),
+      off_language_cards: r.off_language_cards || 0,
       queue_ready: r.queue_ready || 0,
       spotify_connected: Boolean(r.spotify_user_id || r.spotify_display_name),
       spotify_display_name: r.spotify_display_name || null,
-      created_at: r.created_at,
+      created_at: asIso(r.created_at),
     }));
 
     res.json({ users });

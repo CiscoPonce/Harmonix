@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/harmonix_theme.dart';
 import 'login_screen.dart';
-import 'onboarding_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -167,7 +166,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const OnboardingScreen(),
+                        builder: (_) => const LoginScreen(startInRegister: true),
                       ),
                     );
                   },

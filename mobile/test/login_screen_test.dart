@@ -17,6 +17,19 @@ FilledButton _loginButton(WidgetTester tester) {
 }
 
 void main() {
+  testWidgets('Get Started opens on Register', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildHarmonixTheme(brightness: Brightness.dark),
+        home: const LoginScreen(startInRegister: true),
+      ),
+    );
+
+    expect(find.text('Create your account'), findsOneWidget);
+    expect(find.text('Register'), findsOneWidget);
+    expect(find.text('Login'), findsNothing);
+  });
+
   for (final brightness in [Brightness.light, Brightness.dark]) {
     testWidgets('Login lights up after the password is entered ($brightness)', (tester) async {
       await _pumpLogin(tester, brightness);

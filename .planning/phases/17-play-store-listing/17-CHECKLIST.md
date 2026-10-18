@@ -44,7 +44,7 @@ flutter build appbundle --release \
   --dart-define=API_BASE=https://harmonix.peeporunclub.co.uk/api
 ```
 
-- [x] Artifact exists: `mobile/build/app/outputs/bundle/release/app-release.aab` (rebuild for each upload; current target `1.0.13` / `16`)
+- [x] Artifact exists: `mobile/build/app/outputs/bundle/release/app-release.aab` (rebuild for each upload; current target `1.0.14` / `17`)
 - [ ] Optional sideload QA APK (not for Play):
 
 ```bash
@@ -80,7 +80,7 @@ Ready in the repo (do not re-do these):
 
 - Listing copy: [`docs/PLAY-CONSOLE-LISTING.md`](../../../docs/PLAY-CONSOLE-LISTING.md)
 - Icon `mobile/store/app-icon-512.png` and feature graphic `mobile/store/feature-graphic.png`
-- Signed AAB recipe and version `1.0.13` / `16` in [`mobile/PLAY-STORE.md`](../../../mobile/PLAY-STORE.md)
+- Signed AAB recipe and version `1.0.14` / `17` in [`mobile/PLAY-STORE.md`](../../../mobile/PLAY-STORE.md)
 - Privacy https://harmonix.peeporunclub.co.uk/privacy and support `hello@peeporunclub.co.uk`
 
 Done in Play Console (2026-10-10):
@@ -118,11 +118,11 @@ Done in Play Console (2026-10-10):
 
 ## D. Public release
 
-Console declarations are done (ads, news, government, health, target audience). Closed testing for `1.0.13` is submitted. New personal accounts cannot go straight to production.
+Console declarations are done (ads, news, government, health, target audience). Closed testing for `1.0.13` is submitted. The next closed-test upload is `1.0.14` (Get Started creates an account before setup). New personal accounts cannot go straight to production.
 
 - [x] Complete any remaining Console declarations (ads, news, government, target audience)
 - [ ] 12 testers opt in to the **closed** test and stay opted in for 14 days
-- [ ] **Solicitar acceso a producción**, then publish the same `1.0.13` bundle
+- [ ] **Solicitar acceso a producción**, then publish the closed-test version that completed the 14 days
 - [ ] Store listing is public
 - [ ] Watch for Play review questions at `hello@peeporunclub.co.uk`
 
@@ -130,7 +130,7 @@ Console declarations are done (ads, news, government, health, target audience). 
 
 ## E. After the first upload (later updates)
 
-1. Bump `mobile/pubspec.yaml` version above `1.0.13+16`.
+1. Bump `mobile/pubspec.yaml` version above `1.0.14+17`.
 2. Rebuild the AAB with the same keystore.
 3. Upload a new Internal testing / Production release.
 
