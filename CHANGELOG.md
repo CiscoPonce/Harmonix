@@ -68,6 +68,27 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * **tts:** host Pocket-TTS can reload by language; stop returning silent WAVs on failure
 * **mobile/web:** show real IPA or pending copy (never part-of-speech as phonetics); Android polls for polish like web
 
+## [0.0.7](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.6...harmonix-v0.0.7) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ai:** try Lightning before GLM ([a671562](https://github.com/CiscoPonce/Harmonix/commit/a671562260518c6d25d8dacc70e80f6f72c662a6))
+* **android:** open account creation before setup ([510ebee](https://github.com/CiscoPonce/Harmonix/commit/510ebee9efb3cb0df5f8bb7509c035d23ed91e9c))
+* **daily-word:** keep teaching a style from its album charts ([7234b61](https://github.com/CiscoPonce/Harmonix/commit/7234b610cfc9f19f9622f3a80e36c6ed9a6d4838))
+* **daily-word:** refuse a searched song in another language ([356a970](https://github.com/CiscoPonce/Harmonix/commit/356a970c6dc89beca638d162f02c12a18bd2b49f))
+* **daily-word:** teach from each style's charts in several countries ([0549ab6](https://github.com/CiscoPonce/Harmonix/commit/0549ab67e132c3dce6805de67626d4b6691d3438))
+* **tts:** do not store the backup voice while Pocket loads a language ([88caf2d](https://github.com/CiscoPonce/Harmonix/commit/88caf2d01973de0b3eeda8e24dde8b04dfaffc0f))
+* **tts:** serve Pocket-TTS 4.0.1 for the host voices ([a72bdfc](https://github.com/CiscoPonce/Harmonix/commit/a72bdfcf36dab76f89b43ea237acd2d18bd545dc))
+* **tts:** speak English female words with Kokoro af_heart ([6379c36](https://github.com/CiscoPonce/Harmonix/commit/6379c36955c5eb768a0f56220f88728b1e891fc0))
+* **tts:** speak the gender saved in Settings ([ffbb485](https://github.com/CiscoPonce/Harmonix/commit/ffbb485ff720bdf414303aa377909eff559fb158))
+
+
+### Documentation
+
+* close phases 1–18 now that the Play app is in closed testing ([12efda9](https://github.com/CiscoPonce/Harmonix/commit/12efda9568c1579433ca1f45c921a287a7a95e4b))
+* give the README a product opening ([f422535](https://github.com/CiscoPonce/Harmonix/commit/f422535286d91dc3e0e7a70732f83cbad78d18eb))
+
 ## [0.0.6](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.5...harmonix-v0.0.6) (2026-10-10)
 
 
