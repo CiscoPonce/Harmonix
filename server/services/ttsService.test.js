@@ -144,6 +144,40 @@ describe('TTS Service Voice & Accent Normalization', () => {
     assert.ok(durMs > 300 && durMs < 500, `unexpected trim duration ${durMs}`);
   });
 
+  it('does not keep a Kokoro clip while Pocket is switching language', async () => {
+    const ttsDaemon = require('./ttsDaemon');
+    const kokoroService = require('./kokoroService');
+    const prevSkip = process.env.TTS_SKIP_SPAWN;
+    const prevLang = ttsDaemon.currentLanguage;
+    const origFetch = global.fetch;
+    const origKokoro = kokoroService.generateKokoroAudio;
+    process.env.TTS_SKIP_SPAWN = 'true';
+    ttsDaemon.currentLanguage = 'spanish_24l';
+    const rate = 24000;
+    const wav = ttsService.generateSilentWavBuffer(rate, 0.4);
+    const samples = Math.floor(rate * 0.4);
+    for (let i = 0; i < samples; i++) wav.writeInt16LE(8000, 44 + i * 2);
+    kokoroService.generateKokoroAudio = async () => ({ audio: wav });
+    global.fetch = async (url) => {
+      const href = String(url);
+      if (href.endsWith('/health')) {
+        return { ok: true, status: 200, json: async () => ({ status: 'ok', language: 'spanish_24l' }) };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    };
+    try {
+      const audio = await ttsService.getPronunciationForWord('cidade-switch', 'pt', 'male');
+      assert.ok(Buffer.isBuffer(audio));
+      assert.strictEqual(ttsService.getCachedPronunciation('cidade-switch', 'pt', 'male'), undefined);
+    } finally {
+      global.fetch = origFetch;
+      kokoroService.generateKokoroAudio = origKokoro;
+      if (prevSkip === undefined) delete process.env.TTS_SKIP_SPAWN;
+      else process.env.TTS_SKIP_SPAWN = prevSkip;
+      ttsDaemon.currentLanguage = prevLang;
+    }
+  });
+
   it('busts stored clips when Pocket-TTS weights change', () => {
     assert.strictEqual(ttsService.CACHE_VERSION, 'hq-v20-pocket-4');
   });

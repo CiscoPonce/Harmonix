@@ -461,7 +461,7 @@ async function ensureDaemonLanguage(langCode) {
     }
     // Don't block the speaker button on a 30s model load. Kick off reload,
     // wait briefly, then fail this request so the client can use device TTS.
-    const waitMs = process.env.NODE_ENV === 'test' ? 2000 : 2500;
+    const waitMs = process.env.NODE_ENV === 'test' ? 2000 : 12000;
     const reload = reloadHostLanguage(pocketLang);
     await new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -560,6 +560,9 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
   if (cached) return cached;
 
   const kokoroService = require('./kokoroService');
+  // A slow language load used to store the backup voice under this word, so
+  // Pocket never got another chance. Play the backup once and keep the slot open.
+  let skipFallbackCache = false;
   const tryKokoro = async () => {
     try {
       const prompt = kokoroPromptForWord(word, langCode);
@@ -567,7 +570,9 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
       if (kokoroRes && kokoroRes.audio) {
         const padded = padWavWithSilence(kokoroRes.audio);
         if (wavLooksSilent(padded)) return null;
-        cachePronunciation(word, padded, langCode, voiceGender);
+        if (!skipFallbackCache) {
+          cachePronunciation(word, padded, langCode, voiceGender);
+        }
         return padded;
       }
     } catch (kErr) {
@@ -602,6 +607,7 @@ async function getPronunciationForWord(word, langCode, gender = 'female') {
       }
       if (lastErr) throw lastErr;
     } catch (pErr) {
+      if (pErr && pErr.code === 'tts_language_mismatch') skipFallbackCache = true;
       console.warn('[ttsService] Pocket-TTS unavailable:', pErr.message || pErr);
     }
     return null;

@@ -11,6 +11,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ### TTS
 - Host Pocket-TTS is 4.0.1. French, Portuguese, Italian, German, and English male use the new weights. Spanish and English female stay on Kokoro, and stored clips are not reused.
+- If Pocket is still loading a language, the backup voice plays once and is not saved, so the next tap uses Pocket.
 - Changing voice gender in Settings is used the next time you press the speaker. Pronounce ignored the signed-in account, so it always spoke the female voice, and browsers could replay that clip for a day.
 - English female pronunciation uses Kokoro af_heart. Pocket alba was low enough to sound male, and the old clips are not reused.
 
