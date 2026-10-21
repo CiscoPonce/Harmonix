@@ -15,6 +15,7 @@ function resolvePython() {
   const candidates = [
     process.env.POCKET_TTS_PYTHON,
     path.join(__dirname, "../venv/bin/python"),
+    "/home/ubuntu/pocket-tts-4/.venv/bin/python",
     "/home/ubuntu/pocket-tts/.venv/bin/python",
     path.join(__dirname, "../../../pocket-tts/.venv/bin/python"),
     "python3",
@@ -123,7 +124,7 @@ const ttsDaemon = {
     const hqScript = resolveHqScript();
     const env = {
       ...process.env,
-      PATH: `/home/ubuntu/.local/bin:/home/ubuntu/pocket-tts/.venv/bin:${process.env.PATH || ""}`,
+      PATH: `/home/ubuntu/.local/bin:/home/ubuntu/pocket-tts-4/.venv/bin:/home/ubuntu/pocket-tts/.venv/bin:${process.env.PATH || ""}`,
     };
     const bindHost = process.env.TTS_BIND_HOST || "127.0.0.1";
     const bindPort = process.env.TTS_PORT || "3002";

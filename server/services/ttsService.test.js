@@ -144,6 +144,10 @@ describe('TTS Service Voice & Accent Normalization', () => {
     assert.ok(durMs > 300 && durMs < 500, `unexpected trim duration ${durMs}`);
   });
 
+  it('busts stored clips when Pocket-TTS weights change', () => {
+    assert.strictEqual(ttsService.CACHE_VERSION, 'hq-v20-pocket-4');
+  });
+
   it('maps language aliases onto the same Pocket-TTS family', () => {
     assert.strictEqual(ttsService.canonicalPocketLang('es'), 'spanish_24l');
     assert.strictEqual(ttsService.pocketLangFamily('es'), 'spanish');

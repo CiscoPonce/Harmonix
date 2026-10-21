@@ -41,7 +41,7 @@ curl -sf http://127.0.0.1:3002/health   # expect 200 JSON with "language"
 # From a test container / api: curl -sf http://10.0.0.15:3002/health
 ```
 
-The HQ server can `POST /reload` (form `language=english`) so the API can speak English, French, etc. without a second daemon. Coolify redeploy does **not** restart `harmonix-tts`; after shipping HQ-server changes copy the unit + script and run:
+The HQ server can `POST /reload` (form `language=english`) so the API can speak English, French, etc. without a second daemon. The interpreter is Pocket-TTS 4.0.1 in `/home/ubuntu/pocket-tts-4/.venv`. A push to `main` copies this unit and restarts `harmonix-tts`. Kokoro is left running. To restart Pocket by hand:
 
 ```bash
 sudo cp /home/ubuntu/lyric/scripts/systemd/harmonix-tts.service /etc/systemd/system/

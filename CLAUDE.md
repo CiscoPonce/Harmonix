@@ -19,7 +19,7 @@ Core Value: Personalizing language learning through real music lyrics with 100% 
 - Mobile: Flutter Android (`mobile/`) only for store release
 - AI: NVIDIA NIM + OpenRouter fallback
 - Music: LRCLib, Deezer, Spotify Web API / Web Playback SDK
-- TTS: Host Pocket-TTS `:3002` (English and fallback). Host Kokoro `:3003` speaks Spanish. API uses `TTS_SKIP_SPAWN`
+- TTS: Host Pocket-TTS 4.0.1 `:3002` (French, Portuguese, Italian, German, English male, and fallback). Host Kokoro `:3003` speaks Spanish and English female. API uses `TTS_SKIP_SPAWN`. A deploy restarts Pocket and leaves Kokoro running.
 - Deploy: Coolify Traefik + Compose (`api`/`web`); push to `main` → GitHub Actions redeploy
 
 ## Rules & Conventions

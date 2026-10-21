@@ -15,6 +15,15 @@ import sys
 import threading
 
 
+def installed_pocket_version() -> str:
+    try:
+        from importlib.metadata import version
+
+        return version("pocket-tts")
+    except Exception:
+        return "unknown"
+
+
 LANG_ALIASES = {
     "en": "english",
     "english": "english",
@@ -125,6 +134,7 @@ def main() -> int:
             "status": "ok",
             "language": current_language,
             "family": language_family(current_language),
+            "pocket_version": installed_pocket_version(),
         }
 
     @web_app.post("/reload")

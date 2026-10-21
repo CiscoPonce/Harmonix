@@ -11,8 +11,8 @@ Group=ubuntu
 WorkingDirectory=/home/ubuntu/lyric
 # Bind 0.0.0.0 so Docker bridge / host-gateway (10.0.0.15) can reach TTS.
 # Prefer UFW allow from Docker networks only if the VPS has a public :3002 exposure risk.
-Environment=PATH=/home/ubuntu/pocket-tts/.venv/bin:/home/ubuntu/.local/bin:/usr/bin
-ExecStart=/home/ubuntu/pocket-tts/.venv/bin/python \
+Environment=PATH=/home/ubuntu/pocket-tts-4/.venv/bin:/home/ubuntu/.local/bin:/usr/bin
+ExecStart=/home/ubuntu/pocket-tts-4/.venv/bin/python \
   /home/ubuntu/lyric/server/scripts/pocket_tts_hq_serve.py \
   --host 0.0.0.0 \
   --port 3002 \

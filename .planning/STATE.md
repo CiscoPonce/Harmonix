@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: play-store-listing
 status: complete
 stopped_at: "2026-10-10 Phases 1–18 complete. Public Play listing waits on 12 closed-test testers for 14 days."
-last_updated: "2026-10-16T22:00:00.000Z"
+last_updated: "2026-10-21T21:20:00.000Z"
 progress:
   total_phases: 18
   completed_phases: 18
@@ -16,6 +16,8 @@ progress:
 ## Current Focus
 
 **Phases 1–18 are complete.** Flutter `1.0.14` (versionCode `17`, application id `uk.co.peeporunclub.harmonix`) is the next closed-test upload. It fixes Get Started so a new account exists before Spotify or Skip. `1.0.13` stays on the track until this bundle is published. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
+
+**2026-10-21 voices:** Host Pocket-TTS is 4.0.1 (`/home/ubuntu/pocket-tts-4/.venv`). French, Portuguese, Italian, German, and English male use it. Spanish and English female stay on Kokoro. Old pronunciation clips are not reused.
 
 **Phase 18 — Learner reliability (complete).** Native-language changes purge the word queue; duplicate queue cards are discarded; song search skips lemmas already queued; streaks use UTC. New-word routes are rate-limited, passwords are at least 8 characters, and playlist lists use cached covers. Exhausted catalogs offer a style change or a song search. Spotify taste syncs after connect, and the dyslexia font is saved on web and Android. Song reuse stays off.
 
@@ -64,7 +66,7 @@ progress:
 | Library URL | `/playlists` (`/library` redirects) |
 | Containers | `api-rxwdj1k3qu51fqf8uwtal389` + `web-rxwdj1k3qu51fqf8uwtal389` |
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
-| TTS | Host Pocket `:3002` for English and fallback; host Kokoro `:3003` speaks Spanish once (`ef_dora` / `em_alex`); compose `TTS_SKIP_SPAWN=true` |
+| TTS | Host Pocket 4.0.1 `:3002` for French, Portuguese, Italian, German, and English male; host Kokoro `:3003` speaks Spanish and English female; compose `TTS_SKIP_SPAWN=true` |
 | Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` (Coolify UI status only; do not use Coolify Restart) |
 | Mobile | Flutter `1.0.14` (`uk.co.peeporunclub.harmonix`) ready for the next closed-test upload |
 

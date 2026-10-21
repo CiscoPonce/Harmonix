@@ -76,7 +76,7 @@ npm run dev            # :3009
 
 **Public:** https://harmonix.peeporunclub.co.uk
 
-Pushes to `main` run GitHub Actions: tests, then SSH to the VPS and `scripts/coolify-redeploy.sh` (Coolify Traefik, zero-downtime). Pocket-TTS stays on the host (`:3002`, systemd `harmonix-tts`). Kokoro stays on the host (`:3003`) and speaks Spanish. A deploy does not restart those voices.
+Pushes to `main` run GitHub Actions: tests, then SSH to the VPS and `scripts/coolify-redeploy.sh` (Coolify Traefik, zero-downtime). Pocket-TTS 4.0.1 stays on the host (`:3002`, systemd `harmonix-tts`). Kokoro stays on the host (`:3003`) and speaks Spanish. A deploy restarts Pocket-TTS and leaves Kokoro running.
 
 Manual rebuild on the VPS, if Actions is unavailable:
 

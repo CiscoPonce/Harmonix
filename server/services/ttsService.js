@@ -151,7 +151,7 @@ function reloadHostLanguage(pocketLang) {
 }
 
 /** Bump to invalidate SQLite pronunciation cache after quality/speed/accent changes. */
-const CACHE_VERSION = 'hq-v19-en-af-heart';
+const CACHE_VERSION = 'hq-v20-pocket-4';
 
 /** Playback tempo (1.0 = natural speed, no phase distortion on sibilants). */
 const SPEECH_TEMPO = Number(process.env.POCKET_TTS_TEMPO || '0.95');

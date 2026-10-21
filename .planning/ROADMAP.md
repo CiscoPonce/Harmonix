@@ -1,7 +1,7 @@
 # Harmonix Roadmap
 
 **Last reconciled:** 2026-10-10 — phases 1–18 complete. Public Play listing waits on 12 closed-test testers for 14 days.  
-**Live:** https://harmonix.peeporunclub.co.uk (Compose `api`+`web` + Coolify Traefik; host Pocket-TTS)
+**Live:** https://harmonix.peeporunclub.co.uk (Compose `api`+`web` + Coolify Traefik; host Pocket-TTS 4.0.1)
 
 ---
 
