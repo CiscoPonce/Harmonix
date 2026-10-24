@@ -388,6 +388,13 @@ describe('AI Service', () => {
     expect(commonGlossLookup('soledad', 'es', 'en')).to.equal('loneliness');
     expect(commonGlossLookup('cielo', 'es', 'en')).to.equal('sky');
     expect(commonGlossLookup('forget', 'en', 'fr')).to.equal('oublier');
+    expect(translationLooksSuspicious('ceiling', 'techo', "I'll hit the ceiling")).to.equal(true);
+    expect(translationLooksSuspicious('ceiling', 'techo', 'paint the ceiling')).to.equal(false);
+    expect(commonGlossLookup('ceiling', 'en', 'es', "I'll hit the ceiling")).to.equal('se enfada');
+    expect(commonGlossLookup('cielo', 'it', 'pt')).to.equal('céu');
+    expect(commonGlossLookup('cielo', 'es', 'fr')).to.equal('ciel');
+    expect(translationLooksSuspicious('cielo', 'sky', null, 'fr')).to.equal(true);
+    expect(translationLooksSuspicious('cielo', 'sky', null, 'en')).to.equal(false);
   });
 
   it('rejects encyclopedic MyMemory junk and keeps high-confidence everyday glosses', async () => {

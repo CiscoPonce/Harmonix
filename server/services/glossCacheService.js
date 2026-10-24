@@ -281,11 +281,11 @@ function replaceSuspiciousStoredGlosses(isSuspicious, lookup) {
   const updQ = db.prepare("UPDATE user_word_queue SET word_json = ? WHERE id = ?");
 
   const replacementFor = (text, from, to, line, current) => {
-    if (!isSuspicious(text, current, line)) return null;
+    if (!isSuspicious(text, current, line, to)) return null;
     const hit = lookup(text, from, to, line);
     const next = String((typeof hit === "string" ? hit : hit?.translation) || "").trim();
     if (!next || next.toLowerCase() === String(current).toLowerCase()) return null;
-    if (isSuspicious(text, next, line)) return null;
+    if (isSuspicious(text, next, line, to)) return null;
     const trusted = typeof hit === "string" ? true : hit?.trusted !== false;
     return { translation: next, trusted };
   };

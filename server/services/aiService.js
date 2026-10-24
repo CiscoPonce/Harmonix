@@ -1042,7 +1042,7 @@ function normalizeGlossLemma(word) {
  * Also catch "glossed the wrong word from the line" (color → hope when both appear)
  * and encyclopedic / programming junk from dictionary APIs (Genus Lama, Imam, int).
  */
-function translationLooksSuspicious(word, translation, line = null) {
+function translationLooksSuspicious(word, translation, line = null, toLang = null) {
   const raw = String(translation || "").trim();
   const w = normalizeGlossLemma(word);
   let t = raw.toLowerCase();
@@ -1142,6 +1142,8 @@ function translationLooksSuspicious(word, translation, line = null) {
     "forget|que te olvides",
   ]);
   if (badGloss.has(`${w}|${folded}`)) return true;
+  const to = String(toLang || "").toLowerCase();
+  if (to === "fr" && w === "cielo" && folded === "sky") return true;
   const lyric = String(line || "").toLowerCase();
   if (/\b(get|got|getting)\s+high\b/.test(lyric) && /^(alto|alta|altos|altas)$/.test(folded)) return true;
   if (/\b(so long|for so long|too long)\b/.test(lyric) && folded === "largo") return true;
@@ -1150,6 +1152,9 @@ function translationLooksSuspicious(word, translation, line = null) {
     /\b(band|song|music|guitar|radio|piano)\b/.test(lyric) &&
     /^(jugar|juega|juego)$/.test(folded)
   ) {
+    return true;
+  }
+  if (w === "ceiling" && /\bhit the ceiling\b/.test(lyric) && /^(techo|techos)$/.test(folded)) {
     return true;
   }
 
@@ -1507,6 +1512,8 @@ function lyricSenseLookup(word, fromLang, toLang, line) {
     if (lemma === "cielo") return "sky";
     if (lemma === "vivir") return "to live";
   }
+  if (lemma === "cielo" && to === "pt") return "céu";
+  if (lemma === "cielo" && to === "fr") return "ciel";
   if (from === "en" && to === "fr" && (lemma === "forget" || lemma === "forgets")) return "oublier";
   return null;
 }
