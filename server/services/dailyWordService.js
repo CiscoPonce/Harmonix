@@ -2016,7 +2016,7 @@ async function glossWithCompleteness(items, languageName, nativeLanguageName, {
 function rememberAcceptedGloss(word, fromLang, toLang, translation, source, extra = {}) {
   if (!fromLang || !toLang || !translation) return;
   try {
-    glossCache.rememberGloss(word, fromLang, toLang, translation, source, extra);
+    aiService.rememberGloss(word, fromLang, toLang, translation, source, extra);
   } catch (err) {
     console.warn(`gloss cache write failed: ${err.message || err}`);
   }

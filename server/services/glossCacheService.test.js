@@ -33,6 +33,17 @@ describe("glossCacheService", () => {
     expect(glossCache.getGloss("nights", "en", "es")).to.equal(null);
   });
 
+  it("drops a cached meaning the lyric check now rejects", () => {
+    glossCache.rememberGloss("leading", "en", "es", "balas", "ai");
+    glossCache.rememberGloss("window", "en", "es", "ventana", "ai");
+    const dropped = glossCache.dropSuspiciousGlosses(
+      (word, translation) => word === "leading" && translation === "balas",
+    );
+    expect(dropped.removed).to.equal(1);
+    expect(glossCache.getGloss("leading", "en", "es")).to.equal(null);
+    expect(glossCache.getGloss("window", "en", "es")).to.equal("ventana");
+  });
+
   it("backfills healthy historical daily words", () => {
     db.prepare("DELETE FROM daily_words WHERE user_id = ?").run("u-gloss-1");
     db.prepare("DELETE FROM users WHERE id = ?").run("u-gloss-1");

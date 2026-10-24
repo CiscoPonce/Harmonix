@@ -75,6 +75,7 @@ const SPANISH_FALSE_FRIENDS_FOR_PT = new Set([
   'mañana', 'niño', 'niña', 'año', 'años', 'muñeca', 'sueño', 'dueño', 'baño',
   'estás', 'está', 'están', 'estáis', 'eres', 'sois',
   'porque', 'porqué', 'además', 'después',
+  'vivir', 'viví', 'vivía',
   'corazon', 'mission', 'tambien', 'espanol', 'senor',
   'misión', 'cancion', 'canción', 'corazón',
 ]);
@@ -146,6 +147,8 @@ function wordMatchesTargetLanguage(word, langCode) {
 
   const lower = w.toLowerCase();
   const code = normalizeLangCode(langCode);
+  // Vocabulary cards are Latin-script languages. Han, Arabic, and Cyrillic tokens are not a lesson.
+  if (!/^[\p{Script=Latin}'’\-]+$/u.test(w)) return false;
 
   if (code === 'en') {
     if (/[ñ¿¡]/i.test(w)) return false;
@@ -195,6 +198,8 @@ function wordMatchesTargetLanguage(word, langCode) {
   }
 
   if (code === 'de') {
+    // Portuguese and Spanish orthography is not a German word.
+    if (/[ãõçñ]/i.test(w)) return false;
     if (/[äöüß]/i.test(w)) return true;
     // Strong German morphology — accept even without umlauts
     if (/(ung|heit|keit|lich|schaft|chen|lein)$/i.test(w)) return true;
@@ -230,7 +235,7 @@ function countEnglishLyricMarkers(plain) {
  */
 function countSpanishLyricMarkers(plain) {
   return (plain.match(
-    /[ñ¿¡]|ción|\b(los|las|unos|unas|del|que|qué|como|cómo|por|para|con|sin|sobre|entre|esta|está|están|estoy|estas|estos|mis|tus|sus|nos|les|pero|más|muy|ya|hoy|amor|vida|corazón|noche|día|dias|tiempo|quiero|quiere|tienen|tengo|tiene|tienes|voy|vas|vamos|bailar|reír|llorar|siempre|nunca|ahora|también|tambien|gracias|señor|senor|hola|adiós|adios|porque|cuando|donde|dónde|quien|quién|todo|todos|nada|solo|sólo|aqui|aquí|alli|allí|contigo|contigo|historia|aceptar|confesar|placer|conocerla|aventura|travieso|nena|pedacito|regalar|partiste|problema)\b/gi
+    /[ñ¿¡]|ción|\bvivir\b|\b(los|las|unos|unas|del|que|qué|como|cómo|por|para|con|sin|sobre|entre|esta|está|están|estoy|estas|estos|mis|tus|sus|nos|les|pero|más|muy|ya|hoy|amor|vida|corazón|noche|día|dias|tiempo|quiero|quiere|tienen|tengo|tiene|tienes|voy|vas|vamos|bailar|reír|llorar|siempre|nunca|ahora|también|tambien|gracias|señor|senor|hola|adiós|adios|porque|cuando|donde|dónde|quien|quién|todo|todos|nada|solo|sólo|aqui|aquí|alli|allí|contigo|contigo|historia|aceptar|confesar|placer|conocerla|aventura|travieso|nena|pedacito|regalar|partiste|problema)\b/gi
   ) || []).length;
 }
 
@@ -294,6 +299,19 @@ function sniffLyricLanguage(plainLyrics) {
  * Cheap lyric-language sniff to reject wrong-language tracks (EN in DE, ES in PT, etc.).
  * Returns true when lyrics look compatible with the target language.
  */
+/**
+ * Portuguese or Spanish lyrics must not pass as German, French, or Italian
+ * just because they contain few English words.
+ */
+function otherLanguageBeats(plain, ownHits) {
+  const ptHits = countPortugueseLyricMarkers(plain);
+  const esHits = countSpanishLyricMarkers(plain);
+  if (ownHits === 0 && (ptHits >= 1 || esHits >= 2)) return true;
+  if (ptHits >= 2 && ptHits > ownHits) return true;
+  if (esHits >= 4 && esHits > ownHits) return true;
+  return false;
+}
+
 function lyricsMatchTargetLanguage(plainLyrics, langCode) {
   const plain = String(plainLyrics || '');
   if (!plain.trim()) return false;
@@ -302,9 +320,11 @@ function lyricsMatchTargetLanguage(plainLyrics, langCode) {
   if (code === 'pt') {
     const ptHits = (plain.match(/[ãõç]|ção|ções|ões|\bnão\b|\bvocê\b|\btambém\b|\bpra\b|\bvocês\b|\bestão\b/gi) || []).length;
     // Use Spanish-distinctive markers only — avoid "está" (also Portuguese).
-    const esHits = (plain.match(/[ñ]|ción|\btambién\b|\bcorazón\b|\bcómo\b|\bqué\b|\bquién\b|\bestás\b|\bespañol\b|\bseñor\b|\bhola\b|\bgracias\b|\bmisión\b/gi) || []).length;
+    const esHits = (plain.match(/[ñ]|ción|\bvivir\b|\btambién\b|\bcorazón\b|\bcómo\b|\bqué\b|\bquién\b|\bestás\b|\bespañol\b|\bseñor\b|\bhola\b|\bgracias\b|\bmisión\b/gi) || []).length;
     if (esHits >= 3 && esHits > ptHits) return false;
     if (ptHits === 0 && esHits >= 2) return false;
+    // "Vivir mi vida" is Spanish even when the rest of the hook is filler.
+    if (ptHits === 0 && /\bvivir\b/i.test(plain)) return false;
     const enHits = countEnglishLyricMarkers(plain);
     if (enHits >= 8 && enHits > ptHits * 2) return false;
     return true;
@@ -331,6 +351,7 @@ function lyricsMatchTargetLanguage(plainLyrics, langCode) {
     const enHits = countEnglishLyricMarkers(plain);
     if (enHits >= 6 && enHits > deHits) return false;
     if (deHits === 0 && enHits >= 4) return false;
+    if (otherLanguageBeats(plain, deHits)) return false;
     return true;
   }
 
@@ -341,6 +362,7 @@ function lyricsMatchTargetLanguage(plainLyrics, langCode) {
     const enHits = countEnglishLyricMarkers(plain);
     if (enHits >= 6 && enHits > frHits) return false;
     if (frHits === 0 && enHits >= 4) return false;
+    if (otherLanguageBeats(plain, frHits)) return false;
     return true;
   }
 
@@ -351,6 +373,7 @@ function lyricsMatchTargetLanguage(plainLyrics, langCode) {
     const enHits = countEnglishLyricMarkers(plain);
     if (enHits >= 6 && enHits > itHits) return false;
     if (itHits === 0 && enHits >= 4) return false;
+    if (otherLanguageBeats(plain, itHits)) return false;
     return true;
   }
 

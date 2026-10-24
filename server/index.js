@@ -419,6 +419,12 @@ app.listen(PORT, () => {
       if (repaired.updated > 0) {
         console.log(`gloss cache: replaced ${repaired.updated} wrong stored meanings`);
       }
+      const removedGlosses = glossCache.dropSuspiciousGlosses(
+        (word, translation, _from, to) => translationLooksSuspicious(word, translation, null, to),
+      );
+      if (removedGlosses.removed > 0) {
+        console.log(`gloss cache: dropped ${removedGlosses.removed} meanings that failed the lyric check`);
+      }
       const inserted = glossCache.backfillFromDailyWords({
         isSuspicious: translationLooksSuspicious,
       });

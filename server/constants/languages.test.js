@@ -79,6 +79,10 @@ describe('Language constants', () => {
     // German will/was must remain valid vocabulary
     expect(wordMatchesTargetLanguage('will', 'de')).to.equal(true);
     expect(wordMatchesTargetLanguage('was', 'de')).to.equal(true);
+    expect(wordMatchesTargetLanguage('cabeça', 'de')).to.equal(false);
+    expect(wordMatchesTargetLanguage('intenção', 'de')).to.equal(false);
+    expect(wordMatchesTargetLanguage('vivir', 'pt')).to.equal(false);
+    expect(wordMatchesTargetLanguage('讓她', 'es')).to.equal(false);
   });
 
   it('rejects Spanish orthography and false friends when learning Portuguese', () => {
@@ -138,6 +142,12 @@ describe('Language constants', () => {
       'Ich will dich nicht verlieren was ist das für eine Liebe';
     expect(lyricsMatchTargetLanguage(windOfChange, 'de')).to.equal(false);
     expect(lyricsMatchTargetLanguage(atemlos, 'de')).to.equal(true);
+    expect(lyricsMatchTargetLanguage(
+      'Você não sabe como é caminhar com a cabeça na mira',
+      'de',
+    )).to.equal(false);
+    expect(lyricsMatchTargetLanguage('El que ama pretende servir porque este amor', 'de')).to.equal(false);
+    expect(lyricsMatchTargetLanguage('Vivir mi vida la la la', 'pt')).to.equal(false);
   });
 
   it('rejects a Portuguese chorus when the learner is studying English', () => {

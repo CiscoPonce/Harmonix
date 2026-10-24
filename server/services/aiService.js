@@ -1052,7 +1052,17 @@ function translationLooksSuspicious(word, translation, line = null) {
   if (!w || !t) return true;
   if (t === w) return true;
   const tokens = t.split(/\s+/).filter(Boolean);
-  if (tokens.length > 4) return true;
+  // Four or more words is a line or a dictionary dump, not a learner gloss.
+  if (tokens.length > 3) return true;
+  // Three bare synonyms ("loneliness alone solitude") with no linking word.
+  if (
+    tokens.length >= 3 &&
+    !/\b(i|you|we|they|he|she|a|an|the|of|to|for|de|del|al|el|la|un|una|por|para|que|me|te|se|my|your|will|would|not|en|con|in|on)\b/i.test(t)
+  ) {
+    return true;
+  }
+  if (/[?¿!]/.test(raw) || /\.\.\.|…/.test(raw) || /^[-–—•]/.test(raw)) return true;
+  if (/no functional|state of the|artiller[ií]a|intercambio de pareja/i.test(raw)) return true;
   if (/\([^)]+\)/.test(raw) || /\[[^\]]+\]/.test(raw)) return true;
   if (raw.includes(",")) return true;
   if (/\b(genus|organism|wikipedia|cableway|ropeway|integer|imam|lama|señalización|senalizacion)\b/i.test(raw)) return true;
@@ -1102,6 +1112,46 @@ function translationLooksSuspicious(word, translation, line = null) {
   if (w === "chest" && /^(c[oó]moda|ba[uú]l|arc[oó]n)$/.test(t)) return true;
   if (w === "neck" && /^(cogote|pescuezo)$/.test(t)) return true;
   if ((w === "wondering" || w === "wondered") && /^maravillas?$/.test(t)) return true;
+  // Lyric-app wrong senses seen on live cards. The folded key ignores accents.
+  const folded = t.normalize("NFD").replace(/\p{M}/gu, "");
+  const badGloss = new Set([
+    "leading|balas",
+    "lake|laca",
+    "matter|materia",
+    "matters|materia",
+    "wicked|asombroso",
+    "school|facultad",
+    "slide|corrimiento",
+    "slides|corrimiento",
+    "fancy|gustar",
+    "spirit|alcohol",
+    "spirits|alcohol",
+    "hysteria|histerico",
+    "milky|lechoso",
+    "dreamed|sueno",
+    "dreamt|sueno",
+    "climbed|subida",
+    "boys|chico",
+    "insane|enfermo mental",
+    "piece|pieza de artilleria",
+    "swinging|intercambio de pareja",
+    "grave|serio",
+    "soledad|loneliness alone solitude",
+    "aunque|even though no functional",
+    "cielo|state of the sky",
+    "forget|que te olvides",
+  ]);
+  if (badGloss.has(`${w}|${folded}`)) return true;
+  const lyric = String(line || "").toLowerCase();
+  if (/\b(get|got|getting)\s+high\b/.test(lyric) && /^(alto|alta|altos|altas)$/.test(folded)) return true;
+  if (/\b(so long|for so long|too long)\b/.test(lyric) && folded === "largo") return true;
+  if (
+    /^(play|plays|played)$/.test(w) &&
+    /\b(band|song|music|guitar|radio|piano)\b/.test(lyric) &&
+    /^(jugar|juega|juego)$/.test(folded)
+  ) {
+    return true;
+  }
 
   if (line) {
     const lineTokens = String(line)
@@ -1412,6 +1462,36 @@ function lyricSenseLookup(word, fromLang, toLang, line) {
     if (lemma === "ear") return "oreja";
     if (lemma === "neck") return "cuello";
     if (lemma === "chest") return "pecho";
+    if (lemma === "leading") return "lleva";
+    if (lemma === "lake") return "lago";
+    if (lemma === "lakes") return "lagos";
+    if ((lemma === "matter" || lemma === "matters") && (!L || /\b(don'?t|doesn'?t|no)\s+matter\b|\bmatter what\b/.test(L))) {
+      return "importa";
+    }
+    if (lemma === "wicked") return "malvado";
+    if ((lemma === "grave" || lemma === "graves") && (!L || /\b(cradle|buried|bury|tomb|death|die|died)\b/.test(L))) {
+      return lemma === "graves" ? "tumbas" : "tumba";
+    }
+    if (lemma === "school") return "escuela";
+    if (lemma === "slide" || lemma === "slides") return "deslizarse";
+    if (lemma === "fancy") return "elegante";
+    if ((lemma === "play" || lemma === "plays" || lemma === "played") && /\b(band|song|music|guitar|radio|piano)\b/.test(L)) {
+      return lemma === "played" ? "tocó" : "toca";
+    }
+    if (lemma === "spirit") return "espíritu";
+    if (lemma === "spirits" && (!L || /\bsky\b|\bsoul\b/.test(L))) return "espíritus";
+    if (lemma === "high" && /\b(get|got|getting)\s+high\b/.test(L)) return "colocado";
+    if ((lemma === "long" || lemma === "longer") && /\b(so long|for so long|too long)\b/.test(L)) return "tanto tiempo";
+    if (lemma === "milky") return "vía láctea";
+    if (lemma === "hysteria") return "histeria";
+    if (lemma === "dreamed" || lemma === "dreamt") return "soñé";
+    if (lemma === "climbed") return "escalé";
+    if (lemma === "boys") return "chicos";
+    if (lemma === "insane") return "loco";
+    if (lemma === "piece") return "pieza";
+    if (lemma === "pieces") return "piezas";
+    if (lemma === "swinging") return "balanceando";
+    if (lemma === "ceiling" && /\bhit the ceiling\b/.test(L)) return "se enfada";
     if (lemma === "wondering") return "preguntándose";
     if (lemma === "wondered") return "se preguntó";
     // "I wonder if…" is the verb; "a wonder" / "wonderwall" is the noun.
@@ -1421,6 +1501,13 @@ function lyricSenseLookup(word, fromLang, toLang, line) {
         : "maravilla";
     }
   }
+  if (from === "es" && to === "en") {
+    if (lemma === "soledad") return "loneliness";
+    if (lemma === "aunque") return "although";
+    if (lemma === "cielo") return "sky";
+    if (lemma === "vivir") return "to live";
+  }
+  if (from === "en" && to === "fr" && (lemma === "forget" || lemma === "forgets")) return "oublier";
   return null;
 }
 
@@ -1557,7 +1644,7 @@ function getGlossCache() {
 function rememberGloss(word, fromLang, toLang, translation, source, extra = {}) {
   const cache = getGlossCache();
   if (!cache) return false;
-  if (translationLooksSuspicious(word, translation)) return false;
+  if (translationLooksSuspicious(word, translation, null, toLang)) return false;
   try {
     return cache.rememberGloss(word, fromLang, toLang, translation, source, extra);
   } catch (err) {
@@ -1572,7 +1659,7 @@ function cachedGlossLookup(word, fromLang, toLang, line = null) {
   try {
     const hit = cache.getGloss(word, fromLang, toLang);
     if (!hit) return null;
-    if (translationLooksSuspicious(word, hit, line)) return null;
+    if (translationLooksSuspicious(word, hit, line, toLang)) return null;
     return hit;
   } catch (err) {
     console.warn(`gloss cache read failed: ${err.message}`);

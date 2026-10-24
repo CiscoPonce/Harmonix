@@ -343,6 +343,27 @@ function replaceSuspiciousStoredGlosses(isSuspicious, lookup) {
   return { updated };
 }
 
+/** Delete cached meanings the quality check now rejects, after curated repairs. */
+function dropSuspiciousGlosses(isSuspicious) {
+  if (typeof isSuspicious !== "function") return { removed: 0 };
+  const rows = db.prepare(
+    "SELECT word, from_lang, to_lang, translation FROM gloss_cache"
+  ).all();
+  const del = db.prepare(
+    "DELETE FROM gloss_cache WHERE word = ? AND from_lang = ? AND to_lang = ?"
+  );
+  let removed = 0;
+  const tx = db.transaction(() => {
+    for (const row of rows) {
+      if (!isSuspicious(row.word, row.translation, row.from_lang, row.to_lang)) continue;
+      del.run(row.word, row.from_lang, row.to_lang);
+      removed += 1;
+    }
+  });
+  tx();
+  return { removed };
+}
+
 module.exports = {
   getGloss,
   getGlossWithSource,
@@ -350,5 +371,6 @@ module.exports = {
   backfillFromDailyWords,
   fillThinStoredWords,
   replaceSuspiciousStoredGlosses,
+  dropSuspiciousGlosses,
   count,
 };

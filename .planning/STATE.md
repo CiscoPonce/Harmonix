@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: play-store-listing
 status: complete
 stopped_at: "2026-10-10 Phases 1–18 complete. Public Play listing waits on 12 closed-test testers for 14 days."
-last_updated: "2026-10-21T21:20:00.000Z"
+last_updated: "2026-10-24T21:05:00.000Z"
 progress:
   total_phases: 18
   completed_phases: 18
@@ -16,6 +16,8 @@ progress:
 ## Current Focus
 
 **Phases 1–18 are complete.** Flutter `1.0.14` (versionCode `17`, application id `uk.co.peeporunclub.harmonix`) is the next closed-test upload. It fixes Get Started so a new account exists before Spotify or Skip. `1.0.13` stays on the track until this bundle is published. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
+
+**2026-10-24 gloss:** Wrong lyric senses are rejected and replaced from a curated sense (leading, grave, spirit, and the other live misses). A target language no longer accepts a song whose lyrics are another language. Stored cards are repaired on the next API start.
 
 **2026-10-21 voices:** Host Pocket-TTS is 4.0.1 (`/home/ubuntu/pocket-tts-4/.venv`). French, Portuguese, Italian, German, and English male use it. Spanish and English female stay on Kokoro. Old pronunciation clips are not reused.
 
