@@ -426,7 +426,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * daily word: when the unused song catalog is empty, reuse a known track immediately instead of waiting ~55s on NIM 403 / OpenRouter timeouts
 * daily word: one song per card — extras from the same track are last-resort only, and Next prefers a new song when the queue has one
 * gloss: stem/dictionary hits stay provisional (`gloss_v` 1) so AI polish can replace noun/verb mix-ups (`wondering` → preguntándose, not maravilla)
-* gloss: reject lyric wrong-senses such as leading → balas, grave → serio, spirit → alcohol, and “hit the ceiling” → techo, replace them on the next API start, and refuse a Portuguese or Spanish song when the learner is studying German, French, or Italian
+* gloss: reject lyric wrong-senses such as leading → balas, grave → serio, and spirit → alcohol, replace them on the next API start, and keep a one-line sense (get high, hit the ceiling, for so long) off the shared cache so it cannot spread to other songs. A Portuguese or Spanish song is refused when the learner is studying German, French, or Italian
 
 ### Features
 

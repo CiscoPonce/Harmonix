@@ -395,6 +395,15 @@ describe('AI Service', () => {
     expect(commonGlossLookup('cielo', 'es', 'fr')).to.equal('ciel');
     expect(translationLooksSuspicious('cielo', 'sky', null, 'fr')).to.equal(true);
     expect(translationLooksSuspicious('cielo', 'sky', null, 'en')).to.equal(false);
+    expect(translationLooksSuspicious('ceiling', 'se enfada')).to.equal(true);
+    expect(translationLooksSuspicious('ceiling', 'se enfada', "I'll hit the ceiling")).to.equal(false);
+    expect(translationLooksSuspicious('high', 'colocado')).to.equal(true);
+    expect(translationLooksSuspicious('high', 'colocado', 'When I get high')).to.equal(false);
+    expect(translationLooksSuspicious('long', 'tanto tiempo')).to.equal(true);
+    expect(translationLooksSuspicious('long', 'tanto tiempo', 'for so long')).to.equal(false);
+    const { rememberGloss } = require('./aiService');
+    expect(rememberGloss('ceiling', 'en', 'es', 'se enfada', 'curated')).to.equal(false);
+    expect(rememberGloss('high', 'en', 'es', 'colocado', 'curated')).to.equal(false);
   });
 
   it('rejects encyclopedic MyMemory junk and keeps high-confidence everyday glosses', async () => {

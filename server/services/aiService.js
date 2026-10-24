@@ -1157,6 +1157,20 @@ function translationLooksSuspicious(word, translation, line = null, toLang = nul
   if (w === "ceiling" && /\bhit the ceiling\b/.test(lyric) && /^(techo|techos)$/.test(folded)) {
     return true;
   }
+  // These senses are true only on the matching line. A shared cache row would
+  // teach them on every other lyric, which is how the wrong meanings spread.
+  if (w === "high" && /^(colocado|colocada)$/.test(folded) && !/\b(get|got|getting)\s+high\b/.test(lyric)) {
+    return true;
+  }
+  if ((w === "long" || w === "longer") && folded === "tanto tiempo" && !/\b(so long|for so long|too long)\b/.test(lyric)) {
+    return true;
+  }
+  if (w === "ceiling" && folded === "se enfada" && !/\bhit the ceiling\b/.test(lyric)) {
+    return true;
+  }
+  if (/^(play|plays|played)$/.test(w) && /^(toca|toco)$/.test(folded) && !/\b(band|song|music|guitar|radio|piano)\b/.test(lyric)) {
+    return true;
+  }
 
   if (line) {
     const lineTokens = String(line)
