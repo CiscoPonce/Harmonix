@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: play-store-listing
 status: complete
-stopped_at: "2026-10-10 Phases 1–18 complete. Public Play listing waits on 12 closed-test testers for 14 days."
-last_updated: "2026-10-24T21:05:00.000Z"
+stopped_at: "2026-10-26 Phases 1–18 complete. Welcome opening uses the Bauhaus mark. 2FA verification email stays pending. Next APK is 1.0.15 (18); version 17 does not include the opening."
+last_updated: "2026-10-26T21:59:00.000Z"
 progress:
   total_phases: 18
   completed_phases: 18
@@ -15,7 +15,13 @@ progress:
 
 ## Current Focus
 
-**Phases 1–18 are complete.** Flutter `1.0.14` (versionCode `17`, application id `uk.co.peeporunclub.harmonix`) is the next closed-test upload. It fixes Get Started so a new account exists before Spotify or Skip. `1.0.13` stays on the track until this bundle is published. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
+**Phases 1–18 are complete.** The APK already built is Flutter `1.0.14` (versionCode `17`). The project version is now `1.0.15` (versionCode `18`) so the welcome opening can be uploaded as a new bundle. `1.0.13` stays on the Play track until a newer bundle is published. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
+
+**2026-10-26 welcome:** Logged-out launch plays the five-second Bauhaus drawing, then three screens explain what Harmonix is for, how to use a word, and how Next and search work. Get Started comes after that. Signed-in people go straight to the word. The web logo is unchanged.
+
+**Still pending (do not start):**
+
+1. **2FA verification email.** The sender is already hosted on another VPS. Harmonix does not send that mail yet.
 
 **2026-10-24 gloss:** Wrong lyric senses are rejected and replaced from a curated sense (leading, grave, spirit, and the other live misses). A target language no longer accepts a song whose lyrics are another language. Stored cards are repaired on the next API start.
 
@@ -70,7 +76,7 @@ progress:
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
 | TTS | Host Pocket 4.0.1 `:3002` for French, Portuguese, Italian, German, and English male; host Kokoro `:3003` speaks Spanish and English female; compose `TTS_SKIP_SPAWN=true` |
 | Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` (Coolify UI status only; do not use Coolify Restart) |
-| Mobile | Flutter `1.0.14` (`uk.co.peeporunclub.harmonix`) ready for the next closed-test upload |
+| Mobile | Flutter `1.0.15` (versionCode `18`) is the next closed-test upload. The `1.0.14` APK does not include the welcome drawing |
 
 ## Phase status
 

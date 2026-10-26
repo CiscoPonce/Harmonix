@@ -226,6 +226,16 @@ Song reuse stays off. Phases 1–18 are complete.
 
 ### After Phase 18
 
+Pending, and not started:
+
+- **2FA verification email.** The mail sender is hosted on another VPS. Wire it when that service is the one Harmonix should call.
+
+In the app, not in the versionCode `17` APK:
+
+- **Opening animation.** Logged-out launch plays `share/animation.html` once, then the welcome screens show the Bauhaus mark. Next upload is `1.0.15` (versionCode `18`).
+
+Also open:
+
 - Extended Spotify Quota when testers other than the developer need Connect
 - Containerize Pocket-TTS (optional)
 - Refresh-token revocation — done: logout, refresh rotation, and password change drop the previous refresh token

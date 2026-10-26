@@ -16,6 +16,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 - English female pronunciation uses Kokoro af_heart. Pocket alba was low enough to sound male, and the old clips are not reused.
 
 ### Android
+- 1.0.15: The logged-out welcome opens with the five-second Bauhaus drawing, then explains what Harmonix is for and how to use a word before account creation. Skip ends the drawing. Signed-in people still go straight to the word.
 - 1.0.14: Get Started opens account creation. It was opening language setup with no login, so Connect Spotify and Skip failed with a 401.
 
 ### Daily word
