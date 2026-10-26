@@ -69,6 +69,35 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * **tts:** host Pocket-TTS can reload by language; stop returning silent WAVs on failure
 * **mobile/web:** show real IPA or pending copy (never part-of-speech as phonetics); Android polls for polish like web
 
+## [0.0.7](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.6...harmonix-v0.0.7) (2026-10-26)
+
+
+### Features
+
+* **android:** explain the welcome before account creation ([f8dabfc](https://github.com/CiscoPonce/Harmonix/commit/f8dabfc3c894ab7c69092f69bd92b09d6d4b160f))
+
+
+### Bug Fixes
+
+* **ai:** try Lightning before GLM ([a671562](https://github.com/CiscoPonce/Harmonix/commit/a671562260518c6d25d8dacc70e80f6f72c662a6))
+* **android:** open account creation before setup ([510ebee](https://github.com/CiscoPonce/Harmonix/commit/510ebee9efb3cb0df5f8bb7509c035d23ed91e9c))
+* **daily-word:** keep teaching a style from its album charts ([7234b61](https://github.com/CiscoPonce/Harmonix/commit/7234b610cfc9f19f9622f3a80e36c6ed9a6d4838))
+* **daily-word:** refuse a searched song in another language ([356a970](https://github.com/CiscoPonce/Harmonix/commit/356a970c6dc89beca638d162f02c12a18bd2b49f))
+* **daily-word:** teach from each style's charts in several countries ([0549ab6](https://github.com/CiscoPonce/Harmonix/commit/0549ab67e132c3dce6805de67626d4b6691d3438))
+* **gloss:** keep one-line senses out of the shared cache ([b36282e](https://github.com/CiscoPonce/Harmonix/commit/b36282e6863b2dbba7819616f63598ad1aff069c))
+* **gloss:** repair hit-the-ceiling and cielo for French and Portuguese ([975bcb6](https://github.com/CiscoPonce/Harmonix/commit/975bcb67ed97aee7df25c999534e06b07474cecf))
+* **gloss:** stop caching the wrong lyric sense and repair stored cards ([e3d79bc](https://github.com/CiscoPonce/Harmonix/commit/e3d79bc56a3950a69a971caba7f035a4a931ca82))
+* **tts:** do not store the backup voice while Pocket loads a language ([88caf2d](https://github.com/CiscoPonce/Harmonix/commit/88caf2d01973de0b3eeda8e24dde8b04dfaffc0f))
+* **tts:** serve Pocket-TTS 4.0.1 for the host voices ([a72bdfc](https://github.com/CiscoPonce/Harmonix/commit/a72bdfcf36dab76f89b43ea237acd2d18bd545dc))
+* **tts:** speak English female words with Kokoro af_heart ([6379c36](https://github.com/CiscoPonce/Harmonix/commit/6379c36955c5eb768a0f56220f88728b1e891fc0))
+* **tts:** speak the gender saved in Settings ([ffbb485](https://github.com/CiscoPonce/Harmonix/commit/ffbb485ff720bdf414303aa377909eff559fb158))
+
+
+### Documentation
+
+* close phases 1–18 now that the Play app is in closed testing ([12efda9](https://github.com/CiscoPonce/Harmonix/commit/12efda9568c1579433ca1f45c921a287a7a95e4b))
+* give the README a product opening ([f422535](https://github.com/CiscoPonce/Harmonix/commit/f422535286d91dc3e0e7a70732f83cbad78d18eb))
+
 ## [0.0.6](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.5...harmonix-v0.0.6) (2026-10-10)
 
 
