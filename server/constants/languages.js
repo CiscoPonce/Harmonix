@@ -63,6 +63,7 @@ const ENGLISH_IN_LYRICS = new Set([
   'blame', 'blamed', 'blaming', 'care', 'cared', 'rule', 'rules',
   'plane', 'planes',
   'really', 'truly', 'wanna', 'gonna', 'gotta', 'fake', 'ain\'t',
+  'flavor', 'flavour',
 ]);
 
 /**

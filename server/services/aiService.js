@@ -1140,6 +1140,10 @@ function translationLooksSuspicious(word, translation, line = null, toLang = nul
     "aunque|even though no functional",
     "cielo|state of the sky",
     "forget|que te olvides",
+    "float|carroza",
+    "floats|carroza",
+    "floated|carroza",
+    "floating|carroza",
   ]);
   if (badGloss.has(`${w}|${folded}`)) return true;
   const to = String(toLang || "").toLowerCase();
@@ -1169,6 +1173,17 @@ function translationLooksSuspicious(word, translation, line = null, toLang = nul
     return true;
   }
   if (/^(play|plays|played)$/.test(w) && /^(toca|toco)$/.test(folded) && !/\b(band|song|music|guitar|radio|piano)\b/.test(lyric)) {
+    return true;
+  }
+  // "toma que toma" is the chant, not a drink. A drinking line may still say drink.
+  if ((w === "toma" || w === "tomas") && /^(drink|drinks)$/.test(folded)) {
+    const drinking = /\b(trago|tragos|vino|cerveza|agua|caf[eé]|copa|vaso|bebida|chupito)\b/.test(lyric);
+    if (!lyric || /\btoma que toma\b/.test(lyric) || !drinking) return true;
+  }
+  if ((w === "season" || w === "seasons") && /^(temporada|temporadas)$/.test(folded) && /\bin the sun\b/.test(lyric)) {
+    return true;
+  }
+  if ((w === "maiden" || w === "maidens") && /^(doncella|doncellas)$/.test(folded) && /\biron maidens?\b/.test(lyric)) {
     return true;
   }
 
@@ -1511,6 +1526,15 @@ function lyricSenseLookup(word, fromLang, toLang, line) {
     if (lemma === "pieces") return "piezas";
     if (lemma === "swinging") return "balanceando";
     if (lemma === "ceiling" && /\bhit the ceiling\b/.test(L)) return "se enfada";
+    if (lemma === "float" || lemma === "floats" || lemma === "floated" || lemma === "floating") {
+      if (lemma === "floated") return "flotó";
+      if (lemma === "floating") return "flotando";
+      if (lemma === "floats") return "flota";
+      return "flotar";
+    }
+    if ((lemma === "season" || lemma === "seasons") && /\bin the sun\b/.test(L)) {
+      return lemma === "seasons" ? "estaciones" : "estación";
+    }
     if (lemma === "wondering") return "preguntándose";
     if (lemma === "wondered") return "se preguntó";
     // "I wonder if…" is the verb; "a wonder" / "wonderwall" is the noun.
@@ -1525,6 +1549,7 @@ function lyricSenseLookup(word, fromLang, toLang, line) {
     if (lemma === "aunque") return "although";
     if (lemma === "cielo") return "sky";
     if (lemma === "vivir") return "to live";
+    if ((lemma === "toma" || lemma === "tomas") && /\btoma que toma\b/.test(L)) return "take";
   }
   if (lemma === "cielo" && to === "pt") return "céu";
   if (lemma === "cielo" && to === "fr") return "ciel";

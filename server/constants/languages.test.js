@@ -38,6 +38,9 @@ describe('Language constants', () => {
     expect(wordMatchesTargetLanguage('searching', 'es')).to.equal(false);
     expect(wordMatchesTargetLanguage('blame', 'es')).to.equal(false);
     expect(wordMatchesTargetLanguage('really', 'es')).to.equal(false);
+    expect(wordMatchesTargetLanguage('flavor', 'es')).to.equal(false);
+    expect(wordMatchesTargetLanguage('flavour', 'es')).to.equal(false);
+    expect(wordMatchesTargetLanguage('flavor', 'en')).to.equal(true);
     expect(wordMatchesTargetLanguage('wanna', 'es')).to.equal(false);
     expect(wordMatchesTargetLanguage('badly', 'es')).to.equal(false);
     expect(wordMatchesTargetLanguage('contratos', 'es')).to.equal(true);

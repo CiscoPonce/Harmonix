@@ -401,6 +401,14 @@ describe('AI Service', () => {
     expect(translationLooksSuspicious('high', 'colocado', 'When I get high')).to.equal(false);
     expect(translationLooksSuspicious('long', 'tanto tiempo')).to.equal(true);
     expect(translationLooksSuspicious('long', 'tanto tiempo', 'for so long')).to.equal(false);
+    expect(translationLooksSuspicious('float', 'carroza', 'I watched the world float to the dark side of the moon')).to.equal(true);
+    expect(commonGlossLookup('float', 'en', 'es', 'I watched the world float to the dark side of the moon')).to.equal('flotar');
+    expect(translationLooksSuspicious('seasons', 'temporada', 'We had seasons in the sun')).to.equal(true);
+    expect(commonGlossLookup('seasons', 'en', 'es', 'We had seasons in the sun')).to.equal('estaciones');
+    expect(translationLooksSuspicious('toma', 'drink', 'Malamente (toma que toma)')).to.equal(true);
+    expect(translationLooksSuspicious('toma', 'drink', 'Toma un trago')).to.equal(false);
+    expect(commonGlossLookup('toma', 'es', 'en', 'Malamente (toma que toma)')).to.equal('take');
+    expect(translationLooksSuspicious('Maiden', 'doncella', 'Listen to Iron Maiden, baby, with me')).to.equal(true);
     const { rememberGloss } = require('./aiService');
     expect(rememberGloss('ceiling', 'en', 'es', 'se enfada', 'curated')).to.equal(false);
     expect(rememberGloss('high', 'en', 'es', 'colocado', 'curated')).to.equal(false);

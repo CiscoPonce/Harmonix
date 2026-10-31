@@ -20,6 +20,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 - 1.0.14: Get Started opens account creation. It was opening language setup with no login, so Connect Spotify and Skip failed with a 401.
 
 ### Daily word
+- Iron Maiden is not taught as doncella, and flavor is not taught on a Spanish card. "toma que toma" means take, not drink. float in a lyric is flotar, and seasons in the sun is estaciones.
 - Searching a song that is not in the language you are learning is refused. A Portuguese song is no longer taught as English, and the message names the song language and the language you are learning.
 - Next keeps a chosen style by reading the top 100 songs from each country's chart for that style, and it does not retry songs whose lyric cannot be taught in the 30-second preview.
 - When those song charts are used up, Next stays in the style and teaches from tracks on that genre's top albums before it offers a song from another style.

@@ -402,9 +402,15 @@ app.listen(PORT, () => {
   if (process.env.NODE_ENV !== 'test') {
     try {
       const dailyWordService = require('./services/dailyWordService');
-      const dropped = dailyWordService.dropVocalizationCards(dailyWordService.isVocalization);
+      const dropped = dailyWordService.dropVocalizationCards(
+        (text, line) => dailyWordService.isVocalization(text) || dailyWordService.isBandNameToken(text, line),
+      );
       if (dropped.removed > 0) {
-        console.log(`daily word: removed ${dropped.removed} sound-only cards`);
+        console.log(`daily word: removed ${dropped.removed} sound-only or name cards`);
+      }
+      const wrongLang = dailyWordService.dropWrongLanguageCards();
+      if (wrongLang.removed > 0) {
+        console.log(`daily word: removed ${wrongLang.removed} cards in the wrong language`);
       }
       const glossCache = require('./services/glossCacheService');
       const { translationLooksSuspicious, commonGlossLookupDetailed, isTrustedGlossSource } = require('./services/aiService');
@@ -419,8 +425,10 @@ app.listen(PORT, () => {
       if (repaired.updated > 0) {
         console.log(`gloss cache: replaced ${repaired.updated} wrong stored meanings`);
       }
+      const { wordMatchesTargetLanguage } = require('./constants/languages');
       const removedGlosses = glossCache.dropSuspiciousGlosses(
-        (word, translation, _from, to) => translationLooksSuspicious(word, translation, null, to),
+        (word, translation, from, to) => translationLooksSuspicious(word, translation, null, to)
+          || (from && from !== 'en' && !wordMatchesTargetLanguage(word, from)),
       );
       if (removedGlosses.removed > 0) {
         console.log(`gloss cache: dropped ${removedGlosses.removed} meanings that failed the lyric check`);

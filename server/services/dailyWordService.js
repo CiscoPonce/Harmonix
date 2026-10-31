@@ -131,6 +131,13 @@ function isLyricChantFiller(token, line) {
   return false;
 }
 
+/** "Iron Maiden" is the band, not the noun doncella. */
+function isBandNameToken(token, line) {
+  const lower = String(token || "").toLowerCase();
+  const lyric = String(line || "").toLowerCase();
+  return (lower === "maiden" || lower === "maidens") && /\biron maidens?\b/.test(lyric);
+}
+
 function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new Set(), langCode = "es", options = {}) {
   const diff = normalizeDifficulty(difficulty);
   const minLen = diff === 'easy' ? 3 : diff === 'hard' ? 7 : 4;
@@ -175,6 +182,7 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
       if (/^(la|na|da|pa|ra|ta|bam|bum|pum|dun|tum)+$/i.test(lower)) continue;
       if (isVocalization(lower)) continue;
       if (isLyricChantFiller(token, line)) continue;
+      if (isBandNameToken(token, line)) continue;
       // Clipped lyric slang ("Holdin'") and artist names are not vocabulary.
       if (new RegExp(`(?:^|[^\\p{L}])${lower}'`, "iu").test(line)) continue;
       if (artistTokens.has(lower)) continue;
@@ -2657,12 +2665,48 @@ function dropVocalizationCards(isVocal) {
       const del = db.prepare(`DELETE FROM ${table} WHERE id = ?`);
       for (const row of rows) {
         let text = "";
+        let line = "";
         try {
-          text = JSON.parse(row.word_json)?.word?.text || "";
+          const payload = JSON.parse(row.word_json);
+          text = payload?.word?.text || "";
+          line = payload?.lyric?.snippet || "";
         } catch {
           continue;
         }
-        if (!isVocal(text)) continue;
+        if (!isVocal(text, line)) continue;
+        del.run(row.id);
+        removed += 1;
+      }
+    }
+  });
+  tx();
+  return { removed };
+}
+
+/** Shelf and queue cards whose word is not in the learner's language. */
+function dropWrongLanguageCards() {
+  let removed = 0;
+  const tables = ["daily_words", "user_word_queue"];
+  const tx = db.transaction(() => {
+    for (const table of tables) {
+      const exists = db.prepare(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?"
+      ).get(table);
+      if (!exists) continue;
+      const rows = db.prepare(`SELECT id, word_json FROM ${table}`).all();
+      const del = db.prepare(`DELETE FROM ${table} WHERE id = ?`);
+      for (const row of rows) {
+        let text = "";
+        let lang = "";
+        try {
+          const payload = JSON.parse(row.word_json);
+          text = payload?.word?.text || "";
+          lang = payload?.language_code || "";
+        } catch {
+          continue;
+        }
+        if (!text || !lang) continue;
+        if (wordMatchesTargetLanguage(text, lang)) continue;
         del.run(row.id);
         removed += 1;
       }
@@ -2675,7 +2719,9 @@ function dropVocalizationCards(isVocal) {
 module.exports = {
   todayDate,
   isVocalization,
+  isBandNameToken,
   dropVocalizationCards,
+  dropWrongLanguageCards,
   formatTimestamp,
   previewOffset,
   previewWindow,

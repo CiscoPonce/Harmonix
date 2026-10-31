@@ -355,6 +355,32 @@ describe("Daily Word Service", () => {
     expect(wordMatchesTargetLanguage(picked.word, "es")).to.equal(true);
   });
 
+  it("does not pick the English word flavor from a Spanish verse", () => {
+    const lyrics = [
+      "Hoy salgo con mi baby",
+      "Something flavor",
+      "de la disco coroná",
+    ].join("\n");
+    const picked = pickWordFromLyricsHeuristic(lyrics, "medium", new Set(), "es", {
+      songTitle: "Obsesión",
+    });
+    expect(picked).to.not.equal(null);
+    expect(picked.word.toLowerCase()).to.not.equal("flavor");
+    expect(wordMatchesTargetLanguage(picked.word, "es")).to.equal(true);
+  });
+
+  it("does not teach Iron Maiden as a vocabulary word", () => {
+    const lyrics = [
+      "Listen to Iron Maiden baby with me",
+      "I am a teenage dirtbag baby",
+    ].join("\n");
+    const picked = pickWordFromLyricsHeuristic(lyrics, "medium", new Set(), "en", {
+      songTitle: "Teenage Dirtbag",
+    });
+    expect(picked).to.not.equal(null);
+    expect(picked.word.toLowerCase()).to.not.equal("maiden");
+  });
+
   it("does not pick a stretched vocalization like Ooowww", () => {
     const lyrics = [
       "I get up, and nothing gets me down",

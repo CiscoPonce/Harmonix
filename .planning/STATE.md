@@ -17,6 +17,8 @@ progress:
 
 **Phases 1–18 are complete.** The APK already built is Flutter `1.0.14` (versionCode `17`). The project version is now `1.0.15` (versionCode `18`) so the welcome opening can be uploaded as a new bundle. `1.0.13` stays on the Play track until a newer bundle is published. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
 
+**2026-10-31 gloss:** Iron Maiden is no longer taught as doncella, flavor is dropped from Spanish cards, and "toma que toma" is take rather than drink. float is flotar, and seasons in the sun is estaciones. Stored cards are repaired on the next API start.
+
 **2026-10-26 welcome:** Logged-out launch plays the five-second Bauhaus drawing, then three screens explain what Harmonix is for, how to use a word, and how Next and search work. Get Started comes after that. Signed-in people go straight to the word. The web logo is unchanged.
 
 **Still pending (do not start):**
