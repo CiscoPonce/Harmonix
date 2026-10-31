@@ -3,22 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>HARMONIX — 5.00s Bauhaus App Splash Screen</title>
+  <title>HARMONIX — Minimalist 5.00s App Splash (No Book)</title>
   <style>
     @font-face { font-family: "Fredoka"; src: url("fonts/Fredoka.ttf") format("truetype"); font-weight: 100 900; font-display: block; }
     @font-face { font-family: "Outfit"; src: url("fonts/Outfit.ttf") format("truetype"); font-weight: 100 900; font-display: block; }
   </style>
   <style>
     :root {
-      --bg-parchment: #f1e4c3;
+      --bg-white: #ffffff;
       --ink: #0f0e15;
       --bauhaus-blue: #3b60b8;
-      --bauhaus-sky: #659bd0;
-      --bauhaus-purple: #4a236b;
-      --bauhaus-violet: #77479e;
-      --bauhaus-red: #cc2936;
       --bauhaus-gold: #f4c430;
-      --bauhaus-teal: #7a9e9f;
     }
 
     * {
@@ -32,7 +27,7 @@
     html, body {
       width: 100%;
       height: 100%;
-      background-color: var(--bg-parchment);
+      background-color: var(--bg-white);
       font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
       overflow: hidden;
       display: flex;
@@ -46,7 +41,6 @@
       pointer-events: none;
     }
 
-    /* Splash Container scales cleanly across mobile, tablet, and desktop */
     .splash-viewport {
       position: relative;
       width: 100vw;
@@ -88,23 +82,22 @@
       opacity: 0;
     }
 
-    /* Optional Studio Controls (Automatically hidden when ?embed=1 is in URL) */
+    /* Studio HUD (Hidden automatically when ?embed=1 is in URL) */
     .studio-hud {
       position: fixed;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(15, 14, 21, 0.90);
+      background: rgba(15, 14, 21, 0.92);
       backdrop-filter: blur(12px);
-      color: #f8f5ec;
-      border: 1px solid rgba(255,255,255,0.14);
+      color: #ffffff;
+      border: 1px solid rgba(255,255,255,0.15);
       border-radius: 12px;
       padding: 8px 14px;
       display: flex;
       align-items: center;
       gap: 10px;
       z-index: 100;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.22);
-      transition: opacity 0.3s ease, transform 0.3s ease;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.16);
     }
     .studio-hud.top { top: 14px; }
     .studio-hud.bottom {
@@ -143,8 +136,8 @@
     }
     .hud-btn:hover { background: rgba(255,255,255,0.2); }
     .hud-btn.active {
-      background: var(--bauhaus-red);
-      border-color: #ff6b78;
+      background: var(--bauhaus-blue);
+      border-color: #7ea3ff;
     }
 
     .scrub-row {
@@ -178,7 +171,7 @@
       text-align: center;
       padding: 3px 4px;
       border-radius: 4px;
-      background: rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.06);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -193,35 +186,32 @@
 </head>
 <body class="embed-mode">
 
-  <!-- Top Studio Bar (Hidden automatically in ?embed=1 mode) -->
+  <!-- Top Studio Controls -->
   <div class="studio-hud top">
-    <span class="badge">HARMONIX 5.00s SPLASH</span>
+    <span class="badge">HARMONIX MINIMAL 5.00s</span>
     <button class="hud-btn active" id="playPauseBtn">Pause</button>
     <button class="hud-btn" id="replayBtn">Replay 5.00s</button>
     <button class="hud-btn active" id="modeVectorBtn">1:1 Vector SVG</button>
-    <button class="hud-btn" id="modeBitmapBtn" title="Uses 1792685840981.jpg or dropped image">Exact Image Mask</button>
-    <button class="hud-btn" id="uploadBtn">Load 1792685840981.jpg</button>
+    <button class="hud-btn" id="modeBitmapBtn">Exact Image Mask</button>
+    <button class="hud-btn" id="uploadBtn">Load Image</button>
     <button class="hud-btn" id="loopBtn">Loop: ON</button>
-    <button class="hud-btn" id="previewEmbedBtn">Preview App Embed</button>
+    <button class="hud-btn" id="previewEmbedBtn">App Embed View</button>
     <input type="file" id="imgUpload" accept="image/*" />
   </div>
 
   <!-- Main Responsive Splash Stage -->
-  <div class="splash-viewport" id="splashViewport">
+  <div class="splash-viewport">
     <div class="artwork-stage">
 
-      <!-- LAYER A: 100% Self-Contained Bauhaus Kandinsky Vector SVG (1000 x 558) -->
+      <!-- LAYER A: Minimalist White Bauhaus Vector SVG (No Book, Single Outer Ring) -->
       <svg id="bauhausVectorSvg" viewBox="0 0 1000 558" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <!-- Left H Pillar Gradient (Soft Lavender-Purple to Bauhaus Sky Blue) -->
           <linearGradient id="leftHGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#8c6bb1" />
-            <stop offset="58%" stop-color="#8565ad" />
-            <stop offset="58.5%" stop-color="#6ca2d6" />
+            <stop offset="0%" stop-color="#4e79c7" />
+            <stop offset="55%" stop-color="#8565ad" />
             <stop offset="100%" stop-color="#649cd3" />
           </linearGradient>
 
-          <!-- Treble Clef (Clave de Sol) Multi-Zone Bauhaus Fill -->
           <linearGradient id="trebleGrad" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stop-color="#3c68bd" />
             <stop offset="45%" stop-color="#639cd3" />
@@ -229,105 +219,61 @@
             <stop offset="100%" stop-color="#3c5eb4" />
           </linearGradient>
 
-          <!-- Clip paths for Bauhaus split-color geometric planes -->
-          <clipPath id="speechCircleClip">
-            <circle cx="500" cy="111" r="51" />
-          </clipPath>
-
           <clipPath id="rightHClip">
             <path d="M 568 100 L 623 100 L 623 365 Q 623 398 652 408 L 538 408 Q 568 398 568 365 Z" />
           </clipPath>
 
-          <!-- Calligraphic Brush Masks for Each Stage ("Trazo a Trazo") -->
-          <!-- Mask 1: Left H Pillar + Clave de Sol -->
+          <!-- Calligraphic Brush Masks ("Trazo a Trazo") -->
           <mask id="maskLeftH">
-            <path class="brush-mask" data-t0="0.00" data-t1="0.10"
+            <path class="brush-mask" data-t0="0.00" data-t1="0.12"
                   d="M 388 408 L 468 408 M 420 408 L 420 96"
                   fill="none" stroke="#fff" stroke-width="76" stroke-linecap="round" />
           </mask>
 
           <mask id="maskTreble">
-            <path class="brush-mask" data-t0="0.06" data-t1="0.24"
+            <path class="brush-mask" data-t0="0.06" data-t1="0.25"
                   d="M 390 198 C 384 128 408 88 424 114 C 440 142 422 202 365 246 C 322 280 330 350 388 355 C 446 360 458 292 418 265 C 382 242 355 278 375 314 M 384 120 L 418 386 C 424 426 352 436 350 388 C 348 358 388 356 392 384"
-                  fill="none" stroke="#fff" stroke-width="56" stroke-linecap="round" stroke-linejoin="round" />
+                  fill="none" stroke="#fff" stroke-width="58" stroke-linecap="round" stroke-linejoin="round" />
           </mask>
 
-          <!-- Mask 2: Right H Pillar + Bass Clef -->
           <mask id="maskRightH">
-            <path class="brush-mask" data-t0="0.20" data-t1="0.34"
+            <path class="brush-mask" data-t0="0.20" data-t1="0.35"
                   d="M 535 408 L 655 408 M 595 408 L 595 96"
                   fill="none" stroke="#fff" stroke-width="115" stroke-linecap="round" />
           </mask>
 
           <mask id="maskBassClef">
-            <path class="brush-mask" data-t0="0.28" data-t1="0.42"
+            <path class="brush-mask" data-t0="0.28" data-t1="0.43"
                   d="M 588 152 C 565 152 565 110 605 110 C 655 110 662 195 572 232"
                   fill="none" stroke="#fff" stroke-width="58" stroke-linecap="round" />
           </mask>
 
-          <!-- Mask 3: 5-Line Wavy Musical Staff Crossbar -->
           <mask id="maskStaffWave">
-            <path class="brush-mask" data-t0="0.38" data-t1="0.56"
+            <path class="brush-mask" data-t0="0.38" data-t1="0.58"
                   d="M 380 265 C 460 232 545 288 615 262 C 655 246 688 205 705 182"
                   fill="none" stroke="#fff" stroke-width="125" stroke-linecap="round" />
           </mask>
 
-          <!-- Text Paths for Curved Words: PLAY, SING, READ, GROW -->
-          <path id="wordPathPlay" d="M 442 218 Q 485 207 530 218" />
-          <path id="wordPathSing" d="M 452 266 Q 492 257 532 268" />
-          <path id="wordPathRead" d="M 526 289 Q 566 300 606 293" />
-          <path id="wordPathGrow" d="M 612 272 Q 655 250 692 214" />
+          <!-- Text Paths for Swapped Words: READ, PLAY, SING, GROW -->
+          <path id="wordPathReadTop" d="M 442 218 Q 485 207 532 218" />
+          <path id="wordPathPlayMid" d="M 452 266 Q 492 257 534 268" />
+          <path id="wordPathSingLow" d="M 534 289 Q 572 300 612 293" />
+          <path id="wordPathGrowRight" d="M 612 272 Q 655 250 692 214" />
         </defs>
-
-        <!-- ============================================================== -->
-        <!-- STAGE 0: Bauhaus Kandinsky Translucent Geometric Color Circles -->
-        <!-- ============================================================== -->
-        <g id="stageCircles">
-          <!-- Top-left dusty blue circle with grid -->
-          <g class="pop-item" data-t0="0.02" data-t1="0.16">
-            <circle cx="352" cy="136" r="45" fill="#9db4c0" fill-opacity="0.55" stroke="#18161e" stroke-width="1.3" />
-          </g>
-          <!-- Upper-left lavender-pink overlapping circle -->
-          <g class="pop-item" data-t0="0.05" data-t1="0.19">
-            <circle cx="354" cy="204" r="64" fill="#bd9ec4" fill-opacity="0.52" stroke="#18161e" stroke-width="1.3" />
-          </g>
-          <!-- Center-left warm yellow circle behind Treble Belly -->
-          <g class="pop-item" data-t0="0.08" data-t1="0.22">
-            <circle cx="436" cy="296" r="62" fill="#f3cf55" fill-opacity="0.78" stroke="#18161e" stroke-width="1.5" />
-          </g>
-          <!-- Bottom-left golden yellow circle framing the Treble Tail Bulb -->
-          <g class="pop-item" data-t0="0.12" data-t1="0.25">
-            <circle cx="373" cy="390" r="35" fill="#f4c430" stroke="#18161e" stroke-width="2.4" />
-          </g>
-          <!-- Center-right coral pink semi-circle next to right H -->
-          <g class="pop-item" data-t0="0.22" data-t1="0.34">
-            <circle cx="576" cy="222" r="42" fill="#df7a78" fill-opacity="0.65" />
-          </g>
-          <!-- Top-right soft mango aura circle behind Bass Dots -->
-          <g class="pop-item" data-t0="0.26" data-t1="0.38">
-            <circle cx="668" cy="144" r="35" fill="#f5cf76" fill-opacity="0.58" />
-          </g>
-          <!-- Bottom-right lavender circle with crosshair grid -->
-          <g class="pop-item" data-t0="0.30" data-t1="0.44">
-            <circle cx="642" cy="336" r="52" fill="#b79ec4" fill-opacity="0.52" stroke="#18161e" stroke-width="1.2" />
-            <circle cx="585" cy="380" r="58" fill="none" stroke="#18161e" stroke-width="1.2" />
-            <circle cx="622" cy="388" r="45" fill="none" stroke="#18161e" stroke-width="1.2" />
-          </g>
-        </g>
 
         <!-- ============================================================== -->
         <!-- STAGE 1: Left "H" Pillar + Clave de Sol (Treble Clef)          -->
         <!-- ============================================================== -->
         <g id="stageLeftH" mask="url(#maskLeftH)">
-          <!-- Left H Column + Bottom-Left Serif -->
           <path d="M 404 100 L 436 100 L 436 368 Q 436 398 468 408 L 398 408 L 398 100 Z"
-                fill="url(#leftHGrad)" stroke="#18161e" stroke-width="2.2" stroke-linejoin="round" />
+                fill="url(#leftHGrad)" stroke="#18161e" stroke-width="2.6" stroke-linejoin="round" />
         </g>
 
         <g id="stageTreble" mask="url(#maskTreble)">
-          <!-- Treble Clef Golden Inner Loop Highlight -->
+          <!-- Golden Yellow Cutouts inside Treble Clef Loop and Belly -->
           <path d="M 388 128 C 388 98 416 98 418 135 C 419 162 404 185 392 198 Z"
                 fill="#f4c430" stroke="#18161e" stroke-width="2.5" />
+          <circle cx="395" cy="298" r="42" fill="#f4c430" stroke="#18161e" stroke-width="2.5" />
 
           <!-- Main Treble Clef Ribbon Body -->
           <path d="M 392 214
@@ -352,26 +298,19 @@
         </g>
 
         <!-- ============================================================== -->
-        <!-- STAGE 2: Right "H" Pillar + Bass Clef + Two Red Dots           -->
+        <!-- STAGE 2: Right "H" Pillar + Bass Clef + Two Dots               -->
         <!-- ============================================================== -->
         <g id="stageRightH" mask="url(#maskRightH)">
           <g clip-path="url(#rightHClip)">
-            <!-- Left half of Right H Pillar (Deep Indigo-Purple) -->
             <rect x="535" y="96" width="60" height="316" fill="#432369" />
-            <!-- Right half of Right H Pillar (Bauhaus Crimson Red) -->
             <rect x="595" y="96" width="60" height="316" fill="#c92a35" />
-            <!-- Upper lavender block of Right H Pillar -->
-            <rect x="565" y="96" width="60" height="135" fill="#9a7bb8" />
-            <!-- Coral circle intersection inside Right H -->
-            <circle cx="576" cy="222" r="42" fill="#df7a78" />
+            <rect x="565" y="96" width="60" height="145" fill="#c92a35" />
           </g>
-          <!-- Crisp Bauhaus Outline of Right H Pillar -->
           <path d="M 568 100 L 623 100 L 623 365 Q 623 398 652 408 L 538 408 Q 568 398 568 365 Z"
                 fill="none" stroke="#18161e" stroke-width="2.8" stroke-linejoin="round" />
         </g>
 
         <g id="stageBassClef" mask="url(#maskBassClef)">
-          <!-- Bass Clef Spiral Body -->
           <path d="M 588 156
                    C 564 156, 562 118, 594 114
                    C 626 110, 636 164, 574 228
@@ -381,142 +320,78 @@
           <circle cx="585" cy="138" r="18" fill="#381854" stroke="#18161e" stroke-width="3" />
         </g>
 
-        <!-- Bass Clef Two Red Dots -->
-        <g class="pop-item" data-t0="0.36" data-t1="0.44">
-          <circle cx="668" cy="128" r="10" fill="#c92a35" stroke="#18161e" stroke-width="2.8" />
+        <!-- Bass Clef Two Dots -->
+        <g class="pop-item" data-t0="0.38" data-t1="0.45">
+          <circle cx="668" cy="128" r="10" fill="#432369" stroke="#18161e" stroke-width="2.8" />
         </g>
-        <g class="pop-item" data-t0="0.39" data-t1="0.47">
-          <circle cx="668" cy="159" r="10" fill="#c92a35" stroke="#18161e" stroke-width="2.8" />
+        <g class="pop-item" data-t0="0.41" data-t1="0.48">
+          <circle cx="668" cy="159" r="10" fill="#432369" stroke="#18161e" stroke-width="2.8" />
         </g>
 
         <!-- ============================================================== -->
-        <!-- STAGE 3: 5-Line Wavy Musical Staff Crossbar                    -->
+        <!-- STAGE 3: Clean 5-Line Wavy Musical Staff Crossbar              -->
         <!-- ============================================================== -->
         <g id="stageStaff" mask="url(#maskStaffWave)">
-          <!-- Warm Parchment Backing Ribbon so the staff cleanly crosses both H pillars -->
           <path d="M 382 238 C 460 198, 545 256, 615 228 C 652 214, 678 188, 694 166
                    L 704 232 C 682 258, 648 286, 608 298 C 540 318, 465 268, 412 292 Z"
-                fill="#f1e4c3" />
+                fill="#ffffff" />
 
-          <!-- 5 Musical Staff Wave Lines -->
           <path d="M 382 238 C 460 198, 545 256, 615 228 C 652 214, 678 188, 694 166"
-                fill="none" stroke="#18161e" stroke-width="2.5" stroke-linecap="round" />
+                fill="none" stroke="#18161e" stroke-width="2.6" stroke-linecap="round" />
           <path d="M 390 252 C 462 214, 545 270, 615 244 C 652 230, 680 202, 698 182"
-                fill="none" stroke="#18161e" stroke-width="2.3" stroke-linecap="round" />
+                fill="none" stroke="#18161e" stroke-width="2.4" stroke-linecap="round" />
           <path d="M 402 266 C 465 230, 545 284, 615 260 C 652 246, 682 218, 700 198"
-                fill="none" stroke="#18161e" stroke-width="2.3" stroke-linecap="round" />
+                fill="none" stroke="#18161e" stroke-width="2.4" stroke-linecap="round" />
           <path d="M 412 280 C 468 246, 545 298, 612 276 C 652 262, 684 234, 703 214"
-                fill="none" stroke="#18161e" stroke-width="2.3" stroke-linecap="round" />
+                fill="none" stroke="#18161e" stroke-width="2.4" stroke-linecap="round" />
           <path d="M 418 294 C 472 264, 545 314, 610 294 C 652 280, 686 250, 706 230"
-                fill="none" stroke="#18161e" stroke-width="2.5" stroke-linecap="round" />
+                fill="none" stroke="#18161e" stroke-width="2.6" stroke-linecap="round" />
         </g>
 
         <!-- ============================================================== -->
-        <!-- STAGE 4: Embedded Musical Words (PLAY, SING, READ, GROW)       -->
+        <!-- STAGE 4: Musical Words (READ • PLAY • SING • GROW)             -->
         <!-- ============================================================== -->
         <g id="stageWords" font-family="'Fredoka', 'Outfit', sans-serif" font-weight="700" fill="#0f0e15">
-          <!-- Word 1: PLAY -->
-          <g class="pop-item" data-t0="0.50" data-t1="0.60">
-            <text font-size="27" letter-spacing="1.5">
-              <textPath href="#wordPathPlay" startOffset="6%">PLAY</textPath>
+          <g class="pop-item" data-t0="0.52" data-t1="0.62">
+            <text font-size="27" letter-spacing="1.4">
+              <textPath href="#wordPathReadTop" startOffset="5%">READ</textPath>
             </text>
           </g>
 
-          <!-- Word 2: SING (with knockout backing on staff lines) -->
-          <g class="pop-item" data-t0="0.54" data-t1="0.64">
-            <text font-size="28" letter-spacing="1.2" stroke="#f1e4c3" stroke-width="7" paint-order="stroke">
-              <textPath href="#wordPathSing" startOffset="4%">SING</textPath>
+          <g class="pop-item" data-t0="0.56" data-t1="0.66">
+            <text font-size="28" letter-spacing="1.2" stroke="#ffffff" stroke-width="7" paint-order="stroke">
+              <textPath href="#wordPathPlayMid" startOffset="4%">PLAY</textPath>
             </text>
           </g>
 
-          <!-- Center Musical Notes on Staff -->
-          <g class="pop-item" data-t0="0.57" data-t1="0.67">
-            <!-- Eighth note with flag after PLAY -->
-            <ellipse cx="539" cy="241" rx="8.5" ry="6.5" transform="rotate(-18 539 241)" fill="#4a236b" stroke="#18161e" stroke-width="2.2" />
-            <path d="M 546 239 L 546 196 C 556 206, 562 218, 557 232" fill="none" stroke="#18161e" stroke-width="3" stroke-linecap="round" />
-            <!-- Quarter note above READ -->
-            <ellipse cx="587" cy="248" rx="8" ry="6" transform="rotate(-18 587 248)" fill="#381854" stroke="#18161e" stroke-width="2.2" />
-            <line x1="594" y1="246" x2="594" y2="206" stroke="#18161e" stroke-width="2.8" />
-          </g>
-
-          <!-- Word 3: READ -->
-          <g class="pop-item" data-t0="0.60" data-t1="0.70">
-            <text font-size="27" letter-spacing="1" stroke="#f1e4c3" stroke-width="7" paint-order="stroke">
-              <textPath href="#wordPathRead" startOffset="3%">READ</textPath>
+          <g class="pop-item" data-t0="0.61" data-t1="0.71">
+            <text font-size="27" letter-spacing="1.1" stroke="#ffffff" stroke-width="7" paint-order="stroke">
+              <textPath href="#wordPathSingLow" startOffset="3%">SING</textPath>
             </text>
           </g>
 
-          <!-- Word 4: GROW -->
-          <g class="pop-item" data-t0="0.64" data-t1="0.74">
-            <text font-size="27" letter-spacing="1" stroke="#f1e4c3" stroke-width="7" paint-order="stroke">
-              <textPath href="#wordPathGrow" startOffset="2%">GROW</textPath>
-            </text>
-          </g>
-
-          <!-- Lower hanging eighth notes below staff (left & right) -->
           <g class="pop-item" data-t0="0.66" data-t1="0.76">
-            <ellipse cx="468" cy="317" rx="7.5" ry="5.5" transform="rotate(-18 468 317)" fill="#381854" stroke="#18161e" stroke-width="2" />
-            <line x1="474" y1="315" x2="474" y2="285" stroke="#18161e" stroke-width="2.4" />
-            <ellipse cx="644" cy="313" rx="7.5" ry="5.5" transform="rotate(-18 644 313)" fill="#381854" stroke="#18161e" stroke-width="2" />
-            <path d="M 650 311 L 650 272 C 660 280, 664 288, 660 298" fill="none" stroke="#18161e" stroke-width="2.4" />
+            <text font-size="27" letter-spacing="1" stroke="#ffffff" stroke-width="7" paint-order="stroke">
+              <textPath href="#wordPathGrowRight" startOffset="2%">GROW</textPath>
+            </text>
           </g>
         </g>
 
         <!-- ============================================================== -->
-        <!-- STAGE 5: Top Speech Bubble + Open Book + Bauhaus Grid & Rings  -->
+        <!-- STAGE 5: Single Minimalist Outer Framing Circle                -->
         <!-- ============================================================== -->
-        <g id="stageSpeechBubble" class="pop-item" data-t0="0.68" data-t1="0.82">
-          <!-- Speech Bubble Tail -->
-          <path d="M 462 142 L 454 166 L 480 154 Z" fill="#5288c4" stroke="#18161e" stroke-width="2.5" stroke-linejoin="round" />
-
-          <!-- Speech Bubble Bauhaus Color-Segmented Circle -->
-          <g clip-path="url(#speechCircleClip)">
-            <rect x="445" y="55" width="110" height="110" fill="#f4c430" />
-            <polygon points="500,111 445,105 445,168 512,168" fill="#5288c4" />
-            <polygon points="500,111 535,55 560,55 560,168 505,168" fill="#d44246" />
-            <circle cx="512" cy="116" r="28" fill="#8c5ba8" fill-opacity="0.65" />
-          </g>
-          <circle cx="500" cy="111" r="51" fill="none" stroke="#18161e" stroke-width="2.6" />
-
-          <!-- Open Book Icon inside Speech Bubble -->
-          <path d="M 464 91 L 536 91 L 536 136 L 464 136 Z" fill="#3b60b8" stroke="#18161e" stroke-width="2.4" stroke-linejoin="round" />
-          <!-- Left & Right Book Pages -->
-          <path d="M 470 82 Q 486 80 500 90 L 500 132 Q 485 124 470 126 Z"
-                fill="none" stroke="#18161e" stroke-width="2.4" stroke-linejoin="round" />
-          <path d="M 530 82 Q 514 80 500 90 L 500 132 Q 515 124 530 126 Z"
-                fill="none" stroke="#18161e" stroke-width="2.4" stroke-linejoin="round" />
-          <!-- Musical Note inside Right Book Page -->
-          <ellipse cx="513" cy="116" rx="5.5" ry="4.2" transform="rotate(-20 513 116)" fill="#18161e" />
-          <path d="M 517 115 L 517 95 C 524 99, 526 105, 523 111" fill="none" stroke="#18161e" stroke-width="2.2" stroke-linecap="round" />
-        </g>
-
-        <!-- Bauhaus Constructivist Grid Lines, Diagonals & Concentric Outer Rings -->
-        <g id="stageBauhausGeometry">
-          <!-- Outer Circular Framing Arcs -->
-          <path class="stroke-item" data-t0="0.70" data-t1="0.86"
-                d="M 432 54 A 196 196 0 0 1 686 185" fill="none" stroke="#18161e" stroke-width="2.4" stroke-linecap="round" />
-          <path class="stroke-item" data-t0="0.72" data-t1="0.88"
-                d="M 594 61 A 208 208 0 0 1 704 268" fill="none" stroke="#18161e" stroke-width="1.8" stroke-linecap="round" />
-          <path class="stroke-item" data-t0="0.72" data-t1="0.88"
-                d="M 702 225 A 196 196 0 0 1 402 426" fill="none" stroke="#18161e" stroke-width="2.2" stroke-linecap="round" />
-          <path class="stroke-item" data-t0="0.74" data-t1="0.89"
-                d="M 338 355 A 198 198 0 0 1 446 62" fill="none" stroke="#18161e" stroke-width="2.2" stroke-linecap="round" />
-
-          <!-- Top-Left Constructivist Orthogonal Grid & Diagonal Tangents -->
-          <path class="stroke-item" data-t0="0.74" data-t1="0.88"
-                d="M 350 82 L 350 265 M 374 92 L 374 235 M 310 126 L 404 126 M 305 148 L 404 148 M 300 170 L 404 170 M 298 192 L 392 192"
-                fill="none" stroke="#18161e" stroke-width="1.15" />
-          <path class="stroke-item" data-t0="0.76" data-t1="0.90"
-                d="M 304 156 L 412 254 M 306 372 L 450 228 M 500 288 L 500 444 L 402 408 M 500 444 L 656 392"
-                fill="none" stroke="#18161e" stroke-width="1.6" />
+        <g id="stageOuterRing">
+          <circle class="stroke-item" data-t0="0.70" data-t1="0.87"
+                  cx="500" cy="248" r="198"
+                  fill="none" stroke="#18161e" stroke-width="2.8"
+                  transform="rotate(-90 500 248)" />
         </g>
 
         <!-- ============================================================== -->
         <!-- STAGE 6: Stencil-Cut Bauhaus Typography (HARMONIX + Subtitle)  -->
         <!-- ============================================================== -->
         <g id="stageTypography">
-          <!-- HARMONIX Bold Geometric Stencil Wordmark -->
-          <g class="pop-item" data-t0="0.82" data-t1="0.96">
+          <g class="pop-item" data-t0="0.83" data-t1="0.96">
             <text x="500" y="505"
                   font-family="'Outfit', sans-serif"
                   font-weight="800"
@@ -524,14 +399,12 @@
                   letter-spacing="4.5"
                   text-anchor="middle"
                   fill="#0f0e15">HARMONIX</text>
-            <!-- Authentic Bauhaus Stencil Cuts in H, A, R, O, X -->
-            <rect x="357" y="458" width="5.5" height="52" fill="#f1e4c3" />
-            <rect x="403" y="492" width="6" height="16" fill="#f1e4c3" />
-            <rect x="537" y="458" width="4.5" height="52" fill="#f1e4c3" />
+            <rect x="357" y="458" width="5.5" height="52" fill="#ffffff" />
+            <rect x="403" y="492" width="6" height="16" fill="#ffffff" />
+            <rect x="537" y="458" width="4.5" height="52" fill="#ffffff" />
           </g>
 
-          <!-- LEARN WORDS THROUGH MUSIC Subtitle -->
-          <g class="pop-item" data-t0="0.88" data-t1="1.00">
+          <g class="pop-item" data-t0="0.89" data-t1="1.00">
             <text x="500" y="534"
                   font-family="'Outfit', sans-serif"
                   font-weight="500"
@@ -543,13 +416,13 @@
         </g>
       </svg>
 
-      <!-- LAYER B: Exact Bitmap Brush-Mask Canvas (Reveals 1792685840981.jpg stroke-by-stroke) -->
+      <!-- LAYER B: Exact Bitmap Brush-Mask Canvas (For harmonix_minimal_no_book.png) -->
       <canvas id="bitmapMaskCanvas" width="1000" height="558"></canvas>
 
     </div>
   </div>
 
-  <!-- Bottom Studio Scrubber Bar (Hidden automatically in ?embed=1 mode) -->
+  <!-- Bottom Studio Scrubber Bar -->
   <div class="studio-hud bottom">
     <div class="scrub-row">
       <input type="range" id="scrubber" min="0" max="1000" value="0" />
@@ -559,26 +432,17 @@
       <div class="stage-chip">1. Left H + Clave de Sol</div>
       <div class="stage-chip">2. Right H + Bass Clef</div>
       <div class="stage-chip">3. 5-Line Staff Wave</div>
-      <div class="stage-chip">4. PLAY•SING•READ•GROW</div>
-      <div class="stage-chip">5. Book Bubble + Grid</div>
+      <div class="stage-chip">4. READ•PLAY•SING•GROW</div>
+      <div class="stage-chip">5. Outer Circle Frame</div>
       <div class="stage-chip">6. HARMONIX Title</div>
     </div>
   </div>
 
   <script>
-    /**
-     * HARMONIX 5.00s ("Trazo a Trazo") App Splash Screen Engine
-     * - Default duration: 5000ms (5.00 seconds)
-     * - Emits 'harmonix:splash:complete' CustomEvent when finished
-     */
     const DURATION_MS = 5000;
-    const params = new URLSearchParams(window.location.search);
     const isEmbed = true;
-    if (isEmbed) {
-      document.body.classList.add('embed-mode');
-    }
+    document.body.classList.add('embed-mode');
 
-    // Prepare SVG path lengths for smooth calligraphic stroke-dashoffset animation
     const maskPaths = document.querySelectorAll('.brush-mask');
     const strokeItems = document.querySelectorAll('.stroke-item');
     const popItems = document.querySelectorAll('.pop-item');
@@ -590,7 +454,6 @@
       path.style.strokeDashoffset = len;
     });
 
-    // Optional Exact Bitmap Brush-Mask Setup (if 1792685840981.jpg is present or loaded)
     const bmpCanvas = document.getElementById('bitmapMaskCanvas');
     const bctx = bmpCanvas.getContext('2d');
     const offMask = document.createElement('canvas');
@@ -601,28 +464,21 @@
     const refImg = new Image();
     let refImgReady = false;
     refImg.onload = () => { refImgReady = true; };
-    refImg.src = '1792685840981.jpg';
+    refImg.src = 'harmonix_minimal_no_book.png';
 
-    // Exact 5.00s Calligraphic Brush Strokes for Bitmap Mask Mode
     const BITMAP_STROKES = [
-      // 1. Left H + Clave de Sol + Left Bauhaus Circles
       { t0: 0.00, t1: 0.12, w: 68, pts: [[395, 408], [465, 408], [420, 408], [420, 100]] },
-      { t0: 0.06, t1: 0.24, w: 62, pts: [[350, 130], [412, 95], [418, 195], [348, 285], [388, 355], [435, 310], [390, 275], [412, 385], [372, 392]] },
-      // 2. Right H + Bass Clef + Red Dots
-      { t0: 0.20, t1: 0.34, w: 96, pts: [[538, 408], [652, 408], [595, 408], [595, 100]] },
-      { t0: 0.28, t1: 0.44, w: 68, pts: [[585, 138], [608, 106], [648, 145], [585, 222], [668, 128], [668, 162]] },
-      // 3. 5-Line Musical Staff Crossbar
-      { t0: 0.38, t1: 0.56, w: 95, pts: [[385, 265], [485, 248], [585, 275], [698, 195]] },
-      // 4. PLAY, SING, READ, GROW & Notes
-      { t0: 0.50, t1: 0.72, w: 85, pts: [[450, 215], [535, 218], [458, 262], [575, 292], [685, 218], [468, 318], [648, 318]] },
-      // 5. Top Speech Bubble + Open Book + Outer Bauhaus Rings
-      { t0: 0.68, t1: 0.86, w: 110, pts: [[460, 155], [500, 111], [350, 140], [320, 280], [500, 430], [660, 340], [650, 120]] },
-      // 6. HARMONIX + LEARN WORDS THROUGH MUSIC
-      { t0: 0.82, t1: 0.98, w: 95, pts: [[330, 495], [500, 495], [670, 495], [330, 534], [670, 534]] }
+      { t0: 0.06, t1: 0.25, w: 64, pts: [[412, 95], [418, 195], [348, 285], [388, 355], [435, 310], [390, 275], [412, 385], [372, 392]] },
+      { t0: 0.20, t1: 0.35, w: 96, pts: [[538, 408], [652, 408], [595, 408], [595, 100]] },
+      { t0: 0.28, t1: 0.45, w: 68, pts: [[585, 138], [608, 106], [648, 145], [585, 222], [668, 128], [668, 162]] },
+      { t0: 0.38, t1: 0.58, w: 95, pts: [[385, 265], [485, 248], [585, 275], [698, 195]] },
+      { t0: 0.52, t1: 0.75, w: 85, pts: [[450, 215], [535, 218], [458, 262], [575, 292], [685, 218]] },
+      { t0: 0.70, t1: 0.87, w: 45, pts: [[500, 50], [698, 248], [500, 446], [302, 248], [500, 50]] },
+      { t0: 0.83, t1: 0.98, w: 95, pts: [[330, 495], [500, 495], [670, 495], [330, 534], [670, 534]] }
     ];
 
     let isPlaying = true;
-    let loopAnimation = !isEmbed; // In app embed mode, play once and trigger completion callback
+    let loopAnimation = !isEmbed;
     let elapsed = 0;
     let lastTime = performance.now();
     let completionFired = false;
@@ -638,7 +494,7 @@
     }
 
     function renderBitmapMask(normT) {
-      bctx.fillStyle = '#f1e4c3';
+      bctx.fillStyle = '#ffffff';
       bctx.fillRect(0, 0, 1000, 558);
       if (!refImgReady) return;
 
@@ -716,7 +572,6 @@
 
       const normT = Math.min(1, Math.max(0, elapsed / DURATION_MS));
 
-      // Update Scrubber UI
       document.getElementById('scrubber').value = Math.round(normT * 1000);
       document.getElementById('timeLabel').textContent = `${(normT * 5).toFixed(2)}s / 5.00s`;
 
@@ -725,7 +580,6 @@
         chip.classList.toggle('active', i === activeStage);
       });
 
-      // 1. Update Calligraphic Brush Masks & Constructivist Lines
       [...maskPaths, ...strokeItems].forEach(path => {
         const t0 = parseFloat(path.dataset.t0);
         const t1 = parseFloat(path.dataset.t1);
@@ -735,10 +589,9 @@
         path.style.strokeDashoffset = len * (1 - eased);
       });
 
-      // 2. Update Bauhaus Pop Elements (Circles, Words PLAY/SING/READ/GROW, Speech Bubble, Title)
       popItems.forEach(item => {
         const t0 = parseFloat(item.dataset.t0);
-        const t1 = parseFloat(item.dataset.t1);
+        const t1 = parseFloat(pathOrItemT1(item));
         const p = Math.min(1, Math.max(0, (normT - t0) / (t1 - t0)));
         if (p <= 0) {
           item.style.opacity = '0';
@@ -752,7 +605,6 @@
         }
       });
 
-      // 3. Update Bitmap Mask Canvas if active
       if (document.body.classList.contains('mode-bitmap')) {
         renderBitmapMask(normT);
       }
@@ -760,7 +612,10 @@
       requestAnimationFrame(updateFrame);
     }
 
-    // Studio Controls Wiring
+    function pathOrItemT1(el) {
+      return el.dataset.t1 || '1.0';
+    }
+
     document.getElementById('playPauseBtn').onclick = (e) => {
       isPlaying = !isPlaying;
       e.target.textContent = isPlaying ? 'Pause' : 'Play';
@@ -826,7 +681,6 @@
       isPlaying = true;
     };
 
-    // Double-click anywhere in embed preview to restore Studio HUD
     window.addEventListener('dblclick', () => {
       if (!isEmbed) document.body.classList.remove('embed-mode');
     });

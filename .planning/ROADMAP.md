@@ -232,7 +232,7 @@ Pending, and not started:
 
 In the app, not in the versionCode `17` APK:
 
-- **Opening animation.** Logged-out launch plays `share/animation.html` once, then the welcome screens show the Bauhaus mark. Next upload is `1.0.15` (versionCode `18`).
+- **Opening animation.** Every fresh launch plays the white Bauhaus drawing, and Skip ends it. The explanation pages still come before an account exists. The launcher icon is the circular mark. Next upload is `1.0.16` (versionCode `19`). Closed testing stays off until 12 testers.
 
 Also open:
 

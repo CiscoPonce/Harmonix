@@ -3,14 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-/// Parchment field behind the Bauhaus opening mark.
-const openingParchment = Color(0xFFF1E4C3);
+/// White field behind the Bauhaus opening mark.
+const openingField = Color(0xFFFFFFFF);
 
-/// Plays the five-second drawing once, then calls [onFinished].
+/// Plays the five-second drawing, then calls [onFinished].
 ///
 /// The drawing is the vector splash in `assets/opening/splash.html`.
-/// A tap on Skip, or a late fallback, continues into the welcome screens
-/// if the page never reports that it finished.
+/// Skip, or a late fallback, continues into the app if the page never
+/// reports that it finished. A fresh launch plays it again.
 class OpeningScreen extends StatefulWidget {
   const OpeningScreen({super.key, required this.onFinished});
 
@@ -33,7 +33,7 @@ class _OpeningScreenState extends State<OpeningScreen> {
     _timer = Timer(_fallback, _finish);
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(openingParchment)
+      ..setBackgroundColor(openingField)
       ..addJavaScriptChannel(
         'HarmonixOpening',
         onMessageReceived: (_) => _finish(),
@@ -57,7 +57,7 @@ class _OpeningScreenState extends State<OpeningScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: openingParchment,
+      backgroundColor: openingField,
       body: Stack(
         children: [
           Positioned.fill(child: WebViewWidget(controller: _controller)),

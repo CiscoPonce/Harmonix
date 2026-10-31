@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'screens/home_shell.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/opening_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'services/api_client.dart';
 import 'state/auth_state.dart';
@@ -110,6 +111,7 @@ class _RootGate extends StatefulWidget {
 }
 
 class _RootGateState extends State<_RootGate> {
+  bool _openingDone = false;
   bool _scheduledBind = false;
 
   void _scheduleBindIfReady(bool ready) {
@@ -123,6 +125,15 @@ class _RootGateState extends State<_RootGate> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_openingDone) {
+      return OpeningScreen(
+        onFinished: () {
+          if (!mounted) return;
+          setState(() => _openingDone = true);
+        },
+      );
+    }
+
     final auth = context.watch<AuthState>();
     final colors = HarmonixColors.of(context);
     if (auth.loading) {

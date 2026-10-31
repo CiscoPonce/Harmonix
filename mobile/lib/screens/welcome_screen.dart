@@ -4,9 +4,10 @@ import 'login_screen.dart';
 import 'opening_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
-  const WelcomeScreen({super.key, this.playOpening = true});
+  const WelcomeScreen({super.key, this.playOpening = false});
 
-  /// Logged-out launch plays the drawing once. Tests pass false.
+  /// The root gate already plays the drawing on each fresh launch.
+  /// Tests leave this false.
   final bool playOpening;
 
   @override
@@ -63,7 +64,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: ColoredBox(
-                  color: openingParchment,
+                  color: openingField,
                   child: Image.asset(
                     'assets/harmonix_mark.png',
                     height: 168,
