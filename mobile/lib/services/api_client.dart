@@ -107,6 +107,8 @@ String friendlyDailyWordError({
       return 'Your learning preferences changed — loading a new word…';
     case 'ai_rate_limit':
       return 'AI is busy (rate limit). Please wait a minute and try again.';
+    case 'ai_timeout':
+      return 'The word took too long to generate. Please try again.';
     case 'cooldown_active':
       return retryAfterSec != null
           ? 'Please wait $retryAfterSec seconds before requesting another word.'
@@ -153,6 +155,9 @@ class ApiClient {
   String? _accessToken;
   String? _refreshToken;
 
+  /// Called when a stored refresh token is refused, so the app can sign out.
+  void Function()? onSessionExpired;
+
   String? get accessToken => _accessToken;
 
   Future<void> loadSession() async {
@@ -178,6 +183,7 @@ class ApiClient {
     _refreshToken = null;
     await _storage.delete(key: 'access_token');
     await _storage.delete(key: 'refresh_token');
+    await _storage.delete(key: 'user_profile');
   }
 
   Uri _uri(String path, [Map<String, String>? query]) {
@@ -381,9 +387,28 @@ class ApiClient {
         );
         return true;
       }
-    } catch (_) {}
+    } on ApiException catch (e) {
+      if (e.status != 401 && e.status != 403) return false;
+    } catch (_) {
+      return false;
+    }
     await clearSession();
+    onSessionExpired?.call();
     return false;
+  }
+
+  Future<void> saveProfile(Map<String, dynamic> user) =>
+      _storage.write(key: 'user_profile', value: jsonEncode(user));
+
+  Future<Map<String, dynamic>?> loadProfile() async {
+    try {
+      final raw = await _storage.read(key: 'user_profile');
+      if (raw == null) return null;
+      final decoded = jsonDecode(raw);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>> me() => request('GET', '/auth/me');

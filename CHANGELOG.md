@@ -16,12 +16,13 @@ All notable changes to Harmonix are documented here. Releases are managed by
 - English female pronunciation uses Kokoro af_heart. Pocket alba was low enough to sound male, and the old clips are not reused.
 
 ### Android
+- 1.0.17: When Next fails on the open card, Change style and Search stay available. Spotify’s return to the live site opens Library, and the opening drawing is skipped for that return. If the phone doesn't hand that link to the app, `/app/library` and `/app/settings` show an Open Harmonix button instead of a 404, and `assetlinks.json` also lists the upload key. Opening the app offline or during a deploy keeps you signed in, using the saved profile. A rejected login returns you to the welcome screen. Offline with no saved word shows a plain message, and Search works on the empty error screen.
 - 1.0.16: Every fresh launch plays the white Bauhaus drawing, and Skip ends it. Returning from another app does not replay it. The explanation pages still come before an account exists. The launcher icon is the circular mark.
 - 1.0.15: The logged-out welcome opens with the five-second Bauhaus drawing, then explains what Harmonix is for and how to use a word before account creation. Skip ends the drawing. Signed-in people still go straight to the word.
 - 1.0.14: Get Started opens account creation. It was opening language setup with no login, so Connect Spotify and Skip failed with a 401.
 
 ### Daily word
-- Iron Maiden is not taught as doncella, and flavor is not taught on a Spanish card. "toma que toma" means take, not drink. float in a lyric is flotar, and seasons in the sun is estaciones.
+- "stories high" means pisos, a season ticket is an abono, and "Sean Paul" is not taught as the Spanish verb. English "Play" is dropped from Spanish cards. A short list of already-used songs no longer stops before the remaining titles are tried.
 - Searching a song that is not in the language you are learning is refused. A Portuguese song is no longer taught as English, and the message names the song language and the language you are learning.
 - Next keeps a chosen style by reading the top 100 songs from each country's chart for that style, and it does not retry songs whose lyric cannot be taught in the 30-second preview.
 - When those song charts are used up, Next stays in the style and teaches from tracks on that genre's top albums before it offers a song from another style.

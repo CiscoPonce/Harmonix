@@ -114,6 +114,15 @@ class _RootGateState extends State<_RootGate> {
   bool _openingDone = false;
   bool _scheduledBind = false;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _scheduleBindIfReady(true);
+    });
+  }
+
   void _scheduleBindIfReady(bool ready) {
     if (!ready || _scheduledBind) return;
     _scheduledBind = true;
@@ -125,7 +134,8 @@ class _RootGateState extends State<_RootGate> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_openingDone) {
+    final nav = context.watch<HomeNavigationController>();
+    if (!_openingDone && !nav.arrivedFromSpotify) {
       return OpeningScreen(
         onFinished: () {
           if (!mounted) return;

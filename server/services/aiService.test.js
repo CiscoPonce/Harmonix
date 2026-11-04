@@ -405,6 +405,11 @@ describe('AI Service', () => {
     expect(commonGlossLookup('float', 'en', 'es', 'I watched the world float to the dark side of the moon')).to.equal('flotar');
     expect(translationLooksSuspicious('seasons', 'temporada', 'We had seasons in the sun')).to.equal(true);
     expect(commonGlossLookup('seasons', 'en', 'es', 'We had seasons in the sun')).to.equal('estaciones');
+    expect(translationLooksSuspicious('Season', 'temporada', 'Season ticket on a one-way ride')).to.equal(true);
+    expect(commonGlossLookup('Season', 'en', 'es', 'Season ticket on a one-way ride')).to.equal('abono');
+    expect(translationLooksSuspicious('stories', 'historia', 'One hundred stories high')).to.equal(true);
+    expect(commonGlossLookup('stories', 'en', 'es', 'One hundred stories high')).to.equal('pisos');
+    expect(commonGlossLookup('stories', 'en', 'es', 'Tell me your stories')).to.equal('historia');
     expect(translationLooksSuspicious('toma', 'drink', 'Malamente (toma que toma)')).to.equal(true);
     expect(translationLooksSuspicious('toma', 'drink', 'Toma un trago')).to.equal(false);
     expect(commonGlossLookup('toma', 'es', 'en', 'Malamente (toma que toma)')).to.equal('take');

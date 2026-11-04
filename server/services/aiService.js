@@ -1183,6 +1183,12 @@ function translationLooksSuspicious(word, translation, line = null, toLang = nul
   if ((w === "season" || w === "seasons") && /^(temporada|temporadas)$/.test(folded) && /\bin the sun\b/.test(lyric)) {
     return true;
   }
+  if ((w === "season" || w === "seasons") && /^(temporada|temporadas)$/.test(folded) && /\bseason tickets?\b/.test(lyric)) {
+    return true;
+  }
+  if ((w === "stories" || w === "story") && /^historias?$/.test(folded) && /\b(stories|storeys|story|storey)\s+high\b/.test(lyric)) {
+    return true;
+  }
   if ((w === "maiden" || w === "maidens") && /^(doncella|doncellas)$/.test(folded) && /\biron maidens?\b/.test(lyric)) {
     return true;
   }
@@ -1535,6 +1541,9 @@ function lyricSenseLookup(word, fromLang, toLang, line) {
     if ((lemma === "season" || lemma === "seasons") && /\bin the sun\b/.test(L)) {
       return lemma === "seasons" ? "estaciones" : "estación";
     }
+    if ((lemma === "season" || lemma === "seasons") && /\bseason tickets?\b/.test(L)) return "abono";
+    if ((lemma === "stories" || lemma === "storeys") && /\b(stories|storeys)\s+high\b/.test(L)) return "pisos";
+    if ((lemma === "story" || lemma === "storey") && /\b(story|storey)\s+high\b/.test(L)) return "piso";
     if (lemma === "wondering") return "preguntándose";
     if (lemma === "wondered") return "se preguntó";
     // "I wonder if…" is the verb; "a wonder" / "wonderwall" is the noun.

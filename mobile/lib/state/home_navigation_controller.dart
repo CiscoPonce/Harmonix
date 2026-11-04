@@ -18,8 +18,10 @@ class HomeNavigationController extends ChangeNotifier {
   /// Backward-compatible alias — Learn folded into Discover.
   static const int learnIndex = discoverIndex;
 
-  /// Development-only host locked in 12-01. Production App Links remain blocked.
+  /// Development host from 12-01, plus the live site testers return to.
   static const String approvedHost = 'moral-sparrow-nationally.ngrok-free.app';
+  static const String productionHost = 'harmonix.peeporunclub.co.uk';
+  static const Set<String> approvedHosts = {approvedHost, productionHost};
 
   static const String successPath = '/app/library';
   static const String settingsPath = '/app/settings';
@@ -28,8 +30,12 @@ class HomeNavigationController extends ChangeNotifier {
   String? _pendingRecoveryReason;
   bool _librarySelectedOnce = false;
   bool _settingsSelectedOnce = false;
+  bool _arrivedFromSpotify = false;
 
   int get index => _index;
+
+  /// A Spotify return arrived, so the opening drawing should not play first.
+  bool get arrivedFromSpotify => _arrivedFromSpotify;
 
   /// Allowlisted recovery reason (`error` only). Cleared on consume.
   String? get pendingRecoveryReason => _pendingRecoveryReason;
@@ -73,8 +79,24 @@ class HomeNavigationController extends ChangeNotifier {
   /// allowlisted `spotify=` outcomes. Rejects unknown hosts/paths and never
   /// stores `code`, `state`, or token query values.
   bool handleIncomingUri(Uri uri) {
+    if (uri.scheme == 'harmonix' && uri.host == 'spotify-callback') {
+      final outcome = uri.queryParameters['spotify'];
+      if (outcome == 'connected') {
+        _arrivedFromSpotify = true;
+        if (_librarySelectedOnce) return false;
+        selectLibraryOnce();
+        return true;
+      }
+      if (outcome == 'error' || outcome == 'cancelled') {
+        _arrivedFromSpotify = true;
+        if (_settingsSelectedOnce) return false;
+        selectSettingsOnce(reason: 'error');
+        return true;
+      }
+      return false;
+    }
     if (uri.scheme != 'https') return false;
-    if (uri.host != approvedHost) return false;
+    if (!approvedHosts.contains(uri.host)) return false;
 
     final path = uri.path.endsWith('/') && uri.path.length > 1
         ? uri.path.substring(0, uri.path.length - 1)
@@ -85,6 +107,7 @@ class HomeNavigationController extends ChangeNotifier {
 
     if (path == successPath) {
       if (outcome != 'connected') return false;
+      _arrivedFromSpotify = true;
       if (_librarySelectedOnce) return false;
       selectLibraryOnce();
       return true;
@@ -92,6 +115,7 @@ class HomeNavigationController extends ChangeNotifier {
 
     if (path == settingsPath) {
       if (outcome != 'error' && outcome != 'cancelled') return false;
+      _arrivedFromSpotify = true;
       if (_settingsSelectedOnce) return false;
       selectSettingsOnce(reason: 'error');
       return true;

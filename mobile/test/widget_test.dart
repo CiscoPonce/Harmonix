@@ -17,6 +17,10 @@ void main() {
       contains('rate limit'),
     );
     expect(
+      friendlyDailyWordError(reason: 'ai_timeout'),
+      contains('too long'),
+    );
+    expect(
       friendlyDailyWordError(reason: 'batch_in_progress'),
       contains('generating'),
     );

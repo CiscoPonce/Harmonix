@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: play-store-listing
 status: complete
-stopped_at: "2026-10-31 Phases 1–18 complete. Fresh launches play the white Bauhaus drawing with Skip. 2FA verification email stays pending. Next APK is 1.0.16 (19). Closed testing stays off until 12 testers."
-last_updated: "2026-10-31T18:24:00.000Z"
+stopped_at: "2026-11-04 Phases 1–18 complete. Closed testing has 1.0.16 (19) for testers. Next app build is 1.0.17 (20). 2FA verification email stays pending. Public listing still needs 12 testers for 14 days."
+last_updated: "2026-11-04T20:25:00.000Z"
 progress:
   total_phases: 18
   completed_phases: 18
@@ -17,7 +17,9 @@ progress:
 
 **Phases 1–18 are complete.** The APK already built is Flutter `1.0.14` (versionCode `17`). The project version is now `1.0.15` (versionCode `18`) so the welcome opening can be uploaded as a new bundle. `1.0.13` stays on the Play track until a newer bundle is published. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
 
-**2026-10-31 gloss:** Iron Maiden is no longer taught as doncella, flavor is dropped from Spanish cards, and "toma que toma" is take rather than drink. float is flotar, and seasons in the sun is estaciones. Stored cards are repaired on the next API start.
+**2026-11-04 Play:** Closed testing has Flutter `1.0.16` (versionCode `19`) for the current testers. Spotify Connect is working on the web. The public listing still needs 12 opted-in testers for 14 days. The next app build is `1.0.17` (versionCode `20`) for the Android Spotify return and the Next-failure actions. It also keeps the login when the app opens offline or during a deploy, and returns a rejected login to the welcome screen. The web gains `/app/library` and `/app/settings` pages that hand back to the app.
+
+**2026-11-04 gloss:** "stories high" is pisos, a season ticket is an abono, English "Play" is not a Spanish word, and "Sean Paul" is not taught as the verb sean.
 
 **2026-10-31 opening:** Every fresh launch plays the white five-second drawing (no book, one circle, “LEARN WORDS THROUGH MUSIC”). Skip ends it. Coming back from another app does not replay it. The three explanation pages still show only when there is no account. The launcher icon is the circle. The web logo is unchanged.
 
@@ -80,7 +82,7 @@ progress:
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
 | TTS | Host Pocket 4.0.1 `:3002` for French, Portuguese, Italian, German, and English male; host Kokoro `:3003` speaks Spanish and English female; compose `TTS_SKIP_SPAWN=true` |
 | Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` (Coolify UI status only; do not use Coolify Restart) |
-| Mobile | Flutter `1.0.16` (versionCode `19`) plays the new drawing on every fresh launch. Closed testing stays off until 12 testers. |
+| Mobile | Flutter `1.0.16` (versionCode `19`) is on closed testing. The next build is `1.0.17` (20). Public listing still needs 12 testers for 14 days. |
 
 ## Phase status
 

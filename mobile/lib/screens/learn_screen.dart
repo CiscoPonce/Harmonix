@@ -195,6 +195,8 @@ class _LearnScreenState extends State<LearnScreen> {
           _offlineWord = true;
           _error = null;
         });
+      } else if (looksLikeOfflineError(e)) {
+        setState(() => _error = context.tr('offline_no_word'));
       } else {
         setState(() => _error = e.toString());
       }
@@ -583,7 +585,10 @@ class _LearnScreenState extends State<LearnScreen> {
       return const Center(child: CircularProgressIndicator(color: HarmonixColors.brand));
     }
     if (_error != null && _word == null) {
-      return Center(
+      final colors = HarmonixColors.of(context);
+      return Column(
+        children: [
+          Expanded(child: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -610,6 +615,18 @@ class _LearnScreenState extends State<LearnScreen> {
             ],
           ),
         ),
+          )),
+          if (_searchResults.isNotEmpty)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 160),
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: _searchResultTiles(colors),
+              ),
+            ),
+          _songSearchDock(colors),
+        ],
       );
     }
 
@@ -832,6 +849,17 @@ class _LearnScreenState extends State<LearnScreen> {
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+            if (_errorReason == 'song_already_used') ...[
+              const SizedBox(height: 12),
+              CatalogExhaustedActions(
+                changeStyleLabel: context.tr('catalog_change_style'),
+                searchLabel: context.tr('catalog_search_song'),
+                onChangeStyle: () => context.read<HomeNavigationController>().selectTab(
+                      HomeNavigationController.settingsIndex,
+                    ),
+                onSearch: () => _searchFocus.requestFocus(),
+              ),
+            ],
           ],
           const SizedBox(height: 12),
           if (_stats != null || _dueCount > 0) ...[

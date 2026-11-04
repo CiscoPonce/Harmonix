@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "uk.co.peeporunclub.harmonix",
       "sha256_cert_fingerprints": [
-        "1A:4C:E1:D1:8A:59:8A:54:AA:7A:78:6C:20:E4:51:B8:55:F2:38:21:91:D9:3A:BB:E6:38:C0:EB:1B:DC:44:A2"
+        "1A:4C:E1:D1:8A:59:8A:54:AA:7A:78:6C:20:E4:51:B8:55:F2:38:21:91:D9:3A:BB:E6:38:C0:EB:1B:DC:44:A2",
+        "DC:40:19:99:4A:7B:0E:A9:CC:FD:61:E4:B6:E9:DF:1C:B0:8F:6A:6E:DA:74:0B:F8:0D:3A:3F:82:EF:AA:93:2B"
       ]
     }
   }

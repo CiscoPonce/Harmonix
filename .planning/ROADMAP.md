@@ -232,7 +232,7 @@ Pending, and not started:
 
 In the app, not in the versionCode `17` APK:
 
-- **Opening animation.** Every fresh launch plays the white Bauhaus drawing, and Skip ends it. The explanation pages still come before an account exists. The launcher icon is the circular mark. Next upload is `1.0.16` (versionCode `19`). Closed testing stays off until 12 testers.
+- **Opening animation.** Every fresh launch plays the white Bauhaus drawing, and Skip ends it. Closed testing has `1.0.16` (versionCode `19`). The next build is `1.0.17` (versionCode `20`). Public listing still needs 12 testers for 14 days.
 
 Also open:
 

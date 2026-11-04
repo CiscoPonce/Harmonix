@@ -116,6 +116,27 @@ void main() {
     expect(nav.consumeRecoveryReason(), 'error');
   });
 
+  test('the live site return selects Library once', () {
+    final nav = HomeNavigationController();
+    final uri = Uri.parse(
+      'https://${HomeNavigationController.productionHost}/app/library?spotify=connected',
+    );
+    expect(nav.handleIncomingUri(uri), isTrue);
+    expect(nav.index, HomeNavigationController.libraryIndex);
+    expect(nav.arrivedFromSpotify, isTrue);
+  });
+
+  test('harmonix spotify-callback selects Library and a plain custom link does not', () {
+    final nav = HomeNavigationController();
+    expect(
+      nav.handleIncomingUri(Uri.parse('harmonix://spotify-callback?spotify=connected')),
+      isTrue,
+    );
+    expect(nav.index, HomeNavigationController.libraryIndex);
+    final other = HomeNavigationController();
+    expect(other.handleIncomingUri(Uri.parse('harmonix://library?spotify=connected')), isFalse);
+  });
+
   test('unknown hosts/paths and secret query payloads do not navigate', () {
     final nav = HomeNavigationController();
     final baseline = nav.index;

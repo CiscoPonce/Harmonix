@@ -64,6 +64,7 @@ const ENGLISH_IN_LYRICS = new Set([
   'plane', 'planes',
   'really', 'truly', 'wanna', 'gonna', 'gotta', 'fake', 'ain\'t',
   'flavor', 'flavour',
+  'play', 'plays', 'played',
 ]);
 
 /**

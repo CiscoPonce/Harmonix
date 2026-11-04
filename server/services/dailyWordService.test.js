@@ -369,6 +369,36 @@ describe("Daily Word Service", () => {
     expect(wordMatchesTargetLanguage(picked.word, "es")).to.equal(true);
   });
 
+  it("does not pick the English word Play from a Spanish card", () => {
+    const lyrics = [
+      "Échame la culpa",
+      "Play me like The Beatles baby just let it be",
+      "de la disco coroná",
+    ].join("\n");
+    const picked = pickWordFromLyricsHeuristic(lyrics, "medium", new Set(), "es", {
+      songTitle: "Échame La Culpa",
+    });
+    expect(picked).to.not.equal(null);
+    expect(picked.word.toLowerCase()).to.not.equal("play");
+  });
+
+  it("does not teach Sean beside Paul, and still teaches the verb sean", () => {
+    const named = pickWordFromLyricsHeuristic("Sean Paul\nVente pa ca", "medium", new Set(), "es", {
+      songTitle: "Bailando",
+      artist: { name: "Enrique Iglesias" },
+    });
+    expect(named == null || named.word.toLowerCase()).to.not.equal("sean");
+
+    const verb = pickWordFromLyricsHeuristic("Quiero que sean felices esta noche", "medium", new Set(), "es", {
+      songTitle: "Felices",
+    });
+    expect(verb).to.not.equal(null);
+    expect(verb.word.toLowerCase()).to.not.equal("paul");
+    const onlyVerb = pickWordFromLyricsHeuristic("que sean", "easy", new Set(), "es");
+    expect(onlyVerb).to.not.equal(null);
+    expect(onlyVerb.word.toLowerCase()).to.equal("sean");
+  });
+
   it("does not teach Iron Maiden as a vocabulary word", () => {
     const lyrics = [
       "Listen to Iron Maiden baby with me",

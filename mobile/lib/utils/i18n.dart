@@ -334,6 +334,8 @@ class AppI18n {
       'recent_discoveries': 'RECENT WORDS',
       'offline_cached_word':
           'Offline — showing your last saved word. Flip the card and use device pronunciation; reconnect for previews and new words.',
+      'offline_no_word':
+          'You\'re offline and there\'s no saved word yet. Reconnect to get your first word.',
       'offline_cached_recent':
           'Offline — showing recent words from your last visit. Reconnect to refresh the list.',
       'no_playlists_yet': 'No playlists yet',
@@ -420,6 +422,8 @@ class AppI18n {
       'recent_discoveries': 'PALABRAS RECIENTES',
       'offline_cached_word':
           'Sin conexión — mostramos tu última palabra guardada. Gira la tarjeta y usa la pronunciación del dispositivo; vuelve a conectarte para escuchar y palabras nuevas.',
+      'offline_no_word':
+          'Estás sin conexión y aún no hay una palabra guardada. Conéctate para recibir tu primera palabra.',
       'offline_cached_recent':
           'Sin conexión — palabras recientes de tu última visita. Vuelve a conectarte para actualizar.',
       'no_playlists_yet': 'Aún no hay listas',
@@ -506,6 +510,8 @@ class AppI18n {
       'recent_discoveries': 'MOTS RÉCENTS',
       'offline_cached_word':
           'Hors ligne — dernier mot enregistré. Retournez la carte et la prononciation locale ; reconnectez-vous pour les extraits et les nouveaux mots.',
+      'offline_no_word':
+          'Vous êtes hors ligne et aucun mot n\'est encore enregistré. Reconnectez-vous pour recevoir votre premier mot.',
       'offline_cached_recent':
           'Hors ligne — mots récents de votre dernière visite. Reconnectez-vous pour actualiser.',
       'no_playlists_yet': 'Pas encore de playlists',
@@ -592,6 +598,8 @@ class AppI18n {
       'recent_discoveries': 'LETZTE WÖRTER',
       'offline_cached_word':
           'Offline — zuletzt gespeichertes Wort. Karte wenden und Geräte-Aussprache nutzen; für Hörproben und neue Wörter wieder verbinden.',
+      'offline_no_word':
+          'Du bist offline und es ist noch kein Wort gespeichert. Verbinde dich, um dein erstes Wort zu bekommen.',
       'offline_cached_recent':
           'Offline — zuletzt gespeicherte Wörter. Verbinden, um die Liste zu aktualisieren.',
       'no_playlists_yet': 'Noch keine Playlists',
@@ -678,6 +686,8 @@ class AppI18n {
       'recent_discoveries': 'PALAVRAS RECENTES',
       'offline_cached_word':
           'Offline — última palavra salva. Vire o cartão e use a pronúncia do dispositivo; reconecte para prévias e palavras novas.',
+      'offline_no_word':
+          'Você está offline e ainda não há uma palavra salva. Conecte-se para receber sua primeira palavra.',
       'offline_cached_recent':
           'Offline — palavras recentes da última visita. Reconecte para atualizar.',
       'no_playlists_yet': 'Ainda não há playlists',
@@ -764,6 +774,8 @@ class AppI18n {
       'recent_discoveries': 'PAROLE RECENTI',
       'offline_cached_word':
           'Offline — ultima parola salvata. Gira la scheda e usa la pronuncia del dispositivo; riconnettiti per anteprime e nuove parole.',
+      'offline_no_word':
+          'Sei offline e non c\'è ancora una parola salvata. Riconnettiti per ricevere la tua prima parola.',
       'offline_cached_recent':
           'Offline — parole recenti dell’ultima visita. Riconnettiti per aggiornare.',
       'no_playlists_yet': 'Nessuna playlist ancora',

@@ -59,6 +59,8 @@ export function friendlyDailyWordReason(
       return "Your learning preferences changed — loading a new word…";
     case "ai_rate_limit":
       return "AI is busy (rate limit). Please wait a minute and try again.";
+    case "ai_timeout":
+      return "The word took too long to generate. Please try again.";
     case "cooldown_active":
       return opts?.retryAfterSec
         ? `Please wait ${opts.retryAfterSec} seconds before requesting another word.`

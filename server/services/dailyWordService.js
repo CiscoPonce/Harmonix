@@ -138,6 +138,23 @@ function isBandNameToken(token, line) {
   return (lower === "maiden" || lower === "maidens") && /\biron maidens?\b/.test(lyric);
 }
 
+function artistName(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") return String(value.name || value.artist_name || "");
+  return "";
+}
+
+/** "Sean Paul" is a featured name. The lowercase Spanish verb "sean" stays teachable. */
+function isCapitalizedBesideKnownName(token, line) {
+  const raw = String(token || "");
+  if (!/^\p{Lu}/u.test(raw)) return false;
+  const tokens = String(line || "").match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜàâäçéèêëîïôùûüãõßàèéìòù]+/gu) || [];
+  const idx = tokens.findIndex((t) => t.toLowerCase() === raw.toLowerCase());
+  if (idx < 0) return false;
+  return [tokens[idx - 1], tokens[idx + 1]].some((neighbor) => isLyricProperName(neighbor));
+}
+
 function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new Set(), langCode = "es", options = {}) {
   const diff = normalizeDifficulty(difficulty);
   const minLen = diff === 'easy' ? 3 : diff === 'hard' ? 7 : 4;
@@ -146,7 +163,7 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
   const stopwords = getLyricStopwords(langCode);
   const canCheckGloss = Boolean(glossLangPair(langCode));
   const songTitle = String(options.songTitle || '');
-  const artist = String(options.artist || '');
+  const artist = artistName(options.artist);
   const tokenizeName = (value) => new Set(
     (String(value).match(/[\p{L}áéíóúñüÁÉÍÓÚÑÜàâäçéèêëîïôùûüãõßàèéìòù]+/gu) || [])
       .map((t) => t.toLowerCase())
@@ -183,6 +200,7 @@ function pickWordFromLyricsHeuristic(plainLyrics, difficulty, avoidWords = new S
       if (isVocalization(lower)) continue;
       if (isLyricChantFiller(token, line)) continue;
       if (isBandNameToken(token, line)) continue;
+      if (isCapitalizedBesideKnownName(token, line)) continue;
       // Clipped lyric slang ("Holdin'") and artist names are not vocabulary.
       if (new RegExp(`(?:^|[^\\p{L}])${lower}'`, "iu").test(line)) continue;
       if (artistTokens.has(lower)) continue;
@@ -505,7 +523,7 @@ async function tryValidateSongCandidate(suggestion, user, date, avoidWords, fetc
       const parsedLines = validation.parseLrc(lyricsData.syncedLyrics);
       const pickOpts = {
         songTitle: suggestion.song_title || track.title || "",
-        artist: suggestion.artist || track.artist || "",
+        artist: artistName(suggestion.artist || track.artist),
       };
 
       // Prefer a word whose lyric line sits inside the 30s preview cut —
@@ -701,7 +719,6 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
   let resolveEarly = null;
   const earlyDone = new Promise((resolve) => { resolveEarly = resolve; });
   let stopped = false;
-  let unusedMappedToKnown = 0;
 
   const poolPromise = runValidationPool(ranked, async (suggestion) => {
     const result = await tryValidateSongCandidate(
@@ -711,7 +728,6 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
       }
     );
     if (result.picked) {
-      unusedMappedToKnown = 0;
       const key = result.picked.word.toLowerCase();
       if (!usedWords.has(key)) {
         usedWords.add(key);
@@ -730,11 +746,6 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
       }
     } else if (result.error) {
       lastError = result.error;
-      if (!relaxSongReuse && result.error === "song_already_used" && partials.length === 0) {
-        unusedMappedToKnown += 1;
-        // A few remasters of songs already taught must not abandon the rest of a chart.
-        if (ranked.length <= 8 && unusedMappedToKnown >= 3) stopped = true;
-      }
     }
     return result;
   }, { isStopped: () => stopped });
@@ -2370,7 +2381,7 @@ async function queueExtraWordsFromValidatedSong(user, {
 
   const extras = [];
   const plain = plainFromLyricsData(lyricsData);
-  const pickOpts = { songTitle: track.title || "", artist: track.artist || "" };
+  const pickOpts = { songTitle: track.title || "", artist: artistName(track.artist) };
   const duration = track.duration;
   const provider =
     track.provider === "itunes" || deezer.isItunesTrackId?.(track.id) ? "itunes" : "deezer";

@@ -27,8 +27,7 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Development-only Spotify OAuth App Links (12-01 ngrok host).
-                 Release association blocked until a production domain + release cert. -->
+            <!-- Spotify return: the old ngrok host and the live site. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
@@ -44,7 +43,25 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data
                     android:scheme="https"
+                    android:host="harmonix.peeporunclub.co.uk"
+                    android:pathPrefix="/app/library"/>
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
                     android:host="moral-sparrow-nationally.ngrok-free.app"
+                    android:pathPrefix="/app/settings"/>
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="harmonix.peeporunclub.co.uk"
                     android:pathPrefix="/app/settings"/>
             </intent-filter>
             <intent-filter>

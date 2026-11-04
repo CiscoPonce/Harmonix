@@ -3,7 +3,15 @@ import 'package:flutter/foundation.dart';
 import '../services/api_client.dart';
 
 class AuthState extends ChangeNotifier {
-  AuthState(this.api);
+  AuthState(this.api) {
+    api.onSessionExpired = _sessionExpired;
+  }
+
+  void _sessionExpired() {
+    if (user == null) return;
+    user = null;
+    notifyListeners();
+  }
 
   final ApiClient api;
   Map<String, dynamic>? user;
@@ -17,6 +25,13 @@ class AuthState extends ChangeNotifier {
   bool get needsOnboarding =>
       isAuthenticated && (_blank(user?['native_language']) || _blank(user?['target_language']));
 
+  Future<void> _loadMe() async {
+    user = await api.me();
+    try {
+      await api.saveProfile(user!);
+    } catch (_) {}
+  }
+
   Future<void> bootstrap() async {
     loading = true;
     error = null;
@@ -24,14 +39,20 @@ class AuthState extends ChangeNotifier {
     try {
       await api.loadSession();
       if (api.accessToken != null) {
-        final ok = await api.refresh();
-        if (ok || api.accessToken != null) {
-          user = await api.me();
+        await api.refresh();
+        if (api.accessToken != null) {
+          await _loadMe();
         }
       }
-    } catch (e) {
-      await api.clearSession();
-      user = null;
+    } on ApiException catch (e) {
+      if (e.status == 401 || e.status == 403) {
+        await api.clearSession();
+        user = null;
+      } else {
+        user = await api.loadProfile();
+      }
+    } catch (_) {
+      user = await api.loadProfile();
     } finally {
       loading = false;
       notifyListeners();
@@ -46,7 +67,7 @@ class AuthState extends ChangeNotifier {
       user = (data['user'] as Map<String, dynamic>?) ?? await api.me();
       // Prefer full profile from /me
       try {
-        user = await api.me();
+        await _loadMe();
       } catch (_) {}
       notifyListeners();
     } on ApiException catch (e) {
@@ -65,7 +86,7 @@ class AuthState extends ChangeNotifier {
 
   Future<void> savePreferences(Map<String, String> prefs) async {
     await api.patchPreferences(prefs);
-    user = await api.me();
+    await _loadMe();
     notifyListeners();
   }
 
@@ -76,7 +97,7 @@ class AuthState extends ChangeNotifier {
   }
 
   Future<void> refreshUser() async {
-    user = await api.me();
+    await _loadMe();
     notifyListeners();
   }
 }

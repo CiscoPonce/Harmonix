@@ -333,6 +333,7 @@ export function DailyWordCard({
       const reason = err instanceof Error ? (err as Error & { reason?: string }).reason || null : null;
       if (!initial && data) {
         setRefreshError(msg);
+        setErrorReason(reason);
       } else {
         setError(msg);
         setErrorReason(reason);
