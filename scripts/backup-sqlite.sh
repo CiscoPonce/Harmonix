@@ -31,7 +31,13 @@ docker exec "$API" node -e '
   const Database = require("better-sqlite3");
   const src = process.env.SQLITE_PATH || "/data/harmonix.db";
   const db = new Database(src, { readonly: true });
-  db.backup(process.argv[1]).then(() => { db.close(); }).catch((e) => { console.error(e); process.exit(1); });
+  db.backup(process.argv[1]).then(() => {
+    db.close();
+    // A WAL-mode copy cannot be opened from the read-only mount used for the integrity check.
+    const copy = new Database(process.argv[1]);
+    copy.pragma("journal_mode = DELETE");
+    copy.close();
+  }).catch((e) => { console.error(e); process.exit(1); });
 ' "$TMP_IN_CONTAINER"
 
 log "copy to host"
