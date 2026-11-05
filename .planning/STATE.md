@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: play-store-listing
 status: complete
-stopped_at: "2026-11-04 Phases 1–18 complete. Closed testing has 1.0.16 (19) for testers. Next app build is 1.0.17 (20). 2FA verification email stays pending. Public listing still needs 12 testers for 14 days."
-last_updated: "2026-11-04T20:25:00.000Z"
+stopped_at: "2026-11-05 Phases 1–18 complete. Closed testing has 1.0.17 (20), tested on a device. 2FA verification email stays pending. Public listing still needs 12 testers for 14 days."
+last_updated: "2026-11-05T21:25:00.000Z"
 progress:
   total_phases: 18
   completed_phases: 18
@@ -17,7 +17,9 @@ progress:
 
 **Phases 1–18 are complete.** The APK already built is Flutter `1.0.14` (versionCode `17`). The project version is now `1.0.15` (versionCode `18`) so the welcome opening can be uploaded as a new bundle. `1.0.13` stays on the Play track until a newer bundle is published. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
 
-**2026-11-04 Play:** Closed testing has Flutter `1.0.16` (versionCode `19`) for the current testers. Spotify Connect is working on the web. The public listing still needs 12 opted-in testers for 14 days. The next app build is `1.0.17` (versionCode `20`) for the Android Spotify return and the Next-failure actions. It also keeps the login when the app opens offline or during a deploy, and returns a rejected login to the welcome screen. The web gains `/app/library` and `/app/settings` pages that hand back to the app.
+**2026-11-05 Play:** Closed testing has Flutter `1.0.17` (versionCode `20`). It was published and tested on a device the same day. The public listing still needs 12 opted-in testers for 14 days.
+
+**2026-11-04 Play:** `1.0.17` adds the Android Spotify return, Next-failure actions on the open card, and a login that survives an offline open or a deploy. A rejected login returns to the welcome screen. The web has `/app/library` and `/app/settings` pages that hand back to the app. Spotify Connect works on the web.
 
 **2026-11-04 gloss:** "stories high" is pisos, a season ticket is an abono, English "Play" is not a Spanish word, and "Sean Paul" is not taught as the verb sean.
 
@@ -82,7 +84,7 @@ progress:
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
 | TTS | Host Pocket 4.0.1 `:3002` for French, Portuguese, Italian, German, and English male; host Kokoro `:3003` speaks Spanish and English female; compose `TTS_SKIP_SPAWN=true` |
 | Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` (Coolify UI status only; do not use Coolify Restart) |
-| Mobile | Flutter `1.0.16` (versionCode `19`) is on closed testing. The next build is `1.0.17` (20). Public listing still needs 12 testers for 14 days. |
+| Mobile | Flutter `1.0.17` (versionCode `20`) is on closed testing and was tested on a device on 2026-11-05. Public listing still needs 12 testers for 14 days. |
 
 ## Phase status
 

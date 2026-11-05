@@ -7,8 +7,8 @@ Harmonix teaches vocabulary from the lyrics of songs people already listen to. E
 ![Harmonix Logo](./logoharmonix.png)
 
 **Web** — [harmonix.peeporunclub.co.uk](https://harmonix.peeporunclub.co.uk)  
-**Android** — `1.0.16` (version code 19) is on closed testing · `uk.co.peeporunclub.harmonix`  
-**Google Play** — Closed testing has `1.0.16` (19). Public release follows 12 opted-in testers for 14 days.
+**Android** — `1.0.17` (version code 20) is on closed testing · `uk.co.peeporunclub.harmonix`  
+**Google Play** — Closed testing has `1.0.17` (20), published and tested on 5 November 2026. Public release follows 12 opted-in testers for 14 days.
 
 <!-- x-release-please-start-version -->
 **Platform release:** 0.0.6
