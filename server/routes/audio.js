@@ -22,6 +22,10 @@ router.get('/preview/:trackId', async (req, res) => {
       { artist, title, cachedPreview }
     );
 
+    if (!deezer.isAllowedPreviewUrl(previewUrl)) {
+      return res.status(404).json({ error: 'no_preview' });
+    }
+
     const upstreamHeaders = { ...deezer.PREVIEW_STREAM_HEADERS };
     if (req.headers.range) {
       upstreamHeaders.Range = req.headers.range;
@@ -37,6 +41,9 @@ router.get('/preview/:trackId', async (req, res) => {
     if (!audioRes.ok && artist && title && !deezer.isItunesTrackId(trackId)) {
       const itunes = await deezer.searchItunesTrack(artist, title);
       if (itunes?.preview) {
+        if (!deezer.isAllowedPreviewUrl(itunes.preview)) {
+          return res.status(404).json({ error: 'no_preview' });
+        }
         audioRes = await fetch(itunes.preview, {
           headers: { ...deezer.PREVIEW_STREAM_HEADERS, ...(req.headers.range ? { Range: req.headers.range } : {}) },
         });
