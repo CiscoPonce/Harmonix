@@ -509,6 +509,19 @@ async function fetchTrack(trackId, fetchImpl = fetch) {
   return data;
 }
 
+/** Song previews come only from the Deezer and Apple CDNs. */
+function isAllowedPreviewUrl(url) {
+  try {
+    const { protocol, hostname } = new URL(String(url));
+    if (protocol !== 'https:') return false;
+    const host = hostname.toLowerCase();
+    return host === 'dzcdn.net' || host.endsWith('.dzcdn.net')
+      || host === 'itunes.apple.com' || host.endsWith('.itunes.apple.com');
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Resolve a streamable preview URL for a track id.
  * Falls back to song_cache preview, then iTunes search by artist/title.
@@ -516,18 +529,18 @@ async function fetchTrack(trackId, fetchImpl = fetch) {
 async function resolvePreviewForTrackId(trackId, { artist, title, cachedPreview } = {}, fetchImpl = fetch) {
   try {
     const track = await fetchTrack(trackId, fetchImpl);
-    if (track?.preview) return { previewUrl: track.preview, track };
+    if (isAllowedPreviewUrl(track?.preview)) return { previewUrl: track.preview, track };
   } catch {
     /* try fallbacks */
   }
 
-  if (cachedPreview && typeof cachedPreview === 'string' && cachedPreview.startsWith('http')) {
+  if (isAllowedPreviewUrl(cachedPreview)) {
     return { previewUrl: cachedPreview, track: null };
   }
 
   if (artist && title) {
     const itunes = await searchItunesTrack(artist, title, fetchImpl);
-    if (itunes?.preview) return { previewUrl: itunes.preview, track: itunes };
+    if (isAllowedPreviewUrl(itunes?.preview)) return { previewUrl: itunes.preview, track: itunes };
   }
 
   const err = new Error('no_preview');
@@ -611,6 +624,7 @@ module.exports = {
   fetchTrack,
   fetchItunesTrack,
   resolvePreviewForTrackId,
+  isAllowedPreviewUrl,
   isItunesTrackId,
   coverFromDeezerTrack,
   extractCoverFromCachedTrack,

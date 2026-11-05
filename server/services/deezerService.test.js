@@ -13,6 +13,34 @@ describe('deezerService', () => {
     expect(deezer.artistName({ name: 'The Beatles' })).to.equal('The Beatles');
   });
 
+  it('isAllowedPreviewUrl accepts only https Deezer and Apple preview CDNs', () => {
+    expect(deezer.isAllowedPreviewUrl('https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/x.mp3')).to.equal(true);
+    expect(deezer.isAllowedPreviewUrl('https://audio-ssl.itunes.apple.com/itunes-assets/x.m4a')).to.equal(true);
+    expect(deezer.isAllowedPreviewUrl('http://cdnt-preview.dzcdn.net/x.mp3')).to.equal(false);
+    expect(deezer.isAllowedPreviewUrl('https://dzcdn.net.evil.example/x')).to.equal(false);
+    expect(deezer.isAllowedPreviewUrl('https://169.254.169.254/latest')).to.equal(false);
+    expect(deezer.isAllowedPreviewUrl('https://localhost/x')).to.equal(false);
+    expect(deezer.isAllowedPreviewUrl('not a url')).to.equal(false);
+  });
+
+  it('resolvePreviewForTrackId ignores a cached preview on another host', async () => {
+    const failingFetch = async () => ({ ok: false, status: 404, json: async () => ({}) });
+    let caught;
+    try {
+      await deezer.resolvePreviewForTrackId('123', { cachedPreview: 'https://example.com/x.mp3' }, failingFetch);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught?.code).to.equal('no_preview');
+  });
+
+  it('resolvePreviewForTrackId uses an allowlisted cached preview', async () => {
+    const failingFetch = async () => ({ ok: false, status: 404, json: async () => ({}) });
+    const cachedPreview = 'https://cdnt-preview.dzcdn.net/x.mp3';
+    const result = await deezer.resolvePreviewForTrackId('123', { cachedPreview }, failingFetch);
+    expect(result.previewUrl).to.equal(cachedPreview);
+  });
+
   it('coverFromDeezerTrack prefers medium album art', () => {
     expect(
       deezer.coverFromDeezerTrack({
