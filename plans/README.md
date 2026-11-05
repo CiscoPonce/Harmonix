@@ -10,7 +10,7 @@ Production context when written: 34 accounts, 32 got at least one word, 8 came b
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| [006](006-security-patch-web-and-server.md) | Patch Next.js and server libraries; allowlist audio preview hosts | P1 | S–M | — | TODO |
+| [006](006-security-patch-web-and-server.md) | Patch Next.js and server libraries; allowlist audio preview hosts | P1 | S–M | — | DONE |
 | [007](007-usage-events-and-retention-report.md) | Server-side usage events + retention report | P1 | S–M | — | TODO |
 | [008](008-daily-words-into-review-and-streaks.md) | Every daily word goes into Review; streak and badges count daily words | P1 | M | — (after 007 to measure) | TODO |
 | [009](009-android-daily-reminder.md) | Opt-in daily reminder in the Android app (1.0.18) | P1 | M | 008 | TODO |
