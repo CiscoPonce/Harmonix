@@ -29,6 +29,7 @@ function upsertTrackCache(songId, track) {
 async function ensureTrackCover(songId, trackInput = {}, fetchImpl = fetch) {
   const id = String(songId || '').trim();
   const track = { ...parseTrackJson(trackInput) };
+  if (!deezer.isAllowedPreviewUrl(track.preview)) delete track.preview;
   const existing = deezer.extractCoverFromCachedTrack(track);
   if (existing) {
     track.cover = existing;
