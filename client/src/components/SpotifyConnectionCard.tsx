@@ -18,6 +18,7 @@ export interface SpotifyConnectionCardProps {
   confirmDisconnect?: boolean;
   onConfirmDisconnect?: () => void;
   onCancelDisconnect?: () => void;
+  personalizationNeeded?: boolean;
 }
 
 export function SpotifyConnectionCard({
@@ -30,6 +31,7 @@ export function SpotifyConnectionCard({
   confirmDisconnect = false,
   onConfirmDisconnect,
   onCancelDisconnect,
+  personalizationNeeded = false,
 }: SpotifyConnectionCardProps) {
   const { t } = useTranslation();
   const busy = state === 'connecting' || state === 'disconnecting';
@@ -60,6 +62,9 @@ export function SpotifyConnectionCard({
       : t('spotify_playlists_available');
     primaryLabel = t('view_library');
     primaryAction = undefined;
+    if (personalizationNeeded) {
+      body = t('spotify_personalize_body');
+    }
     statusIcon = <CheckCircle2 className="h-5 w-5 text-[#0B6B3A] dark:text-[#3DCF7A]" aria-hidden />;
   } else if (state === 'reconnect') {
     title = t('reconnect_spotify');
@@ -101,6 +106,9 @@ export function SpotifyConnectionCard({
               <h2 className="text-base font-bold text-[#121612] dark:text-[#F2F5F3]">{title}</h2>
             </div>
             <p className="text-sm leading-relaxed text-[#5C6B62] dark:text-[#9AABA0]">{body}</p>
+            {(state === 'connect' || state === 'disconnected') && (
+              <p className="text-sm leading-relaxed text-[#5C6B62] dark:text-[#9AABA0]">{t('spotify_invite_only')}</p>
+            )}
             {displayName && state === 'connected' ? (
               <p className="text-sm text-[#5C6B62] dark:text-[#9AABA0]">{displayName}</p>
             ) : null}
@@ -124,6 +132,17 @@ export function SpotifyConnectionCard({
               className="h-10 border border-[#0B6B3A] bg-[#0B6B3A] text-base font-bold text-white hover:bg-[#095a31] dark:border-[#3DCF7A] dark:bg-[#3DCF7A] dark:text-[#0C1210] dark:hover:bg-[#35b86c]"
             >
               {primaryLabel}
+            </Button>
+          ) : null}
+
+          {state === 'connected' && personalizationNeeded ? (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onReconnect ?? onConnect}
+              className="h-10 text-base font-bold"
+            >
+              {t('reconnect_spotify')}
             </Button>
           ) : null}
 

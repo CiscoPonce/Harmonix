@@ -48,4 +48,53 @@ describe('Spotify Profile Service', () => {
       spotifyService.spotifyRequest = originalRequest;
     }
   });
+
+  it('does not overwrite a profile when both Spotify requests fail', async () => {
+    const userId = 'spotify-fail-user';
+    db.prepare('INSERT OR IGNORE INTO users (id, email, password_hash) VALUES (?, ?, ?)').run(
+      userId,
+      'fail@test.com',
+      'x',
+    );
+    const originalStatus = spotifyService.getConnectionStatus;
+    const originalRequest = spotifyService.spotifyRequest;
+    spotifyService.getConnectionStatus = () => ({ status: 'connected' });
+    spotifyService.spotifyRequest = async () => {
+      throw new Error('spotify down');
+    };
+    try {
+      const result = await spotifyProfile.syncUserProfile(userId);
+      assert.strictEqual(result.synced, false);
+      assert.strictEqual(result.reason, 'spotify_error');
+      assert.strictEqual(spotifyProfile.getUserMusicProfile(userId), null);
+    } finally {
+      spotifyService.getConnectionStatus = originalStatus;
+      spotifyService.spotifyRequest = originalRequest;
+    }
+  });
+
+  it('refreshes taste at most once an hour unless forced past the stale window', async () => {
+    spotifyProfile._resetRefreshAttemptsForTests();
+    const userId = 'spotify-refresh-user';
+    db.prepare('INSERT OR IGNORE INTO users (id, email, password_hash) VALUES (?, ?, ?)').run(
+      userId,
+      'refresh@test.com',
+      'x',
+    );
+    const originalStatus = spotifyService.getConnectionStatus;
+    const originalRequest = spotifyService.spotifyRequest;
+    spotifyService.getConnectionStatus = () => ({ status: 'connected' });
+    spotifyService.spotifyRequest = async () => ({ items: [] });
+    try {
+      assert.strictEqual(spotifyProfile.refreshInBackground(userId, { force: true, now: 1_000 }), true);
+      assert.strictEqual(spotifyProfile.refreshInBackground(userId, { force: true, now: 1_001 }), false);
+      spotifyProfile._resetRefreshAttemptsForTests();
+      await spotifyProfile.syncUserProfile(userId);
+      assert.strictEqual(spotifyProfile.refreshInBackground(userId, { force: false, now: Date.now() }), false);
+    } finally {
+      spotifyService.getConnectionStatus = originalStatus;
+      spotifyService.spotifyRequest = originalRequest;
+      spotifyProfile._resetRefreshAttemptsForTests();
+    }
+  });
 });

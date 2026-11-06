@@ -6,6 +6,7 @@ const dailyWordService = require("../services/dailyWordService");
 const wordQueue = require("../services/wordQueueService");
 const { dailyWordLimiter } = require("../middleware/security");
 const ttsService = require("../services/ttsService");
+const { recordEvent } = require("../services/usageEvents");
 
 function loadUser(userId) {
   return db.prepare(
@@ -161,6 +162,7 @@ router.get("/pronounce", async (req, res) => {
     res.setHeader("Content-Length", buf.length.toString());
     // The clip depends on the account's voice_gender, which is not in the URL.
     res.setHeader("Cache-Control", "private, no-store");
+    if (user?.id) recordEvent('word_heard', { userId: user.id, req });
     res.send(buf);
   } catch (err) {
     console.error("GET /api/daily-word/pronounce error:", err.stack || err.message);

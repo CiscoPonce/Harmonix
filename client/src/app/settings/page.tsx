@@ -54,6 +54,7 @@ function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackOutcome = parseSpotifyCallbackOutcome(searchParams.get('spotify'));
+  const callbackReason = searchParams.get('reason');
   const clearedCallback = useRef(false);
 
   const [state, setState] = useState<ConnectionState>('connect');
@@ -66,6 +67,7 @@ function SettingsContent() {
   const [mutationBusy, setMutationBusy] = useState(false);
   const [statusTick, setStatusTick] = useState(0);
   const [copiedUri, setCopiedUri] = useState(false);
+  const [personalizationScopesOk, setPersonalizationScopesOk] = useState<boolean | null>(null);
 
   const [nativeLanguage, setNativeLanguage] = useState('');
   const [targetLanguage, setTargetLanguage] = useState('');
@@ -171,7 +173,13 @@ function SettingsContent() {
     router.replace('/settings', { scroll: false });
   }, [callbackOutcome, router]);
 
-  const recoveryMessage = callbackOutcome === 'error' ? t('spotify_auth_failed') : message;
+  const recoveryMessage = callbackOutcome === 'error'
+    ? callbackReason === 'denied'
+      ? t('spotify_denied')
+      : callbackReason === 'not_allowlisted'
+        ? t('spotify_not_allowlisted')
+        : t('spotify_auth_failed')
+    : message;
   const cardState: ConnectionState =
     callbackOutcome === 'error'
       ? 'provider_error'
@@ -195,8 +203,9 @@ function SettingsContent() {
         setDisplayName(dto.display_name);
         setRedirectUri(dto.redirect_uri ?? null);
         setClientIdPrefix(dto.client_id_prefix ?? null);
+        setPersonalizationScopesOk(dto.personalization_scopes_ok === true);
         if (dto.state === 'reconnect') {
-          setMessage('Your Spotify connection expired. Reconnect to continue.');
+          setMessage(dto.reason === 'not_allowlisted' ? t('spotify_not_allowlisted') : t('spotify_reconnect_body'));
         } else if (dto.state === 'provider_error') {
           setMessage(t('spotify_provider_error'));
         } else if (callbackOutcome !== 'error') {
@@ -645,6 +654,7 @@ function SettingsContent() {
           confirmDisconnect={confirmDisconnect}
           onConfirmDisconnect={handleDisconnectConfirm}
           onCancelDisconnect={() => setConfirmDisconnect(false)}
+          personalizationNeeded={state === 'connected' && personalizationScopesOk === false}
         />
 
         <section aria-label="Appearance & Accessibility" className={cardClassName}>

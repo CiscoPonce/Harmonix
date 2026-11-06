@@ -26,6 +26,7 @@ const {
 const deezer = require('./services/deezerService');
 require('dotenv').config();
 const ttsDaemon = require('./services/ttsDaemon');
+const { recordEvent, normalizeSignupSource } = require('./services/usageEvents');
 // Default to Spanish HQ model — matches most Harmonix learners and avoids a
 // cold english→spanish reload on the first pronunciation click.
 const defaultTtsLang = process.env.POCKET_TTS_DEFAULT_LANGUAGE || 'spanish_24l';
@@ -113,6 +114,11 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 
     db.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)')
       .run(id, email, passwordHash);
+    recordEvent('signup', {
+      userId: id,
+      req,
+      props: { source: normalizeSignupSource(req.body?.source) },
+    });
 
     console.log('POST /api/auth/register - success');
     res.status(201).json({ message: 'User registered successfully' });
@@ -198,6 +204,7 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
   console.log('GET /api/auth/me - for user:', req.user.id);
   const user = db.prepare('SELECT id, email, created_at, cefr_level, target_language, genre, difficulty, native_language, voice_gender, dyslexia_font FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.sendStatus(404);
+  recordEvent('app_open', { userId: req.user.id, req });
   const spotify = db.prepare('SELECT spotify_user_id, spotify_display_name FROM user_spotify_tokens WHERE user_id = ?').get(req.user.id);
   user.is_spotify_connected = !!spotify;
   user.spotify_user_id = spotify?.spotify_user_id || null;

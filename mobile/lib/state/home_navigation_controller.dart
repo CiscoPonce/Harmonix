@@ -37,7 +37,7 @@ class HomeNavigationController extends ChangeNotifier {
   /// A Spotify return arrived, so the opening drawing should not play first.
   bool get arrivedFromSpotify => _arrivedFromSpotify;
 
-  /// Allowlisted recovery reason (`error` only). Cleared on consume.
+  /// Allowlisted recovery reason (`error`, `denied`, or `not_allowlisted`). Cleared on consume.
   String? get pendingRecoveryReason => _pendingRecoveryReason;
 
   void selectTab(int value) {
@@ -60,8 +60,8 @@ class HomeNavigationController extends ChangeNotifier {
     if (_settingsSelectedOnce) return;
     _settingsSelectedOnce = true;
     _index = settingsIndex;
-    if (reason != null && _isAllowlistedReason(reason)) {
-      _pendingRecoveryReason = reason;
+    if (reason != null) {
+      _pendingRecoveryReason = _isAllowlistedReason(reason) ? reason : 'error';
     }
     notifyListeners();
   }
@@ -90,7 +90,7 @@ class HomeNavigationController extends ChangeNotifier {
       if (outcome == 'error' || outcome == 'cancelled') {
         _arrivedFromSpotify = true;
         if (_settingsSelectedOnce) return false;
-        selectSettingsOnce(reason: 'error');
+        selectSettingsOnce(reason: uri.queryParameters['reason'] ?? 'error');
         return true;
       }
       return false;
@@ -117,7 +117,7 @@ class HomeNavigationController extends ChangeNotifier {
       if (outcome != 'error' && outcome != 'cancelled') return false;
       _arrivedFromSpotify = true;
       if (_settingsSelectedOnce) return false;
-      selectSettingsOnce(reason: 'error');
+      selectSettingsOnce(reason: uri.queryParameters['reason'] ?? 'error');
       return true;
     }
 
@@ -125,6 +125,6 @@ class HomeNavigationController extends ChangeNotifier {
   }
 
   static bool _isAllowlistedReason(String reason) {
-    return reason == 'error';
+    return reason == 'error' || reason == 'denied' || reason == 'not_allowlisted';
   }
 }

@@ -57,6 +57,8 @@ export interface SpotifyConnectionDto {
   client_id_prefix?: string | null;
   /** True when connected scopes include Web Playback (streaming + playback state). */
   playback_scopes_ok?: boolean;
+  /** True when the connection can read top artists for song picks. */
+  personalization_scopes_ok?: boolean;
 }
 
 export interface SpotifyPlaylistListItemDto {
@@ -272,6 +274,7 @@ export function parseSpotifyStatusResponse(raw: unknown): SpotifyConnectionDto {
     redirect_uri: asStringOrNull(obj.redirect_uri),
     client_id_prefix: asStringOrNull(obj.client_id_prefix),
     playback_scopes_ok: obj.playback_scopes_ok === true,
+    personalization_scopes_ok: obj.personalization_scopes_ok === true,
   };
 }
 

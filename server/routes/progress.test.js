@@ -98,6 +98,9 @@ describe('Progress API Routes', () => {
  expect(res.body.updated_count).to.equal(2);
  const rows = db.prepare('SELECT * FROM user_vocab_progress WHERE user_id = ?').all('u-progress');
  expect(rows).to.have.lengthOf(2);
+ const event = db.prepare("SELECT * FROM usage_events WHERE user_id = ? AND name = 'review_done'").get('u-progress');
+ expect(event).to.exist;
+ expect(JSON.parse(event.props_json).count).to.equal(2);
  });
  });
 
@@ -114,6 +117,43 @@ describe('Progress API Routes', () => {
  await handler(req, res);
  expect(res.body.count).to.equal(1);
  expect(res.body.due[0].word).to.equal('due-now');
+ });
+
+ it('returns the learner gloss and lyric line', async () => {
+ db.prepare(`INSERT INTO vocab_items (id, word, definition, language_code, canonical_key) VALUES (?, ?, ?, ?, ?)`)
+ .run('vg1', 'amor', 'shared definition', 'es', 'amor|es');
+ db.prepare(`
+ INSERT INTO user_vocab_progress (
+ user_id, vocab_id, next_review, gloss, context_sentence, song_title, song_artist, source
+ ) VALUES (?, ?, DATE('now', '-1 day'), ?, ?, ?, ?, 'daily_word')
+ `).run('user-due', 'vg1', 'love', 'el amor', 'Song', 'Artist');
+
+ const handler = progressRouter.stack.find(s => s.route.path === '/due').route.stack[0].handle;
+ const res = mockRes();
+ await handler({ query: {}, user: { id: 'user-due' } }, res);
+ expect(res.body.due[0].definition).to.equal('love');
+ expect(res.body.due[0].context_sentence).to.equal('el amor');
+ expect(res.body.due[0].song_title).to.equal('Song');
+ });
+ });
+
+ describe('GET /stats badges', () => {
+ it('unlocks the seven-day badge once', async () => {
+ const userId = 'badge-seven';
+ db.prepare('INSERT OR IGNORE INTO users (id, email, password_hash) VALUES (?, ?, ?)').run(userId, 'badge@test.com', 'x');
+ db.prepare('DELETE FROM user_badges WHERE user_id = ?').run(userId);
+ const insert = db.prepare('INSERT INTO daily_words (user_id, date, word_json) VALUES (?, ?, ?)');
+ for (let i = 0; i < 7; i += 1) {
+ const day = new Date(Date.UTC(2026, 0, i + 1)).toISOString().slice(0, 10);
+ insert.run(userId, day, '{}');
+ }
+ const handler = progressRouter.stack.find(s => s.route.path === '/stats').route.stack[0].handle;
+ const first = mockRes();
+ await handler({ user: { id: userId } }, first);
+ expect(first.body.badges_unlocked.map((badge) => badge.id)).to.include('daily_word_7');
+ const second = mockRes();
+ await handler({ user: { id: userId } }, second);
+ expect(second.body.badges_unlocked).to.deep.equal([]);
  });
  });
 });

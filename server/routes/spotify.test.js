@@ -100,24 +100,31 @@ describe('spotify routes foundation contracts', () => {
   }
 
   let origError;
+  let origLog;
 
   beforeEach(() => {
     ensureUser('sp-route-a');
     ensureUser('sp-route-b');
     db.prepare('DELETE FROM spotify_oauth_transactions').run();
     db.prepare('DELETE FROM user_spotify_tokens').run();
+    db.prepare('DELETE FROM user_spotify_profiles').run();
     db.prepare('DELETE FROM user_spotify_playlists').run();
     db.prepare('DELETE FROM playlists WHERE user_id IN (?, ?)').run('sp-route-a', 'sp-route-b');
     logs = [];
     originalFetch = global.fetch;
     origError = console.error;
+    origLog = console.log;
     console.error = (...args) => {
+      logs.push(args.map(String).join(' '));
+    };
+    console.log = (...args) => {
       logs.push(args.map(String).join(' '));
     };
   });
 
   afterEach(() => {
     console.error = origError;
+    console.log = origLog;
     global.fetch = originalFetch;
   });
 
@@ -143,6 +150,7 @@ describe('spotify routes foundation contracts', () => {
       redirect_uri: process.env.SPOTIFY_REDIRECT_URI,
       client_id_prefix: 'test-cli',
       playback_scopes_ok: false,
+      personalization_scopes_ok: false,
     });
     expect(JSON.stringify(res.body)).to.not.match(/access|refresh|ciphertext/i);
   });
@@ -333,6 +341,10 @@ describe('spotify routes foundation contracts', () => {
          created_at, updated_at
        ) VALUES (?, ?, ?, 'completed', 1, 1, 1, 0, 1, 0, ?, ?)`
     ).run('job-b', 'sp-route-b', 'hx-pl-b', now, now);
+    db.prepare(`
+      INSERT INTO user_spotify_profiles (user_id, top_genres_json, top_artists_json, last_synced_at)
+      VALUES ('sp-route-a', '[]', '["Rosalia"]', ?)
+    `).run(now);
 
     const res1 = mockRes();
     await disconnect({ user: { id: 'sp-route-a' } }, res1);
@@ -344,6 +356,8 @@ describe('spotify routes foundation contracts', () => {
 
     expect(db.prepare('SELECT * FROM user_spotify_tokens WHERE user_id = ?').get('sp-route-a')).to
       .equal(undefined);
+    expect(db.prepare('SELECT * FROM user_spotify_profiles WHERE user_id = ?').get('sp-route-a'))
+      .to.equal(undefined);
     expect(db.prepare('SELECT * FROM spotify_oauth_transactions WHERE user_id = ?').get('sp-route-a'))
       .to.equal(undefined);
     expect(
@@ -397,5 +411,79 @@ describe('spotify routes foundation contracts', () => {
     await detail({ user: { id: 'sp-route-a' }, params: { id: 'owned-by-b' } }, res);
     expect(res.statusCode).to.equal(404);
     expect(res.body.error).to.equal('Playlist not found');
+  });
+
+  it('does not save a connection Spotify refuses and explains it', async () => {
+    const callback = findHandler(callbackRouter, 'get', '/callback');
+    const tx = oauth.createOAuthTransaction({ userId: 'sp-route-a', clientKind: 'web' });
+    global.fetch = async (url) => {
+      if (String(url).includes('/api/token')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            access_token: 'tok-access',
+            refresh_token: 'tok-refresh',
+            expires_in: 3600,
+            scope: 'playlist-read-private',
+          }),
+        };
+      }
+      if (String(url).includes('/v1/me')) {
+        return { ok: false, status: 403, json: async () => ({ error: { status: 403 } }) };
+      }
+      throw new Error(`unexpected ${url}`);
+    };
+    const res = mockRes();
+    await callback({ query: { code: 'auth-code', state: tx.state } }, res);
+    expect(res.statusCode).to.equal(302);
+    expect(res.redirectedTo).to.equal(`${process.env.SPOTIFY_WEB_ERROR_URL}&reason=not_allowlisted`);
+    expect(db.prepare('SELECT * FROM user_spotify_tokens WHERE user_id = ?').get('sp-route-a')).to.equal(undefined);
+    expect(logs.join('\n')).to.not.include(tx.state);
+  });
+
+  it('sends a cancelled Android sign-in back to Android and burns the state', async () => {
+    const callback = findHandler(callbackRouter, 'get', '/callback');
+    const tx = oauth.createOAuthTransaction({ userId: 'sp-route-a', clientKind: 'android' });
+    const first = mockRes();
+    await callback({ query: { error: 'access_denied', state: tx.state } }, first);
+    expect(first.redirectedTo).to.equal(`${process.env.SPOTIFY_ANDROID_ERROR_URL}&reason=denied`);
+    const second = mockRes();
+    await callback({ query: { error: 'access_denied', state: tx.state } }, second);
+    expect(second.redirectedTo).to.equal(`${process.env.SPOTIFY_WEB_ERROR_URL}&reason=denied`);
+    expect(logs.join('\n')).to.not.include(tx.state);
+  });
+
+  it('sends a denial with no state to the web error page unchanged', async () => {
+    const callback = findHandler(callbackRouter, 'get', '/callback');
+    const res = mockRes();
+    await callback({ query: { error: 'access_denied' } }, res);
+    expect(res.redirectedTo).to.equal(process.env.SPOTIFY_WEB_ERROR_URL);
+  });
+
+  it('reports whether taste permission was granted', async () => {
+    const status = findHandler(protectedRouter, 'get', '/status');
+    seedTokens('sp-route-a');
+    db.prepare('UPDATE user_spotify_tokens SET scopes = ? WHERE user_id = ?').run(
+      'playlist-read-private user-top-read',
+      'sp-route-a'
+    );
+    const withTaste = mockRes();
+    await status({ user: { id: 'sp-route-a' } }, withTaste);
+    expect(withTaste.body.personalization_scopes_ok).to.equal(true);
+
+    db.prepare('UPDATE user_spotify_tokens SET scopes = ? WHERE user_id = ?').run(
+      'playlist-read-private',
+      'sp-route-a'
+    );
+    const without = mockRes();
+    await status({ user: { id: 'sp-route-a' } }, without);
+    expect(without.body.personalization_scopes_ok).to.equal(false);
+
+    db.prepare('UPDATE user_spotify_tokens SET spotify_user_id = NULL WHERE user_id = ?').run('sp-route-a');
+    const blocked = mockRes();
+    await status({ user: { id: 'sp-route-a' } }, blocked);
+    expect(blocked.body.status).to.equal('reconnect_required');
+    expect(blocked.body.reason).to.equal('not_allowlisted');
   });
 });

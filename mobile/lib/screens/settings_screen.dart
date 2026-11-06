@@ -7,6 +7,7 @@ import '../services/api_client.dart';
 import '../spotify/spotify_contracts.dart';
 import '../state/auth_state.dart';
 import '../state/home_navigation_controller.dart';
+import '../state/reminder_controller.dart';
 import '../state/theme_controller.dart';
 import '../theme/harmonix_theme.dart';
 import '../utils/i18n.dart';
@@ -29,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _spotifyState = 'connect';
   String? _spotifyDisplayName;
   String? _spotifyMessage;
+  bool _personalizationNeeded = false;
   bool _confirmDisconnect = false;
   bool _consumedNavRecovery = false;
   String? _styleLang;
@@ -52,8 +54,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (!mounted) return;
         setState(() {
           _spotifyState = 'provider_error';
-          _spotifyMessage =
-              'Spotify authorization didn’t finish. You can try connecting again.';
+          _spotifyMessage = switch (reason) {
+            'denied' => context.tr('spotify_denied'),
+            'not_allowlisted' => context.tr('spotify_not_allowlisted'),
+            _ => context.tr('spotify_auth_failed'),
+          };
         });
       });
     }
@@ -78,12 +83,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (spotify != null) {
           _spotifyState = spotify.state;
           _spotifyDisplayName = spotify.displayName;
+          _personalizationNeeded =
+              spotify.state == 'connected' && !spotify.personalizationScopesOk;
           if (spotify.state == 'reconnect') {
-            _spotifyMessage =
-                spotify.reason == 'authorization_expired'
-                    ? 'Your Spotify connection expired. Reconnect to continue.'
-                    : (spotify.reason ??
-                        'Your Spotify connection expired. Reconnect to continue.');
+            _spotifyMessage = spotify.reason == 'not_allowlisted'
+                ? context.tr('spotify_not_allowlisted')
+                : context.tr('spotify_reconnect_body');
           } else if (spotify.state == 'provider_error') {
             _spotifyMessage =
                 'Spotify is unavailable right now. Your Harmonix library is still available. Try again.';
@@ -196,6 +201,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } finally {
       if (mounted) setState(() => _prefsSaving = false);
     }
+  }
+
+  List<Widget> _reminderSection(BuildContext context, HarmonixColors colors) {
+    final ReminderController reminder;
+    try {
+      reminder = context.watch<ReminderController>();
+    } on ProviderNotFoundException {
+      return const [];
+    }
+    final time = reminder.timeLabel;
+    return [
+      const SizedBox(height: 16),
+      Text(context.tr('reminders').toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
+      const SizedBox(height: 4),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(
+          context.tr('reminder_daily'),
+          style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(time, style: TextStyle(color: colors.textMuted)),
+        secondary: Icon(Icons.notifications_none, color: colors.accent),
+        value: reminder.enabled,
+        activeThumbColor: colors.onAccent,
+        activeTrackColor: colors.accent,
+        onChanged: (enabled) async {
+          if (enabled) {
+            final ok = await reminder.enable(
+              title: context.tr('reminder_title'),
+              body: context.tr('reminder_body'),
+            );
+            if (!ok && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(context.tr('reminder_permission_denied'))),
+              );
+            }
+          } else {
+            await reminder.disable();
+          }
+        },
+      ),
+      if (reminder.enabled)
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(time, style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700)),
+          trailing: Icon(Icons.schedule, color: colors.accent),
+          onTap: () async {
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: TimeOfDay(hour: reminder.hour, minute: reminder.minute),
+            );
+            if (picked == null || !context.mounted) return;
+            await reminder.setTime(
+              picked.hour,
+              picked.minute,
+              title: context.tr('reminder_title'),
+              body: context.tr('reminder_body'),
+            );
+          },
+        ),
+    ];
   }
 
   @override
@@ -420,6 +486,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onDisconnect: () => setState(() => _confirmDisconnect = true),
             onConfirmDisconnect: _disconnectSpotify,
             onCancelDisconnect: () => setState(() => _confirmDisconnect = false),
+            personalizationNeeded: _personalizationNeeded,
           ),
           const SizedBox(height: 16),
           Text(context.tr('appearance').toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
@@ -440,6 +507,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             activeTrackColor: colors.accent,
             onChanged: (v) => themeCtrl.setDarkMode(v),
           ),
+          ..._reminderSection(context, colors),
           const SizedBox(height: 16),
           Text(context.tr('stats').toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),

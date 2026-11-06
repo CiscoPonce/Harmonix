@@ -4,7 +4,7 @@ import { SUPPORT_EMAIL, SUPPORT_MAILTO, SITE_ORIGIN } from '@/lib/contact';
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy policy" updated="1 October 2026">
+    <LegalPage title="Privacy policy" updated="5 November 2026">
       <p>
         Harmonix teaches vocabulary from real song lyrics. This policy covers the
         website at{' '}
@@ -23,7 +23,10 @@ export default function PrivacyPage() {
       </ul>
       <p>
         We use this to sign you in, choose songs in your language and style, and
-        show the words you have already learned.
+        show the words you have already learned. We record simple usage events,
+        such as opening the app, getting a word, or sharing a postcard, to see
+        which features help people learn. They don&apos;t include your email or
+        what you type.
       </p>
 
       <h2>Music, lyrics, and Spotify</h2>

@@ -3,6 +3,7 @@ const router = express.Router();
 const { nanoid } = require('nanoid');
 const db = require('../db');
 const badgeService = require('../services/badgeService');
+const { recordEvent } = require('../services/usageEvents');
 const {
   ensureTrackCover,
   coversForPlaylistSync,
@@ -45,6 +46,7 @@ router.post('/', (req, res) => {
   try {
     const id = nanoid();
     db.prepare('INSERT INTO playlists (id, user_id, name) VALUES (?, ?, ?)').run(id, userId, trimmed);
+    recordEvent('playlist_created', { userId, req });
     const badges_unlocked = badgeService.checkAndUnlockBadges(userId);
     const playlist = db.prepare('SELECT * FROM playlists WHERE id = ?').get(id);
     res.status(201).json({

@@ -540,6 +540,27 @@ db.exec(`
 `);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_shared_postcards_created ON shared_postcards(created_at DESC)`);
 
+// Product usage events: no email, IP, or free text.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS usage_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    name TEXT NOT NULL,
+    platform TEXT,
+    props_json TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_usage_events_name_time ON usage_events(name, created_at)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_usage_events_user_time ON usage_events(user_id, created_at)`);
+
+const vocabProgressCols = db.prepare('PRAGMA table_info(user_vocab_progress)').all();
+for (const column of ['gloss', 'context_sentence', 'song_title', 'song_artist', 'source']) {
+  if (!vocabProgressCols.some((col) => col.name === column)) {
+    db.exec(`ALTER TABLE user_vocab_progress ADD COLUMN ${column} TEXT`);
+  }
+}
+
 const { ensureCanonicalKeys } = require('./services/canonicalKeyService');
 ensureCanonicalKeys(db);
 

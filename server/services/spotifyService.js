@@ -30,7 +30,6 @@ const DEFAULT_SCOPES = [
   'user-modify-playback-state',
   'user-read-playback-state',
   'user-top-read',
-  'user-read-recently-played',
 ].join(' ');
 
 const PLAYBACK_REQUIRED_SCOPES = [
@@ -40,6 +39,8 @@ const PLAYBACK_REQUIRED_SCOPES = [
   'user-modify-playback-state',
   'user-read-playback-state',
 ];
+
+const PERSONALIZATION_SCOPES = ['user-top-read'];
 
 const upsertTokensPreserveAuth = db.prepare(`
   INSERT INTO user_spotify_tokens (
@@ -180,10 +181,12 @@ function requireRedirectUri() {
 
 function scopesFromEnv() {
   const raw = process.env.SPOTIFY_SCOPES;
-  if (!raw || typeof raw !== 'string' || raw.trim() === '') {
-    return DEFAULT_SCOPES;
-  }
-  return raw.trim().split(/[\s,]+/).filter(Boolean).join(' ');
+  const base = (!raw || typeof raw !== 'string' || raw.trim() === '')
+    ? DEFAULT_SCOPES
+    : raw.trim().split(/[\s,]+/).filter(Boolean).join(' ');
+  const granted = parseScopeSet(base);
+  const missing = [...PLAYBACK_REQUIRED_SCOPES, ...PERSONALIZATION_SCOPES].filter((scope) => !granted.has(scope));
+  return missing.length ? `${base} ${missing.join(' ')}` : base;
 }
 
 function safeSpotifyExternalUrl(url) {
@@ -316,6 +319,11 @@ function parseScopeSet(scopes) {
 function missingPlaybackScopes(grantedScopes) {
   const granted = parseScopeSet(grantedScopes);
   return PLAYBACK_REQUIRED_SCOPES.filter((s) => !granted.has(s));
+}
+
+function missingPersonalizationScopes(grantedScopes) {
+  const granted = parseScopeSet(grantedScopes);
+  return PERSONALIZATION_SCOPES.filter((s) => !granted.has(s));
 }
 
 function detailDtoFromNormalized(meta, { detailState, items }) {
@@ -970,9 +978,9 @@ function createSpotifyClient(deps = {}) {
     const res = await fetchWithTimeout(`${SPOTIFY_API_BASE}/me`, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
     });
-    if (!res.ok) return { id: null, display_name: null };
-    const data = await res.json().catch(() => ({}));
+    const data = res.ok ? await res.json().catch(() => ({})) : {};
     return {
+      status: res.status,
       id: typeof data.id === 'string' ? data.id : null,
       display_name: typeof data.display_name === 'string' ? data.display_name : null,
     };
@@ -989,6 +997,9 @@ function createSpotifyClient(deps = {}) {
         throw providerError('provider_error', 'Spotify token response missing refresh_token');
       }
       const profile = await fetchSpotifyProfile(tokens.access_token);
+      if (profile.status === 403) {
+        throw providerError('spotify_not_allowlisted', 'Spotify account is not enabled for this app');
+      }
       persistTokenRow({
         userId: consumed.userId,
         accessToken: tokens.access_token,
@@ -1017,6 +1028,7 @@ function createSpotifyClient(deps = {}) {
       deleteTokens.run(userId);
       deleteAllOAuth.run(userId);
       deletePlaylists.run(userId);
+      db.prepare('DELETE FROM user_spotify_profiles WHERE user_id = ?').run(userId);
       // D-12-05 / D-12-12: clear Spotify match evidence for this user's playlist songs
       // and delete user-owned export jobs.
       try {
@@ -1097,7 +1109,9 @@ module.exports = {
   disconnectUser: (...args) => defaultClient.disconnectUser(...args),
   safeSpotifyExternalUrl,
   missingPlaybackScopes,
+  missingPersonalizationScopes,
   PLAYBACK_REQUIRED_SCOPES,
+  PERSONALIZATION_SCOPES,
   SEARCH_LIMIT,
   ADD_BATCH_MAX,
   PLAYLIST_DETAIL_DISPLAY_CAP,

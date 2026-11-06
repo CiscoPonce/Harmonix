@@ -116,6 +116,22 @@ void main() {
     expect(nav.consumeRecoveryReason(), 'error');
   });
 
+  test('a denied Spotify return keeps the denied reason', () {
+    final nav = HomeNavigationController();
+    expect(
+      nav.handleIncomingUri(Uri.parse('harmonix://spotify-callback?spotify=error&reason=denied')),
+      isTrue,
+    );
+    expect(nav.consumeRecoveryReason(), 'denied');
+  });
+
+  test('an unknown Spotify reason falls back to a generic error', () {
+    final nav = HomeNavigationController();
+    final uri = Uri.parse('https://$kApprovedHost/app/settings?spotify=error&reason=evil');
+    expect(nav.handleIncomingUri(uri), isTrue);
+    expect(nav.consumeRecoveryReason(), 'error');
+  });
+
   test('the live site return selects Library once', () {
     final nav = HomeNavigationController();
     final uri = Uri.parse(

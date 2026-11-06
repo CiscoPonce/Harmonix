@@ -61,11 +61,13 @@ class SpotifyConnectionStatus {
     required this.state,
     this.displayName,
     this.reason,
+    this.personalizationScopesOk = false,
   });
 
   final String state;
   final String? displayName;
   final String? reason;
+  final bool personalizationScopesOk;
 }
 
 SpotifyConnectionStatus parseSpotifyStatusResponse(Map<String, dynamic> raw) {
@@ -77,6 +79,7 @@ SpotifyConnectionStatus parseSpotifyStatusResponse(Map<String, dynamic> raw) {
     state: mapBackendStatusToUiState(status),
     displayName: raw['display_name'] as String?,
     reason: raw['reason'] as String?,
+    personalizationScopesOk: raw['personalization_scopes_ok'] == true,
   );
 }
 

@@ -17,6 +17,7 @@ import '../services/offline_word_cache.dart';
 import '../spotify/spotify_open.dart';
 import '../state/auth_state.dart';
 import '../state/home_navigation_controller.dart';
+import '../state/reminder_controller.dart';
 import '../theme/harmonix_theme.dart';
 import '../utils/hear_it_timing.dart';
 import '../utils/i18n.dart';
@@ -1063,8 +1064,73 @@ class _LearnScreenState extends State<LearnScreen> {
               children: _searchResultTiles(colors),
             ),
           ),
+        _reminderPrompt(colors),
         _songSearchDock(colors),
       ],
+    );
+  }
+
+  ReminderController? _watchReminder() {
+    try {
+      return context.watch<ReminderController>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  Widget _reminderPrompt(HarmonixColors colors) {
+    final reminder = _watchReminder();
+    if (reminder == null || _word == null || reminder.promptShown || reminder.enabled) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      child: Material(
+        color: colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: colors.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('reminder_prompt'),
+                style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => reminder.markPromptShown(),
+                    child: Text(context.tr('reminder_prompt_no')),
+                  ),
+                  const Spacer(),
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: HarmonixColors.brand),
+                    onPressed: () async {
+                      final ok = await reminder.enable(
+                        title: context.tr('reminder_title'),
+                        body: context.tr('reminder_body'),
+                      );
+                      if (!mounted) return;
+                      await reminder.markPromptShown();
+                      if (!ok && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(context.tr('reminder_permission_denied'))),
+                        );
+                      }
+                    },
+                    child: Text(context.tr('reminder_prompt_yes')),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

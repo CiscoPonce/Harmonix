@@ -3,6 +3,8 @@ const router = express.Router();
 const db = require('../db');
 const srs = require('../services/srsEngine');
 const dailyWordService = require('../services/dailyWordService');
+const badgeService = require('../services/badgeService');
+const { recordEvent } = require('../services/usageEvents');
 
 router.get('/stats', (req, res) => {
  const userId = req.user.id;
@@ -14,6 +16,7 @@ router.get('/stats', (req, res) => {
  }
 
  const dailyStats = dailyWordService.getDailyWordStats(userId);
+ const badges_unlocked = badgeService.checkAndUnlockBadges(userId);
 
  res.json({
  streak_days: dailyStats.streak_days,
@@ -23,6 +26,7 @@ router.get('/stats', (req, res) => {
  daily_goal: dailyStats.daily_goal,
  today_words: dailyStats.today_words,
  today_goal_met: dailyStats.today_goal_met,
+ badges_unlocked,
  // Legacy field kept for older clients
  today_answers: dailyStats.today_words,
  });
@@ -78,6 +82,7 @@ router.post('/review', (req, res) => {
  });
 
  const updated = txn();
+ recordEvent('review_done', { userId, req, props: { count: updated.length } });
  res.json({ updated_count: updated.length, updates: updated });
 });
 
@@ -86,7 +91,11 @@ router.get('/due', (req, res) => {
  const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
 
  const due = db.prepare(`
- SELECT uvp.*, v.word, v.lemma, v.definition, v.cefr_level, v.language_code,
+ SELECT uvp.user_id, uvp.vocab_id, uvp.stability, uvp.difficulty, uvp.last_review,
+ uvp.next_review, uvp.reps,
+ COALESCE(uvp.gloss, v.definition) AS definition,
+ uvp.context_sentence, uvp.song_title, uvp.song_artist, uvp.source,
+ v.word, v.lemma, v.cefr_level, v.language_code,
  svm.song_id, svm.line_index, svm.char_start
  FROM user_vocab_progress uvp
  JOIN vocab_items v ON uvp.vocab_id = v.id

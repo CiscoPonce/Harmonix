@@ -11,12 +11,12 @@ Production context when written: 34 accounts, 32 got at least one word, 8 came b
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | [006](006-security-patch-web-and-server.md) | Patch Next.js and server libraries; allowlist audio preview hosts | P1 | S–M | — | DONE |
-| [007](007-usage-events-and-retention-report.md) | Server-side usage events + retention report | P1 | S–M | — | TODO |
-| [008](008-daily-words-into-review-and-streaks.md) | Every daily word goes into Review; streak and badges count daily words | P1 | M | — (after 007 to measure) | TODO |
-| [009](009-android-daily-reminder.md) | Opt-in daily reminder in the Android app (1.0.18) | P1 | M | 008 | TODO |
-| [010](010-share-page-play-link-and-signup-source.md) | Postcard page links to the Android app; count sign-ups from postcards | P2 | S–M | 007 | TODO |
-| [011](011-ops-logs-time-limit-ci-repo.md) | Keep logs across deploys, enforce word time limit, CI typecheck, APK out of git | P2 | M | — | TODO |
-| [012](012-spotify-connect-and-taste.md) | Spotify: request taste scope, return failed sign-ins to the right app with a reason, auto-sync taste, invite-only messaging | P2 | M | — (after 006) | TODO |
+| [007](007-usage-events-and-retention-report.md) | Server-side usage events + retention report | P1 | S–M | — | DONE |
+| [008](008-daily-words-into-review-and-streaks.md) | Every daily word goes into Review; streak and badges count daily words | P1 | M | — (after 007 to measure) | DONE |
+| [009](009-android-daily-reminder.md) | Opt-in daily reminder in the Android app (1.0.18) | P1 | M | 008 | DONE |
+| [010](010-share-page-play-link-and-signup-source.md) | Postcard page links to the Android app; count sign-ups from postcards | P2 | S–M | 007 | DONE |
+| [011](011-ops-logs-time-limit-ci-repo.md) | Keep logs across deploys, enforce word time limit, CI typecheck, APK out of git | P2 | M | — | DONE |
+| [012](012-spotify-connect-and-taste.md) | Spotify: request taste scope, return failed sign-ins to the right app with a reason, auto-sync taste, invite-only messaging | P2 | M | — (after 006) | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (reason) | REJECTED (reason)
 

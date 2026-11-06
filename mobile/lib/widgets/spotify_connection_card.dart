@@ -17,6 +17,7 @@ class SpotifyConnectionCard extends StatelessWidget {
     this.confirmDisconnect = false,
     this.onConfirmDisconnect,
     this.onCancelDisconnect,
+    this.personalizationNeeded = false,
   });
 
   /// One of: connect, connected, reconnect, disconnecting, connecting,
@@ -30,6 +31,7 @@ class SpotifyConnectionCard extends StatelessWidget {
   final bool confirmDisconnect;
   final VoidCallback? onConfirmDisconnect;
   final VoidCallback? onCancelDisconnect;
+  final bool personalizationNeeded;
 
   @override
   Widget build(BuildContext context) {
@@ -63,10 +65,13 @@ class SpotifyConnectionCard extends StatelessWidget {
         statusColor = colors.accent;
       case 'connected':
         title = context.tr('spotify_connected');
-        body = displayName != null && displayName!.isNotEmpty
+        body = personalizationNeeded
+            ? context.tr('spotify_personalize_body')
+            : displayName != null && displayName!.isNotEmpty
             ? context.tr('spotify_connected_browse', {'name': displayName})
             : context.tr('spotify_playlists_available');
-        primaryLabel = null;
+        primaryLabel = personalizationNeeded ? context.tr('reconnect_spotify') : null;
+        primaryAction = personalizationNeeded ? (onReconnect ?? onConnect) : null;
         statusIcon = Icons.check_circle_outline;
         statusColor = colors.accent;
       case 'reconnect':
@@ -151,6 +156,17 @@ class SpotifyConnectionCard extends StatelessWidget {
                           color: colors.textMuted,
                         ),
                       ),
+                      if (state == 'connect' || state == 'disconnected') ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          context.tr('spotify_invite_only'),
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.4,
+                            color: colors.textMuted,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
