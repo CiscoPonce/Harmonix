@@ -1,19 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { rememberSignupSource } from '@/lib/signupSource';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { HarmonixWordmark } from '@/components/HarmonixWordmark';
 import Link from 'next/link';
 
-export default function RegisterPage() {
+function RegisterForm() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
+
+  useEffect(() => {
+    rememberSignupSource(searchParams.get('src'));
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,5 +116,13 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-black text-white">Loading...</div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }

@@ -3,7 +3,20 @@ const spotifyService = require('../services/spotifyService');
 const spotifyExportService = require('../services/spotifyExportService');
 const { resolvePlayableSpotifyTrack } = require('../services/spotifyPlayResolve');
 const oauth = require('../services/spotifyOAuthService');
+const spotifyProfile = require('../services/spotifyProfileService');
 const db = require('../db');
+
+const CALLBACK_REASONS = new Set(['denied', 'not_allowlisted']);
+
+function errorRedirectUrl(clientKind, reason) {
+  const url = new URL(oauth.resolveReturnUrl(clientKind, 'error'));
+  if (CALLBACK_REASONS.has(reason)) url.searchParams.set('reason', reason);
+  return url.toString();
+}
+
+function safeSpotifyErrorCode(value) {
+  return typeof value === 'string' && /^[a-z_]{1,40}$/.test(value) ? value : 'other';
+}
 
 const protectedRouter = express.Router();
 const callbackRouter = express.Router();
@@ -75,26 +88,38 @@ protectedRouter.get('/status', (req, res) => {
       redirect_uri = null;
     }
     let playback_scopes_ok = false;
-    if (status.status === 'connected') {
-      try {
-        const row = db
-          .prepare('SELECT scopes FROM user_spotify_tokens WHERE user_id = ?')
-          .get(userId);
-        playback_scopes_ok =
-          Boolean(row) && spotifyService.missingPlaybackScopes(row.scopes).length === 0;
-      } catch {
-        playback_scopes_ok = false;
-      }
+    let personalization_scopes_ok = false;
+    let row = null;
+    try {
+      row = db
+        .prepare('SELECT scopes, spotify_user_id FROM user_spotify_tokens WHERE user_id = ?')
+        .get(userId);
+      playback_scopes_ok =
+        Boolean(row) && spotifyService.missingPlaybackScopes(row.scopes).length === 0;
+      personalization_scopes_ok =
+        Boolean(row) && spotifyService.missingPersonalizationScopes(row.scopes).length === 0;
+    } catch {
+      playback_scopes_ok = false;
+      personalization_scopes_ok = false;
+    }
+    let responseStatus = status.status;
+    let reason = status.reason;
+    if (status.status === 'connected' && row && row.spotify_user_id == null) {
+      responseStatus = 'reconnect_required';
+      reason = 'not_allowlisted';
+    } else if (status.status === 'connected' && personalization_scopes_ok) {
+      spotifyProfile.refreshInBackground(userId);
     }
     res.json({
-      status: status.status,
+      status: responseStatus,
       display_name: status.display_name,
-      reason: status.reason,
+      reason,
       redirect_uri,
       client_id_prefix: process.env.SPOTIFY_CLIENT_ID
         ? String(process.env.SPOTIFY_CLIENT_ID).trim().slice(0, 8)
         : null,
       playback_scopes_ok,
+      personalization_scopes_ok,
     });
   } catch (err) {
     safeLog('GET /api/spotify/status', err);
@@ -276,29 +301,44 @@ callbackRouter.get('/callback', async (req, res) => {
   const { code, state, error: oauthError } = req.query;
   let clientKind = 'web';
   try {
-    if (oauthError || !code || !state || typeof state !== 'string' || typeof code !== 'string') {
-      // Attempt to resolve client kind from a non-consuming peek is unsafe; default web error URL.
+    const stateOk = typeof state === 'string' && state.length > 0;
+    const codeOk = typeof code === 'string' && code.length > 0;
+    if (oauthError || !codeOk || !stateOk) {
+      if (stateOk) {
+        try {
+          clientKind = oauth.consumeOAuthTransaction({ state }).clientKind;
+        } catch {
+          clientKind = 'web';
+        }
+      } else {
+        clientKind = 'unknown';
+      }
+      console.log(
+        `[spotify-callback] outcome=error client=${clientKind} spotify_error=${safeSpotifyErrorCode(oauthError)}`
+      );
+      const redirectKind = clientKind === 'unknown' ? 'web' : clientKind;
+      const reason = stateOk && oauthError === 'access_denied' ? 'denied' : null;
       try {
-        const url = oauth.resolveReturnUrl(clientKind, 'error');
-        return res.redirect(302, url);
+        return res.redirect(302, errorRedirectUrl(redirectKind, reason));
       } catch {
         return res.status(400).send('Spotify authorization failed');
       }
     }
 
-    // Consume state before token exchange (replay-safe).
     const result = await spotifyService.completeAuthorization({ code, state });
     clientKind = result.clientKind;
+    console.log(`[spotify-callback] outcome=connected client=${clientKind}`);
+    spotifyProfile.refreshInBackground(result.userId, { force: true });
     return res.redirect(302, result.successUrl);
   } catch (err) {
     safeLog('GET /api/spotify/oauth/callback', err);
+    if (err && err.clientKind) clientKind = err.clientKind;
+    console.log(
+      `[spotify-callback] outcome=failed client=${clientKind} code=${safeSpotifyErrorCode(err && err.code)}`
+    );
     try {
-      // Prefer android error URL when we can recover client kind from a prior partial consume —
-      // consume already happened only on success path; on failure before consume use web default,
-      // unless error carries clientKind.
-      if (err && err.clientKind) clientKind = err.clientKind;
-      const url = oauth.resolveReturnUrl(clientKind, 'error');
-      return res.redirect(302, url);
+      const reason = err && err.code === 'spotify_not_allowlisted' ? 'not_allowlisted' : null;
+      return res.redirect(302, errorRedirectUrl(clientKind, reason));
     } catch {
       return res.status(400).send('Spotify authorization failed');
     }

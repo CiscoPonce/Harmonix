@@ -71,6 +71,10 @@ async function syncUserProfile(userId) {
     .sort((a, b) => b[1] - a[1])
     .map(([genre]) => genre);
 
+  if (!topArtistsRes && !topTracksRes) {
+    return { synced: false, reason: 'spotify_error' };
+  }
+
   const topArtists = Array.from(artistSet).slice(0, 30);
   const now = new Date().toISOString();
 
@@ -108,7 +112,29 @@ function getUserMusicProfile(userId) {
   }
 }
 
+const STALE_MS = 7 * 24 * 60 * 60 * 1000;
+const RETRY_GAP_MS = 60 * 60 * 1000;
+const lastAttempt = new Map();
+
+function refreshInBackground(userId, { force = false, now = Date.now() } = {}) {
+  if (!userId) return false;
+  const tried = lastAttempt.get(userId);
+  if (tried && now - tried < RETRY_GAP_MS) return false;
+  if (!force) {
+    const profile = getUserMusicProfile(userId);
+    const synced = profile && Date.parse(profile.last_synced_at);
+    if (synced && now - synced < STALE_MS) return false;
+  }
+  lastAttempt.set(userId, now);
+  syncUserProfile(userId).catch((err) => {
+    console.warn(`[SpotifyProfile] background sync failed for ${userId}: ${err && err.message}`);
+  });
+  return true;
+}
+
 module.exports = {
   syncUserProfile,
   getUserMusicProfile,
+  refreshInBackground,
+  _resetRefreshAttemptsForTests: () => lastAttempt.clear(),
 };

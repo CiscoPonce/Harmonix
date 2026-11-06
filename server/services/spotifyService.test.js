@@ -169,6 +169,22 @@ describe('spotifyService foundation contracts', () => {
     })).to.equal('refresh-v2');
   });
 
+  it('requests playback and taste scopes even when the env list omits them', async () => {
+    const previous = process.env.SPOTIFY_SCOPES;
+    process.env.SPOTIFY_SCOPES = 'playlist-read-private';
+    try {
+      const { authorizationUrl } = await client.startAuthorization('svc-user-a', 'web');
+      const scope = new URL(authorizationUrl).searchParams.get('scope').split(/\s+/);
+      expect(scope).to.include('user-top-read');
+      expect(scope).to.include('streaming');
+      expect(scope.filter((item) => item === 'playlist-read-private')).to.have.lengthOf(1);
+      const { missingPersonalizationScopes } = require('./spotifyService');
+      expect(missingPersonalizationScopes('playlist-read-private')).to.deep.equal(['user-top-read']);
+    } finally {
+      process.env.SPOTIFY_SCOPES = previous;
+    }
+  });
+
   it('deletes credentials on invalid_grant without retry', async () => {
     seedTokens('svc-user-a', {
       expiresAt: new Date(clock.getTime() + 10_000),

@@ -2,6 +2,7 @@
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { apiFetch, setAccessToken, parseJsonResponse } from '@/lib/api';
+import { readSignupSource } from '@/lib/signupSource';
 import { useRouter } from 'next/navigation';
 
 export interface User {
@@ -117,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await apiFetch('/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, source: readSignupSource() ?? undefined }),
     });
 
     if (res.ok) {

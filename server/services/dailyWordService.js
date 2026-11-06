@@ -16,12 +16,15 @@ const ipaLookup = require("./ipaLookupService");
 const deezer = require("./deezerService");
 const lrcLib = require("./lrcLibService");
 const spotifyProfileService = require("./spotifyProfileService");
+const { recordEvent } = require("./usageEvents");
+const reviewEnrollment = require("./reviewEnrollment");
 
 const FORCE_COOLDOWN_MS = process.env.FORCE_COOLDOWN_MS
   ? parseInt(process.env.FORCE_COOLDOWN_MS, 10)
   : 0; // Unlimited refresh by default; set FORCE_COOLDOWN_MS to throttle if needed.
 const BATCH_AI_ATTEMPTS = 3;
 const REFILL_BATCH_ROUNDS = 5;
+const REFILL_ROUND_MAX_MS = 90000;
 const QUEUE_BATCH_SIZE = 5;
 const USER_DELIVER_STOP_AFTER = 1;
 /** Preview-window words to try before falling back to a song-wide pick. */
@@ -748,7 +751,9 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
       lastError = result.error;
     }
     return result;
-  }, { isStopped: () => stopped });
+  }, {
+    isStopped: () => stopped || (options.deadline != null && Date.now() >= options.deadline),
+  });
 
   if (stopAfter < ranked.length) {
     await Promise.race([earlyDone, poolPromise]);
@@ -758,6 +763,9 @@ async function validateAllCandidates(candidates, date, user, fetchImpl = fetch, 
 
   if (!partials.length) {
     await poolPromise;
+    if (options.deadline != null && Date.now() >= options.deadline) {
+      lastError = lastError || 'ai_timeout';
+    }
     return { valid: [], sideEffects: [], lastError, candidateCount: candidates.length };
   }
 
@@ -1033,10 +1041,33 @@ function saveDailyWord(userId, date, payload) {
   `).run(userId, date, JSON.stringify(payload));
 }
 
+function updateStudyStats(userId) {
+  try {
+    const streak = computeDailyWordStreak(userId);
+    const today = todayDate();
+    db.prepare(`
+      INSERT INTO user_stats (user_id, streak_days, total_xp, last_study_date)
+      VALUES (?, ?, 10, ?)
+      ON CONFLICT(user_id) DO UPDATE SET
+        streak_days = excluded.streak_days,
+        last_study_date = excluded.last_study_date,
+        total_xp = user_stats.total_xp + 10
+    `).run(userId, streak, today);
+  } catch (err) {
+    console.warn(`[daily-word] study stats failed for ${userId}: ${err && err.message}`);
+  }
+}
+
 function deliverPayload(userId, payload, { fromQueue = false } = {}) {
   const date = todayDate();
   const delivered = { ...payload, date, cached: false, from_queue: fromQueue };
   saveDailyWord(userId, date, delivered);
+  reviewEnrollment.enrollDailyWord(userId, delivered);
+  updateStudyStats(userId);
+  recordEvent('word_delivered', {
+    userId,
+    props: { from_queue: fromQueue, lang: String(payload.language_code || '') },
+  });
   return delivered;
 }
 
@@ -1589,7 +1620,10 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
         err.code = "stale_preferences";
         throw err;
       }
-      const batch = await generateValidatedBatch(user, fetchImpl, { stopAfter: USER_DELIVER_STOP_AFTER });
+      const batch = await generateValidatedBatch(user, fetchImpl, {
+        stopAfter: USER_DELIVER_STOP_AFTER,
+        deadline,
+      });
       if (batch.valid.length) {
         console.log(`daily word batch: first valid in ${Date.now() - started}ms (attempt ${attempt + 1})`);
         return deliverFromBatch(user, batch, fetchImpl, { preferenceEpoch });
@@ -1618,6 +1652,7 @@ async function generateAndDeliverBatch(user, fetchImpl = fetch, { maxAttempts = 
       const widenedUser = { ...user, genre: "any" };
       const wideBatch = await generateValidatedBatch(widenedUser, fetchImpl, {
         stopAfter: USER_DELIVER_STOP_AFTER,
+        deadline,
       });
       if (wideBatch.valid.length) {
         const marked = markStyleRelaxed(wideBatch, requestedGenre);
@@ -1662,7 +1697,10 @@ async function refillQueue(user, fetchImpl = fetch) {
       emptyRounds < REFILL_BATCH_ROUNDS
     ) {
       const needed = wordQueue.QUEUE_MAX - wordQueue.countReady(user.id);
-      const batch = await generateValidatedBatch(user, fetchImpl, { stopAfter: needed });
+      const batch = await generateValidatedBatch(user, fetchImpl, {
+        stopAfter: needed,
+        deadline: Date.now() + REFILL_ROUND_MAX_MS,
+      });
       if (abort.signal.aborted || batchGenerationInProgress.has(user.id)) break;
 
       if (!batch.valid.length) {

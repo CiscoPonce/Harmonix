@@ -39,6 +39,17 @@ run_compose() {
 }
 log() { echo "==> $*"; }
 
+LOG_ARCHIVE="${LOG_ARCHIVE:-/home/ubuntu/logs/harmonix}"
+archive_container_logs() {
+  local name="$1" stamp
+  stamp="$(date -u +%Y%m%d-%H%M%S)"
+  mkdir -p "$LOG_ARCHIVE"
+  if docker inspect "$name" >/dev/null 2>&1; then
+    docker logs --timestamps "$name" 2>&1 | gzip > "${LOG_ARCHIVE}/${name}-${stamp}.log.gz" || true
+  fi
+  find "$LOG_ARCHIVE" -name '*.log.gz' -mtime +30 -delete 2>/dev/null || true
+}
+
 wait_https() {
   local want="${1:-200}" tries="${2:-45}"
   local i code
@@ -260,6 +271,7 @@ trap cleanup_standbys EXIT
 start_api_standby
 
 log "Rolling api (standby serves Traefik; old web still up)"
+archive_container_logs "$API"
 run_compose up -d --no-deps --force-recreate api
 ensure_networks
 fix_sqlite_perms
@@ -269,6 +281,7 @@ wait_https 200 45
 start_web_standby
 
 log "Rolling web (web standby keeps http://web:3009 reachable)"
+archive_container_logs "$WEB"
 run_compose up -d --no-deps --force-recreate web
 docker network connect coolify "$WEB" 2>/dev/null || true
 for i in $(seq 1 40); do
@@ -294,3 +307,5 @@ wait_https 200 30
 
 log "OK — https://${DOMAIN}/ stays up through deploy"
 docker ps --filter "name=${UUID}" --format 'table {{.Names}}\t{{.Status}}'
+log "Pruning build cache older than 7 days"
+docker builder prune -f --filter until=168h >/dev/null 2>&1 || true

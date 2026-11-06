@@ -15,6 +15,9 @@ interface DueWord {
   cefr_level: string;
   song_id?: string;
   line_index?: number;
+  context_sentence?: string | null;
+  song_title?: string | null;
+  song_artist?: string | null;
 }
 
 interface ReviewResult {
@@ -150,8 +153,13 @@ export default function ReviewPage() {
         <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-8 text-center space-y-4">
           <p className="text-5xl font-black tracking-tighter uppercase italic">{currentWord.word}</p>
           <p className="text-lg font-medium text-zinc-500">{currentWord.definition}</p>
-          {currentWord.song_id && currentWord.line_index !== undefined && (
-            <p className="text-sm text-zinc-600 italic">From song #{currentWord.song_id}</p>
+          {currentWord.context_sentence && (
+            <p className="text-sm text-zinc-400 italic">&ldquo;{currentWord.context_sentence}&rdquo;</p>
+          )}
+          {(currentWord.song_title || currentWord.song_artist) && (
+            <p className="text-xs text-zinc-600">
+              {[currentWord.song_title, currentWord.song_artist].filter(Boolean).join(' — ')}
+            </p>
           )}
         </div>
 

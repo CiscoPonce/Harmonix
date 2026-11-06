@@ -232,6 +232,16 @@ describe('parseSpotifyStatusResponse', () => {
     });
     assert.equal(dto.state, 'connected');
     assert.equal(dto.display_name, 'Listener');
+    assert.equal(dto.personalization_scopes_ok, false);
+  });
+
+  it('keeps the taste-permission flag', () => {
+    const dto = parseSpotifyStatusResponse({
+      status: 'connected',
+      display_name: 'Listener',
+      personalization_scopes_ok: true,
+    });
+    assert.equal(dto.personalization_scopes_ok, true);
   });
 
   it('maps disconnected backend status to connect UI state', () => {

@@ -175,6 +175,37 @@ class _ReviewScreenState extends State<ReviewScreen> {
                               onPressed: () => setState(() => _revealed = true),
                               child: const Text('Show meaning'),
                             ),
+                          if (_revealed &&
+                              (_due[_index]['context_sentence'] ?? '').toString().isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Text(
+                                '"${_due[_index]['context_sentence']}"',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      fontStyle: FontStyle.italic,
+                                      color: HarmonixColors.of(context).textMuted,
+                                      letterSpacing: spacing,
+                                    ),
+                              ),
+                            ),
+                          if (_revealed &&
+                              ((_due[_index]['song_title'] ?? '').toString().isNotEmpty ||
+                                  (_due[_index]['song_artist'] ?? '').toString().isNotEmpty))
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                [
+                                  (_due[_index]['song_title'] ?? '').toString(),
+                                  (_due[_index]['song_artist'] ?? '').toString(),
+                                ].where((part) => part.isNotEmpty).join(' — '),
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: HarmonixColors.of(context).textMuted,
+                                      letterSpacing: spacing,
+                                    ),
+                              ),
+                            ),
                           const Spacer(),
                           if (_revealed) ...[
                             FilledButton(

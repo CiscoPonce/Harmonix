@@ -11,6 +11,7 @@ import {
   postcardFileName,
   type PostcardSharePayload,
 } from '@/lib/sharePostcard';
+import { ANDROID_APP_URL } from '@/lib/contact';
 
 type Postcard = {
   id: string;
@@ -256,8 +257,16 @@ export default function SharePostcardPage() {
               </p>
             )}
 
+            <a
+              href={ANDROID_APP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-white/20 bg-white/5 px-5 text-sm font-bold uppercase tracking-widest text-white transition hover:border-emerald-400/50 hover:bg-emerald-500/10"
+            >
+              Get the Android app
+            </a>
             <Link
-              href="/register"
+              href="/register?src=postcard"
               className="inline-flex h-12 items-center justify-center rounded-full border border-white/20 bg-white/5 px-5 text-sm font-bold uppercase tracking-widest text-white transition hover:border-emerald-400/50 hover:bg-emerald-500/10"
             >
               Learn this word on Harmonix

@@ -26,7 +26,7 @@ Copy names from `server/.env.example`. Never commit secret values.
 | `SPOTIFY_TOKEN_ENCRYPTION_KEY` | AES-256-GCM key | Exactly **32 bytes**, base64-encoded |
 | `SPOTIFY_TOKEN_ENCRYPTION_KEY_VERSION` | Active key version label | e.g. `v1`; must match envelopes |
 | `SPOTIFY_TOKEN_KEY_CUSTODY_OWNER` | Human/ops owner of key material | Document who rotates |
-| `SPOTIFY_SCOPES` | D-12-14 scopes only | See §3 |
+| `SPOTIFY_SCOPES` | Code always adds playback and `user-top-read` scopes. | See §3 |
 | `SPOTIFY_MATCH_CACHE_POLICY` | Cache TTL / revalidate / delete | Default `ttl=7d;revalidate_on_export;delete_on_disconnect` |
 | `SPOTIFY_QUOTA_MODE` | `development` or release mode marker | Development Mode ≠ production entitlement |
 
@@ -88,11 +88,14 @@ playlist-modify-private
 streaming
 user-read-email
 user-read-private
+user-top-read
 ```
 
 `streaming` + profile scopes enable **Web Playback SDK** in-app play (Spotify Premium required for the listener). After changing `SPOTIFY_SCOPES`, users must **Reconnect** in Settings so the new consent is granted.
 
-Do **not** request listening history, library save, or `playlist-modify-public`. Exports create **private** playlists only.
+Harmonix requests `user-top-read` only to rank song suggestions by the learner's top artists. The result is cached in `user_spotify_profiles`, never sent to AI, and deleted on disconnect.
+
+Do **not** request `user-read-recently-played`, library save, or `playlist-modify-public`. Exports create **private** playlists only.
 
 ### Lyrics
 
@@ -296,6 +299,8 @@ Feasible only with Premium owner + allowlisted account + live Client ID:
 | Post-create / partial export | Create succeeded; add batch failed or interrupted | Report shows partial counts + destination URL; do not retry blindly without reading job status |
 | Callback error → Settings | State replay, mismatch, expired transaction, open-return attempt | Restart Connect from Settings; never paste callback URLs |
 | Decrypt / misconfigured errors | Missing key, wrong version, non-32-byte key | Fix env; users must reconnect after key rotation |
+| Settings says invited accounts only | Spotify 403 on `/me` (not on the Development Mode allowlist) | Add the user's Spotify email in Dashboard → User Management (max 5), then they Reconnect |
+| Find callback outcomes | `[spotify-callback]` log lines | `docker logs api-… \| grep spotify-callback` (archived logs under `/home/ubuntu/logs/harmonix` once plan 011 lands) |
 | Android App Link does not open app | assetlinks / signing fingerprint / domain mismatch | Fix Digital Asset Links; ngrok is sandbox-only |
 
 ---
@@ -313,6 +318,7 @@ When submitting the Harmonix Spotify App for Extended Quota approval in the Spot
    - `playlist-modify-private` (Export Harmonix song recommendations to a user's private Spotify playlist)
    - `streaming` (Web Playback SDK in-app audio playback for Premium users)
    - `user-read-private` & `user-read-email` (User authentication and account validation)
+   - `user-top-read` (Rank song suggestions by the learner's top artists)
 4. **Policy Compliance Checklist:**
    - [x] No Spotify audio or track data sent to AI/ML LLM models
    - [x] Spotify branding complies with Developer Terms and Design Guidelines (Spotify Green badge & logo)

@@ -9,8 +9,10 @@ import 'screens/onboarding_screen.dart';
 import 'screens/opening_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'services/api_client.dart';
+import 'services/reminder_service.dart';
 import 'state/auth_state.dart';
 import 'state/home_navigation_controller.dart';
+import 'state/reminder_controller.dart';
 import 'state/theme_controller.dart';
 import 'theme/harmonix_theme.dart';
 
@@ -82,6 +84,9 @@ class _HarmonixAppState extends State<HarmonixApp> {
         ),
         ChangeNotifierProvider(
           create: (_) => ThemeController()..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ReminderController(LocalReminderScheduler())..load(),
         ),
         ChangeNotifierProvider<HomeNavigationController>.value(value: _nav),
       ],

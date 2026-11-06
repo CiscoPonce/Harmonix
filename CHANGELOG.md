@@ -16,6 +16,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 - English female pronunciation uses Kokoro af_heart. Pocket alba was low enough to sound male, and the old clips are not reused.
 
 ### Android
+- 1.0.18 is in the repo and is not on Play yet. Settings can turn on a daily reminder at a time you choose. The reminder stays on the phone.
 - 1.0.17 is on closed testing. Published and tested on a device on 5 November 2026.
 - 1.0.17: When Next fails on the open card, Change style and Search stay available. Spotify’s return to the live site opens Library, and the opening drawing is skipped for that return. If the phone doesn't hand that link to the app, `/app/library` and `/app/settings` show an Open Harmonix button instead of a 404, and `assetlinks.json` also lists the upload key. Opening the app offline or during a deploy keeps you signed in, using the saved profile. A rejected login returns you to the welcome screen. Offline with no saved word shows a plain message, and Search works on the empty error screen.
 - 1.0.16: Every fresh launch plays the white Bauhaus drawing, and Skip ends it. Returning from another app does not replay it. The explanation pages still come before an account exists. The launcher icon is the circular mark.
@@ -23,14 +24,19 @@ All notable changes to Harmonix are documented here. Releases are managed by
 - 1.0.14: Get Started opens account creation. It was opening language setup with no login, so Connect Spotify and Skip failed with a 401.
 
 ### Daily word
+- A delivered word is saved for Review, with its lyric and song, and a day of study counts toward the streak.
 - "stories high" means pisos, a season ticket is an abono, and "Sean Paul" is not taught as the Spanish verb. English "Play" is dropped from Spanish cards. A short list of already-used songs no longer stops before the remaining titles are tried.
 - Searching a song that is not in the language you are learning is refused. A Portuguese song is no longer taught as English, and the message names the song language and the language you are learning.
 - Next keeps a chosen style by reading the top 100 songs from each country's chart for that style, and it does not retry songs whose lyric cannot be taught in the 30-second preview.
 - When those song charts are used up, Next stays in the style and teaches from tracks on that genre's top albums before it offers a song from another style.
 
 ### Web
+- A postcard links to the Android closed test, and a sign-up from that page is counted. Privacy notes that usage events store the action, not the email address or typed text.
 - The admin dashboard shows cards served, whether a tester came back, and the latest word and song. Practice reviews stay in the data, and they are no longer the headline, because that count is still zero.
 - Library recent words open the full word card (Hear it, playlist, Spotify, share) instead of the legacy player.
+
+### Spotify
+- Connecting asks for top artists so song suggestions can follow them. An account that is not invited is sent back with a clear message, and disconnect removes the saved taste.
 
 ### Android
 - Offline: cache the last daily word and recent Library words for reading, flip, and device TTS when the network is unavailable.

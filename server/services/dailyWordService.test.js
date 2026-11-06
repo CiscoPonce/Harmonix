@@ -6,6 +6,7 @@ const {
   findWordOccurrence,
   getCachedDailyWord,
   saveDailyWord,
+  deliverPayload,
   updateOrInsertDailyWord,
   getRecentDailyWords,
   validateAllCandidates,
@@ -87,6 +88,21 @@ describe("Daily Word Service", () => {
     } catch {
       /* table may not exist in older DBs */
     }
+  });
+
+  it("enrolls a delivered word and records a streak", () => {
+    const payload = {
+      language_code: "es",
+      word: { text: "ventana", translation: "window" },
+      lyric: { snippet: "la ventana" },
+      song: { title: "Cancion", artist: "Artista" },
+    };
+    deliverPayload(userId, payload);
+    const progress = db.prepare("SELECT * FROM user_vocab_progress WHERE user_id = ?").get(userId);
+    expect(progress).to.exist;
+    expect(progress.gloss).to.equal("window");
+    const stats = db.prepare("SELECT streak_days FROM user_stats WHERE user_id = ?").get(userId);
+    expect(stats.streak_days).to.be.at.least(1);
   });
 
   it("formats timestamps as m:ss", () => {
@@ -976,6 +992,75 @@ describe("Daily Word Service", () => {
     const inserted = wordQueue.enqueuePayloads(userId, valid.slice(1));
     expect(inserted).to.equal(0);
     expect(wordQueue.countReady(userId)).to.equal(0);
+  });
+
+  it("stops validation immediately when the deadline has passed", async () => {
+    let fetches = 0;
+    const mockFetch = async () => {
+      fetches += 1;
+      throw new Error("should not fetch");
+    };
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const candidates = [{ song_title: "Late", artist: "Late", genre: "pop" }];
+    const result = await validateAllCandidates(candidates, "2026-06-27", user, mockFetch, {
+      deadline: Date.now() - 1,
+    });
+    expect(result.valid).to.deep.equal([]);
+    expect(result.lastError).to.equal("ai_timeout");
+    expect(fetches).to.equal(0);
+  });
+
+  it("still validates when the deadline is in the future", async () => {
+    const mockFetch = async (url) => {
+      if (url.includes("deezer.com/search")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: [{
+              id: 100,
+              title: "Test Song",
+              duration: 200,
+              preview: "https://cdn.example/preview.mp3",
+              artist: { name: "Test Artist" },
+            }],
+          }),
+        };
+      }
+      if (url.includes("lrclib.net")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            syncedLyrics: "[00:35.00] El amor y la noche brillan\n[00:42.00] Siempre juntos\n[00:50.00] Para ti",
+            plainLyrics: "El amor y la noche brillan",
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    const originalGloss = aiService.glossDailyWords;
+    const originalRefine = aiService.refineGlosses;
+    aiService.glossDailyWords = async (items) =>
+      items.map((item) => ({
+        translation: `${item.word}-en`,
+        part_of_speech: "noun",
+        pronunciation: "/x/",
+      }));
+    aiService.refineGlosses = async (items, glosses) =>
+      items.map((item, i) => ({
+        translation: glosses?.[i]?.translation || `${item.word}-en`,
+        part_of_speech: "noun",
+        pronunciation: "/x/",
+      }));
+    const candidates = [{ song_title: "Test Song", artist: "Test Artist", genre: "pop" }];
+    const { valid } = await validateAllCandidates(candidates, "2026-06-27", user, mockFetch, {
+      deadline: Date.now() + 60000,
+    });
+    aiService.glossDailyWords = originalGloss;
+    aiService.refineGlosses = originalRefine;
+    expect(valid).to.have.lengthOf(1);
   });
 
   it("validates multiple songs and picks words from lyrics", async () => {

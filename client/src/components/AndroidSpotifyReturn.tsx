@@ -16,8 +16,11 @@ function outcomeFor(destination: Destination, raw: string | null) {
 function ReturnToApp({ destination }: { destination: Destination }) {
   const searchParams = useSearchParams();
   const outcome = outcomeFor(destination, searchParams.get('spotify'));
+  const reason = searchParams.get('reason');
+  const safeReason = reason === 'denied' || reason === 'not_allowlisted' ? reason : null;
+  const reasonQuery = outcome && outcome !== 'connected' && safeReason ? `&reason=${safeReason}` : '';
   const appUrl = outcome
-    ? `intent://spotify-callback?spotify=${outcome}#Intent;scheme=harmonix;package=${APP_PACKAGE};end`
+    ? `intent://spotify-callback?spotify=${outcome}${reasonQuery}#Intent;scheme=harmonix;package=${APP_PACKAGE};end`
     : null;
   const webHref = destination === 'library' ? '/playlists' : '/settings';
 

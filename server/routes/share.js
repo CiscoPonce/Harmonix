@@ -11,6 +11,7 @@ const {
 } = require('../services/shareOg');
 const deezer = require('../services/deezerService');
 const { ensureTrackCover } = require('../services/coverArtService');
+const { recordEvent } = require('../services/usageEvents');
 
 const publicRouter = express.Router();
 const protectedRouter = express.Router();
@@ -115,6 +116,7 @@ publicRouter.get('/postcards/:id', (req, res) => {
 
   const card = getPostcardById(id);
   if (!card) return res.status(404).json({ error: 'not_found' });
+  recordEvent('postcard_viewed', { req, props: { postcard: id } });
   return res.json(card);
 });
 
@@ -211,6 +213,7 @@ protectedRouter.post('/postcards', async (req, res) => {
       `INSERT INTO shared_postcards (id, user_id, payload_json, spotify_url)
        VALUES (?, ?, ?, ?)`
     ).run(id, req.user.id, JSON.stringify(payload), spotifyUrl);
+    recordEvent('postcard_created', { userId: req.user.id, req });
 
     return res.status(201).json({
       id,

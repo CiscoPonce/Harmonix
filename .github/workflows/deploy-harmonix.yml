@@ -50,6 +50,8 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
       - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit -p .
       - name: Unit tests
         run: node --experimental-strip-types --test 'src/lib/*.test.ts'
 
