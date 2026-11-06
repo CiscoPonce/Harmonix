@@ -1109,7 +1109,10 @@ class _LearnScreenState extends State<LearnScreen> {
                   ),
                   const Spacer(),
                   FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: HarmonixColors.brand),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: colors.accent,
+                      foregroundColor: colors.onAccent,
+                    ),
                     onPressed: () async {
                       final ok = await reminder.enable(
                         title: context.tr('reminder_title'),

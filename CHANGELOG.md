@@ -16,7 +16,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 - English female pronunciation uses Kokoro af_heart. Pocket alba was low enough to sound male, and the old clips are not reused.
 
 ### Android
-- 1.0.18 is in the repo and is not on Play yet. Settings can turn on a daily reminder at a time you choose. The reminder stays on the phone.
+- 1.0.18 is in the repo and is not on Play yet. Settings can turn on a daily reminder at a time you choose. The reminder stays on the phone. Review uses the home language, and the lyric and song sit under the meaning.
 - 1.0.17 is on closed testing. Published and tested on a device on 5 November 2026.
 - 1.0.17: When Next fails on the open card, Change style and Search stay available. Spotify’s return to the live site opens Library, and the opening drawing is skipped for that return. If the phone doesn't hand that link to the app, `/app/library` and `/app/settings` show an Open Harmonix button instead of a 404, and `assetlinks.json` also lists the upload key. Opening the app offline or during a deploy keeps you signed in, using the saved profile. A rejected login returns you to the welcome screen. Offline with no saved word shows a plain message, and Search works on the empty error screen.
 - 1.0.16: Every fresh launch plays the white Bauhaus drawing, and Skip ends it. Returning from another app does not replay it. The explanation pages still come before an account exists. The launcher icon is the circular mark.

@@ -245,7 +245,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (reminder.enabled)
         ListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text(time, style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700)),
+          title: Text(
+            context.tr('reminder_change_time'),
+            style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(time, style: TextStyle(color: colors.textMuted)),
           trailing: Icon(Icons.schedule, color: colors.accent),
           onTap: () async {
             final picked = await showTimePicker(

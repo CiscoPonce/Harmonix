@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/api_client.dart';
 import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
+import '../utils/i18n.dart';
 import '../utils/study_spacing.dart';
 
 /// SRS review — mirrors web `/review`.
@@ -104,13 +105,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Review'),
+        title: Text(context.tr('review_title')),
         actions: [
           TextButton(
             onPressed: _submitting
                 ? null
                 : () => _submit(_results),
-            child: const Text('Done'),
+            child: Text(context.tr('review_done')),
           ),
         ],
       ),
@@ -125,17 +126,20 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       children: [
                         Text(_error!, textAlign: TextAlign.center),
                         const SizedBox(height: 12),
-                        FilledButton(onPressed: _load, child: const Text('Retry')),
+                        FilledButton(onPressed: _load, child: Text(context.tr('retry'))),
                       ],
                     ),
                   ),
                 )
               : _due.isEmpty
                   ? Center(
-                      child: Text(
-                        'No words due for review. Come back tomorrow.',
-                        style: TextStyle(color: colors.textMuted),
-                        textAlign: TextAlign.center,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          context.tr('review_empty'),
+                          style: TextStyle(color: colors.textMuted),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     )
                   : Padding(
@@ -173,7 +177,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           else
                             TextButton(
                               onPressed: () => setState(() => _revealed = true),
-                              child: const Text('Show meaning'),
+                              child: Text(context.tr('review_show_meaning')),
                             ),
                           if (_revealed &&
                               (_due[_index]['context_sentence'] ?? '').toString().isNotEmpty)
@@ -210,12 +214,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           if (_revealed) ...[
                             FilledButton(
                               onPressed: _submitting ? null : () => _rate(true),
-                              child: const Text('Got it'),
+                              child: Text(context.tr('review_got_it')),
                             ),
                             const SizedBox(height: 10),
                             OutlinedButton(
                               onPressed: _submitting ? null : () => _rate(false),
-                              child: const Text('Still learning'),
+                              child: Text(context.tr('review_still_learning')),
                             ),
                           ],
                         ],
