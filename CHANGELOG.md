@@ -83,6 +83,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## [0.0.7](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.6...harmonix-v0.0.7) (2026-11-07)
 
+Android on Google Play closed testing is 1.0.18 (version code 21). That is the build on phones. This repository also contains 1.0.19 (version code 22), which is not uploaded. An APK attached to this release is signed in CI and does not update the Play install.
 
 ### Features
 
