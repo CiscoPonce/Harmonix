@@ -7,7 +7,7 @@ interface HarmonixWordmarkProps {
   href?: string | null;
   showTagline?: boolean;
   /** Visual size of the logo mark */
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   /**
    * Force a variant. `auto` (default) swaps light/dark assets with the theme
    * so the mark stays readable on light and dark surfaces.
@@ -23,12 +23,14 @@ const SIZE_CLASS = {
   sm: 'h-8 w-auto sm:h-9',
   md: 'h-10 w-auto sm:h-11',
   lg: 'h-14 w-auto sm:h-16',
+  xl: 'h-32 w-auto sm:h-36',
 } as const;
 
 const MARK_SIZE_CLASS = {
   sm: 'h-8 w-auto',
   md: 'h-10 w-auto',
   lg: 'h-14 w-auto',
+  xl: 'h-14 w-auto',
 } as const;
 
 export function HarmonixWordmark({
@@ -49,8 +51,8 @@ export function HarmonixWordmark({
         <Image
           src="/logo-mark.png"
           alt="Harmonix"
-          width={390}
-          height={280}
+          width={586}
+          height={583}
           className={`${sizeClass} max-w-full object-contain object-left`}
           priority
         />
@@ -63,16 +65,16 @@ export function HarmonixWordmark({
         <Image
           src="/logo-light.png"
           alt="Harmonix — Learn Words Through Music"
-          width={1024}
-          height={558}
+          width={586}
+          height={695}
           className={`${sizeClass} max-w-full object-contain object-left dark:hidden`}
           priority
         />
         <Image
           src="/logo-dark.png"
           alt="Harmonix — Learn Words Through Music"
-          width={1024}
-          height={558}
+          width={586}
+          height={695}
           className={`${sizeClass} max-w-full object-contain object-left hidden dark:block`}
           priority
         />
@@ -85,8 +87,8 @@ export function HarmonixWordmark({
         <Image
           src={variant === 'dark' ? '/logo-dark.png' : '/logo-light.png'}
           alt="Harmonix — Learn Words Through Music"
-          width={1024}
-          height={558}
+          width={586}
+          height={695}
           className={`${sizeClass} max-w-full object-contain object-left`}
           priority
         />

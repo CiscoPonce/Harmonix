@@ -124,6 +124,7 @@ class _LearnScreenState extends State<LearnScreen> {
             _word = cached;
             _loading = false;
           });
+          await _syncReminder(cached);
         }
       } catch (_) {
         /* Cache is optional — still load from the network. */
@@ -169,6 +170,7 @@ class _LearnScreenState extends State<LearnScreen> {
         _dueCount = dueCount;
         _offlineWord = false;
       });
+      await _syncReminder(payload);
       _scheduleMetaPoll();
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -1068,6 +1070,32 @@ class _LearnScreenState extends State<LearnScreen> {
         _songSearchDock(colors),
       ],
     );
+  }
+
+  Future<void> _syncReminder(Map<String, dynamic> payload) async {
+    final ReminderController? reminder;
+    try {
+      reminder = context.read<ReminderController>();
+    } on ProviderNotFoundException {
+      return;
+    }
+    if (!reminder.enabled) return;
+    final word = payload['word'];
+    final song = payload['song'];
+    final lyric = payload['lyric'];
+    final text = word is Map ? (word['text']?.toString() ?? '').trim() : '';
+    if (text.isEmpty) return;
+    final songTitle = song is Map ? (song['title']?.toString() ?? '').trim() : '';
+    final artistRaw = song is Map ? song['artist'] : null;
+    final artist = artistRaw is Map
+        ? (artistRaw['name']?.toString() ?? '').trim()
+        : (artistRaw?.toString() ?? '').trim();
+    final fromSong = [songTitle, artist].where((part) => part.isNotEmpty).join(' — ');
+    final snippet = lyric is Map ? (lyric['snippet']?.toString() ?? '').trim() : '';
+    final body = fromSong.isNotEmpty
+        ? fromSong
+        : (snippet.isNotEmpty ? snippet : context.tr('reminder_body'));
+    await reminder.useWord(word: text, body: body);
   }
 
   ReminderController? _watchReminder() {

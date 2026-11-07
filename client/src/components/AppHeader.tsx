@@ -29,7 +29,7 @@ export function AppHeader({
         className="mx-auto flex h-14 w-full max-w-5xl flex-row flex-nowrap items-center justify-between gap-2 px-4 sm:h-16 sm:gap-4 sm:px-6"
         style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))' }}
       >
-        <HarmonixWordmark href={homeHref} linkClassName="min-w-0 max-w-[42vw] sm:max-w-none" />
+        <HarmonixWordmark href={homeHref} markOnly linkClassName="min-w-0 max-w-[42vw] sm:max-w-none" />
 
         <div className="flex shrink-0 flex-row flex-nowrap items-center gap-1.5 sm:gap-2.5">
           <LanguageBadge compact />

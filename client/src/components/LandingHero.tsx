@@ -19,16 +19,16 @@ export function LandingHero() {
             <Image
               src="/logo-light.png"
               alt="Harmonix — Learn Words Through Music"
-              width={1024}
-              height={558}
+              width={586}
+              height={695}
               priority
               className="landing-hero-logo-img dark:hidden"
             />
             <Image
               src="/logo-dark.png"
               alt="Harmonix — Learn Words Through Music"
-              width={1024}
-              height={558}
+              width={586}
+              height={695}
               priority
               className="landing-hero-logo-img hidden dark:block"
             />

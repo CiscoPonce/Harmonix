@@ -80,6 +80,17 @@ void main() {
     expect(prefs.getBool('reminder_enabled'), isFalse);
   });
 
+  test('useWord replaces the generic reminder with the word and song', () async {
+    await controller.enable(title: 'Generic', body: 'Same every day');
+    await controller.useWord(word: 'opción', body: 'La Camisa Negra — Juanes');
+    expect(controller.notificationTitle, 'opción');
+    expect(controller.notificationBody, 'La Camisa Negra — Juanes');
+    expect(scheduler.scheduled.last, (19, 0, 'opción', 'La Camisa Negra — Juanes'));
+
+    await controller.useWord(word: 'opción', body: 'La Camisa Negra — Juanes');
+    expect(scheduler.scheduled, hasLength(2));
+  });
+
   test('load restores saved values and reschedules when enabled', () async {
     SharedPreferences.setMockInitialValues({
       'reminder_enabled': true,

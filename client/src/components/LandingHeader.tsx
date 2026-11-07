@@ -9,7 +9,7 @@ export function LandingHeader() {
         className="mx-auto flex h-14 w-full max-w-7xl flex-row flex-nowrap items-center justify-between gap-3 px-4 sm:px-6"
         style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))' }}
       >
-        <HarmonixWordmark href="/" showTagline linkClassName="min-w-0 shrink" />
+        <HarmonixWordmark href="/" markOnly linkClassName="min-w-0 shrink" />
 
         <nav className="hidden flex-row flex-nowrap items-center gap-8 lg:flex">
           <a href="#features" className="text-sm font-bold uppercase tracking-widest text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">

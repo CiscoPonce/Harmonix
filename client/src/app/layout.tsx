@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Harmonix — Learn Words Through Music",
     description: "AI-first language learning through real music lyrics.",
-    images: [{ url: "/logo.png", width: 1024, height: 558, alt: "Harmonix" }],
+    images: [{ url: "/logo.png", width: 586, height: 695, alt: "Harmonix" }],
   },
 };
 

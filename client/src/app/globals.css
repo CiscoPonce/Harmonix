@@ -98,6 +98,11 @@ html.font-dyslexic body {
   @apply h-32 w-auto max-w-[min(100%,22rem)] object-contain drop-shadow-2xl sm:h-40 md:h-48;
 }
 
+/* The white wordmark sits on the dark hero. A black drop shadow turns those thin letters gray. */
+.dark .landing-hero-logo-img {
+  filter: none;
+}
+
 .landing-hero-logo-text {
   @apply hidden text-center sm:flex sm:flex-col sm:items-center lg:items-start lg:text-left;
 }

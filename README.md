@@ -7,8 +7,8 @@ Harmonix teaches vocabulary from the lyrics of songs people already listen to. E
 ![Harmonix Logo](./logoharmonix.png)
 
 **Web** — [harmonix.peeporunclub.co.uk](https://harmonix.peeporunclub.co.uk)  
-**Android** — Play closed testing is `1.0.17` (version code 20). This repo is `1.0.18` (21) and is not uploaded yet · `uk.co.peeporunclub.harmonix`  
-**Google Play** — Closed testing has `1.0.17` (20), published and tested on 5 November 2026. Public release follows 12 opted-in testers for 14 days.
+**Android** — Play closed testing is `1.0.18` (version code 21). This repo is `1.0.19` (22) · `uk.co.peeporunclub.harmonix`  
+**Google Play** — Closed testing has `1.0.18` (21), tested on a phone on 7 November 2026. Public release follows 12 opted-in testers for 14 days.
 
 <!-- x-release-please-start-version -->
 **Platform release:** 0.0.6
@@ -115,8 +115,8 @@ Two numbers, on purpose:
 
 | Track | Version | Where |
 |-------|---------|--------|
-| Android on Play | **1.0.17** (versionCode **20**), id `uk.co.peeporunclub.harmonix` | Closed testing, published 5 November 2026 |
-| Android in this repo | **1.0.18** (versionCode **21**) | `mobile/pubspec.yaml` — bump this for every Play upload |
+| Android on Play | **1.0.18** (versionCode **21**), id `uk.co.peeporunclub.harmonix` | Closed testing, tested 7 November 2026 |
+| Android in this repo | **1.0.19** (versionCode **22**) | `mobile/pubspec.yaml` — bump this for every Play upload |
 | Platform changelog | The **Platform changelog** line at the top of this file | `CHANGELOG.md`, [GitHub Releases](https://github.com/CiscoPonce/Harmonix/releases) |
 
 The website has no store version. It ships from `main`.

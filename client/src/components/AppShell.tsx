@@ -52,7 +52,7 @@ export function AppShell({
       {/* Sidebar — fixed full viewport height so the column bar always reaches the bottom */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[240px] flex-col border-r border-[#E4EBE6] bg-white px-5 py-6 dark:border-[#2A3530] dark:bg-[#121A17] lg:flex">
         <div className="mb-8 shrink-0">
-          <HarmonixWordmark href="/discover" size="lg" showTagline />
+          <HarmonixWordmark href="/discover" size="xl" showTagline />
         </div>
 
         <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto" aria-label="Main">
@@ -114,7 +114,7 @@ export function AppShell({
         <header className="sticky top-0 z-30 border-b border-[#E4EBE6] bg-[#F7F8F6]/90 backdrop-blur-xl dark:border-[#2A3530] dark:bg-[#0C1210]/90">
           <div className="flex items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
             <div className="shrink-0 lg:hidden">
-              <HarmonixWordmark href="/discover" size="sm" />
+              <HarmonixWordmark href="/discover" size="sm" markOnly />
             </div>
 
             {pageTitle ? (

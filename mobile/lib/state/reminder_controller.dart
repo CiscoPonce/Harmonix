@@ -33,6 +33,9 @@ class ReminderController extends ChangeNotifier {
   String get timeLabel =>
       '${_hour.toString().padLeft(2, '0')}:${_minute.toString().padLeft(2, '0')}';
 
+  String get notificationTitle => _title;
+  String get notificationBody => _body;
+
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     _enabled = prefs.getBool(_enabledKey) ?? false;
@@ -112,6 +115,16 @@ class ReminderController extends ChangeNotifier {
         body: body,
       );
     }
+  }
+
+  /// Names the word already on the phone. The daily alarm repeats this text
+  /// until the next word replaces it.
+  Future<void> useWord({required String word, required String body}) async {
+    final nextTitle = word.trim();
+    final nextBody = body.trim();
+    if (!_enabled || nextTitle.isEmpty) return;
+    if (nextTitle == _title && nextBody == _body) return;
+    await setTime(_hour, _minute, title: nextTitle, body: nextBody);
   }
 
   Future<void> markPromptShown() async {

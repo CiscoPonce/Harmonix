@@ -45,9 +45,9 @@ export default function LandingPage() {
           <Image
             src="/logo-dark.png"
             alt="Harmonix"
-            width={1024}
-            height={558}
-            className="h-16 w-auto animate-pulse sm:h-20"
+            width={586}
+            height={695}
+            className="h-28 w-auto animate-pulse sm:h-32"
             priority
           />
         </div>
