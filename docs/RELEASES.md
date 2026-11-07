@@ -47,12 +47,13 @@ Or merge a release PR manually after editing the version in the Release PR.
 
 | File | Purpose |
 |------|---------|
-| `version.txt` | Canonical app version |
+| `version.txt` | Platform version. This is not the Play version. |
 | `CHANGELOG.md` | Release notes |
-| `client/package.json` | Frontend version |
-| `server/package.json` | Backend version |
-| `client/android/app/build.gradle` | Android `versionName` |
-| `README.md` | Version badge line |
+| `client/package.json` | Website package version |
+| `server/package.json` | API package version |
+| `README.md` | Platform release line |
+
+The Play app is Flutter. Its version is `mobile/pubspec.yaml`, and release-please does not bump it. Closed testing is currently `1.0.18` (version code `21`). The Capacitor project in `client/android/` is not shipped.
 
 ## Repo settings (one-time)
 

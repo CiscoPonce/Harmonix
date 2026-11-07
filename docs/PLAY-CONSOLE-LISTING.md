@@ -4,7 +4,8 @@ Copy these fields into [Google Play Console](https://play.google.com/console).
 Do **not** submit Production until Internal testing works on a real phone.
 
 **Application ID:** `uk.co.peeporunclub.harmonix`  
-**Version for this upload:** `1.0.14` (versionCode `17`)  
+**On Play closed testing:** `1.0.18` (version code `21`)  
+**Next upload from this repo, not on Play yet:** `1.0.19` (version code `22`)  
 **Default language:** English (UK)  
 **Type:** App · **Price:** Free  
 **Contact / support:** `hello@peeporunclub.co.uk`  

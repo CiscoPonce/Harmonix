@@ -20,10 +20,6 @@
         {
           "type": "generic",
           "path": "README.md"
-        },
-        {
-          "type": "generic",
-          "path": "client/android/app/build.gradle"
         }
       ]
     }

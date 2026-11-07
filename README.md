@@ -111,7 +111,7 @@ cd mobile && flutter analyze --fatal-infos && flutter test
 
 ## Releases
 
-The website has no store version. It ships from `main`.
+The website has no store version. It ships from `main`. The Android build on Play closed testing is 1.0.18 (version code 21). Version code 22 is in this repo and is not on Play.
 
 <!-- x-release-please-start-version -->
 **Platform release:** 0.0.6

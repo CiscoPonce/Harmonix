@@ -15,7 +15,7 @@ progress:
 
 ## Current Focus
 
-**Phases 1–18 are complete.** The APK already built is Flutter `1.0.14` (versionCode `17`). The project version is now `1.0.15` (versionCode `18`) so the welcome opening can be uploaded as a new bundle. `1.0.13` stays on the Play track until a newer bundle is published. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
+**Phases 1–18 are complete.** Play closed testing is Flutter `1.0.18` (version code `21`), tested on a phone on 7 November 2026. This repo is `1.0.19` (version code `22`) and is not uploaded. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
 
 **2026-11-05 Play:** Closed testing has Flutter `1.0.17` (versionCode `20`). It was published and tested on a device the same day. The public listing still needs 12 opted-in testers for 14 days.
 
@@ -84,7 +84,7 @@ progress:
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
 | TTS | Host Pocket 4.0.1 `:3002` for French, Portuguese, Italian, German, and English male; host Kokoro `:3003` speaks Spanish and English female; compose `TTS_SKIP_SPAWN=true` |
 | Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` (Coolify UI status only; do not use Coolify Restart) |
-| Mobile | Flutter `1.0.17` (versionCode `20`) is on closed testing and was tested on a device on 2026-11-05. Public listing still needs 12 testers for 14 days. |
+| Mobile | Flutter `1.0.18` (version code `21`) is on closed testing and was tested on a phone on 7 November 2026. This repo is `1.0.19` (version code `22`) and is not uploaded. Public listing still needs 12 testers for 14 days. |
 
 ## Phase status
 
