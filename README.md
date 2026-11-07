@@ -1,84 +1,91 @@
-# Harmonix
+<p align="center">
+  <img src="client/public/logo-mark.png" alt="Harmonix" width="112">
+</p>
 
-**Learn words through music.**
+<h1 align="center">Harmonix</h1>
 
-Harmonix teaches vocabulary from the lyrics of songs people already listen to. Each word comes from a real line, is checked against the recording, and can be heard in a 30-second preview. The web app is live. The Android app has completed internal testing and is in Google Play closed testing, with a public launch to follow.
+<p align="center">
+  Learn vocabulary from the lyrics of songs people already listen to.
+</p>
 
-![Harmonix Logo](./logoharmonix.png)
+<p align="center">
+  <a href="https://harmonix.peeporunclub.co.uk">Website</a>
+  ·
+  <a href="https://harmonix.peeporunclub.co.uk/privacy">Privacy</a>
+  ·
+  <a href="https://harmonix.peeporunclub.co.uk/terms">Terms</a>
+  ·
+  <a href="./CHANGELOG.md">Changelog</a>
+</p>
 
-**Web** — [harmonix.peeporunclub.co.uk](https://harmonix.peeporunclub.co.uk)  
-**Android** — Play closed testing is `1.0.18` (version code 21). This repo is `1.0.19` (22) · `uk.co.peeporunclub.harmonix`  
-**Google Play** — Closed testing has `1.0.18` (21), tested on a phone on 7 November 2026. Public release follows 12 opted-in testers for 14 days.
+Harmonix picks a word from a real lyric line, checks it against the recording, and plays a 30-second preview. The website is live. The Android app is in Google Play closed testing. A public listing follows once 12 testers have stayed opted in for 14 days.
 
-<!-- x-release-please-start-version -->
-**Platform release:** 0.0.6
-<!-- x-release-please-end -->
-
-The Word tab is the home: a word of the day, practice, and song search. Library keeps Harmonix and Spotify playlists, and a recent word opens its full card. On Android, Account is Settings, and the last word stays readable offline.
+The Word screen is home: a word of the day, practice, and song search. Library holds Harmonix and Spotify playlists. On Android, the last word stays readable offline.
 
 ## Features
 
-- **Word of the Day** — Personalized word in a real lyric, buffered queue for fast next words
-- **Hear it** — 30-second Deezer preview, with iTunes when Deezer is blocked. Spotify Premium plays in the app when connected, and Open in Spotify is always available
-- **Pronunciation** — Pocket-TTS for English and fallback; Kokoro for Spanish; the phone speaks the word if the server voice is missing. Settings chooses voice gender
-- **Music style** — any / pop / rock / hip-hop / reggaeton (Settings; changing style refreshes the word queue)
-- **Song search** — Find a song and learn a word from its lyric
-- **Library** — Harmonix playlists and Spotify playlists; export Harmonix → Spotify. A recent word opens its card
-- **Practice** — SRS review + streak/goal chips on the Word tab
-- **Web shell** — Word · Library · Settings (forest-green design system + theme-aware logos)
-- **Android** — Flutter app (`mobile/`) is the Play Store app: Word, Library, and Account. Recent words reopen their cards. The last word stays available offline. The Capacitor wrapper under `client/android/` is not shipped.
+- **Word of the Day.** A word from a real lyric, with the next few words ready so moving on stays fast.
+- **Hear it.** A 30-second Deezer preview, or iTunes when Deezer is blocked. Spotify Premium can play in the app. Open in Spotify is always available.
+- **Pronunciation.** Pocket-TTS for English and the fallback languages, Kokoro for Spanish. The phone speaks the word if the server voice is missing. Settings chooses voice gender.
+- **Music style.** Any, pop, rock, hip-hop, or reggaeton. Changing style refreshes the word queue.
+- **Song search.** Find a song and learn a word from its lyric.
+- **Library.** Harmonix playlists and Spotify playlists, with export from Harmonix to Spotify. A recent word opens its card.
+- **Practice.** Spaced review, with the streak and the daily goal on the Word screen.
 
 ## Stack
 
-| Layer | Tech |
-|-------|------|
+| Layer | Technology |
+|-------|------------|
 | API | Node.js, Express, SQLite |
 | Web | Next.js App Router, Tailwind v4 |
-| Mobile | Flutter (`mobile/`) — Play Store. Capacitor is not shipped. |
-| AI | NVIDIA NIM + OpenRouter fallback |
-| Music | Deezer, iTunes, LRCLib, Spotify Web API / Web Playback SDK |
-| TTS | Pocket-TTS `:3002` (English and fallback), Kokoro `:3003` (Spanish) |
+| Android | Flutter (`mobile/`) |
+| AI | NVIDIA NIM, with OpenRouter as fallback |
+| Music | Deezer, iTunes, LRCLib, Spotify Web API and Web Playback SDK |
+| Voice | Pocket-TTS on `:3002`, Kokoro on `:3003` for Spanish |
 
-## Repo layout
+## Repository
 
 ```text
-server/          Express API + SQLite + Spotify/TTS/daily-word services
-client/          Next.js web
-mobile/          Flutter Android app (Play Store path)
-releases/        Release notes only. Play installs come from an AAB, not APKs in git.
-docs/            Runbooks (Coolify, Spotify, mobile, releases)
-.planning/       ROADMAP, STATE, phase contexts & plans
-docker-compose.yml  Coolify/Docker: api + web (Phase 15)
-logoharmonix.png Brand logo (web: client/public/logo-{light,dark,mark}.png)
-run_env.sh       Legacy VPS: backend + Next prod + TTS + ngrok
-deploy.sh        pull → tests → run_env (tests may block; prefer run_env after pull)
+server/     Express API, SQLite, Spotify, voice, and daily-word services
+client/     Next.js website
+mobile/     Flutter Android app, the Play Store build
+docs/       Runbooks for deploy, Spotify, mobile, and releases
+.planning/  Roadmap and phase notes
 ```
 
-## Quickstart
+Brand files live in `client/public/` (`logo-mark.png`, `logo-light.png`, `logo-dark.png`). The Play Store app is the Flutter project. The Capacitor project under `client/android/` is not shipped.
 
-### Backend
+## Develop
+
+API:
+
 ```bash
 cd server
-cp .env.example .env   # fill JWT_*, AI keys, Spotify as needed
+cp .env.example .env
 npm install
-npm start              # :3001
+npm start
 ```
 
-### Frontend
+The API listens on port 3001. Fill `JWT_*`, the AI keys, and Spotify in `.env` as needed.
+
+Website:
+
 ```bash
 cd client
 cp .env.example .env
 npm install
-npm run dev            # :3009
+npm run dev
 ```
 
-### Production
+The dev server listens on port 3009.
 
-**Public:** https://harmonix.peeporunclub.co.uk
+## Deploy
 
-Pushes to `main` run GitHub Actions: tests, then SSH to the VPS and `scripts/coolify-redeploy.sh` (Coolify Traefik, zero-downtime). Pocket-TTS 4.0.1 stays on the host (`:3002`, systemd `harmonix-tts`). Kokoro stays on the host (`:3003`) and speaks Spanish. A deploy restarts Pocket-TTS and leaves Kokoro running.
+Pushes to `main` run GitHub Actions: tests, then a deploy to the VPS with `scripts/coolify-redeploy.sh`. The public site is [harmonix.peeporunclub.co.uk](https://harmonix.peeporunclub.co.uk).
 
-Manual rebuild on the VPS, if Actions is unavailable:
+Pocket-TTS 4.0.1 stays on the host at `:3002`. Kokoro stays at `:3003` and speaks Spanish. A deploy restarts Pocket-TTS and leaves Kokoro running.
+
+If Actions is unavailable:
 
 ```bash
 cd /home/ubuntu/lyric
@@ -86,14 +93,11 @@ git fetch origin main && git reset --hard origin/main
 HARMONIX_REDEPLOY_BOOTED=1 bash scripts/coolify-redeploy.sh
 ```
 
-See [docs/COOLIFY-DEPLOY.md](./docs/COOLIFY-DEPLOY.md). Legacy host rollback only: `bash run_env.sh`.
+See [docs/COOLIFY-DEPLOY.md](./docs/COOLIFY-DEPLOY.md). The older host script is `bash run_env.sh`.
 
 ## Security
 
-- Never commit `.env` — only `.env.example` placeholders
-- Spotify tokens encrypted at rest; refresh stays server-side
-- OAuth uses PKCE; short `/callback` alias for Dashboard redirect matching
-- See [SECURITY.md](./SECURITY.md)
+Do not commit `.env`. Only `.env.example` belongs in git. Spotify tokens are encrypted at rest, and refresh stays on the server. OAuth uses PKCE. See [SECURITY.md](./SECURITY.md).
 
 ## Tests
 
@@ -105,24 +109,22 @@ cd client && node --experimental-strip-types --test 'src/lib/*.test.ts'
 cd mobile && flutter analyze --fatal-infos && flutter test
 ```
 
-## Planning
-
-Phases 1–18 are complete. Production is Coolify Traefik. The Android app is Flutter only and is in Google Play closed testing, with the public listing to follow. Privacy URL is `/privacy`.
-
 ## Releases
-
-Two numbers, on purpose:
-
-| Track | Version | Where |
-|-------|---------|--------|
-| Android on Play | **1.0.18** (versionCode **21**), id `uk.co.peeporunclub.harmonix` | Closed testing, tested 7 November 2026 |
-| Android in this repo | **1.0.19** (versionCode **22**) | `mobile/pubspec.yaml` — bump this for every Play upload |
-| Platform changelog | The **Platform changelog** line at the top of this file | `CHANGELOG.md`, [GitHub Releases](https://github.com/CiscoPonce/Harmonix/releases) |
 
 The website has no store version. It ships from `main`.
 
-[release-please](https://github.com/googleapis/release-please) opens the changelog pull request from [Conventional Commits](https://www.conventionalcommits.org/). Do not commit APKs. Testers install from the Play closed test. The APK attached to a GitHub release is built in CI and uses a different signature, so it does not update the Play install. See [docs/PLAY-CONSOLE-LISTING.md](docs/PLAY-CONSOLE-LISTING.md).
+<!-- x-release-please-start-version -->
+**Platform release:** 0.0.6
+<!-- x-release-please-end -->
+
+| Track | Version | Where |
+|-------|---------|--------|
+| Android on Play | 1.0.18 (version code 21) | Closed testing, tested 7 November 2026 |
+| Android in this repo | 1.0.19 (version code 22) | `mobile/pubspec.yaml`. Bump this for every Play upload |
+| Platform changelog | The platform release line above | `CHANGELOG.md` and [GitHub Releases](https://github.com/CiscoPonce/Harmonix/releases) |
+
+The package id is `uk.co.peeporunclub.harmonix`. [release-please](https://github.com/googleapis/release-please) opens the changelog pull request from [Conventional Commits](https://www.conventionalcommits.org/). Do not commit APKs. Testers install from the Play closed test. An APK attached to a GitHub release is signed in CI and does not update a Play install. See [docs/PLAY-CONSOLE-LISTING.md](docs/PLAY-CONSOLE-LISTING.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
