@@ -77,11 +77,48 @@ class AuthState extends ChangeNotifier {
     }
   }
 
-  Future<void> register(String email, String password) async {
+  Future<String> requestSignupCode(String email, String password) async {
     error = null;
     notifyListeners();
-    await api.register(email, password);
-    await login(email, password);
+    try {
+      final data = await api.requestSignupCode(email, password);
+      final challengeId = data['challenge_id'] as String?;
+      if (challengeId == null || challengeId.isEmpty) {
+        throw ApiException('The verification email could not be sent. Try again shortly.');
+      }
+      return challengeId;
+    } on ApiException catch (e) {
+      error = e.message;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> confirmSignup({
+    required String email,
+    required String password,
+    required String challengeId,
+    required String code,
+  }) async {
+    error = null;
+    notifyListeners();
+    try {
+      final data = await api.confirmSignup(
+        email: email,
+        password: password,
+        challengeId: challengeId,
+        code: code,
+      );
+      user = (data['user'] as Map<String, dynamic>?) ?? await api.me();
+      try {
+        await _loadMe();
+      } catch (_) {}
+      notifyListeners();
+    } on ApiException catch (e) {
+      error = e.message;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> savePreferences(Map<String, String> prefs) async {

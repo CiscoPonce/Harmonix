@@ -14,9 +14,11 @@ function RegisterForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [challengeId, setChallengeId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { register } = useAuth();
+  const { requestSignupCode, confirmSignup } = useAuth();
 
   useEffect(() => {
     rememberSignupSource(searchParams.get('src'));
@@ -36,7 +38,12 @@ function RegisterForm() {
     setIsLoading(true);
     setError(null);
     try {
-      await register(email, password);
+      if (!challengeId) {
+        const issued = await requestSignupCode(email, password);
+        setChallengeId(issued);
+        return;
+      }
+      await confirmSignup(email, password, challengeId, code.trim());
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to register';
       setError(message);
@@ -52,10 +59,66 @@ function RegisterForm() {
           <HarmonixWordmark href="/" size="xl" showTagline variant="dark" />
           <div>
             <h1 className="text-2xl font-bold tracking-tighter uppercase">Register</h1>
-            <p className="mt-1 text-zinc-400">Create an account to get started</p>
+            <p className="mt-1 text-zinc-400">
+              {challengeId ? 'Check your email for the code' : 'Create an account to get started'}
+            </p>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {challengeId ? (
+            <div className="space-y-2">
+              <p className="text-sm text-zinc-300">
+                Enter the six-digit code sent to {email}. It expires in 10 minutes.
+              </p>
+              <label htmlFor="code" className="text-sm font-medium">Verification code</label>
+              <Input
+                id="code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                placeholder="000000"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                required
+              />
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  className="text-xs text-zinc-400 underline"
+                  disabled={isLoading}
+                  onClick={async () => {
+                    setIsLoading(true);
+                    setError(null);
+                    try {
+                      const issued = await requestSignupCode(email, password);
+                      setChallengeId(issued);
+                      setCode('');
+                    } catch (err) {
+                      const message = err instanceof Error ? err.message : 'Failed to register';
+                      setError(message);
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                >
+                  Send a new code
+                </button>
+                <button
+                  type="button"
+                  className="text-xs text-zinc-400 underline"
+                  disabled={isLoading}
+                  onClick={() => {
+                    setChallengeId(null);
+                    setCode('');
+                    setError(null);
+                  }}
+                >
+                  Use a different email
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">Email</label>
             <Input
@@ -88,6 +151,8 @@ function RegisterForm() {
               required
             />
           </div>
+            </>
+          )}
           {error && (
             <div className="space-y-2">
               <p className="text-sm text-red-500">{error}</p>
@@ -104,8 +169,8 @@ function RegisterForm() {
               )}
             </div>
           )}
-          <Button type="submit" variant="primary" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Creating account...' : 'Register'}
+          <Button type="submit" variant="primary" className="w-full" disabled={isLoading || (challengeId !== null && code.length !== 6)}>
+            {isLoading ? 'Please wait...' : challengeId ? 'Confirm code' : 'Send code'}
           </Button>
         </form>
         <p className="text-center text-sm text-zinc-400">

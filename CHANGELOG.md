@@ -17,7 +17,8 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ### Android
 - Play closed testing is 1.0.18 (version code 21), tested on a phone on 7 November 2026. That is the current live build.
-- 1.0.19 (version code 22) is in this repo and is not uploaded. It names the word in the daily reminder, with the song underneath. Phones on 1.0.18 keep the generic sentence until that build is uploaded.
+- 1.0.20 (version code 23) asks a new account for the email code before the account exists. It is not uploaded. Phones on 1.0.18 still create an account in one step until this build is on the track, and that one step is refused by the API once this change is deployed.
+- 1.0.19 (version code 22) names the word in the daily reminder, with the song underneath. It was not uploaded. 1.0.20 includes that reminder.
 - The website and the signed-in app use the new circular mark: a treble clef and bass clef making an H, with Read, Play, Sing, Grow on the staff.
 - 1.0.18 on closed testing can turn on a daily reminder at a time you choose. The reminder stays on the phone. Review uses the home language, and the lyric and song sit under the meaning.
 - 1.0.17: When Next fails on the open card, Change style and Search stay available. Spotify’s return to the live site opens Library, and the opening drawing is skipped for that return. If the phone doesn't hand that link to the app, `/app/library` and `/app/settings` show an Open Harmonix button instead of a 404, and `assetlinks.json` also lists the upload key. Opening the app offline or during a deploy keeps you signed in, using the saved profile. A rejected login returns you to the welcome screen. Offline with no saved word shows a plain message, and Search works on the empty error screen.
@@ -33,6 +34,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 - When those song charts are used up, Next stays in the style and teaches from tracks on that genre's top albums before it offers a song from another style.
 
 ### Web
+- A new account enters the six-digit code from the Harmonix email before the account is created. Login for an existing account is unchanged.
 - A postcard links to the Android closed test, and a sign-up from that page is counted. Privacy notes that usage events store the action, not the email address or typed text.
 - The admin dashboard shows cards served, whether a tester came back, and the latest word and song. Practice reviews stay in the data, and they are no longer the headline, because that count is still zero.
 - Library recent words open the full word card (Hear it, playlist, Spotify, share) instead of the legacy player.

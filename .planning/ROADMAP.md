@@ -226,9 +226,9 @@ Song reuse stays off. Phases 1–18 are complete.
 
 ### After Phase 18
 
-Pending, and not started:
+Pending, and not started: the public Play listing still waits on 12 closed-test testers for 14 days.
 
-- **2FA verification email.** The mail sender is hosted on another VPS. Wire it when that service is the one Harmonix should call.
+Done on 8 November 2026: new accounts confirm a code from the private mail service before the user row is created. Existing accounts are not asked. Android `1.0.20` (version code `23`) includes the code screen and is not uploaded yet.
 
 In the app, not in the versionCode `17` APK:
 

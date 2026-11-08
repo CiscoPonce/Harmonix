@@ -2,7 +2,6 @@ const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const { nanoid } = require('nanoid');
 const db = require('./db');
 const auth = require('./auth');
 const vocabRouter = require('./routes/vocab');
@@ -15,6 +14,7 @@ const badgesRouter = require('./routes/badges');
 const userRouter = require('./routes/user');
 const audioRouter = require('./routes/audio');
 const passwordRoutes = require('./routes/password');
+const registerRoutes = require('./routes/register');
 const { protectedRouter: spotifyProtectedRouter, callbackRouter: spotifyCallbackRouter } = require('./routes/spotify');
 const { publicRouter: sharePublicRouter, protectedRouter: shareProtectedRouter } = require('./routes/share');
 const {
@@ -26,7 +26,7 @@ const {
 const deezer = require('./services/deezerService');
 require('dotenv').config();
 const ttsDaemon = require('./services/ttsDaemon');
-const { recordEvent, normalizeSignupSource } = require('./services/usageEvents');
+const { recordEvent } = require('./services/usageEvents');
 // Default to Spanish HQ model — matches most Harmonix learners and avoids a
 // cold english→spanish reload on the first pronunciation click.
 const defaultTtsLang = process.env.POCKET_TTS_DEFAULT_LANGUAGE || 'spanish_24l';
@@ -38,7 +38,6 @@ const {
   authLimiter,
   pronounceLimiter,
   publicProxyLimiter,
-  validateRegistration,
 } = require('./middleware/security');
 
 const app = express();
@@ -94,39 +93,8 @@ app.use('/api/auth', passwordRoutes(authenticateToken));
 
 // --- Auth Endpoints ---
 
-// Register
-app.post('/api/auth/register', authLimiter, async (req, res) => {
-  console.log('POST /api/auth/register - received');
-  const checked = validateRegistration(req.body?.email, req.body?.password);
-  if (checked.error) {
-    return res.status(400).json({ error: checked.error });
-  }
-  const { email, password } = checked;
-
-  try {
-    const existingUser = db.prepare('SELECT id FROM users WHERE lower(email) = ?').get(email);
-    if (existingUser) {
-      return res.status(409).json({ error: 'Email already registered' });
-    }
-
-    const id = nanoid();
-    const passwordHash = await auth.hashPassword(password);
-
-    db.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)')
-      .run(id, email, passwordHash);
-    recordEvent('signup', {
-      userId: id,
-      req,
-      props: { source: normalizeSignupSource(req.body?.source) },
-    });
-
-    console.log('POST /api/auth/register - success');
-    res.status(201).json({ message: 'User registered successfully' });
-  } catch (err) {
-    console.error('POST /api/auth/register - error:', err.message);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+// New accounts confirm an email code before a row is created. Login is unchanged.
+app.use('/api/auth', authLimiter, registerRoutes());
 
 // Login
 app.post('/api/auth/login', authLimiter, async (req, res) => {

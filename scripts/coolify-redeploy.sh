@@ -123,7 +123,7 @@ overlay_coolify_provider_keys() {
     return 0
   fi
   local key
-  for key in OPENROUTER_API_KEY NVIDIA_NIM_API_KEY NVIDIA_API_KEY; do
+  for key in OPENROUTER_API_KEY NVIDIA_NIM_API_KEY NVIDIA_API_KEY TWOFA_API_KEY TWOFA_BASE_URL; do
     local line
     line=$(sudo grep -E "^${key}=" "$src" | tail -1 || true)
     if [ -n "${line}" ]; then
@@ -176,6 +176,7 @@ start_api_standby() {
     -e OPENROUTER_MODELS="${OPENROUTER_MODELS:-nvidia/nemotron-3-super-120b-a12b:free}" \
     -e PUBLIC_BASE_URL="https://${DOMAIN}" \
     -e FORCE_SECURE_COOKIES=true \
+    -e TWOFA_BASE_URL="${TWOFA_BASE_URL:-https://email-auth.ponceteam.com}" \
     -v "${VOL}:/data" \
     --add-host "host.docker.internal:host-gateway" \
     --label "traefik.enable=true" \

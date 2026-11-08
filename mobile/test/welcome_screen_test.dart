@@ -27,7 +27,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Create your account'), findsOneWidget);
-    expect(find.text('Register'), findsOneWidget);
+    expect(find.text('Send code'), findsOneWidget);
   });
 
   testWidgets('welcome shows the Bauhaus mark', (tester) async {

@@ -101,6 +101,8 @@ Production volume: `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (already seeded).
 | `TTS_SKIP_SPAWN` | `true` |
 | `TTS_BASE_URL` | `http://host.docker.internal:3002` |
 | `FORCE_SECURE_COOKIES` | `true` behind HTTPS |
+| `TWOFA_BASE_URL` | `https://email-auth.ponceteam.com` |
+| `TWOFA_API_KEY` | Private mail-service key. New accounts only. Never put it in the app. |
 
 6. Mark **`api`** as the public service; assign domain (or leave port `3001` published for ngrok).
 7. Deploy. Confirm healthchecks pass for `api` and `web`.

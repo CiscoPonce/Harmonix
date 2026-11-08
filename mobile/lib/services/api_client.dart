@@ -363,11 +363,30 @@ class ApiClient {
     return data;
   }
 
-  Future<void> register(String email, String password) async {
-    await request('POST', '/auth/register', body: {
+  Future<Map<String, dynamic>> requestSignupCode(String email, String password) {
+    return request('POST', '/auth/register/challenge', body: {
       'email': email,
       'password': password,
     }, authRetry: false);
+  }
+
+  Future<Map<String, dynamic>> confirmSignup({
+    required String email,
+    required String password,
+    required String challengeId,
+    required String code,
+  }) async {
+    final data = await request('POST', '/auth/register/verify', body: {
+      'email': email,
+      'password': password,
+      'challenge_id': challengeId,
+      'code': code,
+    }, authRetry: false);
+    await _persistTokens(
+      access: data['accessToken'] as String?,
+      refresh: data['refreshToken'] as String?,
+    );
+    return data;
   }
 
   Future<bool> refresh() async {

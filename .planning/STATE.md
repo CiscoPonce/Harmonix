@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: play-store-listing
 status: complete
-stopped_at: "2026-11-05 Phases 1–18 complete. Closed testing has 1.0.17 (20), tested on a device. 2FA verification email stays pending. Public listing still needs 12 testers for 14 days."
-last_updated: "2026-11-05T21:25:00.000Z"
+stopped_at: "2026-11-08 New accounts confirm an email code before the account exists. Closed testing is still 1.0.18 until 1.0.20 is uploaded. Public listing still needs 12 testers for 14 days."
+last_updated: "2026-11-08T20:20:00.000Z"
 progress:
   total_phases: 18
   completed_phases: 18
@@ -15,9 +15,11 @@ progress:
 
 ## Current Focus
 
-**Phases 1–18 are complete.** Play closed testing is Flutter `1.0.18` (version code `21`), tested on a phone on 7 November 2026. This repo is `1.0.19` (version code `22`) and is not uploaded. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
+**Phases 1–18 are complete.** Play closed testing is Flutter `1.0.18` (version code `21`). This repo is `1.0.20` (version code `23`): a new account must enter the email code before the account exists. It is not uploaded. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
 
-**2026-11-05 Play:** Closed testing has Flutter `1.0.17` (versionCode `20`). It was published and tested on a device the same day. The public listing still needs 12 opted-in testers for 14 days.
+**2026-11-08 signup:** New accounts confirm a six-digit code from `hello@peeporunclub.co.uk` before a user row is created. Existing accounts log in as before. The mail service is `https://email-auth.ponceteam.com`. The API key stays on the Harmonix server.
+
+**2026-11-05 Play:** Closed testing had Flutter `1.0.17` (versionCode `20`) before `1.0.18`. The public listing still needs 12 opted-in testers for 14 days.
 
 **2026-11-04 Play:** `1.0.17` adds the Android Spotify return, Next-failure actions on the open card, and a login that survives an offline open or a deploy. A rejected login returns to the welcome screen. The web has `/app/library` and `/app/settings` pages that hand back to the app. Spotify Connect works on the web.
 
@@ -27,9 +29,7 @@ progress:
 
 **2026-10-26 welcome:** Logged-out launch plays the five-second Bauhaus drawing, then three screens explain what Harmonix is for, how to use a word, and how Next and search work. Get Started comes after that. Signed-in people go straight to the word. The web logo is unchanged.
 
-**Still pending (do not start):**
-
-1. **2FA verification email.** The sender is already hosted on another VPS. Harmonix does not send that mail yet.
+**Still pending:** the public Play listing waits on 12 closed-test testers for 14 days.
 
 **2026-10-24 gloss:** Wrong lyric senses are rejected and replaced from a curated sense (leading, grave, spirit, and the other live misses). A target language no longer accepts a song whose lyrics are another language. Stored cards are repaired on the next API start.
 
@@ -84,7 +84,7 @@ progress:
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
 | TTS | Host Pocket 4.0.1 `:3002` for French, Portuguese, Italian, German, and English male; host Kokoro `:3003` speaks Spanish and English female; compose `TTS_SKIP_SPAWN=true` |
 | Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` (Coolify UI status only; do not use Coolify Restart) |
-| Mobile | Flutter `1.0.18` (version code `21`) is on closed testing and was tested on a phone on 7 November 2026. This repo is `1.0.19` (version code `22`) and is not uploaded. Public listing still needs 12 testers for 14 days. |
+| Mobile | Flutter `1.0.18` (version code `21`) is on closed testing. This repo is `1.0.20` (version code `23`), with email confirmation for new accounts, and is not uploaded. Public listing still needs 12 testers for 14 days. |
 
 ## Phase status
 

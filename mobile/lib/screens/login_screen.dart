@@ -17,8 +17,10 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _code = TextEditingController();
   bool _register = false;
   bool _busy = false;
+  String? _challengeId;
 
   @override
   void initState() {
@@ -26,21 +28,27 @@ class _LoginScreenState extends State<LoginScreen> {
     _register = widget.startInRegister;
     _email.addListener(_onFieldsChanged);
     _password.addListener(_onFieldsChanged);
+    _code.addListener(_onFieldsChanged);
   }
 
   void _onFieldsChanged() {
     if (mounted) setState(() {});
   }
 
-  bool get _canSubmit =>
-      !_busy && _email.text.trim().isNotEmpty && _password.text.isNotEmpty;
+  bool get _canSubmit {
+    if (_busy) return false;
+    if (_challengeId != null) return _code.text.trim().length == 6;
+    return _email.text.trim().isNotEmpty && _password.text.isNotEmpty;
+  }
 
   @override
   void dispose() {
     _email.removeListener(_onFieldsChanged);
     _password.removeListener(_onFieldsChanged);
+    _code.removeListener(_onFieldsChanged);
     _email.dispose();
     _password.dispose();
+    _code.dispose();
     super.dispose();
   }
 
@@ -54,13 +62,25 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _busy = true);
     final auth = context.read<AuthState>();
     try {
-      if (_register) {
-        await auth.register(_email.text.trim(), _password.text);
+      if (_register && _challengeId != null) {
+        await auth.confirmSignup(
+          email: _email.text.trim(),
+          password: _password.text,
+          challengeId: _challengeId!,
+          code: _code.text.trim(),
+        );
+      } else if (_register) {
+        final challengeId = await auth.requestSignupCode(
+          _email.text.trim(),
+          _password.text,
+        );
+        if (mounted) {
+          setState(() => _challengeId = challengeId);
+        }
+        return;
       } else {
         await auth.login(_email.text.trim(), _password.text);
       }
-      // The root auth gate has already swapped Welcome → Home underneath us;
-      // pop this pushed route so the user actually sees it.
       if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (_) {
       if (mounted) {
@@ -91,22 +111,39 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _register ? 'Create your account' : 'Learn words through music',
+                _challengeId != null
+                    ? 'Enter the code from your email'
+                    : (_register ? 'Create your account' : 'Learn words through music'),
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: 40),
-              TextField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Email'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _password,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password'),
-              ),
+              if (_challengeId == null) ...[
+                TextField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _password,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                ),
+              ] else ...[
+                Text(
+                  'We sent a six-digit code to ${_email.text.trim()}. It expires in 10 minutes.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _code,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  decoration: const InputDecoration(labelText: 'Code', counterText: ''),
+                ),
+              ],
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: _canSubmit ? _submit : null,
@@ -117,15 +154,71 @@ class _LoginScreenState extends State<LoginScreen> {
                   disabledForegroundColor: colors.textMuted,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: Text(_busy ? 'Please wait…' : (_register ? 'Register' : 'Login')),
+                child: Text(_busy
+                    ? 'Please wait…'
+                    : _challengeId != null
+                        ? 'Confirm code'
+                        : (_register ? 'Send code' : 'Login')),
               ),
-              TextButton(
-                onPressed: _busy ? null : () => setState(() => _register = !_register),
-                child: Text(
-                  _register ? 'Already have an account? Login' : 'Need an account? Register',
-                  style: const TextStyle(color: HarmonixColors.brand),
+              if (_challengeId != null)
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () async {
+                          setState(() => _busy = true);
+                          final auth = context.read<AuthState>();
+                          try {
+                            final challengeId = await auth.requestSignupCode(
+                              _email.text.trim(),
+                              _password.text,
+                            );
+                            if (mounted) {
+                              setState(() {
+                                _challengeId = challengeId;
+                                _code.clear();
+                              });
+                            }
+                          } catch (_) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(auth.error ?? 'Could not send a new code')),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => _busy = false);
+                          }
+                        },
+                  child: const Text(
+                    'Send a new code',
+                    style: TextStyle(color: HarmonixColors.brand),
+                  ),
                 ),
-              ),
+              if (_challengeId != null)
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => setState(() {
+                            _challengeId = null;
+                            _code.clear();
+                          }),
+                  child: const Text(
+                    'Use a different email',
+                    style: TextStyle(color: HarmonixColors.brand),
+                  ),
+                )
+              else
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => setState(() {
+                            _register = !_register;
+                            _challengeId = null;
+                          }),
+                  child: Text(
+                    _register ? 'Already have an account? Login' : 'Need an account? Register',
+                    style: const TextStyle(color: HarmonixColors.brand),
+                  ),
+                ),
             ],
           ),
         ),

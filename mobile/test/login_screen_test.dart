@@ -26,7 +26,7 @@ void main() {
     );
 
     expect(find.text('Create your account'), findsOneWidget);
-    expect(find.text('Register'), findsOneWidget);
+    expect(find.text('Send code'), findsOneWidget);
     expect(find.text('Login'), findsNothing);
   });
 

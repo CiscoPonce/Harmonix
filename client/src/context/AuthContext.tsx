@@ -23,7 +23,8 @@ export interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  requestSignupCode: (email: string, password: string) => Promise<string>;
+  confirmSignup: (email: string, password: string, challengeId: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -113,25 +114,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string) => {
-    console.log(`[Auth] Attempting registration for ${email}`);
-    const res = await apiFetch('/auth/register', {
+  const requestSignupCode = async (email: string, password: string) => {
+    const res = await apiFetch('/auth/register/challenge', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, source: readSignupSource() ?? undefined }),
+      body: JSON.stringify({ email, password }),
     });
-
-    if (res.ok) {
-      console.log('[Auth] Registration successful, logging in...');
-      // Backend register doesn't return token, so login after registration
-      await login(email, password);
-    } else {
-      const errorData = await parseJsonResponse<{ error?: string }>(res).catch(() => ({
-        error: 'Registration failed',
-      }));
-      console.warn('[Auth] Registration failed:', errorData.error);
-      throw new Error(friendlyAuthError(errorData.error, 'register'));
+    const data = await parseJsonResponse<{ error?: string; challenge_id?: string }>(res).catch(() => ({
+      error: 'Registration failed',
+    }));
+    if (!res.ok || !data.challenge_id) {
+      throw new Error(friendlyAuthError(data.error, 'register'));
     }
+    return data.challenge_id;
+  };
+
+  const confirmSignup = async (email: string, password: string, challengeId: string, code: string) => {
+    const res = await apiFetch('/auth/register/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        challenge_id: challengeId,
+        code,
+        source: readSignupSource() ?? undefined,
+      }),
+    });
+    if (res.ok) {
+      const data = await parseJsonResponse<{ accessToken: string; user: User }>(res);
+      setAccessToken(data.accessToken);
+      setUser(data.user);
+      router.push('/discover');
+      return;
+    }
+    const errorData = await parseJsonResponse<{ error?: string }>(res).catch(() => ({
+      error: 'Registration failed',
+    }));
+    throw new Error(friendlyAuthError(errorData.error, 'register'));
   };
 
   const refreshUser = async () => {
@@ -154,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, requestSignupCode, confirmSignup, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
