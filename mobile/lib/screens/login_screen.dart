@@ -165,6 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: _busy
                       ? null
                       : () async {
+                          final messenger = ScaffoldMessenger.of(context);
                           setState(() => _busy = true);
                           final auth = context.read<AuthState>();
                           try {
@@ -172,18 +173,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               _email.text.trim(),
                               _password.text,
                             );
-                            if (mounted) {
-                              setState(() {
-                                _challengeId = challengeId;
-                                _code.clear();
-                              });
-                            }
+                            if (!mounted) return;
+                            setState(() {
+                              _challengeId = challengeId;
+                              _code.clear();
+                            });
                           } catch (_) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(auth.error ?? 'Could not send a new code')),
-                              );
-                            }
+                            if (!mounted) return;
+                            messenger.showSnackBar(
+                              SnackBar(content: Text(auth.error ?? 'Could not send a new code')),
+                            );
                           } finally {
                             if (mounted) setState(() => _busy = false);
                           }

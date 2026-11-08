@@ -120,11 +120,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    const data = await parseJsonResponse<{ error?: string; challenge_id?: string }>(res).catch(() => ({
-      error: 'Registration failed',
-    }));
-    if (!res.ok || !data.challenge_id) {
-      throw new Error(friendlyAuthError(data.error, 'register'));
+    const data = await parseJsonResponse<{ error?: string; challenge_id?: string }>(res).catch(() => null);
+    if (!res.ok || !data?.challenge_id) {
+      throw new Error(friendlyAuthError(data?.error, 'register'));
     }
     return data.challenge_id;
   };
