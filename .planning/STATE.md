@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: play-store-listing
 status: complete
 stopped_at: "2026-11-08 New accounts confirm an email code before the account exists. Closed testing is still 1.0.18 until 1.0.20 is uploaded. Public listing still needs 12 testers for 14 days."
-last_updated: "2026-11-08T20:20:00.000Z"
+last_updated: "2026-11-08T20:45:00.000Z"
 progress:
   total_phases: 18
   completed_phases: 18
@@ -30,6 +30,8 @@ progress:
 **2026-10-26 welcome:** Logged-out launch plays the five-second Bauhaus drawing, then three screens explain what Harmonix is for, how to use a word, and how Next and search work. Get Started comes after that. Signed-in people go straight to the word. The web logo is unchanged.
 
 **Still pending:** the public Play listing waits on 12 closed-test testers for 14 days.
+
+**Phase 19 — Account profile (planned, not started, ready to build).** Settings should open with a photo, username, bio, and the current day streak, on the web and on Android. Achievements on that page use the same counts: days with a word, words obtained, words reviewed, and the streak. Email stays the login. Color palettes wait. Plans: `.planning/phases/19-account-profile/`. This does not change the `1.0.20` Play build.
 
 **2026-10-24 gloss:** Wrong lyric senses are rejected and replaced from a curated sense (leading, grave, spirit, and the other live misses). A target language no longer accepts a song whose lyrics are another language. Stored cards are repaired on the next API start.
 

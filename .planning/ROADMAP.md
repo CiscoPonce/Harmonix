@@ -224,6 +224,21 @@ The public Play listing is not a further product phase. It opens after 12 closed
 
 Song reuse stays off. Phases 1–18 are complete.
 
+## Phase 19 — Account profile (planned)
+
+**Status:** Planned 2026-11-08. Not started.  
+**Goal:** The Account page (Settings) opens with a photo, username, bio, and the existing day streak. Days, words obtained, reviews, and achievements use those same counts. Web and Android. Email stays the login.
+
+| Plan | Name | Status |
+|------|------|--------|
+| [19-01](./phases/19-account-profile/19-01-PLAN.md) | Store username, bio, and account photo | Planned |
+| [19-02](./phases/19-account-profile/19-02-PLAN.md) | Account header on web and Android | Planned |
+| [19-03](./phases/19-account-profile/19-03-PLAN.md) | Achievements match days, words, reviews, and streak | Planned |
+
+**Context:** [`.planning/phases/19-account-profile/19-CONTEXT.md`](./phases/19-account-profile/19-CONTEXT.md)
+
+The photo is private to the signed-in learner and stored in SQLite. This does not bump the Play version. `1.0.20` stays the build waiting to be uploaded. Color palettes are not part of this phase.
+
 ### After Phase 18
 
 Pending, and not started: the public Play listing still waits on 12 closed-test testers for 14 days.
