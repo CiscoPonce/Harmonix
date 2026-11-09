@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -35,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _consumedNavRecovery = false;
   String? _styleLang;
   List<(String, String)> _styles = kMusicStyles;
+  Uint8List? _avatarBytes;
 
   @override
   void initState() {
@@ -66,10 +70,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _load() async {
     final api = context.read<ApiClient>();
+    final auth = context.read<AuthState>();
     setState(() => _loading = true);
     try {
       final stats = await api.progressStats();
       final badges = await api.badges();
+      Uint8List? avatarBytes;
+      if (auth.user?['has_avatar'] == true) {
+        try {
+          avatarBytes = await api.getAvatarBytes();
+        } catch (_) {
+          avatarBytes = null;
+        }
+      }
       SpotifyConnectionStatus? spotify;
       try {
         spotify = await api.spotifyStatus();
@@ -80,6 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _stats = stats;
         _badges = badges;
+        _avatarBytes = avatarBytes;
         if (spotify != null) {
           _spotifyState = spotify.state;
           _spotifyDisplayName = spotify.displayName;
@@ -102,6 +116,153 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _pickAvatar() async {
+    if (_prefsSaving) return;
+    final api = context.read<ApiClient>();
+    final auth = context.read<AuthState>();
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+      final bytes = await picked.readAsBytes();
+      await api.putAvatar(bytes);
+      await auth.refreshUser();
+      if (!mounted) return;
+      setState(() {
+        _avatarBytes = bytes;
+        _prefsMessage = context.tr('profile_saved');
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e')),
+      );
+    }
+  }
+
+  Future<void> _removeAvatar() async {
+    if (_prefsSaving) return;
+    final api = context.read<ApiClient>();
+    final auth = context.read<AuthState>();
+    try {
+      await api.deleteAvatar();
+      await auth.refreshUser();
+      if (!mounted) return;
+      setState(() {
+        _avatarBytes = null;
+        _prefsMessage = context.tr('profile_saved');
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e')),
+      );
+    }
+  }
+
+  Future<void> _editProfileDialog(Map<String, dynamic> user) async {
+    final api = context.read<ApiClient>();
+    final auth = context.read<AuthState>();
+    final usernameCtrl = TextEditingController(text: user['username']?.toString() ?? '');
+    final bioCtrl = TextEditingController(text: user['bio']?.toString() ?? '');
+    String? dialogError;
+    bool saving = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: Text(ctx.tr('profile_save')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: usernameCtrl,
+                    maxLength: 20,
+                    decoration: InputDecoration(
+                      labelText: ctx.tr('profile_username'),
+                      hintText: ctx.tr('profile_username_hint'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: bioCtrl,
+                    maxLength: 160,
+                    decoration: InputDecoration(
+                      labelText: ctx.tr('profile_bio'),
+                      hintText: ctx.tr('profile_bio_hint'),
+                    ),
+                  ),
+                  if (dialogError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      dialogError!,
+                      style: TextStyle(color: Colors.red.shade400, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.of(dialogCtx).pop(),
+                  child: Text(ctx.tr('cancel')),
+                ),
+                ElevatedButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            saving = true;
+                            dialogError = null;
+                          });
+                          try {
+                            await api.patchProfile(
+                              username: usernameCtrl.text,
+                              bio: bioCtrl.text,
+                            );
+                            await auth.refreshUser();
+                            if (dialogCtx.mounted) {
+                              Navigator.of(dialogCtx).pop();
+                            }
+                            if (mounted) {
+                              setState(() {
+                                _prefsMessage = context.tr('profile_saved');
+                              });
+                            }
+                          } on ApiException catch (e) {
+                            setDialogState(() {
+                              saving = false;
+                              if (e.code == 'username_taken') {
+                                dialogError = ctx.tr('profile_username_taken');
+                              } else if (e.code == 'username_invalid') {
+                                dialogError = ctx.tr('profile_username_invalid');
+                              } else {
+                                dialogError = e.message;
+                              }
+                            });
+                          } catch (e) {
+                            setDialogState(() {
+                              saving = false;
+                              dialogError = '$e';
+                            });
+                          }
+                        },
+                  child: Text(ctx.tr('profile_save')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _connectSpotify() async {
@@ -296,19 +457,114 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: colors.textPrimary),
           ),
           const SizedBox(height: 16),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(
-              backgroundColor: colors.accent,
-              child: Icon(Icons.person, color: colors.onAccent),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              border: Border.all(color: colors.border),
+              borderRadius: BorderRadius.circular(12),
             ),
-            title: Text(
-              user['email']?.toString() ?? 'Learner',
-              style: TextStyle(fontWeight: FontWeight.w800, color: colors.textPrimary),
-            ),
-            subtitle: Text(
-              '$nativeLang → $targetLang · $genre · $voice',
-              style: TextStyle(color: colors.textMuted),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GestureDetector(
+                      onTap: _pickAvatar,
+                      child: CircleAvatar(
+                        radius: 26,
+                        backgroundColor: colors.accent,
+                        backgroundImage: (user['has_avatar'] == true && _avatarBytes != null)
+                            ? MemoryImage(_avatarBytes!)
+                            : null,
+                        child: (user['has_avatar'] == true && _avatarBytes != null)
+                            ? null
+                            : ((user['username']?.toString().trim().isNotEmpty ?? false) ||
+                                    (user['email']?.toString().trim().isNotEmpty ?? false))
+                                ? Text(
+                                    ((user['username']?.toString().trim().isNotEmpty ?? false)
+                                            ? user['username'].toString().trim()
+                                            : user['email'].toString().trim())
+                                        .substring(0, 1)
+                                        .toUpperCase(),
+                                    style: TextStyle(
+                                      color: colors.onAccent,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 18,
+                                    ),
+                                  )
+                                : Icon(Icons.person, color: colors.onAccent),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _editProfileDialog(user),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              (user['username']?.toString().trim().isNotEmpty ?? false)
+                                  ? user['username'].toString()
+                                  : context.tr('profile_username_hint'),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              (user['bio']?.toString().trim().isNotEmpty ?? false)
+                                  ? user['bio'].toString()
+                                  : context.tr('profile_bio_hint'),
+                              style: TextStyle(color: colors.textMuted, fontSize: 13),
+                            ),
+                            if (user['email']?.toString().trim().isNotEmpty ?? false) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                user['email'].toString(),
+                                style: TextStyle(color: colors.textMuted, fontSize: 12),
+                              ),
+                            ],
+                            const SizedBox(height: 2),
+                            Text(
+                              '$nativeLang → $targetLang · $genre · $voice',
+                              style: TextStyle(color: colors.textMuted, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${_stats?['streak_days'] ?? 0}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 22,
+                            color: colors.accent,
+                          ),
+                        ),
+                        Text(
+                          context.tr('streak'),
+                          style: TextStyle(color: colors.textMuted, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                if (user['has_avatar'] == true) ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: _removeAvatar,
+                    child: Text(context.tr('profile_remove_photo')),
+                  ),
+                ],
+              ],
             ),
           ),
           if (_prefsMessage != null) ...[
@@ -318,6 +574,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(color: colors.accent, fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ],
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              border: Border.all(color: colors.border),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _StatTile(
+                      label: context.tr('stat_words'),
+                      value: '${_stats?['total_words'] ?? 0}',
+                    ),
+                    const SizedBox(width: 8),
+                    _StatTile(
+                      label: context.tr('stat_days'),
+                      value: '${_stats?['days_learned'] ?? 0}',
+                    ),
+                    const SizedBox(width: 8),
+                    _StatTile(
+                      label: context.tr('stat_reviewed'),
+                      value: '${_stats?['words_reviewed'] ?? 0}',
+                    ),
+                    const SizedBox(width: 8),
+                    _StatTile(
+                      label: context.tr('stat_today'),
+                      value: '${_stats?['today_words'] ?? 0}',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  context.tr('achievements').toUpperCase(),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: colors.accent),
+                ),
+                const SizedBox(height: 8),
+                if (_badges.isEmpty)
+                  Text(context.tr('no_badges'), style: TextStyle(color: colors.textMuted)),
+                ..._badges.map((raw) {
+                  final b = raw as Map<String, dynamic>;
+                  final id = b['id']?.toString() ?? '';
+                  final unlocked = b['unlocked'] == 1 || b['unlocked'] == true;
+                  final progress = b['progress'];
+                  final target = b['target'];
+                  final progressLabel =
+                      (progress != null && target != null) ? '$progress/$target' : null;
+                  final nameKey = 'badge_${id}_name';
+                  final descKey = 'badge_${id}_desc';
+                  final trName = context.tr(nameKey);
+                  final trDesc = context.tr(descKey);
+                  final displayName = trName != nameKey
+                      ? trName
+                      : (b['name']?.toString() ?? (id.isNotEmpty ? id : 'Badge'));
+                  final displayDesc = trDesc != descKey
+                      ? trDesc
+                      : (b['description']?.toString() ?? b['category']?.toString() ?? '');
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      unlocked ? Icons.emoji_events : Icons.lock_outline,
+                      color: unlocked ? colors.accent : colors.textMuted,
+                    ),
+                    title: Text(displayName),
+                    subtitle: Text(displayDesc),
+                    trailing: progressLabel != null
+                        ? Text(
+                            progressLabel,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: unlocked ? colors.accent : colors.textMuted,
+                            ),
+                          )
+                        : null,
+                  );
+                }),
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(16),
@@ -512,36 +850,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (v) => themeCtrl.setDarkMode(v),
           ),
           ..._reminderSection(context, colors),
-          const SizedBox(height: 16),
-          Text(context.tr('stats').toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _StatTile(label: context.tr('streak'), value: '${_stats?['streak_days'] ?? 0}'),
-              const SizedBox(width: 12),
-              _StatTile(label: context.tr('words'), value: '${_stats?['total_words'] ?? 0}'),
-              const SizedBox(width: 12),
-              _StatTile(label: context.tr('today'), value: '${_stats?['today_words'] ?? 0}/${_stats?['daily_goal'] ?? 1}'),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Text(context.tr('achievements').toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-          if (_badges.isEmpty)
-            Text(context.tr('no_badges'), style: TextStyle(color: colors.textMuted)),
-          ..._badges.map((raw) {
-            final b = raw as Map<String, dynamic>;
-            final unlocked = b['unlocked'] == 1 || b['unlocked'] == true;
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                unlocked ? Icons.emoji_events : Icons.lock_outline,
-                color: unlocked ? colors.accent : colors.textMuted,
-              ),
-              title: Text(b['name']?.toString() ?? b['id']?.toString() ?? 'Badge'),
-              subtitle: Text(b['description']?.toString() ?? b['category']?.toString() ?? ''),
-            );
-          }),
           const SizedBox(height: 24),
           OutlinedButton(
             onPressed: () => auth.logout(),
@@ -552,9 +860,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             child: Text(context.tr('log_out')),
           ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => _confirmDeleteAccount(auth),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red.shade400,
+            ),
+            child: Text(context.tr('delete_account')),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDeleteAccount(AuthState auth) async {
+    final api = context.read<ApiClient>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(dialogCtx.tr('delete_account')),
+        content: Text(dialogCtx.tr('delete_account_hint')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: Text(dialogCtx.tr('delete_account_cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(dialogCtx.tr('delete_account_confirm')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await api.deleteAccount();
+      await auth.logout();
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    }
   }
 }
 

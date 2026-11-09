@@ -111,7 +111,7 @@ cd mobile && flutter analyze --fatal-infos && flutter test
 
 ## Releases
 
-The website has no store version. It ships from `main`. The Android build on Play closed testing is 1.0.18 (version code 21). Version code 22 is in this repo and is not on Play.
+The website has no store version. It ships from `main`. The Android build on Play closed testing is 1.0.18 (version code 21). Version code 23 is in this repo and is not on Play.
 
 <!-- x-release-please-start-version -->
 **Platform release:** 0.0.7
@@ -120,7 +120,7 @@ The website has no store version. It ships from `main`. The Android build on Pla
 | Track | Version | Where |
 |-------|---------|--------|
 | Android on Play | 1.0.18 (version code 21) | Closed testing, tested 7 November 2026 |
-| Android in this repo | 1.0.19 (version code 22) | `mobile/pubspec.yaml`. Bump this for every Play upload |
+| Android in this repo | 1.0.21 (version code 24) | `mobile/pubspec.yaml`. Bump this for every Play upload |
 | Platform changelog | The platform release line above | `CHANGELOG.md` and [GitHub Releases](https://github.com/CiscoPonce/Harmonix/releases) |
 
 The package id is `uk.co.peeporunclub.harmonix`. [release-please](https://github.com/googleapis/release-please) opens the changelog pull request from [Conventional Commits](https://www.conventionalcommits.org/). Do not commit APKs. Testers install from the Play closed test. An APK attached to a GitHub release is signed in CI and does not update a Play install. See [docs/PLAY-CONSOLE-LISTING.md](docs/PLAY-CONSOLE-LISTING.md).

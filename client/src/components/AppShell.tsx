@@ -10,10 +10,12 @@ import {
   User,
   LogOut,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { HarmonixWordmark } from '@/components/HarmonixWordmark';
 import { useTranslation } from '@/lib/i18n';
+import { useAuth } from '@/hooks/useAuth';
+import { apiFetch } from '@/lib/api';
 
 const NAV = [
   { href: '/discover', key: 'nav_discover', label: 'Word', icon: Compass },
@@ -46,6 +48,39 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.has_avatar) {
+      setAvatarUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    apiFetch('/user/avatar')
+      .then((res) => (res.ok ? res.blob() : null))
+      .then((blob) => {
+        if (cancelled || !blob) return;
+        objectUrl = URL.createObjectURL(blob);
+        setAvatarUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setAvatarUrl(null);
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [user?.has_avatar]);
+
+  const identityLabel = user?.username
+    ? `@${user.username}`
+    : user?.email || userEmail || t('account_settings');
+  const initial = (user?.username || user?.email || userEmail || '')
+    .trim()
+    .slice(0, 1)
+    .toUpperCase();
 
   return (
     <div className="flex min-h-screen bg-[#F7F8F6] text-[#0C1210] dark:bg-[#0C1210] dark:text-[#F2F5F3]">
@@ -150,11 +185,22 @@ export function AppShell({
               {headerExtra}
               <Link
                 href="/settings"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0B4D2E] text-white dark:bg-[#3DCF7A] dark:text-[#0C1210]"
-                title={userEmail || t('account_settings')}
+                className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#0B4D2E] text-sm font-bold text-white dark:bg-[#3DCF7A] dark:text-[#0C1210]"
+                title={identityLabel}
                 aria-label={t('account_settings')}
               >
-                <User className="h-5 w-5" aria-hidden />
+                {user?.has_avatar && avatarUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={avatarUrl}
+                    alt={identityLabel}
+                    className="h-full w-full object-cover"
+                  />
+                ) : initial ? (
+                  <span>{initial}</span>
+                ) : (
+                  <User className="h-5 w-5" aria-hidden />
+                )}
               </Link>
               {onLogout ? (
                 <button

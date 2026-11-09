@@ -51,6 +51,21 @@ describe('Auth Logic', () => {
     it('should throw error for invalid refresh token', () => {
       expect(() => auth.verifyRefreshToken('invalid-token')).to.throw();
     });
+
+    it('rejects a still-valid access token once the user row is gone', () => {
+      const goneId = `gone-${nanoid(6)}`;
+      db.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)').run(
+        goneId,
+        `${goneId}@example.com`,
+        'x'
+      );
+      const token = auth.generateAccessToken({ id: goneId, email: `${goneId}@example.com` });
+      expect(auth.verifyAccessToken(token).id).to.equal(goneId);
+      expect(auth.userStillExists(goneId)).to.equal(true);
+      db.prepare('DELETE FROM users WHERE id = ?').run(goneId);
+      expect(auth.verifyAccessToken(token).id).to.equal(goneId);
+      expect(auth.userStillExists(goneId)).to.equal(false);
+    });
   });
 
   describe('Refresh sessions', () => {

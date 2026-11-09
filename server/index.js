@@ -12,6 +12,8 @@ const dailyWordRouter = require('./routes/dailyWord');
 const playlistsRouter = require('./routes/playlists');
 const badgesRouter = require('./routes/badges');
 const userRouter = require('./routes/user');
+const profileRouter = require('./routes/profile');
+const profileService = require('./services/profileService');
 const audioRouter = require('./routes/audio');
 const passwordRoutes = require('./routes/password');
 const registerRoutes = require('./routes/register');
@@ -67,13 +69,15 @@ const authenticateToken = (req, res, next) => {
 
   if (!token) return res.sendStatus(401);
 
+  let user;
   try {
-    const user = auth.verifyAccessToken(token);
-    req.user = user;
-    next();
+    user = auth.verifyAccessToken(token);
   } catch (err) {
     return res.sendStatus(403);
   }
+  if (!auth.userStillExists(user.id)) return res.sendStatus(401);
+  req.user = user;
+  next();
 };
 
 // Pronounce stays available without an account (female preview). A logged-in
@@ -81,12 +85,15 @@ const authenticateToken = (req, res, next) => {
 const authenticateTokenOptional = (req, res, next) => {
   const token = readBearerToken(req);
   if (!token) return next();
+  let user;
   try {
-    req.user = auth.verifyAccessToken(token);
-    return next();
+    user = auth.verifyAccessToken(token);
   } catch (err) {
     return res.sendStatus(401);
   }
+  if (!auth.userStillExists(user.id)) return res.sendStatus(401);
+  req.user = user;
+  next();
 };
 
 app.use('/api/auth', passwordRoutes(authenticateToken));
@@ -124,6 +131,12 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
     res.cookie('refreshToken', refreshToken, auth.authCookieOptions(req));
 
+    const profile = profileService.readProfile(user.id) || {
+      username: null,
+      bio: null,
+      has_avatar: false,
+    };
+
     console.log('POST /api/auth/login - success');
     res.json({
       accessToken,
@@ -136,6 +149,9 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         genre: user.genre,
         difficulty: user.difficulty,
         cefr_level: user.cefr_level,
+        username: profile.username,
+        bio: profile.bio,
+        has_avatar: profile.has_avatar,
       },
     });
   } catch (err) {
@@ -173,6 +189,14 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
   const user = db.prepare('SELECT id, email, created_at, cefr_level, target_language, genre, difficulty, native_language, voice_gender, dyslexia_font FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.sendStatus(404);
   recordEvent('app_open', { userId: req.user.id, req });
+  const profile = profileService.readProfile(req.user.id) || {
+    username: null,
+    bio: null,
+    has_avatar: false,
+  };
+  user.username = profile.username;
+  user.bio = profile.bio;
+  user.has_avatar = profile.has_avatar;
   const spotify = db.prepare('SELECT spotify_user_id, spotify_display_name FROM user_spotify_tokens WHERE user_id = ?').get(req.user.id);
   user.is_spotify_connected = !!spotify;
   user.spotify_user_id = spotify?.spotify_user_id || null;
@@ -332,6 +356,7 @@ app.use('/api/daily-word', (req, res, next) => {
 app.use('/api/playlists', authenticateToken, playlistsRouter);
 app.use('/api/badges', authenticateToken, badgesRouter);
 app.use('/api/user', authenticateToken, userRouter);
+app.use('/api/user', authenticateToken, profileRouter);
 app.use('/api/admin', authenticateToken, adminRouter);
 
 // Public word postcards (no account) + authenticated create

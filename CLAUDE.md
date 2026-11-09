@@ -8,10 +8,10 @@ Core Value: Personalizing language learning through real music lyrics with 100% 
 - **Nav:** Discover · Library (`/playlists`) · Settings
 - **Home:** `/discover` — Word of the Day, practice strip, song search
 - **Library:** Harmonix + Spotify playlists; Spotify account chip in **header only**
-- **Settings:** Languages, music style, voice gender, Spotify Connect, change password
+- **Settings:** Account profile (photo, username, bio, day streak, unified stats & localized achievements), languages, music style, voice gender, Spotify Connect, appearance, change password, delete account
 - **Live:** https://harmonix.peeporunclub.co.uk · branch `main`
 - **Android:** Flutter (`mobile/`) is the Play Store app. Capacitor is not shipped.
-- **Phases 1–18:** complete. Public Play listing waits on 12 closed-test testers for 14 days. Listing record: [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](.planning/phases/17-play-store-listing/17-CHECKLIST.md).
+- **Phases 1–19:** complete (`19-01` through `19-04`). Public Play listing waits on 12 closed-test testers for 14 days. Listing record: [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](.planning/phases/17-play-store-listing/17-CHECKLIST.md).
 
 ## Tech Stack
 - Backend: Node.js (Express) + SQLite
@@ -32,8 +32,8 @@ Core Value: Personalizing language learning through real music lyrics with 100% 
 ## Workflow (GSD)
 - Follow the Phased Roadmap in `.planning/ROADMAP.md`.
 - Track state in `.planning/STATE.md`.
-- Phases 1–18 are **complete**. The public Play listing waits on the closed-test tester rule.
+- Phases 1–19 are **complete**. The public Play listing waits on the closed-test tester rule.
 - **Production deploy:** `git push origin main` (Actions → `scripts/coolify-redeploy.sh`). Manual: SSH VPS and run that script. Legacy rollback only: `bash run_env.sh`.
 
 ---
-*Updated: October 10, 2026*
+*Updated: November 8, 2026*

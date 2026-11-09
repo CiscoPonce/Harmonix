@@ -120,6 +120,11 @@ function verifyAccessToken(token) {
   return jwt.verify(token, JWT_SECRET);
 }
 
+function userStillExists(userId) {
+  if (!userId) return false;
+  return Boolean(db.prepare('SELECT 1 AS ok FROM users WHERE id = ?').get(userId));
+}
+
 function verifyRefreshToken(token) {
   return jwt.verify(token, JWT_REFRESH_SECRET);
 }
@@ -131,6 +136,7 @@ module.exports = {
   generateRefreshToken,
   verifyAccessToken,
   verifyRefreshToken,
+  userStillExists,
   authCookieOptions,
   issueRefreshSession,
   rotateRefreshSession,

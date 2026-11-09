@@ -50,7 +50,7 @@ function genreLabel(value: string | undefined | null): string {
 
 function SettingsContent() {
   const { user, isLoading: authLoading, logout, refreshUser } = useAuth();
-  const { t } = useTranslation();
+  const { t, tp } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackOutcome = parseSpotifyCallbackOutcome(searchParams.get('spotify'));
@@ -85,9 +85,37 @@ function SettingsContent() {
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSaved, setPasswordSaved] = useState(false);
+  const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [usernameInput, setUsernameInput] = useState('');
+  const [bioInput, setBioInput] = useState('');
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarTick, setAvatarTick] = useState(0);
+  const [streakDays, setStreakDays] = useState(0);
+  const [totalWords, setTotalWords] = useState(0);
+  const [daysLearned, setDaysLearned] = useState(0);
+  const [wordsReviewed, setWordsReviewed] = useState(0);
+  const [todayWords, setTodayWords] = useState(0);
+  const [badges, setBadges] = useState<
+    Array<{
+      id: string;
+      name: string;
+      description: string;
+      unlocked: number | boolean;
+      progress?: number;
+      target?: number;
+    }>
+  >([]);
 
   useEffect(() => {
     if (!user) return;
+    setUsernameInput(user.username || '');
+    setBioInput(user.bio || '');
     setNativeLanguage(user.native_language || '');
     setTargetLanguage(user.target_language || '');
     setMusicStyle(normalizeGenre(user.genre));
@@ -98,6 +126,156 @@ function SettingsContent() {
       document.documentElement.classList.toggle('font-dyslexic', dyslexiaOn);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    apiFetch('/progress/stats')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (!cancelled) {
+          setStreakDays(typeof body?.streak_days === 'number' ? body.streak_days : 0);
+          setTotalWords(typeof body?.total_words === 'number' ? body.total_words : 0);
+          setDaysLearned(typeof body?.days_learned === 'number' ? body.days_learned : 0);
+          setWordsReviewed(typeof body?.words_reviewed === 'number' ? body.words_reviewed : 0);
+          setTodayWords(typeof body?.today_words === 'number' ? body.today_words : 0);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStreakDays(0);
+      });
+    apiFetch('/badges')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (!cancelled && Array.isArray(body?.badges)) {
+          setBadges(body.badges);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.has_avatar) {
+      setAvatarUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    apiFetch('/user/avatar')
+      .then((res) => (res.ok ? res.blob() : null))
+      .then((blob) => {
+        if (cancelled || !blob) return;
+        objectUrl = URL.createObjectURL(blob);
+        setAvatarUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setAvatarUrl(null);
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [user?.has_avatar, avatarTick]);
+
+  const handleSaveProfileHeader = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (profileBusy) return;
+    setProfileBusy(true);
+    setProfileError(null);
+    setProfileSaved(false);
+    try {
+      const res = await apiFetch('/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: usernameInput,
+          bio: bioInput,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (body?.code === 'username_taken') {
+          throw new Error(t('profile_username_taken'));
+        }
+        if (body?.code === 'username_invalid') {
+          throw new Error(t('profile_username_invalid'));
+        }
+        throw new Error(body?.error || 'Could not save profile');
+      }
+      await refreshUser();
+      setProfileSaved(true);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Could not save profile');
+    } finally {
+      setProfileBusy(false);
+    }
+  };
+
+  const handleAvatarPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || profileBusy) return;
+    setProfileBusy(true);
+    setProfileError(null);
+    setProfileSaved(false);
+    try {
+      const res = await apiFetch('/user/avatar', {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || 'Could not upload photo');
+      }
+      await refreshUser();
+      setAvatarTick((n) => n + 1);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Could not upload photo');
+    } finally {
+      setProfileBusy(false);
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    if (profileBusy) return;
+    setProfileBusy(true);
+    setProfileError(null);
+    setProfileSaved(false);
+    try {
+      const res = await apiFetch('/user/avatar', { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || 'Could not remove photo');
+      }
+      setAvatarUrl(null);
+      await refreshUser();
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Could not remove photo');
+    } finally {
+      setProfileBusy(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      const res = await apiFetch('/user/account', { method: 'DELETE' });
+      if (!res.ok && res.status !== 204) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || 'Could not delete account');
+      }
+      logout();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Could not delete account');
+      setDeleteBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!targetLanguage) return;
@@ -365,92 +543,202 @@ function SettingsContent() {
         </header>
 
         <section aria-label="Profile" className={cardClassName}>
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#E8F5EE] text-lg font-bold text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-              {(user.email || '?').slice(0, 1).toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-lg font-bold">{user.email}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {user.native_language ? (
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-4">
+              {user.has_avatar && avatarUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={avatarUrl}
+                  alt={t('profile_photo')}
+                  className="h-14 w-14 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#E8F5EE] text-lg font-bold text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
+                  {(user.username || user.email || '?').slice(0, 1).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-lg font-bold">
+                  {user.username || t('profile_username_hint')}
+                </p>
+                <p className="mt-0.5 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+                  {user.bio || t('profile_bio_hint')}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-[#5C6B62] dark:text-[#9AABA0]">
+                  {user.email}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {user.native_language ? (
+                    <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
+                      {t('chip_home')} · {languageLabel(user.native_language)}
+                    </span>
+                  ) : null}
+                  {user.target_language ? (
+                    <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
+                      {t('chip_learning')} · {languageLabel(user.target_language)}
+                    </span>
+                  ) : null}
                   <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                    {t('chip_home')} · {languageLabel(user.native_language)}
+                    {t('chip_style')} · {genreLabel(user.genre)}
                   </span>
-                ) : null}
-                {user.target_language ? (
                   <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                    {t('chip_learning')} · {languageLabel(user.target_language)}
+                    {t('voice_label')} · {user.voice_gender === 'male' ? t('voice_male') : t('voice_female')}
                   </span>
-                ) : null}
-                <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                  {t('chip_style')} · {genreLabel(user.genre)}
-                </span>
-                <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0B4D2E] dark:bg-[#0B4D2E]/40 dark:text-[#3DCF7A]">
-                  {t('voice_label')} · {user.voice_gender === 'male' ? t('voice_male') : t('voice_female')}
-                </span>
+                </div>
               </div>
             </div>
+            <div className="shrink-0 text-right">
+              <p className="text-2xl font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">
+                {tp('streak_days', streakDays)}
+              </p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
+                {t('streak')}
+              </p>
+            </div>
           </div>
-        </section>
 
-        <section aria-label="Password" className={cardClassName}>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
-            {t('security')}
-          </p>
-          <h2 className="mt-1 text-base font-bold">{t('change_password')}</h2>
-          <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
-            {t('change_password_hint')}
-          </p>
-          <form onSubmit={handleChangePassword} className="mt-4 space-y-3">
-            <div>
-              <label htmlFor="current-password" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
-                {t('current_password')}
-              </label>
-              <Input
-                id="current-password"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                required
-                className="mt-1.5"
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-[#E4EBE6] pt-4 dark:border-[#2A3530]">
+            <label
+              htmlFor="profile-photo-input"
+              className="cursor-pointer rounded-lg border border-[#E4EBE6] bg-[#F7F8F6] px-3 py-1.5 text-xs font-bold text-[#0B4D2E] hover:border-[#0B4D2E]/40 dark:border-[#2A3530] dark:bg-[#121A17] dark:text-[#3DCF7A]"
+            >
+              {t('profile_photo')}
+              <input
+                id="profile-photo-input"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={handleAvatarPick}
+                disabled={profileBusy}
               />
-            </div>
-            <div>
-              <label htmlFor="new-password" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
-                {t('new_password')}
-              </label>
-              <Input
-                id="new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength={8}
-                className="mt-1.5"
-              />
-            </div>
-            <div>
-              <label htmlFor="confirm-password" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
-                {t('confirm_new_password')}
-              </label>
-              <Input
-                id="confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                minLength={8}
-                className="mt-1.5"
-              />
-            </div>
-            {passwordError ? <p className="text-sm text-red-600">{passwordError}</p> : null}
-            {passwordSaved ? (
-              <p className="text-sm text-[#0B4D2E] dark:text-[#3DCF7A]">{t('password_updated')}</p>
+            </label>
+            {user.has_avatar ? (
+              <button
+                type="button"
+                onClick={() => void handleAvatarRemove()}
+                disabled={profileBusy}
+                className="text-xs font-bold text-[#5C6B62] underline-offset-4 hover:underline dark:text-[#9AABA0]"
+              >
+                {t('profile_remove_photo')}
+              </button>
             ) : null}
-            <Button type="submit" variant="primary" disabled={passwordBusy}>
-              {passwordBusy ? t('saving') : t('update_password')}
+          </div>
+
+          <form onSubmit={handleSaveProfileHeader} className="mt-4 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="profile-username"
+                  className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]"
+                >
+                  {t('profile_username')}
+                </label>
+                <Input
+                  id="profile-username"
+                  type="text"
+                  maxLength={20}
+                  placeholder={t('profile_username_hint')}
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="profile-bio"
+                  className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]"
+                >
+                  {t('profile_bio')}
+                </label>
+                <Input
+                  id="profile-bio"
+                  type="text"
+                  maxLength={160}
+                  placeholder={t('profile_bio_hint')}
+                  value={bioInput}
+                  onChange={(e) => setBioInput(e.target.value)}
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+            {profileError ? (
+              <p className="text-sm text-red-600 dark:text-red-400">{profileError}</p>
+            ) : null}
+            {profileSaved && !profileError ? (
+              <p className="text-sm font-medium text-[#0B4D2E] dark:text-[#3DCF7A]">
+                {t('profile_saved')}
+              </p>
+            ) : null}
+            <Button type="submit" variant="primary" disabled={profileBusy}>
+              {profileBusy ? t('saving') : t('profile_save')}
             </Button>
           </form>
+        </section>
+
+        <section aria-label={t('achievements')} className={cardClassName}>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-[#E4EBE6] bg-[#F7F8F6] p-3 text-center dark:border-[#2A3530] dark:bg-[#121A17]">
+              <p className="text-xl font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">{totalWords}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+                {t('stat_words')}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#E4EBE6] bg-[#F7F8F6] p-3 text-center dark:border-[#2A3530] dark:bg-[#121A17]">
+              <p className="text-xl font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">{daysLearned}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+                {t('stat_days')}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#E4EBE6] bg-[#F7F8F6] p-3 text-center dark:border-[#2A3530] dark:bg-[#121A17]">
+              <p className="text-xl font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">{wordsReviewed}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+                {t('stat_reviewed')}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#E4EBE6] bg-[#F7F8F6] p-3 text-center dark:border-[#2A3530] dark:bg-[#121A17]">
+              <p className="text-xl font-bold text-[#0B4D2E] dark:text-[#3DCF7A]">{todayWords}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+                {t('stat_today')}
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-5 text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
+            {t('achievements')}
+          </p>
+          <div className="mt-3 space-y-2">
+            {badges.map((badge) => {
+              const unlocked = badge.unlocked === 1 || badge.unlocked === true;
+              const progressText =
+                typeof badge.progress === 'number' && typeof badge.target === 'number'
+                  ? `${badge.progress}/${badge.target}`
+                  : '';
+              const nameKey = `badge_${badge.id}_name`;
+              const descKey = `badge_${badge.id}_desc`;
+              const localizedName = t(nameKey) !== nameKey ? t(nameKey) : badge.name;
+              const localizedDesc = t(descKey) !== descKey ? t(descKey) : badge.description;
+              return (
+                <div
+                  key={badge.id}
+                  className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 ${
+                    unlocked
+                      ? 'border-[#0B4D2E] bg-[#E8F5EE] text-[#0B4D2E] dark:border-[#3DCF7A] dark:bg-[#0B4D2E]/35 dark:text-[#3DCF7A]'
+                      : 'border-[#E4EBE6] bg-[#F7F8F6] text-[#5C6B62] dark:border-[#2A3530] dark:bg-[#121A17] dark:text-[#9AABA0]'
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold">{localizedName}</p>
+                    <p className="text-xs opacity-80">{localizedDesc}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {progressText ? (
+                      <p className="text-xs font-bold">{progressText}</p>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
 
         <section aria-label="Languages and voice" className={cardClassName}>
@@ -706,6 +994,108 @@ function SettingsContent() {
                 />
               </button>
             </div>
+          </div>
+        </section>
+
+        <section aria-label="Password" className={cardClassName}>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7A8A80] dark:text-[#9AABA0]">
+            {t('security')}
+          </p>
+          <h2 className="mt-1 text-base font-bold">{t('change_password')}</h2>
+          <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+            {t('change_password_hint')}
+          </p>
+          <form onSubmit={handleChangePassword} className="mt-4 space-y-3">
+            <div>
+              <label htmlFor="current-password" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+                {t('current_password')}
+              </label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <label htmlFor="new-password" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+                {t('new_password')}
+              </label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={8}
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <label htmlFor="confirm-password" className="text-xs font-bold uppercase tracking-wide text-[#5C6B62] dark:text-[#9AABA0]">
+                {t('confirm_new_password')}
+              </label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={8}
+                className="mt-1.5"
+              />
+            </div>
+            {passwordError ? <p className="text-sm text-red-600">{passwordError}</p> : null}
+            {passwordSaved ? (
+              <p className="text-sm text-[#0B4D2E] dark:text-[#3DCF7A]">{t('password_updated')}</p>
+            ) : null}
+            <Button type="submit" variant="primary" disabled={passwordBusy}>
+              {passwordBusy ? t('saving') : t('update_password')}
+            </Button>
+          </form>
+        </section>
+
+        <section aria-label={t('delete_account')} className={cardClassName}>
+          <h2 className="text-base font-bold text-red-700 dark:text-red-400">
+            {t('delete_account')}
+          </h2>
+          <p className="mt-1 text-sm text-[#5C6B62] dark:text-[#9AABA0]">
+            {t('delete_account_hint')}
+          </p>
+          {deleteError ? (
+            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{deleteError}</p>
+          ) : null}
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {!confirmDeleteAccount ? (
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteAccount(true)}
+                className="rounded-lg border border-red-300 px-3.5 py-2 text-xs font-bold text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/30"
+              >
+                {t('delete_account')}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteAccount()}
+                  disabled={deleteBusy}
+                  className="rounded-lg bg-red-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-60"
+                >
+                  {deleteBusy ? t('saving') : t('delete_account_confirm')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteAccount(false)}
+                  disabled={deleteBusy}
+                  className="text-xs font-bold text-[#5C6B62] underline-offset-4 hover:underline dark:text-[#9AABA0]"
+                >
+                  {t('delete_account_cancel')}
+                </button>
+              </>
+            )}
           </div>
         </section>
 

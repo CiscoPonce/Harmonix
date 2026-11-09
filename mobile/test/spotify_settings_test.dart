@@ -204,8 +204,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final profile = find.text('Learner');
-    final card = find.byType(SpotifyConnectionCard);
+    final profile = find.text('Add a username');
+    final card = find.byType(SpotifyConnectionCard, skipOffstage: false);
     expect(profile, findsOneWidget);
     expect(card, findsOneWidget);
 

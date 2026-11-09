@@ -41,6 +41,7 @@ class ApiException implements Exception {
     this.message, {
     this.status,
     this.reason,
+    this.code,
     this.queue,
     this.retryAfterSec,
   });
@@ -48,6 +49,7 @@ class ApiException implements Exception {
   final String message;
   final int? status;
   final String? reason;
+  final String? code;
   final Map<String, dynamic>? queue;
   final int? retryAfterSec;
 
@@ -239,6 +241,7 @@ class ApiClient {
       message,
       status: status,
       reason: reason ?? rawError,
+      code: data['code'] as String?,
       queue: queue,
       retryAfterSec: retry,
     );
@@ -446,6 +449,74 @@ class ApiClient {
 
   Future<Map<String, dynamic>> patchPreferences(Map<String, String> body) =>
       request('PATCH', '/user/preferences', body: body);
+
+  Future<Map<String, dynamic>> patchProfile({String? username, String? bio}) {
+    final body = <String, dynamic>{
+      'username': ?username,
+      'bio': ?bio,
+    };
+    return request('PATCH', '/user/profile', body: body);
+  }
+
+  Future<void> deleteAvatar() async {
+    await request('DELETE', '/user/avatar');
+  }
+
+  Future<void> putAvatar(
+    Uint8List bytes, {
+    String contentType = 'image/jpeg',
+    bool authRetry = true,
+  }) async {
+    final uri = _uri('/user/avatar');
+    final headers = _headers(accept: 'application/json');
+    headers['Content-Type'] = contentType;
+    final res = await _client.put(uri, headers: headers, body: bytes);
+
+    if (res.statusCode == 401 && authRetry) {
+      final refreshed = await refresh();
+      if (refreshed) {
+        return putAvatar(bytes, contentType: contentType, authRetry: false);
+      }
+    }
+
+    if (res.statusCode >= 400) {
+      Map<String, dynamic> data = {};
+      try {
+        data = await _decode(res);
+      } catch (_) {}
+      throw _apiError(data, res.statusCode);
+    }
+  }
+
+  Future<Uint8List?> getAvatarBytes({bool authRetry = true}) async {
+    final uri = _uri('/user/avatar');
+    final res = await _client.get(
+      uri,
+      headers: _headers(accept: 'image/*, application/json'),
+    );
+
+    if (res.statusCode == 401 && authRetry) {
+      final refreshed = await refresh();
+      if (refreshed) {
+        return getAvatarBytes(authRetry: false);
+      }
+    }
+
+    if (res.statusCode == 404) return null;
+    if (res.statusCode >= 400) {
+      Map<String, dynamic> data = {};
+      try {
+        data = await _decode(res);
+      } catch (_) {}
+      throw _apiError(data, res.statusCode);
+    }
+    if (res.bodyBytes.isEmpty) return null;
+    return res.bodyBytes;
+  }
+
+  Future<void> deleteAccount() async {
+    await request('DELETE', '/user/account');
+  }
 
   Future<Map<String, dynamic>> getDailyWord() => request('GET', '/daily-word');
 

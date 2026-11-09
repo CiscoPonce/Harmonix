@@ -5,7 +5,7 @@ Do **not** submit Production until Internal testing works on a real phone.
 
 **Application ID:** `uk.co.peeporunclub.harmonix`  
 **On Play closed testing:** `1.0.18` (version code `21`)  
-**Next upload from this repo, not on Play yet:** `1.0.19` (version code `22`)  
+**Next upload from this repo, not on Play yet:** `1.0.21` (version code `24`)  
 **Default language:** English (UK)  
 **Type:** App · **Price:** Free  
 **Contact / support:** `hello@peeporunclub.co.uk`  
@@ -67,15 +67,16 @@ Screenshots are the one asset this repo cannot invent honestly — capture them 
 |----------|--------|
 | Does the app collect data? | **Yes** |
 | Email | Collected · Account management · Required for app |
+| Optional username, bio & profile photo | Collected (optional) · Account management · User-removable in Settings (Android photo picker, no storage permissions) |
 | App activity (words learned, reviews) | Collected · App functionality · Required |
 | Audio files | Ephemeral TTS / 30s previews — **not** sold, not used for ads |
-| Location / contacts / photos | **No** |
+| Location / contacts | **No** |
 | Device IDs / advertising ID | **No** |
 | Encrypted in transit | **Yes** (HTTPS) |
 | Encrypted at rest | Yes (passwords hashed; Spotify tokens encrypted) |
 | Data sold | **No** |
 | Data shared with third parties for ads | **No** |
-| Users can request deletion | **Yes** — email `hello@peeporunclub.co.uk` from the account address |
+| Users can request deletion | **Yes** — in-app via Account → Delete account, or email `hello@peeporunclub.co.uk` from the account address |
 
 ---
 

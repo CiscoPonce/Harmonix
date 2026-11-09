@@ -4,7 +4,7 @@ import { SUPPORT_EMAIL, SUPPORT_MAILTO, SITE_ORIGIN } from '@/lib/contact';
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy policy" updated="5 November 2026">
+    <LegalPage title="Privacy policy" updated="8 November 2026">
       <p>
         Harmonix teaches vocabulary from real song lyrics. This policy covers the
         website at{' '}
@@ -17,6 +17,7 @@ export default function PrivacyPage() {
       <ul>
         <li>your email address</li>
         <li>a hashed password — never the password itself</li>
+        <li>an optional username, short bio, and optional account photo if you choose to add them in Settings (stored privately for your account, never shown publicly, and removable at any time)</li>
         <li>the language you are learning, your home language, and your music style</li>
         <li>voice and display choices, including the dyslexia-friendly font</li>
         <li>learning progress: words, lyric lines, reviews, streaks, playlists, and badges</li>
@@ -60,8 +61,10 @@ export default function PrivacyPage() {
 
       <h2>What we do not collect</h2>
       <p>
-        We do not collect your location, contacts, photos, or an advertising ID.
-        We do not show ads. We do not sell your data.
+        We do not collect your location, contacts, or an advertising ID. We only
+        store a single profile photo if you explicitly pick one in Settings (on
+        Android we use the system photo picker with no gallery permissions). We
+        do not show ads. We do not sell your data.
       </p>
 
       <h2>Children</h2>
@@ -72,11 +75,12 @@ export default function PrivacyPage() {
 
       <h2>How long we keep it</h2>
       <p>
-        We keep account data while the account exists. Email{' '}
+        We keep account data while the account exists. You can delete your
+        account directly in Settings (Delete account), or email{' '}
         <a href={SUPPORT_MAILTO}>{SUPPORT_EMAIL}</a> from the address on the
-        account and ask us to delete it. We delete the account and the learning
-        data tied to it. Spotify tokens are removed when you disconnect, and
-        again when the account is deleted.
+        account and ask us to delete it. We delete the account, profile photo,
+        and the learning data tied to it. Spotify tokens are removed when you
+        disconnect, and again when the account is deleted.
       </p>
 
       <h2>Security</h2>

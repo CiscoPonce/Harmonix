@@ -8,6 +8,9 @@ import { useRouter } from 'next/navigation';
 export interface User {
   id: string;
   email: string;
+  username?: string | null;
+  bio?: string | null;
+  has_avatar?: boolean;
   native_language?: string;
   target_language?: string;
   genre?: string;

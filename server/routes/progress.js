@@ -8,6 +8,9 @@ const { recordEvent } = require('../services/usageEvents');
 
 router.get('/stats', (req, res) => {
  const userId = req.user.id;
+ if (!db.prepare('SELECT 1 AS ok FROM users WHERE id = ?').get(userId)) {
+  return res.status(401).json({ error: 'Account no longer exists.' });
+ }
 
  let stats = db.prepare('SELECT * FROM user_stats WHERE user_id = ?').get(userId);
  if (!stats) {
@@ -16,11 +19,14 @@ router.get('/stats', (req, res) => {
  }
 
  const dailyStats = dailyWordService.getDailyWordStats(userId);
+ const snap = badgeService.progressSnapshot(userId);
  const badges_unlocked = badgeService.checkAndUnlockBadges(userId);
 
  res.json({
  streak_days: dailyStats.streak_days,
  total_words: dailyStats.total_words,
+ days_learned: snap.days,
+ words_reviewed: snap.reviewed,
  total_xp: stats.total_xp,
  last_study_date: stats.last_study_date,
  daily_goal: dailyStats.daily_goal,

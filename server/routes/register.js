@@ -47,6 +47,9 @@ function publicUser(user) {
     genre: user.genre,
     difficulty: user.difficulty,
     cefr_level: user.cefr_level,
+    username: null,
+    bio: null,
+    has_avatar: false,
   };
 }
 

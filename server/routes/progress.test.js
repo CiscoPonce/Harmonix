@@ -63,8 +63,22 @@ describe('Progress API Routes', () => {
 
  expect(res.body.streak_days).to.equal(2);
  expect(res.body.total_words).to.equal(2);
+ expect(res.body.days_learned).to.equal(2);
+ expect(res.body.words_reviewed).to.equal(0);
  expect(res.body.today_words).to.equal(1);
  expect(res.body.today_goal_met).to.equal(true);
+ });
+
+ it('does not recreate stats after the account is deleted', async () => {
+ const userId = 'stats-deleted';
+ ensureUser(userId);
+ db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+ const handler = progressRouter.stack.find(s => s.route.path === '/stats').route.stack[0].handle;
+ const res = mockRes();
+ await handler({ user: { id: userId } }, res);
+ expect(res.statusCode).to.equal(401);
+ const row = db.prepare('SELECT user_id FROM user_stats WHERE user_id = ?').get(userId);
+ expect(row).to.equal(undefined);
  });
  });
 

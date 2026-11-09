@@ -85,6 +85,22 @@ if (!userPrefCols2.some(col => col.name === 'voice_gender')) {
 if (!userPrefCols2.some(col => col.name === 'dyslexia_font')) {
  db.exec("ALTER TABLE users ADD COLUMN dyslexia_font INTEGER DEFAULT 0");
 }
+if (!userPrefCols2.some(col => col.name === 'username')) {
+ db.exec("ALTER TABLE users ADD COLUMN username TEXT");
+}
+if (!userPrefCols2.some(col => col.name === 'bio')) {
+ db.exec("ALTER TABLE users ADD COLUMN bio TEXT");
+}
+db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username) WHERE username IS NOT NULL`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_avatars (
+    user_id TEXT PRIMARY KEY,
+    bytes BLOB NOT NULL,
+    mime TEXT NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
 
 // Vocabulary tables
 db.exec(`
@@ -428,6 +444,31 @@ if (badgeCount === 0) {
   });
   txn();
 }
+
+// Keep badge copy and review_10 aligned on existing databases
+db.prepare('UPDATE badges SET description = ? WHERE id = ?').run(
+  'Get a word on 7 different days',
+  'daily_word_7',
+);
+db.prepare('UPDATE badges SET name = ?, description = ? WHERE id = ?').run(
+  '50 Words',
+  'Get 50 words',
+  'vocab_50',
+);
+db.prepare('UPDATE badges SET description = ? WHERE id = ?').run(
+  'Reach a 7-day streak',
+  'streak_7',
+);
+db.prepare(
+  'INSERT OR IGNORE INTO badges (id, name, description, icon, category, criteria_json) VALUES (?, ?, ?, ?, ?, ?)',
+).run(
+  'review_10',
+  '10 Reviews',
+  'Review 10 words',
+  'BookOpen',
+  'vocabulary',
+  JSON.stringify({ type: 'words_reviewed', threshold: 10 }),
+);
 
 // Spotify OAuth one-time state transactions (D-12-01)
 db.exec(`

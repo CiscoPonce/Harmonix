@@ -1,6 +1,6 @@
 # Harmonix Roadmap
 
-**Last reconciled:** 2026-10-10 — phases 1–18 complete. Public Play listing waits on 12 closed-test testers for 14 days.  
+**Last reconciled:** 2026-11-08 — phases 1–19 complete (`19-01` through `19-04`). Public Play listing waits on 12 closed-test testers for 14 days.  
 **Live:** https://harmonix.peeporunclub.co.uk (Compose `api`+`web` + Coolify Traefik; host Pocket-TTS 4.0.1)
 
 ---
@@ -49,6 +49,7 @@
 | **16** | Flutter web parity | **Complete** (Play Store client is Flutter only) |
 | **17** | Play Store listing | **Complete** (closed test submitted; public release waits on Google’s tester rule) |
 | **18** | Learner reliability | **Complete** |
+| **19** | Account profile (`19-01`–`19-04`) | **Complete** |
 
 ### Phase 12 — Spotify API Integration ✅
 
@@ -224,26 +225,27 @@ The public Play listing is not a further product phase. It opens after 12 closed
 
 Song reuse stays off. Phases 1–18 are complete.
 
-## Phase 19 — Account profile (planned)
+## Phase 19 — Account profile (complete)
 
-**Status:** Planned 2026-11-08. Not started.  
+**Status:** Complete 2026-11-08  
 **Goal:** The Account page (Settings) opens with a photo, username, bio, and the existing day streak. Days, words obtained, reviews, and achievements use those same counts. Web and Android. Email stays the login.
 
 | Plan | Name | Status |
 |------|------|--------|
-| [19-01](./phases/19-account-profile/19-01-PLAN.md) | Store username, bio, and account photo | Planned |
-| [19-02](./phases/19-account-profile/19-02-PLAN.md) | Account header on web and Android | Planned |
-| [19-03](./phases/19-account-profile/19-03-PLAN.md) | Achievements match days, words, reviews, and streak | Planned |
+| [19-01](./phases/19-account-profile/19-01-PLAN.md) | Store username, bio, and account photo | Complete |
+| [19-02](./phases/19-account-profile/19-02-PLAN.md) | Account header on web and Android | Complete |
+| [19-03](./phases/19-account-profile/19-03-PLAN.md) | Achievements match days, words, reviews, and streak | Complete |
+| [19-04](./phases/19-account-profile/19-04-PLAN.md) | Account profile polish, localized badges, and self-service account deletion | Complete |
 
 **Context:** [`.planning/phases/19-account-profile/19-CONTEXT.md`](./phases/19-account-profile/19-CONTEXT.md)
 
-The photo is private to the signed-in learner and stored in SQLite. This does not bump the Play version. `1.0.20` stays the build waiting to be uploaded. Color palettes are not part of this phase.
+The photo is private to the signed-in learner and stored in SQLite. Achievement titles and descriptions are localized across all six UI languages (`en`, `es`, `fr`, `de`, `pt`, `it`), the web `AppShell` header displays the learner's avatar or initial, and learners can delete their account directly in Settings (`DELETE /api/user/account`). Android `1.0.21` (version code `24`) is the next Play upload. Color palettes are not part of this phase.
 
-### After Phase 18
+### After Phase 19
 
 Pending, and not started: the public Play listing still waits on 12 closed-test testers for 14 days.
 
-Done on 8 November 2026: new accounts confirm a code from the private mail service before the user row is created. Existing accounts are not asked. Android `1.0.20` (version code `23`) includes the code screen and is not uploaded yet.
+Done on 8 November 2026: new accounts confirm a code from the private mail service before the user row is created. Existing accounts are not asked. Android `1.0.21` (version code `24`) is the next upload. It includes that code screen and the Account page.
 
 In the app, not in the versionCode `17` APK:
 
