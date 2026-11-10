@@ -149,6 +149,24 @@ describe('Progress API Routes', () => {
  expect(res.body.due[0].context_sentence).to.equal('el amor');
  expect(res.body.due[0].song_title).to.equal('Song');
  });
+
+ it('deduplicates vocab items that appear in multiple song_vocab_map rows', async () => {
+ db.prepare(`INSERT INTO vocab_items (id, word, definition, language_code, canonical_key) VALUES (?, ?, ?, ?, ?)`)
+ .run('v-dup', 'fuego', 'fire', 'es', 'fuego|es');
+ db.prepare(`INSERT INTO song_vocab_map (song_id, vocab_id, line_index, char_start) VALUES (?, ?, ?, ?), (?, ?, ?, ?)`)
+ .run('s-dup', 'v-dup', 0, 0, 's-dup', 'v-dup', 2, 5);
+ db.prepare(`
+ INSERT INTO user_vocab_progress (user_id, vocab_id, next_review, gloss, source)
+ VALUES (?, ?, DATE('now', '-1 day'), ?, 'daily_word')
+ `).run('user-due', 'v-dup', 'fire');
+
+ const handler = progressRouter.stack.find(s => s.route.path === '/due').route.stack[0].handle;
+ const res = mockRes();
+ await handler({ query: {}, user: { id: 'user-due' } }, res);
+ expect(res.body.count).to.equal(1);
+ expect(res.body.due).to.have.lengthOf(1);
+ expect(res.body.due[0].vocab_id).to.equal('v-dup');
+ });
  });
 
  describe('GET /stats badges', () => {

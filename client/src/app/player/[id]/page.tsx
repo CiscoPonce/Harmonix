@@ -35,7 +35,6 @@ export default function PlayerPage() {
   const [lrcString, setLrcString] = useState<string | null>(null);
   const [mappedVocab, setMappedVocab] = useState<MappedVocabItem[]>([]);
   const [unmappedVocab, setUnmappedVocab] = useState<VocabItem[]>([]);
-  const [cefrLevel, setCefrLevel] = useState<string>('B1');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,14 +85,6 @@ export default function PlayerPage() {
             setLrcString(vocabData.synced_lyrics);
           }
         }
-
-        const userRes = await apiFetch('/auth/me');
-        if (userRes.ok) {
-          const userData = await parseJsonResponse<{ cefr_level?: string }>(userRes);
-          if (active && userData.cefr_level) {
-            setCefrLevel(userData.cefr_level);
-          }
-        }
       } catch (err) {
         console.error('Fetch error:', err);
         if (active) {
@@ -110,28 +101,6 @@ export default function PlayerPage() {
       active = false;
     };
   }, [id]);
-
-  const handleCefrChange = async (newLevel: string) => {
-    setCefrLevel(newLevel);
-    try {
-      await apiFetch('/user/preferences', {
-        method: 'PATCH',
-        body: JSON.stringify({ cefr_level: newLevel }),
-      });
-      const vocabRes = await apiFetch(`/vocab/${encodeURIComponent(id)}`);
-      if (vocabRes.ok) {
-        const vocabData = await parseJsonResponse<{
-          mapped?: MappedVocabItem[];
-          unmapped?: VocabItem[];
-          synced_lyrics?: string;
-        }>(vocabRes);
-        setMappedVocab(vocabData.mapped || []);
-        setUnmappedVocab(vocabData.unmapped || []);
-      }
-    } catch (err) {
-      console.error('Failed to update CEFR preference:', err);
-    }
-  };
 
   if (loading) {
     return (

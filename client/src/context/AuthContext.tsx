@@ -45,8 +45,6 @@ function friendlyAuthError(error: string | undefined, context: 'login' | 'regist
   return error || (context === 'login' ? 'Login failed' : 'Registration failed');
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);

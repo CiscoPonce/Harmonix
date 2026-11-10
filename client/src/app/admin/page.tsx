@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Users, 
@@ -92,18 +92,7 @@ export default function AdminPage() {
   const [syncingProfile, setSyncingProfile] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-      return;
-    }
-
-    if (user) {
-      loadData();
-    }
-  }, [user, authLoading, router]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -118,13 +107,25 @@ export default function AdminPage() {
       const uRes = await parseJsonResponse<{ users: UserRow[] }>(uResRaw);
       setMetrics(mRes);
       setUsers(uRes.users || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load admin data:', err);
-      setError(err.message || 'Failed to load admin metrics. Admin access required.');
+      const msg = err instanceof Error ? err.message : '';
+      setError(msg || 'Failed to load admin metrics. Admin access required.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+      return;
+    }
+
+    if (user) {
+      void loadData();
+    }
+  }, [user, authLoading, router, loadData]);
 
   const handleSyncProfile = async () => {
     setSyncingProfile(true);
@@ -140,8 +141,9 @@ export default function AdminPage() {
       } else {
         setSyncMsg('Spotify not connected.');
       }
-    } catch (err: any) {
-      setSyncMsg(`Sync error: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSyncMsg(`Sync error: ${msg}`);
     } finally {
       setSyncingProfile(false);
     }

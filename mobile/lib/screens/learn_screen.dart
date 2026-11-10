@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:audio_session/audio_session.dart';
-import 'package:audioplayers/audioplayers.dart' as ap;
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:just_audio/just_audio.dart' as ja;
@@ -37,7 +36,7 @@ class LearnScreen extends StatefulWidget {
 
 class _LearnScreenState extends State<LearnScreen> {
   final _previewPlayer = ja.AudioPlayer();
-  final _pronouncePlayer = ap.AudioPlayer();
+  final _pronouncePlayer = ja.AudioPlayer();
   final _tts = FlutterTts();
   final _searchQuery = TextEditingController();
   final _searchFocus = FocusNode();
@@ -59,6 +58,7 @@ class _LearnScreenState extends State<LearnScreen> {
   String? _trackedLang;
   String? _trackedGenre;
   AuthState? _auth;
+  HomeNavigationController? _nav;
   Timer? _hearStopTimer;
   Timer? _metaPollTimer;
   int _metaPollAttempt = 0;
@@ -79,8 +79,30 @@ class _LearnScreenState extends State<LearnScreen> {
       _trackedLang = _auth?.user?['target_language']?.toString();
       _trackedGenre = _auth?.user?['genre']?.toString();
       _auth?.addListener(_onAuthChanged);
+      try {
+        _nav = context.read<HomeNavigationController>();
+        _nav?.addListener(_onNavChanged);
+      } catch (_) {}
       _load();
     });
+  }
+
+  void _onNavChanged() {
+    final nav = _nav;
+    if (nav == null) return;
+    if (nav.index != HomeNavigationController.discoverIndex) {
+      _hearStopTimer?.cancel();
+      try {
+        _previewPlayer.pause();
+        _pronouncePlayer.stop();
+      } catch (_) {}
+      if (mounted && (_playingPreview || _speaking)) {
+        setState(() {
+          _playingPreview = false;
+          _speaking = false;
+        });
+      }
+    }
   }
 
   void _onAuthChanged() {
@@ -97,6 +119,7 @@ class _LearnScreenState extends State<LearnScreen> {
     _hearStopTimer?.cancel();
     _metaPollTimer?.cancel();
     _auth?.removeListener(_onAuthChanged);
+    _nav?.removeListener(_onNavChanged);
     _searchQuery.dispose();
     _searchFocus.dispose();
     _previewPlayer.dispose();
@@ -131,31 +154,56 @@ class _LearnScreenState extends State<LearnScreen> {
       }
     }
     try {
+      try {
+        final cacheForFlush = wordCache ?? await OfflineWordCache.open();
+        wordCache = cacheForFlush;
+        await cacheForFlush.flushPendingReviews(api);
+      } catch (_) {}
+
       final payload = next ? await api.nextDailyWord() : await api.getDailyWord();
-      Map<String, dynamic>? queue;
+      if (!mounted) return;
+
+      final payloadQueue = payload['queue'] is Map<String, dynamic>
+          ? payload['queue'] as Map<String, dynamic>
+          : null;
+      setState(() {
+        _word = payload;
+        if (payloadQueue != null) _queue = payloadQueue;
+        _offlineWord = false;
+        _loading = false;
+        _nexting = false;
+      });
+
       Map<String, dynamic>? stats;
       List<Map<String, dynamic>> shelf = [];
       var dueCount = 0;
-      try {
-        queue = await api.queueStatus();
-      } catch (_) {}
-      try {
-        stats = await api.progressStats();
-      } catch (_) {}
-      try {
-        final recent = await api.recentDailyWords(days: 14);
-        final raw = recent['recent'] as List? ?? [];
-        shelf = uniqueShelfWords(
-          raw
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList(),
-        );
-      } catch (_) {}
-      try {
-        final due = await api.progressDue(limit: 1);
-        dueCount = (due['count'] as num?)?.toInt() ?? 0;
-      } catch (_) {}
+
+      await Future.wait<void>([
+        () async {
+          try {
+            stats = await api.progressStats();
+          } catch (_) {}
+        }(),
+        () async {
+          try {
+            final recent = await api.recentDailyWords(days: 14);
+            final raw = recent['recent'] as List? ?? [];
+            shelf = uniqueShelfWords(
+              raw
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList(),
+            );
+          } catch (_) {}
+        }(),
+        () async {
+          try {
+            final due = await api.progressDue(limit: 1);
+            dueCount = (due['count'] as num?)?.toInt() ?? 0;
+          } catch (_) {}
+        }(),
+      ]);
+
       if (!mounted) return;
       final cache = wordCache ?? await OfflineWordCache.open();
       await cache.saveLastDailyWord(Map<String, dynamic>.from(payload));
@@ -163,12 +211,9 @@ class _LearnScreenState extends State<LearnScreen> {
         await cache.saveRecentWords(shelf);
       }
       setState(() {
-        _word = payload;
-        _queue = queue ?? payload['queue'] as Map<String, dynamic>?;
         _stats = stats;
         _shelf = shelf;
         _dueCount = dueCount;
-        _offlineWord = false;
       });
       await _syncReminder(payload);
       _scheduleMetaPoll();
@@ -216,6 +261,7 @@ class _LearnScreenState extends State<LearnScreen> {
   bool _cardMetaComplete(Map<String, dynamic>? payload) {
     final word = payload?['word'] as Map<String, dynamic>?;
     final text = (word?['text'] ?? '').toString().trim();
+    if (text.isEmpty) return true;
     final meaning = (word?['translation'] ?? '').toString().trim();
     final ipa = (word?['pronunciation'] ?? '').toString().trim();
     final meaningReady = meaning.isNotEmpty && meaning.toLowerCase() != text.toLowerCase();
@@ -316,7 +362,6 @@ class _LearnScreenState extends State<LearnScreen> {
     );
     try {
       await _pronouncePlayer.stop();
-      await _pronouncePlayer.release();
       await _previewPlayer.stop();
     } catch (_) {}
     if (mounted) setState(() => _speaking = true);
@@ -335,9 +380,8 @@ class _LearnScreenState extends State<LearnScreen> {
       final file = File('${dir.path}/harmonix_pronounce_$stamp.wav');
       await file.writeAsBytes(bytes, flush: true);
 
-      await _pronouncePlayer.setReleaseMode(ap.ReleaseMode.stop);
+      await _pronouncePlayer.setFilePath(file.path);
       await _pronouncePlayer.setVolume(1.0);
-      await _pronouncePlayer.setPlayerMode(ap.PlayerMode.mediaPlayer);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -348,16 +392,10 @@ class _LearnScreenState extends State<LearnScreen> {
         );
       }
 
-      Future<void> waitDone() async {
-        try {
-          await _pronouncePlayer.onPlayerComplete.first.timeout(const Duration(seconds: 15));
-        } on TimeoutException {
-          // ignore
-        }
-      }
-
-      await _pronouncePlayer.play(ap.DeviceFileSource(file.path));
-      await waitDone();
+      await _pronouncePlayer.play().timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {},
+          );
 
       try {
         if (await file.exists()) await file.delete();
@@ -543,14 +581,13 @@ class _LearnScreenState extends State<LearnScreen> {
     } catch (_) {}
     try {
       final payload = await api.dailyWordFromTrack(trackId: trackId, title: title, artist: artist);
-      Map<String, dynamic>? queue;
-      try {
-        queue = await api.queueStatus();
-      } catch (_) {}
       if (!mounted) return;
+      final payloadQueue = payload['queue'] is Map<String, dynamic>
+          ? payload['queue'] as Map<String, dynamic>
+          : null;
       setState(() {
         _word = payload;
-        _queue = queue ?? payload['queue'] as Map<String, dynamic>?;
+        if (payloadQueue != null) _queue = payloadQueue;
         _searchResults = [];
         _searchQuery.clear();
       });

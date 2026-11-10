@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/Button';
 import { apiFetch } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 

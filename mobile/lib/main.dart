@@ -140,20 +140,19 @@ class _RootGateState extends State<_RootGate> {
   @override
   Widget build(BuildContext context) {
     final nav = context.watch<HomeNavigationController>();
-    if (!_openingDone && !nav.arrivedFromSpotify) {
-      return OpeningScreen(
-        onFinished: () {
-          if (!mounted) return;
-          setState(() => _openingDone = true);
-        },
-      );
-    }
-
     final auth = context.watch<AuthState>();
     final colors = HarmonixColors.of(context);
     if (auth.loading) {
       return Scaffold(
         body: Center(child: CircularProgressIndicator(color: colors.accent)),
+      );
+    }
+    if (!_openingDone && !nav.arrivedFromSpotify && !auth.isAuthenticated) {
+      return OpeningScreen(
+        onFinished: () {
+          if (!mounted) return;
+          setState(() => _openingDone = true);
+        },
       );
     }
     if (!auth.isAuthenticated) return const WelcomeScreen();

@@ -8,6 +8,8 @@ const spotifyProfile = require('../services/spotifyProfileService');
 
 const VALID_VOICE_GENDERS = ['female', 'male'];
 const VALID_GENRES = ['any', 'pop', 'rock', 'hip-hop', 'reggaeton'];
+const VALID_DIFFICULTIES = ['easy', 'medium', 'hard'];
+const VALID_CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 function rejectInvalidLanguage(res, field, value) {
   if (value && !VALID_LANGUAGE_CODES.includes(value)) {
@@ -57,9 +59,27 @@ router.patch('/preferences', (req, res) => {
     }
     req.body.genre = normalizedGenre;
   }
+  if (difficulty !== undefined) {
+    const normalizedDifficulty = String(difficulty).toLowerCase();
+    if (!VALID_DIFFICULTIES.includes(normalizedDifficulty)) {
+      return res.status(400).json({
+        error: `Invalid difficulty. Must be one of: ${VALID_DIFFICULTIES.join(', ')}`,
+      });
+    }
+    req.body.difficulty = normalizedDifficulty;
+  }
+  if (cefr_level !== undefined) {
+    const normalizedCefr = String(cefr_level).toUpperCase();
+    if (!VALID_CEFR_LEVELS.includes(normalizedCefr)) {
+      return res.status(400).json({
+        error: `Invalid cefr_level. Must be one of: ${VALID_CEFR_LEVELS.join(', ')}`,
+      });
+    }
+    req.body.cefr_level = normalizedCefr;
+  }
 
   const current = db.prepare(
-    'SELECT native_language, target_language, genre FROM users WHERE id = ?'
+    'SELECT native_language, target_language, genre, difficulty, cefr_level FROM users WHERE id = ?'
   ).get(userId);
   const nextNative = native_language ?? current?.native_language;
   const nextTarget = target_language ?? current?.target_language;
@@ -76,8 +96,8 @@ router.patch('/preferences', (req, res) => {
       native_language,
       target_language,
       genre: req.body.genre,
-      difficulty,
-      cefr_level,
+      difficulty: req.body.difficulty,
+      cefr_level: req.body.cefr_level,
       voice_gender,
       dyslexia_font: dyslexia_font === undefined
         ? undefined
@@ -99,7 +119,11 @@ router.patch('/preferences', (req, res) => {
       target_language !== undefined && target_language !== current?.target_language;
     const nativeChanged =
       native_language !== undefined && native_language !== current?.native_language;
-    if (languageChanged || genreChanged || nativeChanged) {
+    const difficultyChanged =
+      req.body.difficulty !== undefined && req.body.difficulty !== current?.difficulty;
+    const cefrChanged =
+      req.body.cefr_level !== undefined && req.body.cefr_level !== current?.cefr_level;
+    if (languageChanged || genreChanged || nativeChanged || difficultyChanged || cefrChanged) {
       // Stop in-flight refill of the old catalog, drop queued mismatches,
       // and invalidate any in-flight generate/deliver for the previous style.
       dailyWordService.abortRefill(userId);

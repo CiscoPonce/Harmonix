@@ -35,7 +35,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _spotifyMessage;
   bool _personalizationNeeded = false;
   bool _confirmDisconnect = false;
-  bool _consumedNavRecovery = false;
   String? _styleLang;
   List<(String, String)> _styles = kMusicStyles;
   Uint8List? _avatarBytes;
@@ -49,9 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_consumedNavRecovery) return;
-    _consumedNavRecovery = true;
-    final nav = context.read<HomeNavigationController>();
+    final nav = context.watch<HomeNavigationController>();
     final reason = nav.consumeRecoveryReason();
     if (reason != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

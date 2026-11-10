@@ -117,7 +117,7 @@ router.post('/:sessionId/finish', (req, res) => {
  } else {
       const lastDate = stats.last_study_date;
       const yesterdayDate = new Date(today);
-      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
       const yest = yesterdayDate.toISOString().slice(0, 10);
       let newStreak = stats.streak_days;
  if (lastDate === today) {

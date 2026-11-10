@@ -26,6 +26,7 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   bool _appliedConstructorOverride = false;
+  final Set<int> _visitedTabs = {0};
 
   @override
   void initState() {
@@ -46,15 +47,24 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final nav = context.watch<HomeNavigationController>();
     final index = nav.index;
+    _visitedTabs.add(index);
 
-    final pages = [
-      const DiscoverScreen(),
-      const LibraryScreen(),
-      const SettingsScreen(),
+    const pages = <Widget>[
+      DiscoverScreen(),
+      LibraryScreen(),
+      SettingsScreen(),
     ];
 
     return Scaffold(
-      body: SafeArea(child: pages[index]),
+      body: SafeArea(
+        child: IndexedStack(
+          index: index,
+          children: [
+            for (var i = 0; i < pages.length; i++)
+              _visitedTabs.contains(i) ? pages[i] : const SizedBox.shrink(),
+          ],
+        ),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
         onDestinationSelected: nav.selectTab,

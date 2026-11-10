@@ -73,7 +73,7 @@ const authenticateToken = (req, res, next) => {
   try {
     user = auth.verifyAccessToken(token);
   } catch (err) {
-    return res.sendStatus(403);
+    return res.sendStatus(401);
   }
   if (!auth.userStillExists(user.id)) return res.sendStatus(401);
   req.user = user;

@@ -414,6 +414,9 @@ class AppI18n {
       'delete_account_hint': 'Permanently delete your account, profile photo, and learning data.',
       'delete_account_confirm': 'Delete my account permanently',
       'delete_account_cancel': 'Keep my account',
+      'playlist_name_hint': 'Name',
+      'review_saved_offline': 'Offline — review progress saved and will sync when you reconnect.',
+      'review_submit_failed': 'Could not save review progress',
     },
     'es': {
       'n_ready': '{n} listas',
@@ -550,6 +553,9 @@ class AppI18n {
       'delete_account_hint': 'Elimina permanentemente tu cuenta, foto de perfil y datos de aprendizaje.',
       'delete_account_confirm': 'Eliminar mi cuenta permanentemente',
       'delete_account_cancel': 'Conservar mi cuenta',
+      'playlist_name_hint': 'Nombre',
+      'review_saved_offline': 'Sin conexión — tu progreso se guardó y se sincronizará al reconectar.',
+      'review_submit_failed': 'No se pudo guardar el repaso',
     },
     'fr': {
       'n_ready': '{n} prêts',
@@ -686,6 +692,9 @@ class AppI18n {
       'delete_account_hint': 'Supprime définitivement votre compte, photo de profil et données d’apprentissage.',
       'delete_account_confirm': 'Supprimer définitivement mon compte',
       'delete_account_cancel': 'Garder mon compte',
+      'playlist_name_hint': 'Nom',
+      'review_saved_offline': 'Hors ligne — révision enregistrée et synchronisée dès la reconnexion.',
+      'review_submit_failed': 'Impossible d’enregistrer la révision',
     },
     'de': {
       'n_ready': '{n} bereit',
@@ -822,6 +831,9 @@ class AppI18n {
       'delete_account_hint': 'Löscht dein Konto, Profilbild und deine Lerndaten dauerhaft.',
       'delete_account_confirm': 'Mein Konto dauerhaft löschen',
       'delete_account_cancel': 'Konto behalten',
+      'playlist_name_hint': 'Name',
+      'review_saved_offline': 'Offline — Wiederholung gespeichert und wird bei Verbindung synchronisiert.',
+      'review_submit_failed': 'Wiederholung konnte nicht gespeichert werden',
     },
     'pt': {
       'n_ready': '{n} prontas',
@@ -958,6 +970,9 @@ class AppI18n {
       'delete_account_hint': 'Exclua permanentemente sua conta, foto de perfil e dados de aprendizado.',
       'delete_account_confirm': 'Excluir minha conta permanentemente',
       'delete_account_cancel': 'Manter minha conta',
+      'playlist_name_hint': 'Nome',
+      'review_saved_offline': 'Offline — revisão salva e será sincronizada ao reconectar.',
+      'review_submit_failed': 'Não foi possível salvar a revisão',
     },
     'it': {
       'n_ready': '{n} pronte',
@@ -1094,6 +1109,9 @@ class AppI18n {
       'delete_account_hint': 'Elimina definitivamente il tuo account, la foto profilo e i dati di apprendimento.',
       'delete_account_confirm': 'Elimina definitivamente il mio account',
       'delete_account_cancel': 'Mantieni il mio account',
+      'playlist_name_hint': 'Nome',
+      'review_saved_offline': 'Offline — ripasso salvato, verrà sincronizzato alla riconnessione.',
+      'review_submit_failed': 'Impossibile salvare il ripasso',
     },
   };
 

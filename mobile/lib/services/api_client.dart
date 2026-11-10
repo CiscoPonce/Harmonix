@@ -156,6 +156,7 @@ class ApiClient {
   final FlutterSecureStorage _storage;
   String? _accessToken;
   String? _refreshToken;
+  Future<bool>? _refreshInFlight;
 
   /// Called when a stored refresh token is refused, so the app can sign out.
   void Function()? onSessionExpired;
@@ -197,8 +198,10 @@ class ApiClient {
   Map<String, String> _headers({bool jsonBody = false, String? accept}) {
     final headers = <String, String>{
       'Accept': accept ?? 'application/json',
-      'ngrok-skip-browser-warning': 'true',
     };
+    if (kApiBase.contains('ngrok')) {
+      headers['ngrok-skip-browser-warning'] = 'true';
+    }
     if (jsonBody) headers['Content-Type'] = 'application/json';
     if (_accessToken != null) {
       headers['Authorization'] = 'Bearer $_accessToken';
@@ -259,18 +262,19 @@ class ApiClient {
     final headers = _headers(jsonBody: body != null);
     final encoded = body == null ? null : jsonEncode(body);
 
+    const reqTimeout = Duration(seconds: 25);
     switch (method.toUpperCase()) {
       case 'GET':
-        res = await _client.get(uri, headers: headers);
+        res = await _client.get(uri, headers: headers).timeout(reqTimeout);
         break;
       case 'POST':
-        res = await _client.post(uri, headers: headers, body: encoded);
+        res = await _client.post(uri, headers: headers, body: encoded).timeout(reqTimeout);
         break;
       case 'PATCH':
-        res = await _client.patch(uri, headers: headers, body: encoded);
+        res = await _client.patch(uri, headers: headers, body: encoded).timeout(reqTimeout);
         break;
       case 'DELETE':
-        res = await _client.delete(uri, headers: headers);
+        res = await _client.delete(uri, headers: headers).timeout(reqTimeout);
         break;
       default:
         throw ApiException('Unsupported method $method');
@@ -302,10 +306,12 @@ class ApiClient {
   }) async {
     final query = pronounceQuery(word, lang: lang, voiceGender: voiceGender);
     final uri = _uri('/daily-word/pronounce', query);
-    final res = await _client.get(
-      uri,
-      headers: _headers(accept: 'audio/wav, application/json'),
-    );
+    final res = await _client
+        .get(
+          uri,
+          headers: _headers(accept: 'audio/wav, application/json'),
+        )
+        .timeout(const Duration(seconds: 12));
 
     if (res.statusCode == 401 && authRetry) {
       final refreshed = await refresh();
@@ -392,7 +398,17 @@ class ApiClient {
     return data;
   }
 
-  Future<bool> refresh() async {
+  Future<bool> refresh() {
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) return inFlight;
+    final future = _doRefresh().whenComplete(() {
+      _refreshInFlight = null;
+    });
+    _refreshInFlight = future;
+    return future;
+  }
+
+  Future<bool> _doRefresh() async {
     if (_refreshToken == null) return false;
     try {
       final data = await request(
@@ -470,7 +486,9 @@ class ApiClient {
     final uri = _uri('/user/avatar');
     final headers = _headers(accept: 'application/json');
     headers['Content-Type'] = contentType;
-    final res = await _client.put(uri, headers: headers, body: bytes);
+    final res = await _client
+        .put(uri, headers: headers, body: bytes)
+        .timeout(const Duration(seconds: 25));
 
     if (res.statusCode == 401 && authRetry) {
       final refreshed = await refresh();
@@ -490,10 +508,12 @@ class ApiClient {
 
   Future<Uint8List?> getAvatarBytes({bool authRetry = true}) async {
     final uri = _uri('/user/avatar');
-    final res = await _client.get(
-      uri,
-      headers: _headers(accept: 'image/*, application/json'),
-    );
+    final res = await _client
+        .get(
+          uri,
+          headers: _headers(accept: 'image/*, application/json'),
+        )
+        .timeout(const Duration(seconds: 25));
 
     if (res.statusCode == 401 && authRetry) {
       final refreshed = await refresh();
@@ -605,7 +625,9 @@ class ApiClient {
     String? payloadProvider,
   }) async {
     final resolved = resolveMediaUrl(pathOrUrl);
-    final res = await _client.get(Uri.parse(resolved), headers: _headers(accept: '*/*'));
+    final res = await _client
+        .get(Uri.parse(resolved), headers: _headers(accept: '*/*'))
+        .timeout(const Duration(seconds: 25));
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw ApiException('Preview unavailable (${res.statusCode})');
     }
@@ -717,10 +739,12 @@ class ApiClient {
     final uri = _uri('/share/postcards/${Uri.encodeComponent(postcardId)}/og.png', {
       'v': '3',
     });
-    final res = await _client.get(
-      uri,
-      headers: _headers(accept: 'image/png, application/json'),
-    );
+    final res = await _client
+        .get(
+          uri,
+          headers: _headers(accept: 'image/png, application/json'),
+        )
+        .timeout(const Duration(seconds: 25));
     if (res.statusCode >= 400) {
       throw ApiException('Postcard image unavailable (${res.statusCode})', status: res.statusCode);
     }

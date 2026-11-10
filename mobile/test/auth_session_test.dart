@@ -127,4 +127,48 @@ void main() {
     expect(notified, isTrue);
     expect(auth.isAuthenticated, isFalse);
   });
+
+  test('concurrent 401 requests share a single refresh call', () async {
+    final store = _signedInStore();
+    var refreshCalls = 0;
+    final api = ApiClient(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/auth/refresh')) {
+          refreshCalls += 1;
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          return http.Response(
+            '{"accessToken":"fresh-access","refreshToken":"fresh-refresh"}',
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        final authHeader = request.headers['Authorization'];
+        if (authHeader != 'Bearer fresh-access') {
+          return http.Response(
+            '{"error":"unauthorized"}',
+            401,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return http.Response(
+          '{"ok":true,"path":"${request.url.path}"}',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+      storage: _MemorySecureStorage(store),
+    );
+    await api.loadSession();
+
+    final results = await Future.wait([
+      api.request('GET', '/daily-word'),
+      api.request('GET', '/progress/stats'),
+      api.request('GET', '/progress/due'),
+    ]);
+
+    expect(refreshCalls, 1);
+    expect(results.every((r) => r['ok'] == true), isTrue);
+    expect(store['access_token'], 'fresh-access');
+    expect(store['refresh_token'], 'fresh-refresh');
+  });
 }

@@ -73,6 +73,9 @@ gsd-core/
 # Local SSH/ops notes (not part of the product)
 where.md
 
+# Wear OS pre-alpha. Kept on this machine for sideload, not part of the GitHub repo.
+wear/
+
 # Legacy duplicate phase folders
 .planning/phases/phase-1/
 .planning/phases/phase-2/

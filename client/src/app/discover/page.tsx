@@ -226,14 +226,6 @@ export default function DiscoverPage() {
     return () => window.clearTimeout(t);
   }, [query]);
 
-  if (isLoading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F7F8F6] dark:bg-[#0C1210]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0B4D2E] dark:text-[#3DCF7A]" aria-label="Loading" />
-      </div>
-    );
-  }
-
   const pickTrack = useCallback((track: {
     id: number | string;
     title: string;
@@ -248,6 +240,14 @@ export default function DiscoverPage() {
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  if (isLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F7F8F6] dark:bg-[#0C1210]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#0B4D2E] dark:text-[#3DCF7A]" aria-label="Loading" />
+      </div>
+    );
+  }
 
   const goalPct =
     stats && stats.daily_goal > 0

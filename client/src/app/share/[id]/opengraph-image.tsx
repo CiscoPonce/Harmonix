@@ -109,7 +109,6 @@ export default async function Image({
           }}
         >
           {cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={cover}
               width={320}

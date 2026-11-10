@@ -197,17 +197,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Future<void> _createPlaylist() async {
     final controller = TextEditingController();
+    final titleText = context.tr('new_playlist');
+    final hintText = context.tr('playlist_name_hint');
+    final cancelText = context.tr('cancel');
+    final createText = context.tr('create');
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('New playlist'),
-        content: TextField(controller: controller, decoration: const InputDecoration(hintText: 'Name')),
+        title: Text(titleText),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(hintText: hintText),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(cancelText)),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
             style: FilledButton.styleFrom(backgroundColor: HarmonixColors.brand),
-            child: const Text('Create'),
+            child: Text(createText),
           ),
         ],
       ),

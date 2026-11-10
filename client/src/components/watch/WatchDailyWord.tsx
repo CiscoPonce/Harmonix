@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { Loader2, Pause, Play, RefreshCw } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { pronouncePath } from "@/lib/pronounceRequest";
+import { Loader2, Pause, Play, RefreshCw, Volume2 } from "lucide-react";
 
 interface DailyWordPayload {
   word: {
@@ -46,7 +48,11 @@ export function WatchDailyWord() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const wordAudioRef = useRef<HTMLAudioElement | null>(null);
+  const wordUrlRef = useRef<string | null>(null);
+  const { user } = useAuth();
 
   const loadWord = useCallback(async (initial: boolean) => {
     if (initial) {
@@ -77,6 +83,57 @@ export function WatchDailyWord() {
     loadWord(true);
   }, [loadWord]);
 
+  const stopWord = () => {
+    const clip = wordAudioRef.current;
+    if (clip) {
+      clip.pause();
+      clip.src = "";
+    }
+    if (wordUrlRef.current) {
+      URL.revokeObjectURL(wordUrlRef.current);
+      wordUrlRef.current = null;
+    }
+    setSpeaking(false);
+  };
+
+  const speakWord = async () => {
+    if (!data) return;
+    if (speaking) {
+      stopWord();
+      return;
+    }
+    const song = audioRef.current;
+    if (song) song.pause();
+    setIsPlaying(false);
+    setSpeaking(true);
+    const lang = user?.target_language || "es";
+    try {
+      const res = await apiFetch(pronouncePath(data.word.text, lang, user?.voice_gender), {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Pronunciation unavailable");
+      const blob = await res.blob();
+      if (wordUrlRef.current) URL.revokeObjectURL(wordUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      wordUrlRef.current = url;
+      const clip = wordAudioRef.current ?? new Audio();
+      wordAudioRef.current = clip;
+      clip.src = url;
+      clip.onended = () => setSpeaking(false);
+      await clip.play();
+    } catch {
+      setSpeaking(false);
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(data.word.text);
+        utter.lang = lang;
+        utter.onend = () => setSpeaking(false);
+        setSpeaking(true);
+        window.speechSynthesis.speak(utter);
+      }
+    }
+  };
+
   const togglePlay = async () => {
     const audio = audioRef.current;
     if (!audio || !data) return;
@@ -95,6 +152,7 @@ export function WatchDailyWord() {
     const stopAt = inWindow
       ? Math.min(PREVIEW_LEN, Math.max(seekTo + 3.5, relative + 5.5))
       : 8;
+    stopWord();
     try {
       if (audio.readyState < 1) audio.load();
       audio.currentTime = seekTo;
@@ -112,6 +170,13 @@ export function WatchDailyWord() {
       setIsPlaying(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      wordAudioRef.current?.pause();
+      if (wordUrlRef.current) URL.revokeObjectURL(wordUrlRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -161,7 +226,7 @@ export function WatchDailyWord() {
       <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Word of the day</p>
 
       <div className="space-y-1">
-        <p className="text-[26px] font-black uppercase leading-tight break-words [overflow-wrap:anywhere]">
+        <p className="text-[32px] font-black uppercase leading-none break-words [overflow-wrap:anywhere]">
           {data.word.text}
         </p>
         <p className="text-sm font-semibold text-zinc-300 break-words">{data.word.translation}</p>
@@ -180,26 +245,35 @@ export function WatchDailyWord() {
         <p className="text-[9px] text-zinc-600 uppercase">{data.lyric.timestamp}</p>
       </div>
 
-      <div className="flex flex-col gap-2 pt-1">
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        <button
+          type="button"
+          onClick={speakWord}
+          disabled={refreshing}
+          className="flex items-center justify-center gap-1.5 min-h-[48px] rounded-full bg-white text-black text-[11px] font-bold uppercase"
+        >
+          <Volume2 className="w-4 h-4" />
+          {speaking ? "Stop" : "Word"}
+        </button>
         <button
           type="button"
           onClick={togglePlay}
-          disabled={refreshing}
-          className="flex items-center justify-center gap-2 min-h-[48px] w-full rounded-full bg-white text-black text-[11px] font-bold uppercase"
+          disabled={refreshing || !data.audio.preview_url}
+          className="flex items-center justify-center gap-1.5 min-h-[48px] rounded-full border border-zinc-600 text-[11px] font-bold uppercase text-white disabled:opacity-40"
         >
           {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-          {isPlaying ? "Pause" : "Hear it"}
-        </button>
-        <button
-          type="button"
-          onClick={() => loadWord(false)}
-          disabled={refreshing}
-          className="flex items-center justify-center gap-2 min-h-[44px] w-full rounded-full border border-zinc-700 text-[10px] font-bold uppercase text-zinc-300"
-        >
-          {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-          Next word
+          {isPlaying ? "Stop" : "Song"}
         </button>
       </div>
+      <button
+        type="button"
+        onClick={() => loadWord(false)}
+        disabled={refreshing}
+        className="flex items-center justify-center gap-2 min-h-[40px] w-full rounded-full text-[10px] font-bold uppercase text-zinc-400"
+      >
+        {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+        Next word
+      </button>
 
       {data.audio.preview_url && (
         <audio ref={audioRef} src={data.audio.preview_url} preload="none" />

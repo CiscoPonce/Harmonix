@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:audio_session/audio_session.dart';
-import 'package:audioplayers/audioplayers.dart' as ap;
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:just_audio/just_audio.dart' as ja;
@@ -33,7 +32,7 @@ class WordDetailScreen extends StatefulWidget {
 
 class _WordDetailScreenState extends State<WordDetailScreen> {
   final _previewPlayer = ja.AudioPlayer();
-  final _pronouncePlayer = ap.AudioPlayer();
+  final _pronouncePlayer = ja.AudioPlayer();
   final _tts = FlutterTts();
   bool _speaking = false;
   bool _playingPreview = false;
@@ -123,9 +122,15 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/harmonix_pronounce_${DateTime.now().millisecondsSinceEpoch}.wav');
       await file.writeAsBytes(bytes, flush: true);
-      await _pronouncePlayer.setReleaseMode(ap.ReleaseMode.stop);
+      await _pronouncePlayer.setFilePath(file.path);
       await _pronouncePlayer.setVolume(1.0);
-      await _pronouncePlayer.play(ap.DeviceFileSource(file.path));
+      await _pronouncePlayer.play().timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {},
+          );
+      try {
+        if (await file.exists()) await file.delete();
+      } catch (_) {}
     } catch (e) {
       try {
         final locale = switch (lang) {

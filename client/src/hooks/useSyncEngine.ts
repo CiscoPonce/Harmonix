@@ -120,7 +120,7 @@ export function useSyncEngine({
     const targetAudioTime = targetLyricTimeSeconds - offset;
     const clampedTargetAudioTime = Math.max(0, Math.min(maxAudioSeconds, targetAudioTime));
 
-    audio.currentTime = clampedTargetAudioTime;
+    Object.assign(audio, { currentTime: clampedTargetAudioTime });
 
     const adjustedTimeMs =
       clampedTargetAudioTime * 1000 + offset * 1000 + latencyCompensationMs;

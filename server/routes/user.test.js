@@ -192,5 +192,52 @@ describe('User Preferences API Routes', () => {
       const row = db.prepare('SELECT dyslexia_font FROM users WHERE id = ?').get('up-test');
       expect(row.dyslexia_font).to.equal(0);
     });
+
+    it('rejects invalid difficulty or cefr_level with 400', () => {
+      const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
+      const badDiff = mockRes();
+      handler({ body: { difficulty: 'impossible' }, user: { id: 'up-test' } }, badDiff);
+      expect(badDiff.statusCode).to.equal(400);
+
+      const badCefr = mockRes();
+      handler({ body: { cefr_level: 'Z9' }, user: { id: 'up-test' } }, badCefr);
+      expect(badCefr.statusCode).to.equal(400);
+    });
+
+    it('purges word queue when difficulty or cefr_level changes', () => {
+      const userId = 'up-test';
+      const handler = userRouter.stack.find(s => s.route.path === '/preferences' && s.route.methods.patch).route.stack[0].handle;
+
+      db.prepare('DELETE FROM user_word_queue WHERE user_id = ?').run(userId);
+      wordQueue.enqueuePayloads(userId, [{
+        date: '2026-07-09',
+        language_code: 'es',
+        word: { text: 'amor', translation: 'love' },
+        song: { id: '1', title: 'Song', artist: 'Artist' },
+        lyric: { snippet: 'amor', timestamp: '0:01', timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 4 },
+        audio: { preview_url: 'http://x', duration_seconds: 180, preview_offset: 30 },
+      }]);
+      expect(wordQueue.countReady(userId)).to.equal(1);
+
+      const res1 = mockRes();
+      handler({ body: { difficulty: 'hard' }, user: { id: userId } }, res1);
+      expect(res1.body.difficulty).to.equal('hard');
+      expect(wordQueue.countReady(userId)).to.equal(0);
+
+      wordQueue.enqueuePayloads(userId, [{
+        date: '2026-07-09',
+        language_code: 'es',
+        word: { text: 'amor', translation: 'love' },
+        song: { id: '1', title: 'Song', artist: 'Artist' },
+        lyric: { snippet: 'amor', timestamp: '0:01', timestamp_ms: 1000, line_index: 0, char_start: 0, char_end: 4 },
+        audio: { preview_url: 'http://x', duration_seconds: 180, preview_offset: 30 },
+      }]);
+      expect(wordQueue.countReady(userId)).to.equal(1);
+
+      const res2 = mockRes();
+      handler({ body: { cefr_level: 'c1' }, user: { id: userId } }, res2);
+      expect(res2.body.cefr_level).to.equal('C1');
+      expect(wordQueue.countReady(userId)).to.equal(0);
+    });
   });
 });

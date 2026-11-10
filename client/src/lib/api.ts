@@ -42,25 +42,33 @@ export async function parseJsonResponse<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-async function refreshAccessToken() {
-  try {
-    const headers = new Headers();
-    applyDefaultHeaders(headers);
-    const res = await fetch(`${API_URL}/auth/refresh`, {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-    });
+let refreshPromise: Promise<string | null> | null = null;
 
-    if (res.ok) {
-      const data = await parseJsonResponse<{ accessToken: string }>(res);
-      accessToken = data.accessToken;
-      return accessToken;
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const headers = new Headers();
+      applyDefaultHeaders(headers);
+      const res = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+      });
+
+      if (res.ok) {
+        const data = await parseJsonResponse<{ accessToken: string }>(res);
+        accessToken = data.accessToken;
+        return accessToken;
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+    } finally {
+      refreshPromise = null;
     }
-  } catch (error) {
-    console.error('Token refresh failed:', error);
-  }
-  return null;
+    return null;
+  })();
+  return refreshPromise;
 }
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {

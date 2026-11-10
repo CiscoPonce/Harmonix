@@ -39,7 +39,6 @@ const Player: React.FC<PlayerProps> = ({
   mappedVocab = [], 
   unmappedVocab = [],
   cefrLevel = 'B1',
-  onCefrChange,
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);

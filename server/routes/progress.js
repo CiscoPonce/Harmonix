@@ -108,6 +108,7 @@ router.get('/due', (req, res) => {
  LEFT JOIN song_vocab_map svm ON svm.vocab_id = v.id AND svm.line_index <> -1
  WHERE uvp.user_id = ?
  AND (uvp.next_review IS NULL OR DATE(uvp.next_review) <= DATE('now'))
+ GROUP BY uvp.user_id, uvp.vocab_id
  ORDER BY uvp.next_review ASC
  LIMIT ?
  `).all(userId, limit);

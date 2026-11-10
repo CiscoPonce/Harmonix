@@ -177,7 +177,9 @@ export function DailyWordCard({
   const spotifyPlayer = useSpotifyInAppPlayer();
   const loadAbortRef = useRef<AbortController | null>(null);
   const onFromTrackSettledRef = useRef(onFromTrackSettled);
-  onFromTrackSettledRef.current = onFromTrackSettled;
+  useEffect(() => {
+    onFromTrackSettledRef.current = onFromTrackSettled;
+  }, [onFromTrackSettled]);
 
   const clearHearStopTimer = useCallback(() => {
     if (hearStopTimerRef.current) {
@@ -855,12 +857,6 @@ export function DailyWordCard({
       }
     }
     setIsSpeaking(false);
-  };
-
-  const formatPronunciation = (raw: string) => {
-    const trimmed = raw.trim();
-    if (trimmed.startsWith("/") || trimmed.startsWith("[") || trimmed.includes("ˈ")) return trimmed;
-    return `/${trimmed}/`;
   };
 
   if (loading && !data) {
