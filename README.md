@@ -24,21 +24,23 @@ The Word screen is home: a word of the day, practice, and song search. Library h
 
 ## Features
 
-- **Word of the Day.** A word from a real lyric, with the next few words ready so moving on stays fast.
+- **Word of the Day.** A word from a real lyric, with the next few words pre-queued in the background so moving on stays instant.
+- **Smart Daily Reminder.** Local daily notifications preview the next word waiting in your batch along with the upcoming song and artist so you can learn it in 1 minute.
 - **Hear it.** A 30-second Deezer preview, or iTunes when Deezer is blocked. Spotify Premium can play in the app. Open in Spotify is always available.
 - **Pronunciation.** Pocket-TTS for English and the fallback languages, Kokoro for Spanish. The phone speaks the word if the server voice is missing. Settings chooses voice gender.
-- **Music style.** Any, pop, rock, hip-hop, or reggaeton. Changing style refreshes the word queue.
+- **Music style & level.** Any, pop, rock, hip-hop, or reggaeton, plus CEFR-aligned difficulty (`easy`, `medium`, `hard`). Changing style or level refreshes the word queue automatically.
 - **Song search.** Find a song and learn a word from its lyric.
 - **Library.** Harmonix playlists and Spotify playlists, with export from Harmonix to Spotify. A recent word opens its card.
-- **Practice.** Spaced review, with the streak and the daily goal on the Word screen.
+- **Practice & Profile.** Spaced review, streak badge, responsive 4-card stats row, achievements, and avatar/profile management across web and Android.
 
 ## Stack
 
 | Layer | Technology |
 |-------|------------|
-| API | Node.js, Express, SQLite |
-| Web | Next.js App Router, Tailwind v4 |
+| API | Node.js, Express, SQLite (`better-sqlite3`) |
+| Web | Next.js 16 App Router, React 19, Tailwind v4 |
 | Android | Flutter (`mobile/`) |
+| Wear OS | Kotlin / Jetpack Compose (`wear/`) |
 | AI | NVIDIA NIM, with OpenRouter as fallback |
 | Music | Deezer, iTunes, LRCLib, Spotify Web API and Web Playback SDK |
 | Voice | Pocket-TTS on `:3002`, Kokoro on `:3003` for Spanish |
@@ -46,9 +48,10 @@ The Word screen is home: a word of the day, practice, and song search. Library h
 ## Repository
 
 ```text
-server/     Express API, SQLite, Spotify, voice, and daily-word services
+server/     Express API, SQLite, Spotify, voice, and daily-word queue services
 client/     Next.js website
-mobile/     Flutter Android app, the Play Store build
+mobile/     Flutter Android app (Google Play Store build)
+wear/       Wear OS companion app
 docs/       Runbooks for deploy, Spotify, mobile, and releases
 .planning/  Roadmap and phase notes
 ```
@@ -105,13 +108,13 @@ GitHub Actions runs these on every push to `main`:
 
 ```bash
 cd server && npm test
-cd client && node --experimental-strip-types --test 'src/lib/*.test.ts'
+cd client && npm run lint && node --experimental-strip-types --test 'src/lib/*.test.ts'
 cd mobile && flutter analyze --fatal-infos && flutter test
 ```
 
 ## Releases
 
-The website has no store version. It ships from `main`. The Android build on Play closed testing is 1.0.18 (version code 21). Version code 23 is in this repo and is not on Play.
+The website has no store version. It ships from `main`. The Android build for Google Play closed testing is 1.0.22 (version code 25).
 
 <!-- x-release-please-start-version -->
 **Platform release:** 0.0.7
@@ -119,8 +122,8 @@ The website has no store version. It ships from `main`. The Android build on Pla
 
 | Track | Version | Where |
 |-------|---------|--------|
-| Android on Play | 1.0.18 (version code 21) | Closed testing, tested 7 November 2026 |
-| Android in this repo | 1.0.21 (version code 24) | `mobile/pubspec.yaml`. Bump this for every Play upload |
+| Android on Play | 1.0.22 (version code 25) | Closed testing, built 10 November 2026 |
+| Android in this repo | 1.0.22 (version code 25) | `mobile/pubspec.yaml`. Bump this for every Play upload |
 | Platform changelog | The platform release line above | `CHANGELOG.md` and [GitHub Releases](https://github.com/CiscoPonce/Harmonix/releases) |
 
 The package id is `uk.co.peeporunclub.harmonix`. [release-please](https://github.com/googleapis/release-please) opens the changelog pull request from [Conventional Commits](https://www.conventionalcommits.org/). Do not commit APKs. Testers install from the Play closed test. An APK attached to a GitHub release is signed in CI and does not update a Play install. See [docs/PLAY-CONSOLE-LISTING.md](docs/PLAY-CONSOLE-LISTING.md).
