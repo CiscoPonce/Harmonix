@@ -275,7 +275,9 @@ class _LearnScreenState extends State<LearnScreen> {
   }
 
   void _armMetaPoll() {
-    if (!mounted || _cardMetaComplete(_word)) return;
+    final queueNeedsNextPreview =
+        (_queue?['next_preview'] == null) && (_queue?['refilling'] == true);
+    if (!mounted || (_cardMetaComplete(_word) && !queueNeedsNextPreview)) return;
     const delays = [1200, 3000, 6500];
     if (_metaPollAttempt >= delays.length) return;
     _metaPollTimer = Timer(Duration(milliseconds: delays[_metaPollAttempt]), () async {
@@ -292,6 +294,12 @@ class _LearnScreenState extends State<LearnScreen> {
     try {
       final payload = await context.read<ApiClient>().getDailyWord();
       if (!mounted) return;
+      final nextQueue = payload['queue'] is Map<String, dynamic>
+          ? payload['queue'] as Map<String, dynamic>
+          : null;
+      if (nextQueue != null) {
+        _queue = nextQueue;
+      }
       final nextText = (payload['word'] as Map?)?['text']?.toString();
       if (nextText != current) return;
       final nextWord = Map<String, dynamic>.from(
@@ -304,13 +312,16 @@ class _LearnScreenState extends State<LearnScreen> {
       if (nextLyric?['line_translation'] != null) {
         prevLyric['line_translation'] = nextLyric!['line_translation'];
       }
+      final updatedPayload = <String, dynamic>{
+        ...?_word,
+        'word': nextWord,
+        'lyric': prevLyric,
+        'queue': ?nextQueue,
+      };
       setState(() {
-        _word = {
-          ...?_word,
-          'word': nextWord,
-          'lyric': prevLyric,
-        };
+        _word = updatedPayload;
       });
+      await _syncReminder(updatedPayload);
     } catch (_) {
       /* keep the pending placeholders */
     }
@@ -1117,22 +1128,34 @@ class _LearnScreenState extends State<LearnScreen> {
       return;
     }
     if (!reminder.enabled) return;
-    final word = payload['word'];
-    final song = payload['song'];
-    final lyric = payload['lyric'];
-    final text = word is Map ? (word['text']?.toString() ?? '').trim() : '';
-    if (text.isEmpty) return;
-    final songTitle = song is Map ? (song['title']?.toString() ?? '').trim() : '';
-    final artistRaw = song is Map ? song['artist'] : null;
-    final artist = artistRaw is Map
-        ? (artistRaw['name']?.toString() ?? '').trim()
-        : (artistRaw?.toString() ?? '').trim();
-    final fromSong = [songTitle, artist].where((part) => part.isNotEmpty).join(' — ');
-    final snippet = lyric is Map ? (lyric['snippet']?.toString() ?? '').trim() : '';
-    final body = fromSong.isNotEmpty
-        ? fromSong
-        : (snippet.isNotEmpty ? snippet : context.tr('reminder_body'));
-    await reminder.useWord(word: text, body: body);
+
+    final queue = payload['queue'] is Map
+        ? Map<String, dynamic>.from(payload['queue'] as Map)
+        : _queue;
+    final nextPreview = queue?['next_preview'] is Map
+        ? Map<String, dynamic>.from(queue!['next_preview'] as Map)
+        : null;
+
+    if (nextPreview != null) {
+      final nextWord = (nextPreview['word']?.toString() ?? '').trim();
+      final nextSong = (nextPreview['song_title']?.toString() ?? '').trim();
+      final nextArtist = (nextPreview['song_artist']?.toString() ?? '').trim();
+      if (nextWord.isNotEmpty) {
+        final title = context.tr('reminder_next_word_title', {'word': nextWord});
+        final body = (nextSong.isNotEmpty && nextArtist.isNotEmpty)
+            ? context.tr('reminder_next_song_body', {'song': nextSong, 'artist': nextArtist})
+            : (nextSong.isNotEmpty
+                ? context.tr('reminder_next_song_only_body', {'song': nextSong})
+                : context.tr('reminder_body'));
+        await reminder.useWord(word: title, body: body);
+        return;
+      }
+    }
+
+    await reminder.useWord(
+      word: context.tr('reminder_title'),
+      body: context.tr('reminder_body'),
+    );
   }
 
   ReminderController? _watchReminder() {

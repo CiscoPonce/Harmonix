@@ -148,11 +148,26 @@ function updatePayload(id, payload) {
 }
 
 function getQueueStatus(userId) {
+  const nextItem = peekNext(userId);
+  const nextPayload = nextItem?.payload;
+  const rawArtist = nextPayload?.song?.artist;
+  const artistName =
+    typeof rawArtist === "object" && rawArtist !== null
+      ? rawArtist.name || null
+      : rawArtist || null;
+  const nextPreview = nextPayload?.word?.text
+    ? {
+        word: String(nextPayload.word.text).trim(),
+        song_title: nextPayload.song?.title ? String(nextPayload.song.title).trim() : null,
+        song_artist: artistName ? String(artistName).trim() : null,
+      }
+    : null;
   return {
     ready: countReady(userId),
     refilling: isRefilling(userId),
     target: REFILL_THRESHOLD,
     max: QUEUE_MAX,
+    next_preview: nextPreview,
   };
 }
 

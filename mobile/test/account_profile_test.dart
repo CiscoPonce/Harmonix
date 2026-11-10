@@ -199,4 +199,74 @@ void main() {
 
     expect(deleteCalled, isTrue);
   });
+
+  testWidgets('Settings stat cards align to identical height on narrow screens with 4-digit counts', (tester) async {
+    tester.view.physicalSize = const Size(320, 740);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final storage = _MemorySecureStorage();
+    http.Response jsonOk(String body) => http.Response(
+          body,
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+    final api = ApiClient(
+      storage: storage,
+      client: MockClient((request) async {
+        if (request.url.path.contains('/progress/stats')) {
+          return jsonOk(
+            '{"streak_days":7,"total_words":1005,"days_learned":79,"words_reviewed":5,"today_words":14,"daily_goal":10}',
+          );
+        }
+        if (request.url.path.contains('/badges')) {
+          return jsonOk('{"badges":[]}');
+        }
+        if (request.url.path.contains('/spotify/status')) {
+          return jsonOk('{"status":"disconnected"}');
+        }
+        return jsonOk('{}');
+      }),
+    );
+    final auth = AuthState(api)
+      ..user = {
+        'email': 'cisco@test.com',
+        'username': 'cisco',
+        'bio': 'Co-funder',
+        'native_language': 'es',
+        'target_language': 'en',
+        'genre': 'rock',
+        'voice_gender': 'female',
+        'has_avatar': false,
+      };
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<ApiClient>.value(value: api),
+          ChangeNotifierProvider<AuthState>.value(value: auth),
+          ChangeNotifierProvider(create: (_) => ThemeController()),
+          ChangeNotifierProvider(create: (_) => HomeNavigationController()),
+        ],
+        child: MaterialApp(
+          theme: buildHarmonixTheme(brightness: Brightness.light),
+          home: const Scaffold(body: SettingsScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final wordsRect = tester.getRect(find.text('1005'));
+    final daysRect = tester.getRect(find.text('79'));
+    final reviewedRect = tester.getRect(find.text('5'));
+    final todayRect = tester.getRect(find.text('14'));
+
+    // All four numbers sit on the same horizontal row and never wrap vertically.
+    expect((wordsRect.center.dy - daysRect.center.dy).abs(), lessThan(2.0));
+    expect((daysRect.center.dy - reviewedRect.center.dy).abs(), lessThan(2.0));
+    expect((reviewedRect.center.dy - todayRect.center.dy).abs(), lessThan(2.0));
+  });
 }

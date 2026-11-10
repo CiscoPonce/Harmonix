@@ -38,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _styleLang;
   List<(String, String)> _styles = kMusicStyles;
   Uint8List? _avatarBytes;
+  Map<String, dynamic>? _nextPreview;
 
   @override
   void initState() {
@@ -86,11 +87,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       } catch (_) {
         spotify = null;
       }
+      Map<String, dynamic>? nextPreview;
+      try {
+        final q = await api.queueStatus();
+        if (q['next_preview'] is Map) {
+          nextPreview = Map<String, dynamic>.from(q['next_preview'] as Map);
+        }
+      } catch (_) {
+        nextPreview = null;
+      }
       if (!mounted) return;
       setState(() {
         _stats = stats;
         _badges = badges;
         _avatarBytes = avatarBytes;
+        _nextPreview = nextPreview;
         if (spotify != null) {
           _spotifyState = spotify.state;
           _spotifyDisplayName = spotify.displayName;
@@ -361,6 +372,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  ({String title, String body}) _reminderCopy(
+    BuildContext context,
+    ReminderController reminder,
+  ) {
+    final preview = _nextPreview;
+    if (preview != null) {
+      final nextWord = (preview['word']?.toString() ?? '').trim();
+      final nextSong = (preview['song_title']?.toString() ?? '').trim();
+      final nextArtist = (preview['song_artist']?.toString() ?? '').trim();
+      if (nextWord.isNotEmpty) {
+        final title = context.tr('reminder_next_word_title', {'word': nextWord});
+        final body = (nextSong.isNotEmpty && nextArtist.isNotEmpty)
+            ? context.tr('reminder_next_song_body', {'song': nextSong, 'artist': nextArtist})
+            : (nextSong.isNotEmpty
+                ? context.tr('reminder_next_song_only_body', {'song': nextSong})
+                : context.tr('reminder_body'));
+        return (title: title, body: body);
+      }
+    }
+    final existingTitle = reminder.notificationTitle.trim();
+    final existingBody = reminder.notificationBody.trim();
+    return (
+      title: existingTitle.isNotEmpty ? existingTitle : context.tr('reminder_title'),
+      body: existingBody.isNotEmpty ? existingBody : context.tr('reminder_body'),
+    );
+  }
+
   List<Widget> _reminderSection(BuildContext context, HarmonixColors colors) {
     final ReminderController reminder;
     try {
@@ -386,9 +424,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         activeTrackColor: colors.accent,
         onChanged: (enabled) async {
           if (enabled) {
+            final copy = _reminderCopy(context, reminder);
             final ok = await reminder.enable(
-              title: context.tr('reminder_title'),
-              body: context.tr('reminder_body'),
+              title: copy.title,
+              body: copy.body,
             );
             if (!ok && context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -415,11 +454,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               initialTime: TimeOfDay(hour: reminder.hour, minute: reminder.minute),
             );
             if (picked == null || !context.mounted) return;
+            final copy = _reminderCopy(context, reminder);
             await reminder.setTime(
               picked.hour,
               picked.minute,
-              title: context.tr('reminder_title'),
-              body: context.tr('reminder_body'),
+              title: copy.title,
+              body: copy.body,
             );
           },
         ),
@@ -497,6 +537,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
                         onTap: () => _editProfileDialog(user),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -505,6 +546,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               (user['username']?.toString().trim().isNotEmpty ?? false)
                                   ? user['username'].toString()
                                   : context.tr('profile_username_hint'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 16,
@@ -516,41 +559,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               (user['bio']?.toString().trim().isNotEmpty ?? false)
                                   ? user['bio'].toString()
                                   : context.tr('profile_bio_hint'),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(color: colors.textMuted, fontSize: 13),
                             ),
                             if (user['email']?.toString().trim().isNotEmpty ?? false) ...[
                               const SizedBox(height: 4),
                               Text(
                                 user['email'].toString(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(color: colors.textMuted, fontSize: 12),
                               ),
                             ],
                             const SizedBox(height: 2),
                             Text(
                               '$nativeLang → $targetLang · $genre · $voice',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(color: colors.textMuted, fontSize: 12),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '${_stats?['streak_days'] ?? 0}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 22,
-                            color: colors.accent,
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: colors.accent.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${_stats?['streak_days'] ?? 0}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 22,
+                              height: 1.1,
+                              color: colors.accent,
+                            ),
                           ),
-                        ),
-                        Text(
-                          context.tr('streak'),
-                          style: TextStyle(color: colors.textMuted, fontSize: 11),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            context.tr('streak'),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: colors.textMuted, fontSize: 11),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -558,6 +618,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 8),
                   TextButton(
                     onPressed: _removeAvatar,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     child: Text(context.tr('profile_remove_photo')),
                   ),
                 ],
@@ -582,28 +647,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    _StatTile(
-                      label: context.tr('stat_words'),
-                      value: '${_stats?['total_words'] ?? 0}',
-                    ),
-                    const SizedBox(width: 8),
-                    _StatTile(
-                      label: context.tr('stat_days'),
-                      value: '${_stats?['days_learned'] ?? 0}',
-                    ),
-                    const SizedBox(width: 8),
-                    _StatTile(
-                      label: context.tr('stat_reviewed'),
-                      value: '${_stats?['words_reviewed'] ?? 0}',
-                    ),
-                    const SizedBox(width: 8),
-                    _StatTile(
-                      label: context.tr('stat_today'),
-                      value: '${_stats?['today_words'] ?? 0}',
-                    ),
-                  ],
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _StatTile(
+                        label: context.tr('stat_words'),
+                        value: '${_stats?['total_words'] ?? 0}',
+                      ),
+                      const SizedBox(width: 8),
+                      _StatTile(
+                        label: context.tr('stat_days'),
+                        value: '${_stats?['days_learned'] ?? 0}',
+                      ),
+                      const SizedBox(width: 8),
+                      _StatTile(
+                        label: context.tr('stat_reviewed'),
+                        value: '${_stats?['words_reviewed'] ?? 0}',
+                      ),
+                      const SizedBox(width: 8),
+                      _StatTile(
+                        label: context.tr('stat_today'),
+                        value: '${_stats?['today_words'] ?? 0}',
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -917,16 +985,53 @@ class _StatTile extends StatelessWidget {
     final colors = HarmonixColors.of(context);
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
         decoration: BoxDecoration(
           color: colors.surface,
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(value, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: colors.textPrimary)),
-            Text(label, style: Theme.of(context).textTheme.titleSmall),
+            SizedBox(
+              height: 26,
+              width: double.infinity,
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 16,
+              width: double.infinity,
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontSize: 11,
+                        ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

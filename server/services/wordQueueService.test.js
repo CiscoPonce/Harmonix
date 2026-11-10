@@ -64,6 +64,11 @@ describe("Word Queue Service", () => {
     expect(status.ready).to.equal(1);
     expect(status.refilling).to.equal(true);
     expect(status.target).to.equal(wordQueue.REFILL_THRESHOLD);
+    expect(status.next_preview).to.deep.equal({
+      word: "ready",
+      song_title: "Song",
+      song_artist: "Artist",
+    });
     wordQueue.setRefilling(userId, false);
   });
 

@@ -68,11 +68,12 @@ class LocalReminderScheduler implements ReminderScheduler {
       title: title,
       body: body,
       scheduledDate: when,
-      notificationDetails: const NotificationDetails(
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_word',
           'Daily word',
           channelDescription: 'A daily reminder to learn one song word',
+          styleInformation: BigTextStyleInformation(body, contentTitle: title),
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
