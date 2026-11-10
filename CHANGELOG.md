@@ -87,6 +87,26 @@ All notable changes to Harmonix are documented here. Releases are managed by
 * **tts:** host Pocket-TTS can reload by language; stop returning silent WAVs on failure
 * **mobile/web:** show real IPA or pending copy (never part-of-speech as phonetics); Android polls for polish like web
 
+## [0.0.8](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.7...harmonix-v0.0.8) (2026-11-10)
+
+
+### Features
+
+* **account:** add the profile page and ship it as Android 1.0.21 ([68eec28](https://github.com/CiscoPonce/Harmonix/commit/68eec2877684b7f19df81e4d6fc1467959b28852))
+* improve auth refresh, review sync, mobile UX, and lint gates (Android 1.0.22) ([74d9d77](https://github.com/CiscoPonce/Harmonix/commit/74d9d77926b7d35f76ef918c0564e1e463d212b7))
+
+
+### Bug Fixes
+
+* **auth:** confirm a new account's email before creating it ([7d64d26](https://github.com/CiscoPonce/Harmonix/commit/7d64d26b23fbb107d26e869d44e3031ee7059dd5))
+* **auth:** satisfy the signup typecheck and analyzer ([ce57705](https://github.com/CiscoPonce/Harmonix/commit/ce5770553e827d20b19358871b7eb4fe58fa0123))
+* **mobile,server:** align settings profile/stat cards across screen sizes and use next queued word in daily reminder ([cb38bd0](https://github.com/CiscoPonce/Harmonix/commit/cb38bd05b8f9c142800c0ef52676bab1ca01ff48))
+
+
+### Documentation
+
+* plan the account profile and matching achievements ([5596ead](https://github.com/CiscoPonce/Harmonix/commit/5596ead257b704e7f2366c8410dfc00555413c7c))
+
 ## [0.0.7](https://github.com/CiscoPonce/Harmonix/compare/harmonix-v0.0.6...harmonix-v0.0.7) (2026-11-07)
 
 Android on Google Play closed testing is 1.0.18 (version code 21). That is the build on phones. This repository also contains 1.0.19 (version code 22), which is not uploaded. An APK attached to this release is signed in CI and does not update the Play install.
