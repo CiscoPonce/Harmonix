@@ -117,7 +117,7 @@ cd mobile && flutter analyze --fatal-infos && flutter test
 The website has no store version. It ships from `main`. The Android build for Google Play closed testing is 1.0.22 (version code 25).
 
 <!-- x-release-please-start-version -->
-**Platform release:** 0.0.7
+**Platform release:** 0.0.8
 <!-- x-release-please-end -->
 
 | Track | Version | Where |
