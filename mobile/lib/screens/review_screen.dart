@@ -14,6 +14,7 @@ import '../services/offline_word_cache.dart';
 import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
 import '../utils/i18n.dart';
+import '../utils/review_choices.dart';
 import '../utils/study_spacing.dart';
 
 /// SRS review — mirrors web `/review`.
@@ -35,7 +36,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
   bool _speaking = false;
   String? _error;
   DateTime? _shownAt;
-  bool _revealed = false;
+  List<String> _pool = [];
+  List<String> _choices = [];
+  String? _picked;
+  bool _showScore = false;
+  Timer? _advance;
 
   @override
   void initState() {
@@ -45,6 +50,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   @override
   void dispose() {
+    _advance?.cancel();
     _pronouncePlayer.dispose();
     super.dispose();
   }
@@ -115,17 +121,29 @@ class _ReviewScreenState extends State<ReviewScreen> {
         final cache = await OfflineWordCache.open();
         await cache.flushPendingReviews(api);
       } catch (_) {}
-      final data = await api.progressDue(limit: 20);
+      final data = await api.progressDue(limit: 10);
       final due = (data['due'] as List? ?? [])
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
+      final pool = due.map((word) => (word['definition'] ?? '').toString()).toList();
+      try {
+        final learned = await api.request('GET', '/vocab/learned');
+        final words = (learned['words'] as List? ?? []).whereType<Map>();
+        for (final word in words) {
+          final meaning = (word['definition'] ?? '').toString();
+          if (meaning.trim().isNotEmpty) pool.add(meaning);
+        }
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _due = due;
+        _pool = pool;
         _index = 0;
         _results.clear();
-        _revealed = false;
+        _picked = null;
+        _showScore = false;
+        _choices = due.isEmpty ? [] : buildReviewChoices((due.first['definition'] ?? '').toString(), pool);
         _shownAt = DateTime.now();
       });
     } catch (e) {
@@ -136,32 +154,39 @@ class _ReviewScreenState extends State<ReviewScreen> {
     }
   }
 
-  Future<void> _rate(bool correct) async {
-    if (_index >= _due.length || _submitting) return;
+  void _choose(String option) {
+    if (_picked != null || _submitting || _index >= _due.length) return;
     final word = _due[_index];
-    final ms = _shownAt == null
-        ? 0
-        : DateTime.now().difference(_shownAt!).inMilliseconds;
-    final nextResults = [
-      ..._results,
-      {
-        'vocab_id': word['vocab_id'],
-        'is_correct': correct,
-        'response_ms': ms,
-      },
-    ];
-    if (_index < _due.length - 1) {
-      setState(() {
-        _results
-          ..clear()
-          ..addAll(nextResults);
-        _index += 1;
-        _revealed = false;
-        _shownAt = DateTime.now();
-      });
-      return;
-    }
-    await _submit(nextResults);
+    final meaning = (word['definition'] ?? '').toString().trim().toLowerCase();
+    final correct = option.trim().toLowerCase() == meaning;
+    final ms = _shownAt == null ? 0 : DateTime.now().difference(_shownAt!).inMilliseconds;
+    setState(() => _picked = option);
+    _advance?.cancel();
+    _advance = Timer(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      final nextResults = [
+        ..._results,
+        {
+          'vocab_id': word['vocab_id'],
+          'is_correct': correct,
+          'response_ms': ms,
+        },
+      ];
+      if (_index < _due.length - 1) {
+        final upcoming = _due[_index + 1];
+        setState(() {
+          _results
+            ..clear()
+            ..addAll(nextResults);
+          _index += 1;
+          _picked = null;
+          _choices = buildReviewChoices((upcoming['definition'] ?? '').toString(), _pool);
+          _shownAt = DateTime.now();
+        });
+        return;
+      }
+      _submit(nextResults);
+    });
   }
 
   Future<void> _submit(List<Map<String, dynamic>> results) async {
@@ -169,11 +194,17 @@ class _ReviewScreenState extends State<ReviewScreen> {
       if (mounted) Navigator.of(context).pop(true);
       return;
     }
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _results
+        ..clear()
+        ..addAll(results);
+      _showScore = true;
+    });
     try {
       await context.read<ApiClient>().progressReview(results);
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      setState(() => _submitting = false);
     } catch (e) {
       if (looksLikeOfflineError(e)) {
         try {
@@ -181,10 +212,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
           await cache.enqueuePendingReviews(results);
         } catch (_) {}
         if (!mounted) return;
+        setState(() => _submitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(context.tr('review_saved_offline'))),
         );
-        Navigator.of(context).pop(true);
         return;
       }
       if (!mounted) return;
@@ -193,6 +224,67 @@ class _ReviewScreenState extends State<ReviewScreen> {
         SnackBar(content: Text('${context.tr('review_submit_failed')}: $e')),
       );
     }
+  }
+
+  Widget _choiceButton(String choice, String meaning, double? spacing) {
+    final colors = HarmonixColors.of(context);
+    final revealed = _picked != null;
+    final isAnswer = choice.trim().toLowerCase() == meaning;
+    final chosen = _picked == choice;
+    Color border = colors.border;
+    Color fill = colors.surface;
+    if (revealed && isAnswer) {
+      border = colors.accent;
+      fill = colors.accent.withValues(alpha: 0.15);
+    } else if (revealed && chosen) {
+      border = Colors.redAccent;
+      fill = Colors.redAccent.withValues(alpha: 0.15);
+    }
+    return OutlinedButton(
+      onPressed: revealed ? null : () => _choose(choice),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: colors.textPrimary,
+        backgroundColor: fill,
+        side: BorderSide(color: border),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        alignment: Alignment.centerLeft,
+      ),
+      child: Text(choice, style: TextStyle(letterSpacing: spacing)),
+    );
+  }
+
+  Widget _scoreBody(BuildContext context) {
+    final colors = HarmonixColors.of(context);
+    final known = _results.where((result) => result['is_correct'] == true).length;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.tr('review_score_title'),
+              style: TextStyle(color: colors.textMuted),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '$known/${_results.length}',
+              style: Theme.of(context).textTheme.displayLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              context.tr('review_score_line', {'correct': known, 'n': _results.length}),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: _submitting ? null : () => Navigator.of(context).pop(true),
+              child: Text(context.tr('review_back_word')),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -206,8 +298,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
           TextButton(
             onPressed: _submitting
                 ? null
-                : () => _submit(_results),
-            child: Text(context.tr('review_done')),
+                : () => _showScore ? Navigator.of(context).pop(true) : _submit(_results),
+            child: Text(_showScore ? context.tr('review_back_word') : context.tr('review_done')),
           ),
         ],
       ),
@@ -238,6 +330,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         ),
                       ),
                     )
+                  : _showScore
+                  ? _scoreBody(context)
                   : Padding(
                       padding: const EdgeInsets.all(24),
                       child: Builder(
@@ -245,92 +339,72 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           final spacing = studyLetterSpacing(
                             context.watch<AuthState>().user?['dyslexia_font'],
                           );
+                          final meaning = (_due[_index]['definition'] ?? '').toString().trim().toLowerCase();
+                          final lyric = (_due[_index]['context_sentence'] ?? '').toString();
+                          final credit = [
+                            (_due[_index]['song_title'] ?? '').toString(),
+                            (_due[_index]['song_artist'] ?? '').toString(),
+                          ].where((part) => part.isNotEmpty).join(' — ');
                           return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            '${_index + 1} / ${_due.length}',
-                            style: Theme.of(context).textTheme.titleSmall,
-                            textAlign: TextAlign.center,
-                          ),
-                          const Spacer(),
-                          Text(
-                            (_due[_index]['word'] ?? '—').toString().toUpperCase(),
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                                  letterSpacing: spacing,
-                                ),
-                          ),
-                          const SizedBox(height: 8),
-                          Center(
-                            child: IconButton(
-                              onPressed: _speaking ? null : _speakCurrentWord,
-                              tooltip: context.tr('pronounce'),
-                              icon: Icon(
-                                _speaking ? Icons.graphic_eq : Icons.volume_up_outlined,
-                                color: colors.accent,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                '${_index + 1} / ${_due.length}',
+                                style: Theme.of(context).textTheme.titleSmall,
+                                textAlign: TextAlign.center,
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          if (_revealed)
-                            Text(
-                              (_due[_index]['definition'] ?? '').toString(),
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    letterSpacing: spacing,
+                              const Spacer(),
+                              Text(
+                                (_due[_index]['word'] ?? '—').toString().toUpperCase(),
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                                      letterSpacing: spacing,
+                                    ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                context.tr('review_prompt'),
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: colors.textMuted),
+                              ),
+                              Center(
+                                child: IconButton(
+                                  onPressed: _speaking ? null : _speakCurrentWord,
+                                  tooltip: context.tr('pronounce'),
+                                  icon: Icon(
+                                    _speaking ? Icons.graphic_eq : Icons.volume_up_outlined,
+                                    color: colors.accent,
                                   ),
-                            )
-                          else
-                            TextButton(
-                              onPressed: () => setState(() => _revealed = true),
-                              child: Text(context.tr('review_show_meaning')),
-                            ),
-                          if (_revealed &&
-                              (_due[_index]['context_sentence'] ?? '').toString().isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 12),
-                              child: Text(
-                                '"${_due[_index]['context_sentence']}"',
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      fontStyle: FontStyle.italic,
-                                      color: HarmonixColors.of(context).textMuted,
-                                      letterSpacing: spacing,
-                                    ),
+                                ),
                               ),
-                            ),
-                          if (_revealed &&
-                              ((_due[_index]['song_title'] ?? '').toString().isNotEmpty ||
-                                  (_due[_index]['song_artist'] ?? '').toString().isNotEmpty))
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                [
-                                  (_due[_index]['song_title'] ?? '').toString(),
-                                  (_due[_index]['song_artist'] ?? '').toString(),
-                                ].where((part) => part.isNotEmpty).join(' — '),
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: HarmonixColors.of(context).textMuted,
-                                      letterSpacing: spacing,
-                                    ),
-                              ),
-                            ),
-                          const Spacer(),
-                          if (_revealed) ...[
-                            FilledButton(
-                              onPressed: _submitting ? null : () => _rate(true),
-                              child: Text(context.tr('review_got_it')),
-                            ),
-                            const SizedBox(height: 10),
-                            OutlinedButton(
-                              onPressed: _submitting ? null : () => _rate(false),
-                              child: Text(context.tr('review_still_learning')),
-                            ),
-                          ],
-                        ],
-                      );
+                              if (lyric.isNotEmpty)
+                                Text(
+                                  '"$lyric"',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        fontStyle: FontStyle.italic,
+                                        color: colors.textMuted,
+                                        letterSpacing: spacing,
+                                      ),
+                                ),
+                              if (credit.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    credit,
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: colors.textMuted,
+                                        ),
+                                  ),
+                                ),
+                              const Spacer(),
+                              for (final choice in _choices) ...[
+                                _choiceButton(choice, meaning, spacing),
+                                const SizedBox(height: 10),
+                              ],
+                            ],
+                          );
                         },
                       ),
                     ),

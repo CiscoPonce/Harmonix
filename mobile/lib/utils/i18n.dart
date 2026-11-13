@@ -420,6 +420,10 @@ class AppI18n {
       'playlist_name_hint': 'Name',
       'review_saved_offline': 'Offline — review progress saved and will sync when you reconnect.',
       'review_submit_failed': 'Could not save review progress',
+      'review_prompt': 'What does this mean?',
+      'review_score_title': 'Round complete',
+      'review_score_line': 'You knew {correct} of {n}.',
+      'review_back_word': 'Back to the word',
     },
     'es': {
       'n_ready': '{n} listas',
@@ -562,6 +566,10 @@ class AppI18n {
       'playlist_name_hint': 'Nombre',
       'review_saved_offline': 'Sin conexión — tu progreso se guardó y se sincronizará al reconectar.',
       'review_submit_failed': 'No se pudo guardar el repaso',
+      'review_prompt': '¿Qué significa?',
+      'review_score_title': 'Ronda completa',
+      'review_score_line': 'Acertaste {correct} de {n}.',
+      'review_back_word': 'Volver a la palabra',
     },
     'fr': {
       'n_ready': '{n} prêts',
@@ -704,6 +712,10 @@ class AppI18n {
       'playlist_name_hint': 'Nom',
       'review_saved_offline': 'Hors ligne — révision enregistrée et synchronisée dès la reconnexion.',
       'review_submit_failed': 'Impossible d’enregistrer la révision',
+      'review_prompt': 'Que signifie ce mot ?',
+      'review_score_title': 'Manche terminée',
+      'review_score_line': 'Vous en saviez {correct} sur {n}.',
+      'review_back_word': 'Retour au mot',
     },
     'de': {
       'n_ready': '{n} bereit',
@@ -846,6 +858,10 @@ class AppI18n {
       'playlist_name_hint': 'Name',
       'review_saved_offline': 'Offline — Wiederholung gespeichert und wird bei Verbindung synchronisiert.',
       'review_submit_failed': 'Wiederholung konnte nicht gespeichert werden',
+      'review_prompt': 'Was bedeutet das?',
+      'review_score_title': 'Runde geschafft',
+      'review_score_line': 'Du kanntest {correct} von {n}.',
+      'review_back_word': 'Zurück zum Wort',
     },
     'pt': {
       'n_ready': '{n} prontas',
@@ -988,6 +1004,10 @@ class AppI18n {
       'playlist_name_hint': 'Nome',
       'review_saved_offline': 'Offline — revisão salva e será sincronizada ao reconectar.',
       'review_submit_failed': 'Não foi possível salvar a revisão',
+      'review_prompt': 'O que significa?',
+      'review_score_title': 'Rodada concluída',
+      'review_score_line': 'Você acertou {correct} de {n}.',
+      'review_back_word': 'Voltar à palavra',
     },
     'it': {
       'n_ready': '{n} pronte',
@@ -1130,6 +1150,10 @@ class AppI18n {
       'playlist_name_hint': 'Nome',
       'review_saved_offline': 'Offline — ripasso salvato, verrà sincronizzato alla riconnessione.',
       'review_submit_failed': 'Impossibile salvare il ripasso',
+      'review_prompt': 'Cosa significa?',
+      'review_score_title': 'Round completato',
+      'review_score_line': 'Ne sapevi {correct} su {n}.',
+      'review_back_word': 'Torna alla parola',
     },
   };
 
