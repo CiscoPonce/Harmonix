@@ -28,6 +28,10 @@ interface ReviewResult {
   response_ms: number;
 }
 
+function currentTimeMs() {
+  return Date.now();
+}
+
 export default function ReviewPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { t } = useTranslation();
@@ -43,7 +47,7 @@ export default function ReviewPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const shownAt = useRef(Date.now());
+  const shownAt = useRef(0);
   const activeRef = useRef(true);
 
   useEffect(() => {
@@ -81,7 +85,7 @@ export default function ReviewPage() {
         setPool(meanings);
         if (due[0]) {
           setChoices(buildReviewChoices(due[0].definition, meanings));
-          shownAt.current = Date.now();
+          shownAt.current = currentTimeMs();
         }
       } catch {
         if (active) setError('review_load_error');
@@ -119,7 +123,7 @@ export default function ReviewPage() {
     const entry: ReviewResult = {
       vocab_id: word.vocab_id,
       is_correct: correct,
-      response_ms: Date.now() - shownAt.current,
+      response_ms: currentTimeMs() - shownAt.current,
     };
     const next = [...results, entry];
     window.setTimeout(() => {
@@ -130,7 +134,7 @@ export default function ReviewPage() {
         setCurrentIndex((index) => index + 1);
         setChoices(buildReviewChoices(upcoming.definition, pool));
         setPicked(null);
-        shownAt.current = Date.now();
+        shownAt.current = currentTimeMs();
       } else {
         finishRound(next);
       }
