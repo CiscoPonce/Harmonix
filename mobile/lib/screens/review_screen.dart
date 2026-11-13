@@ -36,6 +36,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   bool _speaking = false;
   String? _error;
   DateTime? _shownAt;
+  String _homeLang = 'en';
   List<String> _pool = [];
   List<String> _choices = [];
   String? _picked;
@@ -116,6 +117,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       _error = null;
     });
     final api = context.read<ApiClient>();
+    final lang = context.read<AuthState>().user?['native_language']?.toString() ?? 'en';
     try {
       try {
         final cache = await OfflineWordCache.open();
@@ -138,12 +140,15 @@ class _ReviewScreenState extends State<ReviewScreen> {
       if (!mounted) return;
       setState(() {
         _due = due;
+        _homeLang = lang;
         _pool = pool;
         _index = 0;
         _results.clear();
         _picked = null;
         _showScore = false;
-        _choices = due.isEmpty ? [] : buildReviewChoices((due.first['definition'] ?? '').toString(), pool);
+        _choices = due.isEmpty
+            ? []
+            : buildReviewChoices((due.first['definition'] ?? '').toString(), pool, lang);
         _shownAt = DateTime.now();
       });
     } catch (e) {
@@ -180,7 +185,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             ..addAll(nextResults);
           _index += 1;
           _picked = null;
-          _choices = buildReviewChoices((upcoming['definition'] ?? '').toString(), _pool);
+          _choices = buildReviewChoices((upcoming['definition'] ?? '').toString(), _pool, _homeLang);
           _shownAt = DateTime.now();
         });
         return;

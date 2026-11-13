@@ -1,18 +1,50 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:harmonix_mobile/utils/review_choices.dart';
 
+const _spanishJokes = [
+  'un sándwich de calcetines',
+  'el primo del refrigerador',
+  'una nube con zapatos',
+  'una tostadora que canta',
+  'la piedra mascota del martes',
+  'una bicicleta de sopa',
+  'el calcetín izquierdo de la luna',
+  'una tormenta educada',
+];
+
 void main() {
-  test('offers the real meaning and two other meanings from the learner', () {
-    final choices = buildReviewChoices('corto', ['dinero', 'vida', 'corto', '  Dinero  ']);
+  test('offers the right meaning, the closest other meaning, and one silly meaning', () {
+    final choices = buildReviewChoices('corto', ['una vida muy larga', 'breve palabra', 'corto'], 'es');
     expect(choices, hasLength(3));
-    expect(choices.map((choice) => choice.toLowerCase()), contains('corto'));
-    expect(choices.map((choice) => choice.toLowerCase()).toSet(), hasLength(3));
-    for (final choice in choices) {
-      expect(['corto', 'dinero', 'vida'], contains(choice.toLowerCase()));
-    }
+    expect(choices.toSet(), hasLength(3));
+    expect(choices, contains('corto'));
+    expect(choices, contains('breve palabra'));
+    expect(choices.where(_spanishJokes.contains), hasLength(1));
   });
 
-  test('does not invent a third choice when the learner only has one other word', () {
-    expect(buildReviewChoices('corto', ['corto', '']), ['corto']);
+  test('still offers three choices when the learner has no other words', () {
+    final choices = buildReviewChoices('corto', ['corto', ''], 'es');
+    expect(choices, hasLength(3));
+    expect(choices, contains('corto'));
+    expect(choices, contains('algo pequeño'));
+    expect(choices.where(_spanishJokes.contains), hasLength(1));
+  });
+
+  test('keeps the silly line in the home language', () {
+    final choices = buildReviewChoices('short', [], 'en');
+    expect(choices, contains('short'));
+    expect(choices, contains('a small thing'));
+    expect(
+      choices.any((choice) =>
+          choice.contains('sock') ||
+          choice.contains('toaster') ||
+          choice.contains('fridge') ||
+          choice.contains('cloud') ||
+          choice.contains('Tuesday') ||
+          choice.contains('soup') ||
+          choice.contains('moon') ||
+          choice.contains('thunderstorm')),
+      isTrue,
+    );
   });
 }

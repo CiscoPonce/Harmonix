@@ -10,7 +10,7 @@ All notable changes to Harmonix are documented here. Releases are managed by
 - Interface translations no longer say the wrong thing: the French “no more songs” line said more songs were found, the home-language chip said “home page”, and a few labels used the wrong grammar or called the app language a mother tongue.
 
 ### Review
-- Review hides the meaning and asks you to pick it from three of your own words, then shows the score for the round. A correct pick schedules the word as known. A miss schedules it again.
+- Review hides the meaning and asks you to pick it from three choices: the right meaning, the closest other meaning, and one silly meaning. The round ends with a score. A correct pick schedules the word as known. A miss schedules it again.
 
 ### Account
 - Account on web and Android shows a photo, username, bio, and the day streak at the top of Settings, and the achievements use those same counts: 7 different days, a 7-day streak, 50 words obtained, 10 words reviewed, and a first playlist (the quiz achievement is not shown). Achievement titles and descriptions are localized in all six UI languages, the web header shows the user's photo or initial, and learners can delete their account in Settings (`DELETE /api/user/account`). A deleted account's access token is rejected, so a later request cannot write a new stats row. Email stays the login.

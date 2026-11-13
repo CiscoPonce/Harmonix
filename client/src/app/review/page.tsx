@@ -34,7 +34,7 @@ function currentTimeMs() {
 
 export default function ReviewPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { t } = useTranslation();
+  const { t, langCode } = useTranslation();
   const router = useRouter();
 
   const [dueWords, setDueWords] = useState<DueWord[]>([]);
@@ -84,7 +84,7 @@ export default function ReviewPage() {
         ];
         setPool(meanings);
         if (due[0]) {
-          setChoices(buildReviewChoices(due[0].definition, meanings));
+          setChoices(buildReviewChoices(due[0].definition, meanings, langCode));
           shownAt.current = currentTimeMs();
         }
       } catch {
@@ -96,7 +96,7 @@ export default function ReviewPage() {
 
     fetchDue();
     return () => { active = false; activeRef.current = false; };
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, langCode]);
 
   const finishRound = (finalResults: ReviewResult[]) => {
     setResults(finalResults);
@@ -132,7 +132,7 @@ export default function ReviewPage() {
         const upcoming = dueWords[currentIndex + 1];
         setResults(next);
         setCurrentIndex((index) => index + 1);
-        setChoices(buildReviewChoices(upcoming.definition, pool));
+        setChoices(buildReviewChoices(upcoming.definition, pool, langCode));
         setPicked(null);
         shownAt.current = currentTimeMs();
       } else {
