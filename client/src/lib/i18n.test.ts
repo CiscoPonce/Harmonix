@@ -32,7 +32,15 @@ describe('Web Client i18n Translations', () => {
     assert.strictEqual(getTranslation('nav_discover', 'es'), 'Palabra');
     assert.strictEqual(getTranslation('nav_discover', 'fr'), 'Mot');
     assert.strictEqual(getTranslation('nav_discover', 'de'), 'Wort');
-    assert.strictEqual(getTranslation('chip_home', 'es'), 'Inicio');
+    assert.strictEqual(getTranslation('chip_home', 'es'), 'Tu idioma');
+    assert.strictEqual(getTranslation('chip_home', 'fr'), 'Langue');
+    assert.strictEqual(
+      getTranslation('style_relaxed', 'fr', { style: 'rock' }),
+      'Nous n’avons pas trouvé d’autres titres rock — voici un morceau proche.'
+    );
+    assert.strictEqual(getTranslation('found_in', 'es'), 'Encontrada en');
+    assert.strictEqual(getTranslation('found_in', 'pt'), 'Encontrada em');
+    assert.strictEqual(getTranslation('found_in', 'it'), 'Trovata in');
     assert.strictEqual(getTranslation('harmonix_playlists', 'es'), 'Listas de Harmonix');
     assert.strictEqual(getTranslation('unknown_key_test', 'es'), 'unknown_key_test');
   });

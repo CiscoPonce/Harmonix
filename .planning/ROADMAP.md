@@ -239,13 +239,13 @@ Song reuse stays off. Phases 1–18 are complete.
 
 **Context:** [`.planning/phases/19-account-profile/19-CONTEXT.md`](./phases/19-account-profile/19-CONTEXT.md)
 
-The photo is private to the signed-in learner and stored in SQLite. Achievement titles and descriptions are localized across all six UI languages (`en`, `es`, `fr`, `de`, `pt`, `it`), the web `AppShell` header displays the learner's avatar or initial, and learners can delete their account directly in Settings (`DELETE /api/user/account`). Android `1.0.21` (version code `24`) is the next Play upload. Color palettes are not part of this phase.
+The photo is private to the signed-in learner and stored in SQLite. Achievement titles and descriptions are localized across all six UI languages (`en`, `es`, `fr`, `de`, `pt`, `it`), the web `AppShell` header displays the learner's avatar or initial, and learners can delete their account directly in Settings (`DELETE /api/user/account`). Android `1.0.21` (version code `24`) carried this screen. The next Play upload is `1.0.23` (version code `26`). Color palettes are not part of this phase.
 
 ### After Phase 19
 
 Pending, and not started: the public Play listing still waits on 12 closed-test testers for 14 days.
 
-Done on 8 November 2026: new accounts confirm a code from the private mail service before the user row is created. Existing accounts are not asked. Android `1.0.21` (version code `24`) is the next upload. It includes that code screen and the Account page.
+Done on 8 November 2026: new accounts confirm a code from the private mail service before the user row is created. Existing accounts are not asked. Android `1.0.21` (version code `24`) included that code screen and the Account page. The next upload is `1.0.23` (version code `26`).
 
 In the app, not in the versionCode `17` APK:
 

@@ -25,6 +25,14 @@ void main() {
     expect(AppI18n.plural('streak_days', 1, 'en'), '1 day');
     expect(AppI18n.plural('streak_days', 3, 'de'), '3 Tage');
     expect(AppI18n.t('harmonix_playlists', 'es'), 'LISTAS DE HARMONIX');
+    expect(AppI18n.t('home_language', 'es'), 'Tu idioma');
+    expect(AppI18n.t('review_got_it', 'pt'), 'Já sei');
+    expect(AppI18n.t('review_done', 'pt'), 'Pronto');
+    expect(AppI18n.t('review_still_learning', 'de'), 'Ich lerne es noch');
+    expect(
+      AppI18n.t('style_relaxed', 'fr', {'style': 'rock'}),
+      'Nous n’avons pas trouvé d’autres titres rock — voici un morceau proche.',
+    );
     expect(AppI18n.plural('songs', 3, 'en'), '3 songs');
   });
 }

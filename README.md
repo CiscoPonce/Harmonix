@@ -114,7 +114,7 @@ cd mobile && flutter analyze --fatal-infos && flutter test
 
 ## Releases
 
-The website has no store version. It ships from `main`. The Android build for Google Play closed testing is 1.0.22 (version code 25).
+The website has no store version. It ships from `main`. Google Play closed testing is 1.0.22 (version code 25). This repo is 1.0.23 (version code 26), the next upload.
 
 <!-- x-release-please-start-version -->
 **Platform release:** 0.0.7
@@ -123,7 +123,7 @@ The website has no store version. It ships from `main`. The Android build for Go
 | Track | Version | Where |
 |-------|---------|--------|
 | Android on Play | 1.0.22 (version code 25) | Closed testing, built 10 November 2026 |
-| Android in this repo | 1.0.22 (version code 25) | `mobile/pubspec.yaml`. Bump this for every Play upload |
+| Android in this repo | 1.0.23 (version code 26) | `mobile/pubspec.yaml`. Bump this for every Play upload |
 | Platform changelog | The platform release line above | `CHANGELOG.md` and [GitHub Releases](https://github.com/CiscoPonce/Harmonix/releases) |
 
 The package id is `uk.co.peeporunclub.harmonix`. [release-please](https://github.com/googleapis/release-please) opens the changelog pull request from [Conventional Commits](https://www.conventionalcommits.org/). Do not commit APKs. Testers install from the Play closed test. An APK attached to a GitHub release is signed in CI and does not update a Play install. See [docs/PLAY-CONSOLE-LISTING.md](docs/PLAY-CONSOLE-LISTING.md).

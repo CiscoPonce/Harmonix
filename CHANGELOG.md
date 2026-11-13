@@ -6,6 +6,9 @@ All notable changes to Harmonix are documented here. Releases are managed by
 
 ## Unreleased
 
+### Copy
+- Interface translations no longer say the wrong thing: the French “no more songs” line said more songs were found, the home-language chip said “home page”, and a few labels used the wrong grammar or called the app language a mother tongue.
+
 ### Account
 - Account on web and Android shows a photo, username, bio, and the day streak at the top of Settings, and the achievements use those same counts: 7 different days, a 7-day streak, 50 words obtained, 10 words reviewed, and a first playlist (the quiz achievement is not shown). Achievement titles and descriptions are localized in all six UI languages, the web header shows the user's photo or initial, and learners can delete their account in Settings (`DELETE /api/user/account`). A deleted account's access token is rejected, so a later request cannot write a new stats row. Email stays the login.
 
@@ -19,8 +22,9 @@ All notable changes to Harmonix are documented here. Releases are managed by
 - English female pronunciation uses Kokoro af_heart. Pocket alba was low enough to sound male, and the old clips are not reused.
 
 ### Android
-- Play closed testing is 1.0.18 (version code 21), tested on a phone on 7 November 2026. That is the current live build.
-- 1.0.21 (version code 24) is the next Play upload. It includes the email code for new accounts and the Account page: photo, username, bio, streak, achievements, and delete account. 1.0.20 (version code 23) was the email-code build and was not given a separate upload.
+- 1.0.23 (version code 26) is the next Play upload. It corrects interface wording in all six languages. Closed testing stays on 1.0.22 (version code 25) until that build is uploaded.
+- 1.0.22 (version code 25) is the closed-testing build from 10 November 2026. It includes the account page, the email code, review sync, and the daily reminder.
+- 1.0.21 (version code 24) added the email code for new accounts and the Account page: photo, username, bio, streak, achievements, and delete account. 1.0.20 (version code 23) was the email-code build and was not given a separate upload.
 - 1.0.20 (version code 23) asks a new account for the email code before the account exists. Phones on 1.0.18 still create an account in one step until 1.0.21 is on the track, and that one step is refused by the API once this change is deployed.
 - 1.0.19 (version code 22) names the word in the daily reminder, with the song underneath. It was not uploaded. 1.0.20 includes that reminder.
 - The website and the signed-in app use the new circular mark: a treble clef and bass clef making an H, with Read, Play, Sing, Grow on the staff.

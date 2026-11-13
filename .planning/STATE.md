@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: play-store-listing
 status: complete
-stopped_at: "2026-11-09 Account profile is in the repo as Android 1.0.21 (24). Closed testing is still 1.0.18 until that build is uploaded. Public listing still needs 12 testers for 14 days."
-last_updated: "2026-11-09T20:30:00.000Z"
+stopped_at: "2026-11-13 Interface wording is corrected in the repo as Android 1.0.23 (26). Closed testing stays on 1.0.22 until that build is uploaded. Public listing still needs 12 testers for 14 days."
+last_updated: "2026-11-13T19:00:00.000Z"
 progress:
   total_phases: 19
   completed_phases: 19
@@ -15,7 +15,7 @@ progress:
 
 ## Current Focus
 
-**Phases 1–19 are complete.** Play closed testing is Flutter `1.0.18` (version code `21`). This repo is `1.0.21` (version code `24`): new accounts confirm an email code, and Account has a photo, username, bio, streak, achievements, and delete account. It is not uploaded. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
+**Phases 1–19 are complete.** Play closed testing is Flutter `1.0.22` (version code `25`). This repo is `1.0.23` (version code `26`): the same app, with corrected interface wording in all six languages. It is not uploaded. The public listing waits on 12 closed-test testers for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
 
 **2026-11-08 signup:** New accounts confirm a six-digit code from `hello@peeporunclub.co.uk` before a user row is created. Existing accounts log in as before. The mail service is `https://email-auth.ponceteam.com`. The API key stays on the Harmonix server.
 
@@ -31,7 +31,7 @@ progress:
 
 **Still pending:** the public Play listing waits on 12 closed-test testers for 14 days.
 
-**Phase 19 — Account profile (complete in repo).** Settings on the web and on Android opens with a photo, username, bio, and the current day streak, followed by words obtained, days learned, words reviewed, today's words, and localized achievements that use those same counts (`streak_7`, `daily_word_7`, `vocab_50`, `review_10`, `playlist_first`; `quiz_perfect` is hidden). The web header reflects the user's avatar or initial, and learners can delete their account directly in Settings (`DELETE /api/user/account`). A deleted account's access token is rejected. Email stays the login. Color palettes wait. Plans: `.planning/phases/19-account-profile/` (`19-01` through `19-04`). This ships in Android `1.0.21` (version code `24`), which is not uploaded yet.
+**Phase 19 — Account profile (complete in repo).** Settings on the web and on Android opens with a photo, username, bio, and the current day streak, followed by words obtained, days learned, words reviewed, today's words, and localized achievements that use those same counts (`streak_7`, `daily_word_7`, `vocab_50`, `review_10`, `playlist_first`; `quiz_perfect` is hidden). The web header reflects the user's avatar or initial, and learners can delete their account directly in Settings (`DELETE /api/user/account`). A deleted account's access token is rejected. Email stays the login. Color palettes wait. Plans: `.planning/phases/19-account-profile/` (`19-01` through `19-04`). This shipped in Android `1.0.21` (version code `24`). The next upload is `1.0.23` (version code `26`).
 
 **2026-10-24 gloss:** Wrong lyric senses are rejected and replaced from a curated sense (leading, grave, spirit, and the other live misses). A target language no longer accepts a song whose lyrics are another language. Stored cards are repaired on the next API start.
 
@@ -86,7 +86,7 @@ progress:
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
 | TTS | Host Pocket 4.0.1 `:3002` for French, Portuguese, Italian, German, and English male; host Kokoro `:3003` speaks Spanish and English female; compose `TTS_SKIP_SPAWN=true` |
 | Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` (Coolify UI status only; do not use Coolify Restart) |
-| Mobile | Flutter `1.0.18` (version code `21`) is on closed testing. This repo is `1.0.20` (version code `23`), with email confirmation for new accounts, and is not uploaded. Public listing still needs 12 testers for 14 days. |
+| Mobile | Flutter `1.0.22` (version code `25`) is on closed testing. This repo is `1.0.23` (version code `26`), with the wording fixes, and is not uploaded. Public listing still needs 12 testers for 14 days. |
 
 ## Phase status
 
