@@ -26,6 +26,7 @@ void main() {
     );
 
     expect(find.text('Create your account'), findsOneWidget);
+    expect(find.text('Forgot password?'), findsNothing);
     expect(find.text('Send code'), findsOneWidget);
     expect(find.text('Login'), findsNothing);
   });
@@ -35,6 +36,7 @@ void main() {
       await _pumpLogin(tester, brightness);
       final colors = HarmonixColors.of(tester.element(find.byType(LoginScreen)));
 
+      expect(find.text('Forgot password?'), findsOneWidget);
       expect(_loginButton(tester).onPressed, isNull);
       expect(
         _loginButton(tester).style?.backgroundColor?.resolve({WidgetState.disabled}),

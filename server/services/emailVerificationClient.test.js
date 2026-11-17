@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { EmailVerificationError, createClient, PURPOSE, TTL_SECONDS } = require("./emailVerificationClient");
+const { EmailVerificationError, createClient, PURPOSE, RESET_PURPOSE, TTL_SECONDS } = require("./emailVerificationClient");
 
 const KEY = "test-direct-key-0123456789";
 const ORIGIN = "https://email-auth.test";
@@ -96,6 +96,38 @@ describe("email verification client", () => {
     expect(body.password).to.equal(undefined);
     expect(issued.challengeId).to.equal("a".repeat(32));
     expect(issued).to.not.have.property("code");
+  });
+
+  it("sends the password-reset purpose only when asked, and refuses any other", async () => {
+    let seen;
+    const client = createClient({
+      env: env(),
+      fetchImpl: async (url, init) => {
+        seen = { url, init };
+        return jsonResponse(200, {
+          challenge_id: "b".repeat(32),
+          expires_at: "2026-11-17T22:00:00+00:00",
+        });
+      },
+    });
+    await client.challenge("person@example.com", RESET_PURPOSE);
+    expect(JSON.parse(seen.init.body).purpose).to.equal(RESET_PURPOSE);
+    expect(JSON.parse(seen.init.body).purpose).to.not.equal(PURPOSE);
+    let called = false;
+    const locked = createClient({
+      env: env(),
+      fetchImpl: async () => {
+        called = true;
+        throw new Error("should not be called");
+      },
+    });
+    try {
+      await locked.challenge("person@example.com", "choose-your-own-message");
+      expect.fail("expected a refusal");
+    } catch (err) {
+      expect(err).to.be.instanceOf(EmailVerificationError);
+      expect(called).to.equal(false);
+    }
   });
 
   it("hides upstream and network details, including the API key", async () => {

@@ -28,6 +28,8 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   requestSignupCode: (email: string, password: string) => Promise<string>;
   confirmSignup: (email: string, password: string, challengeId: string, code: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<string>;
+  confirmPasswordReset: (email: string, challengeId: string, code: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -35,13 +37,14 @@ export interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 
-function friendlyAuthError(error: string | undefined, context: 'login' | 'register') {
+function friendlyAuthError(error: string | undefined, context: 'login' | 'register' | 'reset') {
   if (error === 'Invalid credentials') {
     return 'Wrong email or password.';
   }
   if (error === 'Email already registered') {
     return 'This email is already registered. Log in instead.';
   }
+  if (context === 'reset') return error || 'Could not reset the password';
   return error || (context === 'login' ? 'Login failed' : 'Registration failed');
 }
 
@@ -153,6 +156,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     throw new Error(friendlyAuthError(errorData.error, 'register'));
   };
 
+  const requestPasswordReset = async (email: string) => {
+    const res = await apiFetch('/auth/reset-password/challenge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await parseJsonResponse<{ error?: string; challenge_id?: string }>(res).catch(() => null);
+    if (!res.ok || !data?.challenge_id) {
+      throw new Error(friendlyAuthError(data?.error, 'reset'));
+    }
+    return data.challenge_id;
+  };
+
+  const confirmPasswordReset = async (email: string, challengeId: string, code: string, password: string) => {
+    const res = await apiFetch('/auth/reset-password/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, challenge_id: challengeId, code, password }),
+    });
+    if (res.ok) return;
+    const errorData = await parseJsonResponse<{ error?: string }>(res).catch(() => ({
+      error: 'Could not reset the password',
+    }));
+    throw new Error(friendlyAuthError(errorData.error, 'reset'));
+  };
+
   const refreshUser = async () => {
     try {
       const userRes = await apiFetch('/auth/me');
@@ -173,7 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, requestSignupCode, confirmSignup, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, requestSignupCode, confirmSignup, requestPasswordReset, confirmPasswordReset, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

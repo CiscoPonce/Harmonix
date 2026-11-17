@@ -19,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   final _code = TextEditingController();
   bool _register = false;
+  bool _reset = false;
   bool _busy = false;
   String? _challengeId;
 
@@ -37,7 +38,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool get _canSubmit {
     if (_busy) return false;
+    if (_reset && _challengeId != null) {
+      return _code.text.trim().length == 6 && _password.text.length >= 8;
+    }
     if (_challengeId != null) return _code.text.trim().length == 6;
+    if (_reset) return _email.text.trim().isNotEmpty;
     return _email.text.trim().isNotEmpty && _password.text.isNotEmpty;
   }
 
@@ -53,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    if (_register && _password.text.length < 8) {
+    if ((_register || (_reset && _challengeId != null)) && _password.text.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Password must be at least 8 characters')),
       );
@@ -62,7 +67,29 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _busy = true);
     final auth = context.read<AuthState>();
     try {
-      if (_register && _challengeId != null) {
+      if (_reset && _challengeId != null) {
+        await auth.confirmPasswordReset(
+          email: _email.text.trim(),
+          challengeId: _challengeId!,
+          code: _code.text.trim(),
+          password: _password.text,
+        );
+        if (!mounted) return;
+        setState(() {
+          _reset = false;
+          _challengeId = null;
+          _code.clear();
+          _password.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password updated. Sign in with the new one.')),
+        );
+        return;
+      } else if (_reset) {
+        final challengeId = await auth.requestPasswordReset(_email.text.trim());
+        if (mounted) setState(() => _challengeId = challengeId);
+        return;
+      } else if (_register && _challengeId != null) {
         await auth.confirmSignup(
           email: _email.text.trim(),
           password: _password.text,
@@ -111,9 +138,13 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _challengeId != null
-                    ? 'Enter the code from your email'
-                    : (_register ? 'Create your account' : 'Learn words through music'),
+                _reset && _challengeId != null
+                    ? 'Enter the code and choose a new password'
+                    : _challengeId != null
+                        ? 'Enter the code from your email'
+                        : _reset
+                            ? 'We will email a code if this address has an account'
+                            : (_register ? 'Create your account' : 'Learn words through music'),
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
@@ -125,12 +156,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   autocorrect: false,
                   decoration: const InputDecoration(labelText: 'Email'),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _password,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                ),
+                if (!_reset) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _password,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'Password'),
+                  ),
+                ],
               ] else ...[
                 Text(
                   'We sent a six-digit code to ${_email.text.trim()}. It expires in 10 minutes.',
@@ -143,6 +176,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   maxLength: 6,
                   decoration: const InputDecoration(labelText: 'Code', counterText: ''),
                 ),
+                if (_reset) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _password,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'New password'),
+                  ),
+                ],
               ],
               const SizedBox(height: 24),
               FilledButton(
@@ -156,9 +197,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: Text(_busy
                     ? 'Please wait…'
-                    : _challengeId != null
-                        ? 'Confirm code'
-                        : (_register ? 'Send code' : 'Login')),
+                    : _reset && _challengeId != null
+                        ? 'Update password'
+                        : _challengeId != null
+                            ? 'Confirm code'
+                            : _reset
+                                ? 'Email me a code'
+                                : (_register ? 'Send code' : 'Login')),
               ),
               if (_challengeId != null)
                 TextButton(
@@ -169,10 +214,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           setState(() => _busy = true);
                           final auth = context.read<AuthState>();
                           try {
-                            final challengeId = await auth.requestSignupCode(
-                              _email.text.trim(),
-                              _password.text,
-                            );
+                            final challengeId = _reset
+                                ? await auth.requestPasswordReset(_email.text.trim())
+                                : await auth.requestSignupCode(
+                                    _email.text.trim(),
+                                    _password.text,
+                                  );
                             if (!mounted) return;
                             setState(() {
                               _challengeId = challengeId;
@@ -205,12 +252,41 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(color: HarmonixColors.brand),
                   ),
                 )
-              else
+              else if (_reset)
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => setState(() {
+                            _reset = false;
+                            _challengeId = null;
+                            _code.clear();
+                          }),
+                  child: const Text(
+                    'Back to login',
+                    style: TextStyle(color: HarmonixColors.brand),
+                  ),
+                )
+              else ...[
+                if (!_register)
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() {
+                              _reset = true;
+                              _challengeId = null;
+                              _code.clear();
+                            }),
+                    child: const Text(
+                      'Forgot password?',
+                      style: TextStyle(color: HarmonixColors.brand),
+                    ),
+                  ),
                 TextButton(
                   onPressed: _busy
                       ? null
                       : () => setState(() {
                             _register = !_register;
+                            _reset = false;
                             _challengeId = null;
                           }),
                   child: Text(
@@ -218,6 +294,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: const TextStyle(color: HarmonixColors.brand),
                   ),
                 ),
+              ],
             ],
           ),
         ),

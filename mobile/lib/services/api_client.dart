@@ -379,6 +379,26 @@ class ApiClient {
     }, authRetry: false);
   }
 
+  Future<Map<String, dynamic>> requestPasswordReset(String email) {
+    return request('POST', '/auth/reset-password/challenge', body: {
+      'email': email,
+    }, authRetry: false);
+  }
+
+  Future<void> confirmPasswordReset({
+    required String email,
+    required String challengeId,
+    required String code,
+    required String password,
+  }) async {
+    await request('POST', '/auth/reset-password/confirm', body: {
+      'email': email,
+      'challenge_id': challengeId,
+      'code': code,
+      'password': password,
+    }, authRetry: false);
+  }
+
   Future<Map<String, dynamic>> confirmSignup({
     required String email,
     required String password,

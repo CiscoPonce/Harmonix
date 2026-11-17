@@ -77,6 +77,45 @@ class AuthState extends ChangeNotifier {
     }
   }
 
+  Future<String> requestPasswordReset(String email) async {
+    error = null;
+    notifyListeners();
+    try {
+      final data = await api.requestPasswordReset(email);
+      final challengeId = data['challenge_id'] as String?;
+      if (challengeId == null || challengeId.isEmpty) {
+        throw ApiException('The verification email could not be sent. Try again shortly.');
+      }
+      return challengeId;
+    } on ApiException catch (e) {
+      error = e.message;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> confirmPasswordReset({
+    required String email,
+    required String challengeId,
+    required String code,
+    required String password,
+  }) async {
+    error = null;
+    notifyListeners();
+    try {
+      await api.confirmPasswordReset(
+        email: email,
+        challengeId: challengeId,
+        code: code,
+        password: password,
+      );
+    } on ApiException catch (e) {
+      error = e.message;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   Future<String> requestSignupCode(String email, String password) async {
     error = null;
     notifyListeners();

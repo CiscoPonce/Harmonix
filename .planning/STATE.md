@@ -15,7 +15,7 @@ progress:
 
 ## Current Focus
 
-**Phases 1–19 are complete.** Play closed testing is Flutter `1.0.23` (version code `26`): corrected interface wording in all six languages, and Review as a three-choice round with a score. Twelve testers have opted in. The public listing waits on those 12 staying opted in for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
+**Phases 1–19 are complete.** A forgotten password can be replaced with a six-digit code from the same mail service as signup (`harmonix-password-reset`). Play closed testing is Flutter `1.0.23` (version code `26`): corrected interface wording in all six languages, and Review as a three-choice round with a score. Twelve testers have opted in. The public listing waits on those 12 staying opted in for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
 
 **2026-11-08 signup:** New accounts confirm a six-digit code from `hello@peeporunclub.co.uk` before a user row is created. Existing accounts log in as before. The mail service is `https://email-auth.ponceteam.com`. The API key stays on the Harmonix server.
 
@@ -86,7 +86,7 @@ progress:
 | Volume | `rxwdj1k3qu51fqf8uwtal389_harmonix-data` (`SQLITE_PATH=/data/harmonix.db`, UID 999) |
 | TTS | Host Pocket 4.0.1 `:3002` for French, Portuguese, Italian, German, and English male; host Kokoro `:3003` speaks Spanish and English female; compose `TTS_SKIP_SPAWN=true` |
 | Deploy | Push `main` → `.github/workflows/deploy-harmonix.yml` → `scripts/coolify-redeploy.sh` (Coolify UI status only; do not use Coolify Restart) |
-| Mobile | Flutter `1.0.23` (version code `26`) is on closed testing, with the wording fixes and the review quiz. Twelve testers have opted in. Production access still needs those 12 to stay opted in for 14 days. |
+| Mobile | Flutter `1.0.23` (version code `26`) is on closed testing. This repo is `1.0.24` (version code `27`), with email password reset, and is not uploaded. Twelve testers have opted in. Production access still needs those 12 to stay opted in for 14 days. |
 
 ## Phase status
 

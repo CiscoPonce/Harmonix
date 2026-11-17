@@ -123,7 +123,7 @@ The website has no store version. It ships from `main`. Google Play closed testi
 | Track | Version | Where |
 |-------|---------|--------|
 | Android on Play | 1.0.23 (version code 26) | Closed testing. 12 testers opted in as of 16 November 2026. The 14-day run is still open |
-| Android in this repo | 1.0.23 (version code 26) | `mobile/pubspec.yaml`. Bump this for every Play upload |
+| Android in this repo | 1.0.24 (version code 27) | `mobile/pubspec.yaml`. Bump this for every Play upload. Adds email password reset. Not uploaded yet |
 | Platform changelog | The platform release line above | `CHANGELOG.md` and [GitHub Releases](https://github.com/CiscoPonce/Harmonix/releases) |
 
 The package id is `uk.co.peeporunclub.harmonix`. [release-please](https://github.com/googleapis/release-please) opens the changelog pull request from [Conventional Commits](https://www.conventionalcommits.org/). Do not commit APKs. Testers install from the Play closed test. An APK attached to a GitHub release is signed in CI and does not update a Play install. See [docs/PLAY-CONSOLE-LISTING.md](docs/PLAY-CONSOLE-LISTING.md).

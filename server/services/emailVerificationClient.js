@@ -4,6 +4,8 @@
  */
 
 const PURPOSE = "harmonix-signup";
+const RESET_PURPOSE = "harmonix-password-reset";
+const ALLOWED_PURPOSES = new Set([PURPOSE, RESET_PURPOSE]);
 const TTL_SECONDS = 600;
 const PRODUCTION_ORIGIN = "https://email-auth.ponceteam.com";
 const CHALLENGE_ID_RE = /^[A-Za-z0-9_-]{20,200}$/;
@@ -126,12 +128,13 @@ async function postVerification({ env, fetchImpl, path, body }) {
 
 function createClient({ env = process.env, fetchImpl = fetch } = {}) {
   return {
-    async challenge(email) {
+    async challenge(email, purpose = PURPOSE) {
+      if (!ALLOWED_PURPOSES.has(purpose)) throw unavailable();
       const payload = await postVerification({
         env,
         fetchImpl,
         path: "/2fa-email/challenge",
-        body: { email, purpose: PURPOSE, ttl_seconds: TTL_SECONDS },
+        body: { email, purpose, ttl_seconds: TTL_SECONDS },
       });
       const challengeId = String(payload?.challenge_id || "");
       if (!CHALLENGE_ID_RE.test(challengeId)) throw unavailable();
@@ -158,6 +161,7 @@ function createClient({ env = process.env, fetchImpl = fetch } = {}) {
 
 module.exports = {
   PURPOSE,
+  RESET_PURPOSE,
   TTL_SECONDS,
   PRODUCTION_ORIGIN,
   EmailVerificationError,
