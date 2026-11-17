@@ -98,7 +98,7 @@ jobs:
             for d in /data/coolify/services/*; do
               if [ -d "$d" ] && [ "$d" != "/home/ubuntu/lyric" ]; then
                 echo "Syncing /home/ubuntu/lyric into $d"
-                sudo cp -r /home/ubuntu/lyric/. "$d/" || true
+                sudo rsync -a --delete --exclude '.env' --exclude '.git' /home/ubuntu/lyric/ "$d/" || true
               fi
             done
             HARMONIX_REDEPLOY_BOOTED=1 bash /home/ubuntu/lyric/scripts/coolify-redeploy.sh

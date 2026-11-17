@@ -253,7 +253,7 @@ fi
 
 if [ "$WORKDIR" != "$PROJECT" ]; then
   log "Syncing updated codebase to Coolify service directory: ${WORKDIR}"
-  sudo rsync -a --exclude '.env' --exclude '.git' "${PROJECT}/" "${WORKDIR}/"
+  sudo rsync -a --delete --exclude '.env' --exclude '.git' "${PROJECT}/" "${WORKDIR}/"
 fi
 # Compose must keep coolify.* labels (in docker-compose.yml) so Coolify's
 # sentinel marks api/web Running after this GitHub recreate.
