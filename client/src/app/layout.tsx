@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { DM_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { CapacitorShell } from "@/components/CapacitorShell";
 import { AuthProvider } from "@/context/AuthContext";
 
 const dmSans = DM_Sans({
@@ -58,9 +57,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <CapacitorShell>
-            <AuthProvider>{children}</AuthProvider>
-          </CapacitorShell>
+          <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
       </body>
     </html>

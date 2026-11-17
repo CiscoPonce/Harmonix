@@ -67,7 +67,7 @@ function registerRoutes(options = {}) {
 
   const router = express.Router();
 
-  router.post("/register", (req, res) => {
+  router.post("/register", limit(15, "Too many attempts. Try again in a few minutes."), (req, res) => {
     res.status(403).json({
       error: "Create your account with the verification code.",
       code: "email_verification_required",

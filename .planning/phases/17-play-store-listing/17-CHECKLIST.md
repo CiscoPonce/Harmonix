@@ -121,7 +121,7 @@ Done in Play Console (2026-10-10):
 Console declarations are done (ads, news, government, health, target audience). Closed testing for `1.0.13` is submitted. The next closed-test upload is `1.0.14` (Get Started creates an account before setup). New personal accounts cannot go straight to production.
 
 - [x] Complete any remaining Console declarations (ads, news, government, target audience)
-- [ ] 12 testers opt in to the **closed** test and stay opted in for 14 days
+- [ ] 12 testers opt in to the **closed** test and stay opted in for 14 days. Opt-in is done as of 16 November 2026. The 14-day run is still open, and **Solicitar acceso a producción** stays disabled.
 - [ ] **Solicitar acceso a producción**, then publish the closed-test version that completed the 14 days
 - [ ] Store listing is public
 - [ ] Watch for Play review questions at `hello@peeporunclub.co.uk`

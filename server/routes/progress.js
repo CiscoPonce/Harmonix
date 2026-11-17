@@ -45,6 +45,9 @@ router.post('/review', (req, res) => {
  if (!Array.isArray(results) || results.length === 0) {
  return res.status(400).json({ error: 'results_array_required' });
  }
+ if (results.length > 100) {
+ return res.status(413).json({ error: 'too_many_results' });
+ }
 
  const upsert = db.prepare(`
  INSERT INTO user_vocab_progress (user_id, vocab_id, stability, difficulty, last_review, next_review, reps)

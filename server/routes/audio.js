@@ -7,8 +7,11 @@ const router = express.Router();
 
 router.get('/preview/:trackId', async (req, res) => {
   const { trackId } = req.params;
-  const artistQ = typeof req.query.artist === 'string' ? req.query.artist : '';
-  const titleQ = typeof req.query.title === 'string' ? req.query.title : '';
+  if (!trackId || String(trackId).length > 64 || !/^[A-Za-z0-9:_-]+$/.test(String(trackId))) {
+    return res.status(400).json({ error: 'invalid_track_id' });
+  }
+  const artistQ = typeof req.query.artist === 'string' ? req.query.artist.slice(0, 200) : '';
+  const titleQ = typeof req.query.title === 'string' ? req.query.title.slice(0, 200) : '';
 
   try {
     const cached = validation.getCachedSong(String(trackId));
@@ -31,7 +34,10 @@ router.get('/preview/:trackId', async (req, res) => {
       upstreamHeaders.Range = req.headers.range;
     }
 
-    let audioRes = await fetch(previewUrl, { headers: upstreamHeaders });
+    let audioRes = await fetch(previewUrl, {
+      headers: upstreamHeaders,
+      signal: AbortSignal.timeout(10000),
+    });
     let provider = deezer.isItunesTrackId(trackId)
       || (previewUrl && String(previewUrl).includes('itunes.apple.com'))
       ? 'itunes'
@@ -46,6 +52,7 @@ router.get('/preview/:trackId', async (req, res) => {
         }
         audioRes = await fetch(itunes.preview, {
           headers: { ...deezer.PREVIEW_STREAM_HEADERS, ...(req.headers.range ? { Range: req.headers.range } : {}) },
+          signal: AbortSignal.timeout(10000),
         });
         if (audioRes.ok) provider = 'itunes';
       }

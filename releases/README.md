@@ -8,9 +8,7 @@ Installable builds are not stored in this repository.
 | Play production | The Play Store listing, after the closed test has 12 opted-in testers for 14 days |
 | Engineers | Build locally from `mobile/` — see [mobile/PLAY-STORE.md](../mobile/PLAY-STORE.md) |
 
-**On Play closed testing:** `1.0.18` (version code `21`), application id `uk.co.peeporunclub.harmonix`. Tested on a phone on 7 November 2026.
-
-**In this repo, not uploaded:** `1.0.19` (version code `22`).
+**On Play closed testing:** `1.0.23` (version code `26`), application id `uk.co.peeporunclub.harmonix`. Twelve testers have opted in as of 16 November 2026. The 14-day run is still open.
 
 The AAB is produced on the release machine and uploaded in Play Console. It is gitignored (`*.aab`, `*.apk`), along with `upload-keystore.jks` and `key.properties`.
 

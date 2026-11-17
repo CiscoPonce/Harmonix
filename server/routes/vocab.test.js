@@ -273,5 +273,27 @@ describe('Vocab API Routes', () => {
       expect(holaRows[0]).to.have.property('all_occurrences');
       expect(holaRows[0].all_occurrences).to.have.lengthOf(3);
     });
+
+    it('mounts GET /learned before GET /:songId and returns user vocabulary pool', () => {
+      const routePaths = vocabRouter.stack
+        .filter((s) => s.route)
+        .map((s) => s.route.path);
+      expect(routePaths.indexOf('/learned')).to.be.lessThan(routePaths.indexOf('/:songId'));
+
+      db.prepare('INSERT INTO vocab_items (id, word, definition, cefr_level, language_code) VALUES (?, ?, ?, ?, ?)')
+        .run('v-learned-1', 'cielo', 'sky', 'A1', 'es');
+      db.prepare('INSERT INTO user_vocab_progress (user_id, vocab_id, reps, gloss) VALUES (?, ?, ?, ?)')
+        .run(testUserId, 'v-learned-1', 0, 'the sky');
+
+      const learnedHandler = vocabRouter.stack.find((s) => s.route && s.route.path === '/learned').route.stack[0].handle;
+      const req = mockReq({}, { id: testUserId });
+      const res = mockRes();
+      learnedHandler(req, res);
+
+      expect(res.body).to.have.property('words');
+      expect(res.body.words).to.have.lengthOf(1);
+      expect(res.body.words[0].word).to.equal('cielo');
+      expect(res.body.words[0].definition).to.equal('the sky');
+    });
   });
 });

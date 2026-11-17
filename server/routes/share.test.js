@@ -57,5 +57,19 @@ describe('share postcard helpers', () => {
       cover: 'https://evil.example/x.jpg',
     });
     expect(bad.cover).to.equal(null);
+
+    const suffixSpoof = sanitizePostcardInput({
+      word: { text: 'hola' },
+      song: { id: '1', title: 'Song', artist: 'Artist' },
+      cover: 'https://evil-deezer.com/x.jpg',
+    });
+    expect(suffixSpoof.cover).to.equal(null);
+
+    const plainHttp = sanitizePostcardInput({
+      word: { text: 'hola' },
+      song: { id: '1', title: 'Song', artist: 'Artist' },
+      cover: 'http://e-cdns-images.dzcdn.net/images/cover/abc/250x250.jpg',
+    });
+    expect(plainHttp.cover).to.equal(null);
   });
 });

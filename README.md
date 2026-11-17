@@ -18,7 +18,7 @@
   <a href="./CHANGELOG.md">Changelog</a>
 </p>
 
-Harmonix picks a word from a real lyric line, checks it against the recording, and plays a 30-second preview. The website is live. The Android app is in Google Play closed testing. A public listing follows once 12 testers have stayed opted in for 14 days.
+Harmonix picks a word from a real lyric line, checks it against the recording, and plays a 30-second preview. The website is live. The Android app is in Google Play closed testing. Twelve testers have opted in. A public listing follows once those 12 have stayed opted in for 14 days.
 
 The Word screen is home: a word of the day, practice, and song search. Library holds Harmonix and Spotify playlists. On Android, the last word stays readable offline.
 
@@ -56,7 +56,7 @@ docs/       Runbooks for deploy, Spotify, mobile, and releases
 .planning/  Roadmap and phase notes
 ```
 
-Brand files live in `client/public/` (`logo-mark.png`, `logo-light.png`, `logo-dark.png`). The Play Store app is the Flutter project. The Capacitor project under `client/android/` is not shipped.
+Brand files live in `client/public/` (`logo-mark.png`, `logo-light.png`, `logo-dark.png`). The Play Store app is the Flutter project under `mobile/`.
 
 ## Develop
 
@@ -114,7 +114,7 @@ cd mobile && flutter analyze --fatal-infos && flutter test
 
 ## Releases
 
-The website has no store version. It ships from `main`. Google Play closed testing is 1.0.22 (version code 25). This repo is 1.0.23 (version code 26), the next upload.
+The website has no store version. It ships from `main`. Google Play closed testing is 1.0.23 (version code 26). Twelve testers have opted in as of 16 November 2026. A public listing still needs those 12 to stay opted in for 14 days.
 
 <!-- x-release-please-start-version -->
 **Platform release:** 0.0.7
@@ -122,7 +122,7 @@ The website has no store version. It ships from `main`. Google Play closed testi
 
 | Track | Version | Where |
 |-------|---------|--------|
-| Android on Play | 1.0.22 (version code 25) | Closed testing, built 10 November 2026 |
+| Android on Play | 1.0.23 (version code 26) | Closed testing. 12 testers opted in as of 16 November 2026. The 14-day run is still open |
 | Android in this repo | 1.0.23 (version code 26) | `mobile/pubspec.yaml`. Bump this for every Play upload |
 | Platform changelog | The platform release line above | `CHANGELOG.md` and [GitHub Releases](https://github.com/CiscoPonce/Harmonix/releases) |
 

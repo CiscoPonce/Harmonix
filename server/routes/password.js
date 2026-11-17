@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const auth = require('../auth');
-const { PASSWORD_MIN } = require('../middleware/security');
+const { PASSWORD_MIN, authLimiter } = require('../middleware/security');
 
 const RESET_DISABLED = {
   error: 'password_reset_disabled',
@@ -12,11 +12,11 @@ const RESET_DISABLED = {
 function passwordRoutes(authenticateToken) {
   const router = express.Router();
 
-  router.post('/reset-password', (req, res) => {
+  router.post('/reset-password', authLimiter, (req, res) => {
     res.status(410).json(RESET_DISABLED);
   });
 
-  router.post('/change-password', authenticateToken, async (req, res) => {
+  router.post('/change-password', authLimiter, authenticateToken, async (req, res) => {
     const { currentPassword, newPassword } = req.body || {};
     if (!currentPassword || !newPassword) {
       return res.status(400).json({

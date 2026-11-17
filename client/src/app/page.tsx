@@ -11,12 +11,10 @@ import { LandingTestimonials } from '@/components/LandingTestimonials';
 import { LandingAbout } from '@/components/LandingAbout';
 import { LandingFooter } from '@/components/LandingFooter';
 import { LandingHeader } from '@/components/LandingHeader';
-import { isCapacitorNative } from '@/lib/capacitor';
 
 export default function LandingPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const nativeApp = isCapacitorNative();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -29,16 +27,12 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (nativeApp) {
-      router.replace(user ? '/discover' : '/login');
-      return;
-    }
     if (user) {
       router.push('/discover');
     }
-  }, [user, isLoading, router, nativeApp]);
+  }, [user, isLoading, router]);
 
-  if (isLoading || user || nativeApp) {
+  if (isLoading || user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black text-white">
         <div className="flex flex-col items-center gap-3 px-6">

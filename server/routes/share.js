@@ -8,6 +8,7 @@ const {
   getPostcardById,
   buildPostcardPng,
   postcardSeo,
+  isAllowedCoverUrl,
 } = require('../services/shareOg');
 const deezer = require('../services/deezerService');
 const { ensureTrackCover } = require('../services/coverArtService');
@@ -72,22 +73,7 @@ function sanitizePostcardInput(body = {}) {
     },
     cover: (() => {
       const raw = String(body.cover || body.song?.cover || '').trim();
-      if (!raw || raw.length > 500) return null;
-      try {
-        const u = new URL(raw);
-        if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
-        const host = u.hostname.toLowerCase();
-        const ok =
-          host.endsWith('dzcdn.net') ||
-          host.endsWith('deezer.com') ||
-          host.endsWith('mzstatic.com') ||
-          host.endsWith('itunes.apple.com') ||
-          host.endsWith('scdn.co') ||
-          host.endsWith('spotifycdn.com');
-        return ok ? raw : null;
-      } catch {
-        return null;
-      }
+      return isAllowedCoverUrl(raw) ? raw : null;
     })(),
   };
 }

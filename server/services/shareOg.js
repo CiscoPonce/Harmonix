@@ -5,20 +5,28 @@ const zlib = require('zlib');
 const db = require('../db');
 const { safeSpotifyExternalUrl } = require('./spotifyService');
 
+const ALLOWED_COVER_DOMAINS = [
+  'dzcdn.net',
+  'deezer.com',
+  'mzstatic.com',
+  'itunes.apple.com',
+  'scdn.co',
+  'spotifycdn.com',
+];
+
+const MAX_COVER_BYTES = 2 * 1024 * 1024;
+
 /** Allowlist album-art hosts so share payloads cannot pull arbitrary URLs. */
 function isAllowedCoverUrl(url) {
   try {
-    const u = new URL(String(url || ''));
-    if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+    const raw = String(url || '').trim();
+    if (!raw || raw.length > 500) return false;
+    const u = new URL(raw);
+    if (u.protocol !== 'https:') return false;
+    if (u.username || u.password) return false;
+    if (u.port && u.port !== '443') return false;
     const host = u.hostname.toLowerCase();
-    return (
-      host.endsWith('dzcdn.net') ||
-      host.endsWith('deezer.com') ||
-      host.endsWith('mzstatic.com') ||
-      host.endsWith('itunes.apple.com') ||
-      host.endsWith('scdn.co') ||
-      host.endsWith('spotifycdn.com')
-    );
+    return ALLOWED_COVER_DOMAINS.some((d) => host === d || host.endsWith(`.${d}`));
   } catch {
     return false;
   }
@@ -194,9 +202,14 @@ function decodePngToRgb(buf) {
   }
   if (width > 2048 || height > 2048) return null;
   const bpp = colorType === 6 ? 4 : 3;
-  const inflated = zlib.inflateSync(Buffer.concat(idat));
   const stride = width * bpp;
   const expected = (stride + 1) * height;
+  let inflated;
+  try {
+    inflated = zlib.inflateSync(Buffer.concat(idat), { maxOutputLength: expected + 1024 });
+  } catch {
+    return null;
+  }
   if (inflated.length < expected) return null;
   const rgb = Buffer.alloc(width * height * 3);
   for (let y = 0; y < height; y++) {
@@ -236,11 +249,15 @@ async function fetchCoverTile(coverUrl, size = 280) {
   if (!isAllowedCoverUrl(coverUrl)) return null;
   try {
     const res = await fetch(coverUrl, {
+      redirect: 'error',
       signal: AbortSignal.timeout(7000),
       headers: { 'User-Agent': 'HarmonixPostcard/1.0', Accept: 'image/*' },
     });
     if (!res.ok) return null;
+    const lenHeader = Number(res.headers?.get?.('content-length') || 0);
+    if (lenHeader > MAX_COVER_BYTES) return null;
     const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > MAX_COVER_BYTES) return null;
     const decoded = decodeImageToRgb(buf);
     if (!decoded) return null;
     return scaleRgbNearest(decoded.data, decoded.width, decoded.height, size);

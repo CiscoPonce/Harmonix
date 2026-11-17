@@ -4,8 +4,8 @@ Copy these fields into [Google Play Console](https://play.google.com/console).
 Do **not** submit Production until Internal testing works on a real phone.
 
 **Application ID:** `uk.co.peeporunclub.harmonix`  
-**On Play closed testing:** `1.0.22` (version code `25`)  
-**Next upload from this repo, not on Play yet:** `1.0.23` (version code `26`)  
+**On Play closed testing:** `1.0.23` (version code `26`)  
+**Testers opted in:** 12, as of 16 November 2026. Play still requires those 12 to stay opted in for 14 days before production access.  
 **Default language:** English (UK)  
 **Type:** App · **Price:** Free  
 **Contact / support:** `hello@peeporunclub.co.uk`  

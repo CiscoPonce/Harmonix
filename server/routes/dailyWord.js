@@ -130,7 +130,7 @@ router.post("/from-track", dailyWordLimiter, async (req, res) => {
   }
 });
 
-router.get("/", (req, res) => handleDailyWord(req, res, false));
+router.get("/", dailyWordLimiter, (req, res) => handleDailyWord(req, res, false));
 router.post("/new", dailyWordLimiter, (req, res) => handleDailyWord(req, res, true));
 
 router.get("/pronounce", async (req, res) => {

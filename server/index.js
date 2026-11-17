@@ -100,8 +100,11 @@ app.use('/api/auth', passwordRoutes(authenticateToken));
 
 // --- Auth Endpoints ---
 
+// Dummy bcrypt hash (cost 10) used when email is not found so login timing is uniform.
+const DUMMY_PASSWORD_HASH = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
+
 // New accounts confirm an email code before a row is created. Login is unchanged.
-app.use('/api/auth', authLimiter, registerRoutes());
+app.use('/api/auth', registerRoutes());
 
 // Login
 app.post('/api/auth/login', authLimiter, async (req, res) => {
@@ -116,6 +119,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email)
       || db.prepare('SELECT * FROM users WHERE lower(email) = ?').get(email.toLowerCase());
     if (!user) {
+      await auth.comparePassword(password, DUMMY_PASSWORD_HASH);
       console.log('POST /api/auth/login - user not found');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -218,7 +222,9 @@ app.post('/api/auth/logout', (req, res) => {
       accessUser = null;
     }
   }
-  if (accessUser?.id) {
+  if (refreshToken && !req.body?.all) {
+    auth.revokeRefreshSession(refreshToken);
+  } else if (accessUser?.id) {
     auth.revokeUserRefreshSessions(accessUser.id);
   } else {
     auth.revokeRefreshSession(refreshToken);
@@ -337,7 +343,7 @@ app.get('/api/lyrics', publicProxyLimiter, async (req, res) => {
 });
 
 // --- Audio preview proxy (same-origin; Deezer CDN URLs expire) ---
-app.use('/api/audio', audioRouter);
+app.use('/api/audio', publicProxyLimiter, audioRouter);
 
 // --- Vocabulary Endpoints ---
 const adminRouter = require('./routes/admin');

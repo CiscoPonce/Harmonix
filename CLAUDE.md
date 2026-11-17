@@ -10,8 +10,8 @@ Core Value: Personalizing language learning through real music lyrics with 100% 
 - **Library:** Harmonix + Spotify playlists; Spotify account chip in **header only**
 - **Settings:** Account profile (photo, username, bio, day streak, unified stats & localized achievements), languages, music style, voice gender, Spotify Connect, appearance, change password, delete account
 - **Live:** https://harmonix.peeporunclub.co.uk · branch `main`
-- **Android:** Flutter (`mobile/`) is the Play Store app. Capacitor is not shipped.
-- **Phases 1–19:** complete (`19-01` through `19-04`). Public Play listing waits on 12 closed-test testers for 14 days. Listing record: [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](.planning/phases/17-play-store-listing/17-CHECKLIST.md).
+- **Android:** Flutter (`mobile/`) is the Play Store app.
+- **Phases 1–19:** complete (`19-01` through `19-04`). Public Play listing: 12 testers have opted in. The 14-day closed-test run is still open. Listing record: [`.planning/phases/17-play-store-listing/17-CHECKLIST.md`](.planning/phases/17-play-store-listing/17-CHECKLIST.md).
 
 ## Tech Stack
 - Backend: Node.js (Express) + SQLite
