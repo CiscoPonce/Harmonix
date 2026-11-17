@@ -117,7 +117,7 @@ cd mobile && flutter analyze --fatal-infos && flutter test
 The website has no store version. It ships from `main`. Google Play closed testing is 1.0.23 (version code 26). Twelve testers have opted in as of 16 November 2026. A public listing still needs those 12 to stay opted in for 14 days.
 
 <!-- x-release-please-start-version -->
-**Platform release:** 0.0.7
+**Platform release:** 0.0.8
 <!-- x-release-please-end -->
 
 | Track | Version | Where |
