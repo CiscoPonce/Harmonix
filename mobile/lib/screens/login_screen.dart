@@ -3,12 +3,16 @@ import 'package:provider/provider.dart';
 
 import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
+import '../utils/i18n.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, this.startInRegister = false});
+  const LoginScreen({super.key, this.startInRegister = false, this.initialLang});
 
   /// Get Started opens account creation. Login stays the default.
   final bool startInRegister;
+
+  /// Optional language picked on WelcomeScreen when running without LocaleController.
+  final String? initialLang;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -58,9 +62,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    final lang = AppI18n.resolveLanguage(context, override: widget.initialLang);
     if ((_register || (_reset && _challengeId != null)) && _password.text.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password must be at least 8 characters')),
+        SnackBar(content: Text(AppI18n.t('auth_password_min', lang))),
       );
       return;
     }
@@ -82,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
           _password.clear();
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password updated. Sign in with the new one.')),
+          SnackBar(content: Text(AppI18n.t('auth_password_updated', lang))),
         );
         return;
       } else if (_reset) {
@@ -90,12 +95,21 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) setState(() => _challengeId = challengeId);
         return;
       } else if (_register && _challengeId != null) {
+        final preSignupLang = AppI18n.resolveLanguage(context, override: widget.initialLang);
         await auth.confirmSignup(
           email: _email.text.trim(),
           password: _password.text,
           challengeId: _challengeId!,
           code: _code.text.trim(),
         );
+        if (preSignupLang != 'en') {
+          try {
+            await auth.savePreferences({
+              'native_language': preSignupLang,
+              'target_language': 'en',
+            });
+          } catch (_) {}
+        }
       } else if (_register) {
         final challengeId = await auth.requestSignupCode(
           _email.text.trim(),
@@ -112,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(auth.error ?? 'Authentication failed')),
+          SnackBar(content: Text(auth.error ?? AppI18n.t('auth_failed', lang))),
         );
       }
     } finally {
@@ -122,6 +136,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    AppI18n.maybeWatchLocale(context);
+    final lang = AppI18n.resolveLanguage(context, override: widget.initialLang);
     final colors = HarmonixColors.of(context);
     return Scaffold(
       body: SafeArea(
@@ -139,12 +155,14 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               Text(
                 _reset && _challengeId != null
-                    ? 'Enter the code and choose a new password'
+                    ? AppI18n.t('auth_reset_enter_code', lang)
                     : _challengeId != null
-                        ? 'Enter the code from your email'
+                        ? AppI18n.t('auth_enter_code_email', lang)
                         : _reset
-                            ? 'We will email a code if this address has an account'
-                            : (_register ? 'Create your account' : 'Learn words through music'),
+                            ? AppI18n.t('auth_reset_intro', lang)
+                            : (_register
+                                ? AppI18n.t('auth_create_account', lang)
+                                : AppI18n.t('auth_tagline', lang)),
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
@@ -154,19 +172,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  decoration: InputDecoration(labelText: AppI18n.t('auth_email', lang)),
                 ),
                 if (!_reset) ...[
                   const SizedBox(height: 12),
                   TextField(
                     controller: _password,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Password'),
+                    decoration: InputDecoration(labelText: AppI18n.t('auth_password', lang)),
                   ),
                 ],
               ] else ...[
                 Text(
-                  'We sent a six-digit code to ${_email.text.trim()}. It expires in 10 minutes.',
+                  AppI18n.t('auth_code_sent', lang, {'email': _email.text.trim()}),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -174,14 +192,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _code,
                   keyboardType: TextInputType.number,
                   maxLength: 6,
-                  decoration: const InputDecoration(labelText: 'Code', counterText: ''),
+                  decoration: InputDecoration(
+                    labelText: AppI18n.t('auth_code', lang),
+                    counterText: '',
+                  ),
                 ),
                 if (_reset) ...[
                   const SizedBox(height: 12),
                   TextField(
                     controller: _password,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'New password'),
+                    decoration: InputDecoration(labelText: AppI18n.t('auth_new_password', lang)),
                   ),
                 ],
               ],
@@ -196,14 +217,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: Text(_busy
-                    ? 'Please wait…'
+                    ? AppI18n.t('auth_please_wait', lang)
                     : _reset && _challengeId != null
-                        ? 'Update password'
+                        ? AppI18n.t('auth_update_password', lang)
                         : _challengeId != null
-                            ? 'Confirm code'
+                            ? AppI18n.t('auth_confirm_code', lang)
                             : _reset
-                                ? 'Email me a code'
-                                : (_register ? 'Send code' : 'Login')),
+                                ? AppI18n.t('auth_email_code', lang)
+                                : (_register
+                                    ? AppI18n.t('auth_send_code', lang)
+                                    : AppI18n.t('auth_login', lang))),
               ),
               if (_challengeId != null)
                 TextButton(
@@ -228,15 +251,17 @@ class _LoginScreenState extends State<LoginScreen> {
                           } catch (_) {
                             if (!mounted) return;
                             messenger.showSnackBar(
-                              SnackBar(content: Text(auth.error ?? 'Could not send a new code')),
+                              SnackBar(
+                                content: Text(auth.error ?? AppI18n.t('auth_resend_failed', lang)),
+                              ),
                             );
                           } finally {
                             if (mounted) setState(() => _busy = false);
                           }
                         },
-                  child: const Text(
-                    'Send a new code',
-                    style: TextStyle(color: HarmonixColors.brand),
+                  child: Text(
+                    AppI18n.t('auth_send_new_code', lang),
+                    style: const TextStyle(color: HarmonixColors.brand),
                   ),
                 ),
               if (_challengeId != null)
@@ -247,9 +272,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             _challengeId = null;
                             _code.clear();
                           }),
-                  child: const Text(
-                    'Use a different email',
-                    style: TextStyle(color: HarmonixColors.brand),
+                  child: Text(
+                    AppI18n.t('auth_different_email', lang),
+                    style: const TextStyle(color: HarmonixColors.brand),
                   ),
                 )
               else if (_reset)
@@ -261,9 +286,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             _challengeId = null;
                             _code.clear();
                           }),
-                  child: const Text(
-                    'Back to login',
-                    style: TextStyle(color: HarmonixColors.brand),
+                  child: Text(
+                    AppI18n.t('auth_back_to_login', lang),
+                    style: const TextStyle(color: HarmonixColors.brand),
                   ),
                 )
               else ...[
@@ -276,9 +301,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               _challengeId = null;
                               _code.clear();
                             }),
-                    child: const Text(
-                      'Forgot password?',
-                      style: TextStyle(color: HarmonixColors.brand),
+                    child: Text(
+                      AppI18n.t('auth_forgot_password', lang),
+                      style: const TextStyle(color: HarmonixColors.brand),
                     ),
                   ),
                 TextButton(
@@ -290,7 +315,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             _challengeId = null;
                           }),
                   child: Text(
-                    _register ? 'Already have an account? Login' : 'Need an account? Register',
+                    _register
+                        ? AppI18n.t('auth_already_have_account', lang)
+                        : AppI18n.t('auth_need_account', lang),
                     style: const TextStyle(color: HarmonixColors.brand),
                   ),
                 ),

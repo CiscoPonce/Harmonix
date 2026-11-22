@@ -1,8 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/auth_state.dart';
+import '../state/locale_controller.dart';
 
 class AppI18n {
+  static const Set<String> supportedCodes = {'en', 'es', 'fr', 'de', 'pt', 'it'};
+
+  static const List<(String, String)> languageLabels = [
+    ('en', 'English'),
+    ('es', 'Español'),
+    ('fr', 'Français'),
+    ('de', 'Deutsch'),
+    ('pt', 'Português'),
+    ('it', 'Italiano'),
+  ];
+
+  static String? normalizeSupportedCode(String? raw) {
+    final trimmed = raw?.trim().toLowerCase() ?? '';
+    if (trimmed.isEmpty) return null;
+    final primary = trimmed.split(RegExp('[-_]')).first;
+    return supportedCodes.contains(primary) ? primary : null;
+  }
+
+  static String detectDeviceLanguage([Iterable<Locale>? locales]) {
+    final Iterable<Locale> candidates;
+    if (locales != null) {
+      candidates = locales;
+    } else {
+      final dispatcher = WidgetsBinding.instance.platformDispatcher;
+      candidates = dispatcher.locales.isNotEmpty ? dispatcher.locales : [dispatcher.locale];
+    }
+    for (final loc in candidates) {
+      final code = normalizeSupportedCode(loc.languageCode);
+      if (code != null) return code;
+    }
+    return 'en';
+  }
+
+  static LocaleController? maybeWatchLocale(BuildContext context) {
+    try {
+      return context.watch<LocaleController>();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String resolveLanguage(BuildContext context, {String? override}) {
+    try {
+      final userLang = normalizeSupportedCode(
+        context.read<AuthState>().user?['native_language']?.toString(),
+      );
+      if (userLang != null) return userLang;
+    } catch (_) {}
+    final explicit = normalizeSupportedCode(override);
+    if (explicit != null) return explicit;
+    try {
+      final ctrlOverride = normalizeSupportedCode(context.read<LocaleController>().overrideLang);
+      if (ctrlOverride != null) return ctrlOverride;
+    } catch (_) {}
+    final loc = Localizations.maybeLocaleOf(context);
+    final widgetLang = normalizeSupportedCode(loc?.languageCode);
+    if (widgetLang != null && widgetLang != 'en') return widgetLang;
+    return detectDeviceLanguage();
+  }
   static const Map<String, Map<String, String>> translations = {
     'en': {
       'nav_discover': 'Word',
@@ -424,6 +484,73 @@ class AppI18n {
       'review_score_title': 'Round complete',
       'review_score_line': 'You knew {correct} of {n}.',
       'review_back_word': 'Back to the word',
+      'opening_skip': 'Skip',
+      'welcome_slide1_title': 'What Harmonix is for',
+      'welcome_slide1_desc':
+          'It teaches new words from real song lyrics. You learn a language by hearing the word inside a song, not from a word list.',
+      'welcome_slide2_title': 'How to use a word',
+      'welcome_slide2_desc':
+          'Hear it plays a 30-second clip of the song. Flip the card for the meaning and the lyric line. The speaker says the word on its own.',
+      'welcome_slide3_title': 'How to keep going',
+      'welcome_slide3_desc':
+          'Next brings another word from a song you have not learned from yet. Search if you want a song you already know. Spotify is optional.',
+      'welcome_next': 'Next',
+      'welcome_get_started': 'Get Started Free',
+      'welcome_have_account': 'I already have an account',
+      'welcome_choose_language': 'Language',
+      'auth_tagline': 'Learn words through music',
+      'auth_create_account': 'Create your account',
+      'auth_enter_code_email': 'Enter the code from your email',
+      'auth_reset_intro': 'We will email a code if this address has an account',
+      'auth_reset_enter_code': 'Enter the code and choose a new password',
+      'auth_code_sent': 'We sent a six-digit code to {email}. It expires in 10 minutes.',
+      'auth_email': 'Email',
+      'auth_password': 'Password',
+      'auth_new_password': 'New password',
+      'auth_code': 'Code',
+      'auth_login': 'Login',
+      'auth_send_code': 'Send code',
+      'auth_confirm_code': 'Confirm code',
+      'auth_email_code': 'Email me a code',
+      'auth_update_password': 'Update password',
+      'auth_please_wait': 'Please wait…',
+      'auth_send_new_code': 'Send a new code',
+      'auth_different_email': 'Use a different email',
+      'auth_back_to_login': 'Back to login',
+      'auth_forgot_password': 'Forgot password?',
+      'auth_already_have_account': 'Already have an account? Login',
+      'auth_need_account': 'Need an account? Register',
+      'auth_password_min': 'Password must be at least 8 characters',
+      'auth_password_updated': 'Password updated. Sign in with the new one.',
+      'auth_failed': 'Authentication failed',
+      'auth_resend_failed': 'Could not send a new code',
+      'onboarding_step1_kicker': 'Setup Profile',
+      'onboarding_step1_title': 'Select Languages',
+      'onboarding_step1_desc': 'Select your mother language and the language you want to learn.',
+      'onboarding_native_label': 'Mother Language (Native)',
+      'onboarding_target_label': 'Target Language (Learning)',
+      'onboarding_err_both': 'Select both mother and target languages',
+      'onboarding_err_differ': 'Mother and target languages must differ',
+      'onboarding_continue': 'Continue',
+      'onboarding_step2_kicker': 'Personalize Music',
+      'onboarding_step2_title': 'Style of Music',
+      'onboarding_step2_desc': 'Choose your favorite music genre to tailor daily song recommendations.',
+      'onboarding_back': 'Back',
+      'onboarding_next_step': 'Next Step',
+      'onboarding_step3_title': 'Spotify Integration',
+      'onboarding_step3_desc':
+          'Connect your Spotify account to import your playlists and stream lyrics automatically. (Optional)',
+      'onboarding_spotify_connected_title': 'Spotify Connected',
+      'onboarding_spotify_connected_desc': 'Your playlists will sync with Harmonix.',
+      'onboarding_connect_spotify': 'Connect Spotify Account',
+      'onboarding_saving': 'Saving…',
+      'onboarding_finish': 'Finish Setup & Start Learning',
+      'onboarding_skip_start': 'Skip & Start Learning',
+      'style_any': 'Any',
+      'style_pop': 'Pop',
+      'style_rock': 'Rock',
+      'style_hip_hop': 'Hip-Hop',
+      'style_reggaeton': 'Reggaeton',
     },
     'es': {
       'n_ready': '{n} listas',
@@ -570,6 +697,73 @@ class AppI18n {
       'review_score_title': 'Ronda completa',
       'review_score_line': 'Acertaste {correct} de {n}.',
       'review_back_word': 'Volver a la palabra',
+      'opening_skip': 'Saltar',
+      'welcome_slide1_title': 'Para qué sirve Harmonix',
+      'welcome_slide1_desc':
+          'Te enseña palabras nuevas con letras de canciones reales. Aprendes un idioma escuchando la palabra dentro de una canción, no con listas sueltas.',
+      'welcome_slide2_title': 'Cómo usar una palabra',
+      'welcome_slide2_desc':
+          'Escuchar reproduce un fragmento de 30 segundos de la canción. Voltea la tarjeta para ver el significado y el verso. El altavoz pronuncia la palabra sola.',
+      'welcome_slide3_title': 'Cómo seguir avanzando',
+      'welcome_slide3_desc':
+          'Siguiente trae otra palabra de una canción nueva para ti. Busca si prefieres una canción que ya conoces. Spotify es opcional.',
+      'welcome_next': 'Siguiente',
+      'welcome_get_started': 'Empezar gratis',
+      'welcome_have_account': 'Ya tengo una cuenta',
+      'welcome_choose_language': 'Idioma',
+      'auth_tagline': 'Aprende palabras con música',
+      'auth_create_account': 'Crea tu cuenta',
+      'auth_enter_code_email': 'Introduce el código de tu correo',
+      'auth_reset_intro': 'Enviaremos un código si esta dirección tiene una cuenta',
+      'auth_reset_enter_code': 'Introduce el código y elige una contraseña nueva',
+      'auth_code_sent': 'Enviamos un código de seis dígitos a {email}. Caduca en 10 minutos.',
+      'auth_email': 'Correo electrónico',
+      'auth_password': 'Contraseña',
+      'auth_new_password': 'Nueva contraseña',
+      'auth_code': 'Código',
+      'auth_login': 'Iniciar sesión',
+      'auth_send_code': 'Enviar código',
+      'auth_confirm_code': 'Confirmar código',
+      'auth_email_code': 'Enviarme un código',
+      'auth_update_password': 'Actualizar contraseña',
+      'auth_please_wait': 'Un momento…',
+      'auth_send_new_code': 'Enviar un código nuevo',
+      'auth_different_email': 'Usar otro correo',
+      'auth_back_to_login': 'Volver al inicio de sesión',
+      'auth_forgot_password': '¿Olvidaste tu contraseña?',
+      'auth_already_have_account': '¿Ya tienes cuenta? Inicia sesión',
+      'auth_need_account': '¿Necesitas una cuenta? Regístrate',
+      'auth_password_min': 'La contraseña debe tener al menos 8 caracteres',
+      'auth_password_updated': 'Contraseña actualizada. Inicia sesión con la nueva.',
+      'auth_failed': 'Error de autenticación',
+      'auth_resend_failed': 'No se pudo enviar un código nuevo',
+      'onboarding_step1_kicker': 'Configurar perfil',
+      'onboarding_step1_title': 'Elige los idiomas',
+      'onboarding_step1_desc': 'Selecciona tu idioma materno y el idioma que quieres aprender.',
+      'onboarding_native_label': 'Idioma materno',
+      'onboarding_target_label': 'Idioma que aprendes',
+      'onboarding_err_both': 'Selecciona tu idioma materno y el que quieres aprender',
+      'onboarding_err_differ': 'El idioma materno y el objetivo deben ser distintos',
+      'onboarding_continue': 'Continuar',
+      'onboarding_step2_kicker': 'Personaliza tu música',
+      'onboarding_step2_title': 'Estilo de música',
+      'onboarding_step2_desc': 'Elige tu género favorito para adaptar las recomendaciones diarias.',
+      'onboarding_back': 'Atrás',
+      'onboarding_next_step': 'Siguiente paso',
+      'onboarding_step3_title': 'Conexión con Spotify',
+      'onboarding_step3_desc':
+          'Conecta tu cuenta de Spotify para importar tus listas y escuchar letras al instante. (Opcional)',
+      'onboarding_spotify_connected_title': 'Spotify conectado',
+      'onboarding_spotify_connected_desc': 'Tus listas se sincronizarán con Harmonix.',
+      'onboarding_connect_spotify': 'Conectar cuenta de Spotify',
+      'onboarding_saving': 'Guardando…',
+      'onboarding_finish': 'Terminar y empezar a aprender',
+      'onboarding_skip_start': 'Omitir y empezar a aprender',
+      'style_any': 'Cualquiera',
+      'style_pop': 'Pop',
+      'style_rock': 'Rock',
+      'style_hip_hop': 'Hip-Hop',
+      'style_reggaeton': 'Reggaeton',
     },
     'fr': {
       'n_ready': '{n} prêts',
@@ -716,6 +910,73 @@ class AppI18n {
       'review_score_title': 'Manche terminée',
       'review_score_line': 'Vous en saviez {correct} sur {n}.',
       'review_back_word': 'Retour au mot',
+      'opening_skip': 'Passer',
+      'welcome_slide1_title': 'À quoi sert Harmonix',
+      'welcome_slide1_desc':
+          'Apprenez de nouveaux mots grâce aux vraies paroles de chansons. Vous retenez le vocabulaire en l’entendant dans une chanson, pas sur une liste.',
+      'welcome_slide2_title': 'Comment utiliser un mot',
+      'welcome_slide2_desc':
+          'Écouter lance un extrait de 30 secondes. Retournez la carte pour voir le sens et la phrase. Le haut-parleur prononce le mot seul.',
+      'welcome_slide3_title': 'Comment continuer',
+      'welcome_slide3_desc':
+          'Mot suivant propose un autre mot tiré d’un morceau inédit. Cherchez une chanson que vous aimez. Spotify est facultatif.',
+      'welcome_next': 'Suivant',
+      'welcome_get_started': 'Commencer gratuitement',
+      'welcome_have_account': 'J’ai déjà un compte',
+      'welcome_choose_language': 'Langue',
+      'auth_tagline': 'Apprenez des mots en musique',
+      'auth_create_account': 'Créer votre compte',
+      'auth_enter_code_email': 'Entrez le code reçu par e-mail',
+      'auth_reset_intro': 'Nous enverrons un code si cette adresse possède un compte',
+      'auth_reset_enter_code': 'Entrez le code et choisissez un nouveau mot de passe',
+      'auth_code_sent': 'Nous avons envoyé un code à six chiffres à {email}. Il expire dans 10 minutes.',
+      'auth_email': 'E-mail',
+      'auth_password': 'Mot de passe',
+      'auth_new_password': 'Nouveau mot de passe',
+      'auth_code': 'Code',
+      'auth_login': 'Connexion',
+      'auth_send_code': 'Envoyer le code',
+      'auth_confirm_code': 'Confirmer le code',
+      'auth_email_code': 'M’envoyer un code',
+      'auth_update_password': 'Mettre à jour',
+      'auth_please_wait': 'Patientez…',
+      'auth_send_new_code': 'Envoyer un nouveau code',
+      'auth_different_email': 'Utiliser un autre e-mail',
+      'auth_back_to_login': 'Retour à la connexion',
+      'auth_forgot_password': 'Mot de passe oublié ?',
+      'auth_already_have_account': 'Déjà un compte ? Se connecter',
+      'auth_need_account': 'Pas encore de compte ? S’inscrire',
+      'auth_password_min': 'Le mot de passe doit contenir au moins 8 caractères',
+      'auth_password_updated': 'Mot de passe mis à jour. Connectez-vous avec le nouveau.',
+      'auth_failed': 'Échec de l’authentification',
+      'auth_resend_failed': 'Impossible d’envoyer un nouveau code',
+      'onboarding_step1_kicker': 'Configurer le profil',
+      'onboarding_step1_title': 'Choisir les langues',
+      'onboarding_step1_desc': 'Sélectionnez votre langue maternelle et la langue que vous souhaitez apprendre.',
+      'onboarding_native_label': 'Langue maternelle',
+      'onboarding_target_label': 'Langue apprise',
+      'onboarding_err_both': 'Sélectionnez les deux langues',
+      'onboarding_err_differ': 'Les deux langues doivent être différentes',
+      'onboarding_continue': 'Continuer',
+      'onboarding_step2_kicker': 'Personnaliser la musique',
+      'onboarding_step2_title': 'Style de musique',
+      'onboarding_step2_desc': 'Choisissez votre genre préféré pour adapter les recommandations.',
+      'onboarding_back': 'Retour',
+      'onboarding_next_step': 'Étape suivante',
+      'onboarding_step3_title': 'Intégration Spotify',
+      'onboarding_step3_desc':
+          'Connectez votre compte Spotify pour importer vos playlists et suivre les paroles. (Facultatif)',
+      'onboarding_spotify_connected_title': 'Spotify connecté',
+      'onboarding_spotify_connected_desc': 'Vos playlists seront synchronisées avec Harmonix.',
+      'onboarding_connect_spotify': 'Connecter un compte Spotify',
+      'onboarding_saving': 'Enregistrement…',
+      'onboarding_finish': 'Terminer et commencer',
+      'onboarding_skip_start': 'Passer et commencer',
+      'style_any': 'Tous',
+      'style_pop': 'Pop',
+      'style_rock': 'Rock',
+      'style_hip_hop': 'Hip-Hop',
+      'style_reggaeton': 'Reggaeton',
     },
     'de': {
       'n_ready': '{n} bereit',
@@ -862,6 +1123,73 @@ class AppI18n {
       'review_score_title': 'Runde geschafft',
       'review_score_line': 'Du kanntest {correct} von {n}.',
       'review_back_word': 'Zurück zum Wort',
+      'opening_skip': 'Überspringen',
+      'welcome_slide1_title': 'Wofür Harmonix da ist',
+      'welcome_slide1_desc':
+          'Lerne neue Wörter direkt aus echten Songtexten. Du lernst eine Sprache, indem du das Wort im Song hörst – statt trockener Vokabellisten.',
+      'welcome_slide2_title': 'So nutzt du ein Wort',
+      'welcome_slide2_desc':
+          'Anhören spielt einen 30-Sekunden-Ausschnitt des Songs. Drehe die Karte für Bedeutung und Textzeile. Der Lautsprecher spricht das Wort einzeln.',
+      'welcome_slide3_title': 'So geht es weiter',
+      'welcome_slide3_desc':
+          'Nächstes Wort zeigt ein neues Wort aus einem neuen Song. Suche gezielt nach einem Song, den du kennst. Spotify ist optional.',
+      'welcome_next': 'Weiter',
+      'welcome_get_started': 'Kostenlos starten',
+      'welcome_have_account': 'Ich habe schon ein Konto',
+      'welcome_choose_language': 'Sprache',
+      'auth_tagline': 'Wörter mit Musik lernen',
+      'auth_create_account': 'Konto erstellen',
+      'auth_enter_code_email': 'Gib den Code aus deiner E-Mail ein',
+      'auth_reset_intro': 'Wir senden dir einen Code, falls es zu dieser Adresse ein Konto gibt',
+      'auth_reset_enter_code': 'Code eingeben und neues Passwort wählen',
+      'auth_code_sent': 'Wir haben einen sechsstelligen Code an {email} gesendet. Er läuft in 10 Minuten ab.',
+      'auth_email': 'E-Mail',
+      'auth_password': 'Passwort',
+      'auth_new_password': 'Neues Passwort',
+      'auth_code': 'Code',
+      'auth_login': 'Anmelden',
+      'auth_send_code': 'Code senden',
+      'auth_confirm_code': 'Code bestätigen',
+      'auth_email_code': 'Code per E-Mail senden',
+      'auth_update_password': 'Passwort aktualisieren',
+      'auth_please_wait': 'Bitte warten…',
+      'auth_send_new_code': 'Neuen Code senden',
+      'auth_different_email': 'Andere E-Mail verwenden',
+      'auth_back_to_login': 'Zurück zur Anmeldung',
+      'auth_forgot_password': 'Passwort vergessen?',
+      'auth_already_have_account': 'Schon ein Konto? Anmelden',
+      'auth_need_account': 'Noch kein Konto? Registrieren',
+      'auth_password_min': 'Das Passwort muss mindestens 8 Zeichen lang sein',
+      'auth_password_updated': 'Passwort aktualisiert. Melde dich mit dem neuen an.',
+      'auth_failed': 'Anmeldung fehlgeschlagen',
+      'auth_resend_failed': 'Neuer Code konnte nicht gesendet werden',
+      'onboarding_step1_kicker': 'Profil einrichten',
+      'onboarding_step1_title': 'Sprachen wählen',
+      'onboarding_step1_desc': 'Wähle deine Muttersprache und die Sprache, die du lernen möchtest.',
+      'onboarding_native_label': 'Muttersprache',
+      'onboarding_target_label': 'Lernsprache',
+      'onboarding_err_both': 'Wähle Mutter- und Lernsprache',
+      'onboarding_err_differ': 'Mutter- und Lernsprache müssen verschieden sein',
+      'onboarding_continue': 'Weiter',
+      'onboarding_step2_kicker': 'Musik anpassen',
+      'onboarding_step2_title': 'Musikstil',
+      'onboarding_step2_desc': 'Wähle deinen Lieblingsstil für tägliche Songvorschläge.',
+      'onboarding_back': 'Zurück',
+      'onboarding_next_step': 'Nächster Schritt',
+      'onboarding_step3_title': 'Spotify-Integration',
+      'onboarding_step3_desc':
+          'Verbinde Spotify, um Playlists zu importieren und Songs direkt zu streamen. (Optional)',
+      'onboarding_spotify_connected_title': 'Spotify verbunden',
+      'onboarding_spotify_connected_desc': 'Deine Playlists werden mit Harmonix synchronisiert.',
+      'onboarding_connect_spotify': 'Spotify-Konto verbinden',
+      'onboarding_saving': 'Speichern…',
+      'onboarding_finish': 'Fertig & Lernen starten',
+      'onboarding_skip_start': 'Überspringen & Lernen starten',
+      'style_any': 'Alle',
+      'style_pop': 'Pop',
+      'style_rock': 'Rock',
+      'style_hip_hop': 'Hip-Hop',
+      'style_reggaeton': 'Reggaeton',
     },
     'pt': {
       'n_ready': '{n} prontas',
@@ -1008,6 +1336,73 @@ class AppI18n {
       'review_score_title': 'Rodada concluída',
       'review_score_line': 'Você acertou {correct} de {n}.',
       'review_back_word': 'Voltar à palavra',
+      'opening_skip': 'Pular',
+      'welcome_slide1_title': 'Para que serve o Harmonix',
+      'welcome_slide1_desc':
+          'Ensina palavras novas com letras de músicas reais. Você aprende um idioma ouvindo a palavra na música, não em uma lista solta.',
+      'welcome_slide2_title': 'Como usar uma palavra',
+      'welcome_slide2_desc':
+          'Ouvir toca um trecho de 30 segundos da música. Vire o cartão para ver o significado e o verso. O alto-falante pronuncia a palavra sozinha.',
+      'welcome_slide3_title': 'Como continuar',
+      'welcome_slide3_desc':
+          'Próxima traz outra palavra de uma música nova para você. Pesquise se quiser uma música que já conhece. O Spotify é opcional.',
+      'welcome_next': 'Próximo',
+      'welcome_get_started': 'Começar grátis',
+      'welcome_have_account': 'Já tenho uma conta',
+      'welcome_choose_language': 'Idioma',
+      'auth_tagline': 'Aprenda palavras com música',
+      'auth_create_account': 'Crie sua conta',
+      'auth_enter_code_email': 'Digite o código enviado por e-mail',
+      'auth_reset_intro': 'Enviaremos um código se este endereço tiver uma conta',
+      'auth_reset_enter_code': 'Digite o código e escolha uma nova senha',
+      'auth_code_sent': 'Enviamos um código de seis dígitos para {email}. Ele expira em 10 minutos.',
+      'auth_email': 'E-mail',
+      'auth_password': 'Senha',
+      'auth_new_password': 'Nova senha',
+      'auth_code': 'Código',
+      'auth_login': 'Entrar',
+      'auth_send_code': 'Enviar código',
+      'auth_confirm_code': 'Confirmar código',
+      'auth_email_code': 'Enviar código por e-mail',
+      'auth_update_password': 'Atualizar senha',
+      'auth_please_wait': 'Aguarde…',
+      'auth_send_new_code': 'Enviar novo código',
+      'auth_different_email': 'Usar outro e-mail',
+      'auth_back_to_login': 'Voltar para o login',
+      'auth_forgot_password': 'Esqueceu a senha?',
+      'auth_already_have_account': 'Já tem conta? Entrar',
+      'auth_need_account': 'Precisa de uma conta? Cadastre-se',
+      'auth_password_min': 'A senha deve ter pelo menos 8 caracteres',
+      'auth_password_updated': 'Senha atualizada. Entre com a nova senha.',
+      'auth_failed': 'Falha na autenticação',
+      'auth_resend_failed': 'Não foi possível enviar um novo código',
+      'onboarding_step1_kicker': 'Configurar perfil',
+      'onboarding_step1_title': 'Escolher idiomas',
+      'onboarding_step1_desc': 'Selecione seu idioma nativo e o idioma que deseja aprender.',
+      'onboarding_native_label': 'Idioma nativo',
+      'onboarding_target_label': 'Idioma que aprende',
+      'onboarding_err_both': 'Selecione os dois idiomas',
+      'onboarding_err_differ': 'O idioma nativo e o idioma alvo devem ser diferentes',
+      'onboarding_continue': 'Continuar',
+      'onboarding_step2_kicker': 'Personalizar música',
+      'onboarding_step2_title': 'Estilo musical',
+      'onboarding_step2_desc': 'Escolha seu gênero favorito para personalizar as recomendações diárias.',
+      'onboarding_back': 'Voltar',
+      'onboarding_next_step': 'Próximo passo',
+      'onboarding_step3_title': 'Integração com Spotify',
+      'onboarding_step3_desc':
+          'Conecte sua conta Spotify para importar playlists e ouvir trechos automaticamente. (Opcional)',
+      'onboarding_spotify_connected_title': 'Spotify conectado',
+      'onboarding_spotify_connected_desc': 'Suas playlists serão sincronizadas com o Harmonix.',
+      'onboarding_connect_spotify': 'Conectar conta Spotify',
+      'onboarding_saving': 'Salvando…',
+      'onboarding_finish': 'Concluir e começar a aprender',
+      'onboarding_skip_start': 'Pular e começar a aprender',
+      'style_any': 'Qualquer',
+      'style_pop': 'Pop',
+      'style_rock': 'Rock',
+      'style_hip_hop': 'Hip-Hop',
+      'style_reggaeton': 'Reggaeton',
     },
     'it': {
       'n_ready': '{n} pronte',
@@ -1154,6 +1549,73 @@ class AppI18n {
       'review_score_title': 'Round completato',
       'review_score_line': 'Ne sapevi {correct} su {n}.',
       'review_back_word': 'Torna alla parola',
+      'opening_skip': 'Salta',
+      'welcome_slide1_title': 'A cosa serve Harmonix',
+      'welcome_slide1_desc':
+          'Insegna parole nuove dai testi di canzoni vere. Impari una lingua ascoltando la parola dentro un brano, non da una lista.',
+      'welcome_slide2_title': 'Come usare una parola',
+      'welcome_slide2_desc':
+          'Ascolta riproduce un estratto di 30 secondi del brano. Gira la scheda per vedere il significato e il verso. Lo speaker pronuncia la parola da sola.',
+      'welcome_slide3_title': 'Come continuare',
+      'welcome_slide3_desc':
+          'Prossima parola porta un altro termine da una canzone nuova. Cerca se vuoi un brano che conosci già. Spotify è facoltativo.',
+      'welcome_next': 'Avanti',
+      'welcome_get_started': 'Inizia gratis',
+      'welcome_have_account': 'Ho già un account',
+      'welcome_choose_language': 'Lingua',
+      'auth_tagline': 'Impara le parole con la musica',
+      'auth_create_account': 'Crea il tuo account',
+      'auth_enter_code_email': 'Inserisci il codice dalla tua e-mail',
+      'auth_reset_intro': 'Invieremo un codice se questo indirizzo ha un account',
+      'auth_reset_enter_code': 'Inserisci il codice e scegli una nuova password',
+      'auth_code_sent': 'Abbiamo inviato un codice a sei cifre a {email}. Scade tra 10 minuti.',
+      'auth_email': 'E-mail',
+      'auth_password': 'Password',
+      'auth_new_password': 'Nuova password',
+      'auth_code': 'Codice',
+      'auth_login': 'Accedi',
+      'auth_send_code': 'Invia codice',
+      'auth_confirm_code': 'Conferma codice',
+      'auth_email_code': 'Inviami un codice',
+      'auth_update_password': 'Aggiorna password',
+      'auth_please_wait': 'Attendi…',
+      'auth_send_new_code': 'Invia un nuovo codice',
+      'auth_different_email': 'Usa un’altra e-mail',
+      'auth_back_to_login': 'Torna all’accesso',
+      'auth_forgot_password': 'Password dimenticata?',
+      'auth_already_have_account': 'Hai già un account? Accedi',
+      'auth_need_account': 'Serve un account? Registrati',
+      'auth_password_min': 'La password deve avere almeno 8 caratteri',
+      'auth_password_updated': 'Password aggiornata. Accedi con quella nuova.',
+      'auth_failed': 'Autenticazione non riuscita',
+      'auth_resend_failed': 'Impossibile inviare un nuovo codice',
+      'onboarding_step1_kicker': 'Configura profilo',
+      'onboarding_step1_title': 'Scegli le lingue',
+      'onboarding_step1_desc': 'Seleziona la tua lingua madre e la lingua che vuoi imparare.',
+      'onboarding_native_label': 'Lingua madre',
+      'onboarding_target_label': 'Lingua che impari',
+      'onboarding_err_both': 'Seleziona entrambe le lingue',
+      'onboarding_err_differ': 'La lingua madre e quella da imparare devono essere diverse',
+      'onboarding_continue': 'Continua',
+      'onboarding_step2_kicker': 'Personalizza la musica',
+      'onboarding_step2_title': 'Genere musicale',
+      'onboarding_step2_desc': 'Scegli il tuo genere preferito per personalizzare i brani consigliati.',
+      'onboarding_back': 'Indietro',
+      'onboarding_next_step': 'Passaggio successivo',
+      'onboarding_step3_title': 'Integrazione Spotify',
+      'onboarding_step3_desc':
+          'Collega il tuo account Spotify per importare le playlist e ascoltare i brani. (Facoltativo)',
+      'onboarding_spotify_connected_title': 'Spotify collegato',
+      'onboarding_spotify_connected_desc': 'Le tue playlist verranno sincronizzate con Harmonix.',
+      'onboarding_connect_spotify': 'Collega account Spotify',
+      'onboarding_saving': 'Salvataggio…',
+      'onboarding_finish': 'Completa e inizia a imparare',
+      'onboarding_skip_start': 'Salta e inizia a imparare',
+      'style_any': 'Qualsiasi',
+      'style_pop': 'Pop',
+      'style_rock': 'Rock',
+      'style_hip_hop': 'Hip-Hop',
+      'style_reggaeton': 'Reggaeton',
     },
   };
 
@@ -1183,15 +1645,9 @@ class AppI18n {
 }
 
 extension I18nExtension on BuildContext {
-  String? get _homeLang {
-    try {
-      return read<AuthState>().user?['native_language']?.toString();
-    } catch (_) {
-      return null;
-    }
-  }
+  String get currentLang => AppI18n.resolveLanguage(this);
 
-  String tr(String key, [Map<String, Object?>? vars]) => AppI18n.t(key, _homeLang, vars);
+  String tr(String key, [Map<String, Object?>? vars]) => AppI18n.t(key, currentLang, vars);
 
-  String trPlural(String base, int n) => AppI18n.plural(base, n, _homeLang);
+  String trPlural(String base, int n) => AppI18n.plural(base, n, currentLang);
 }

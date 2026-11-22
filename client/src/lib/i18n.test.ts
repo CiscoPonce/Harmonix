@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { TRANSLATIONS, getTranslation, getPlural, type LanguageCode } from './i18n.dictionary.ts';
+import {
+  TRANSLATIONS,
+  getTranslation,
+  getPlural,
+  detectBrowserLanguage,
+  type LanguageCode,
+} from './i18n.dictionary.ts';
 
 describe('Web Client i18n Translations', () => {
   const languages: LanguageCode[] = ['en', 'es', 'fr', 'de', 'pt', 'it'];
@@ -43,5 +49,14 @@ describe('Web Client i18n Translations', () => {
     assert.strictEqual(getTranslation('found_in', 'it'), 'Trovata in');
     assert.strictEqual(getTranslation('harmonix_playlists', 'es'), 'Listas de Harmonix');
     assert.strictEqual(getTranslation('unknown_key_test', 'es'), 'unknown_key_test');
+  });
+
+  it('detects browser language from supported locales with en fallback', () => {
+    assert.strictEqual(detectBrowserLanguage(['es-MX', 'en-US']), 'es');
+    assert.strictEqual(detectBrowserLanguage(['ca-ES', 'es-ES']), 'es');
+    assert.strictEqual(detectBrowserLanguage(['pt-BR']), 'pt');
+    assert.strictEqual(detectBrowserLanguage(['ja-JP']), 'en');
+    assert.strictEqual(detectBrowserLanguage([]), 'en');
+    assert.strictEqual(detectBrowserLanguage(null), 'en');
   });
 });

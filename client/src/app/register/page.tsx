@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from '@/lib/i18n';
 import { rememberSignupSource } from '@/lib/signupSource';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -19,6 +20,7 @@ function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { requestSignupCode, confirmSignup } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     rememberSignupSource(searchParams.get('src'));
@@ -27,11 +29,11 @@ function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('auth_passwords_mismatch'));
       return;
     }
     if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError(t('auth_password_min'));
       return;
     }
     
@@ -45,7 +47,7 @@ function RegisterForm() {
       }
       await confirmSignup(email, password, challengeId, code.trim());
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to register';
+      const message = err instanceof Error ? err.message : t('auth_register_failed');
       setError(message);
     } finally {
       setIsLoading(false);
@@ -58,9 +60,9 @@ function RegisterForm() {
         <div className="flex flex-col items-center gap-6 text-center">
           <HarmonixWordmark href="/" size="xl" showTagline variant="dark" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tighter uppercase">Register</h1>
+            <h1 className="text-2xl font-bold tracking-tighter uppercase">{t('auth_register_title')}</h1>
             <p className="mt-1 text-zinc-400">
-              {challengeId ? 'Check your email for the code' : 'Create an account to get started'}
+              {challengeId ? t('auth_check_email_code') : t('auth_register_subtitle')}
             </p>
           </div>
         </div>
@@ -68,9 +70,9 @@ function RegisterForm() {
           {challengeId ? (
             <div className="space-y-2">
               <p className="text-sm text-zinc-300">
-                Enter the six-digit code sent to {email}. It expires in 10 minutes.
+                {t('auth_code_sent', { email })}
               </p>
-              <label htmlFor="code" className="text-sm font-medium">Verification code</label>
+              <label htmlFor="code" className="text-sm font-medium">{t('auth_verification_code')}</label>
               <Input
                 id="code"
                 inputMode="numeric"
@@ -94,14 +96,14 @@ function RegisterForm() {
                       setChallengeId(issued);
                       setCode('');
                     } catch (err) {
-                      const message = err instanceof Error ? err.message : 'Failed to register';
+                      const message = err instanceof Error ? err.message : t('auth_register_failed');
                       setError(message);
                     } finally {
                       setIsLoading(false);
                     }
                   }}
                 >
-                  Send a new code
+                  {t('auth_send_new_code')}
                 </button>
                 <button
                   type="button"
@@ -113,14 +115,14 @@ function RegisterForm() {
                     setError(null);
                   }}
                 >
-                  Use a different email
+                  {t('auth_different_email')}
                 </button>
               </div>
             </div>
           ) : (
             <>
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium">Email</label>
+            <label htmlFor="email" className="text-sm font-medium">{t('auth_email')}</label>
             <Input
               id="email"
               type="email"
@@ -131,7 +133,7 @@ function RegisterForm() {
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium">Password</label>
+            <label htmlFor="password" className="text-sm font-medium">{t('auth_password')}</label>
             <Input
               id="password"
               type="password"
@@ -142,7 +144,7 @@ function RegisterForm() {
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</label>
+            <label htmlFor="confirmPassword" className="text-sm font-medium">{t('auth_confirm_password')}</label>
             <Input
               id="confirmPassword"
               type="password"
@@ -159,24 +161,24 @@ function RegisterForm() {
               {error.includes('already registered') && (
                 <p className="text-xs text-zinc-400">
                   <Link href={`/login?email=${encodeURIComponent(email)}`} className="text-white underline">
-                    Log in with this email
+                    {t('auth_login_with_email')}
                   </Link>
-                  {' '}or{' '}
+                  {' '}{t('auth_or')}{' '}
                   <Link href={`/forgot-password?email=${encodeURIComponent(email)}`} className="text-white underline">
-                    reset your password
+                    {t('auth_reset_your_password')}
                   </Link>
                 </p>
               )}
             </div>
           )}
           <Button type="submit" variant="primary" className="w-full" disabled={isLoading || (challengeId !== null && code.length !== 6)}>
-            {isLoading ? 'Please wait...' : challengeId ? 'Confirm code' : 'Send code'}
+            {isLoading ? t('auth_please_wait') : challengeId ? t('auth_confirm_code') : t('auth_send_code')}
           </Button>
         </form>
         <p className="text-center text-sm text-zinc-400">
-          Already have an account?{' '}
+          {t('auth_have_account')}{' '}
           <Link href="/login" className="text-white hover:underline">
-            Login
+            {t('auth_login')}
           </Link>
         </p>
       </div>

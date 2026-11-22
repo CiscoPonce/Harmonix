@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from '@/lib/i18n';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { HarmonixWordmark } from '@/components/HarmonixWordmark';
@@ -15,6 +16,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +25,7 @@ function LoginForm() {
     try {
       await login(email, password);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to login';
+      const message = err instanceof Error ? err.message : t('auth_login_failed');
       setError(message);
     } finally {
       setIsLoading(false);
@@ -36,13 +38,13 @@ function LoginForm() {
         <div className="flex flex-col items-center gap-6 text-center">
           <HarmonixWordmark href="/" size="xl" showTagline variant="dark" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tighter uppercase">Login</h1>
-            <p className="mt-1 text-zinc-400">Enter your credentials to access your account</p>
+            <h1 className="text-2xl font-bold tracking-tighter uppercase">{t('auth_login_title')}</h1>
+            <p className="mt-1 text-zinc-400">{t('auth_login_subtitle')}</p>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium">Email</label>
+            <label htmlFor="email" className="text-sm font-medium">{t('auth_email')}</label>
             <Input
               id="email"
               type="email"
@@ -53,7 +55,7 @@ function LoginForm() {
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium">Password</label>
+            <label htmlFor="password" className="text-sm font-medium">{t('auth_password')}</label>
             <Input
               id="password"
               type="password"
@@ -65,17 +67,17 @@ function LoginForm() {
           {error && <p className="text-sm text-red-500">{error}</p>}
           <p className="text-right text-xs">
             <Link href="/forgot-password" className="text-zinc-400 hover:text-white underline-offset-4 hover:underline">
-              Forgot password?
+              {t('auth_forgot_password')}
             </Link>
           </p>
           <Button type="submit" variant="primary" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Logging in...' : 'Login'}
+            {isLoading ? t('auth_logging_in') : t('auth_login')}
           </Button>
         </form>
         <p className="text-center text-sm text-zinc-400">
-          Don&apos;t have an account?{' '}
+          {t('auth_no_account')}{' '}
           <Link href="/register" className="text-white hover:underline">
-            Register
+            {t('auth_register')}
           </Link>
         </p>
       </div>

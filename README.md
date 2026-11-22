@@ -32,6 +32,7 @@ The Word screen is home: a word of the day, practice, and song search. Library h
 - **Song search.** Find a song and learn a word from its lyric.
 - **Library.** Harmonix playlists and Spotify playlists, with export from Harmonix to Spotify. A recent word opens its card.
 - **Practice & Profile.** Spaced review, streak badge, responsive 4-card stats row, achievements, and avatar/profile management across web and Android.
+- **Localized Welcome & Login.** Automatically detects the device language on Android (and browser language on web) across English, Spanish, French, German, Portuguese, and Italian before sign-in, with a manual language picker on Welcome.
 
 ## Stack
 
@@ -114,7 +115,7 @@ cd mobile && flutter analyze --fatal-infos && flutter test
 
 ## Releases
 
-The website has no store version. It ships from `main`. Google Play closed testing is 1.0.23 (version code 26). Twelve testers have opted in as of 16 November 2026. A public listing still needs those 12 to stay opted in for 14 days.
+The website has no store version. It ships from `main`. Google Play closed testing is 1.0.25 (version code 28). Twelve testers have opted in as of 16 November 2026. A public listing still needs those 12 to stay opted in for 14 days.
 
 <!-- x-release-please-start-version -->
 **Platform release:** 0.0.7
@@ -122,8 +123,8 @@ The website has no store version. It ships from `main`. Google Play closed testi
 
 | Track | Version | Where |
 |-------|---------|--------|
-| Android on Play | 1.0.23 (version code 26) | Closed testing. 12 testers opted in as of 16 November 2026. The 14-day run is still open |
-| Android in this repo | 1.0.24 (version code 27) | `mobile/pubspec.yaml`. Bump this for every Play upload. Adds email password reset. Not uploaded yet |
+| Android on Play | 1.0.25 (version code 28) | Closed testing, uploaded 22 November 2026. 12 testers opted in as of 16 November 2026; 14-day run in progress |
+| Android in this repo | 1.0.25 (version code 28) | `mobile/pubspec.yaml`. Bump this for every Play upload |
 | Platform changelog | The platform release line above | `CHANGELOG.md` and [GitHub Releases](https://github.com/CiscoPonce/Harmonix/releases) |
 
 The package id is `uk.co.peeporunclub.harmonix`. [release-please](https://github.com/googleapis/release-please) opens the changelog pull request from [Conventional Commits](https://www.conventionalcommits.org/). Do not commit APKs. Testers install from the Play closed test. An APK attached to a GitHub release is signed in CI and does not update a Play install. See [docs/PLAY-CONSOLE-LISTING.md](docs/PLAY-CONSOLE-LISTING.md).

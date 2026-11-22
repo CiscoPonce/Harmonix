@@ -26,7 +26,8 @@ All notable changes to Harmonix are documented here. Releases are managed by
 - English female pronunciation uses Kokoro af_heart. Pocket alba was low enough to sound male, and the old clips are not reused.
 
 ### Android
-- 1.0.24 (version code 27) is the next Play upload. It adds email password reset. Closed testing stays on 1.0.23 (version code 26).
+- 1.0.25 (version code 28) is on Play closed testing (uploaded 22 November 2026). Auto-detects the device language for Opening, Welcome, Login, Register, Password Reset, and Onboarding across all six languages, adds a pre-login language picker on Welcome, and keeps new non-English signups in their language.
+- 1.0.24 (version code 27) was on Play closed testing from 17 November 2026. It added email-code password reset.
 - 1.0.23 (version code 26) is on Play closed testing. It corrects interface wording in all six languages and turns Review into a three-choice round with a score. Twelve testers have opted in as of 16 November 2026. The public listing still needs those 12 to stay opted in for 14 days.
 - 1.0.22 (version code 25) was the closed-testing build from 10 November 2026. It includes the account page, the email code, review sync, and the daily reminder.
 - 1.0.21 (version code 24) added the email code for new accounts and the Account page: photo, username, bio, streak, achievements, and delete account. 1.0.20 (version code 23) was the email-code build and was not given a separate upload.

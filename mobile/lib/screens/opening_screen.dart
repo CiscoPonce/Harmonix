@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import '../utils/i18n.dart';
 
 /// White field behind the Bauhaus opening mark.
 const openingField = Color(0xFFFFFFFF);
@@ -56,6 +57,7 @@ class _OpeningScreenState extends State<OpeningScreen> {
 
   @override
   Widget build(BuildContext context) {
+    AppI18n.maybeWatchLocale(context);
     return Scaffold(
       backgroundColor: openingField,
       body: Stack(
@@ -66,9 +68,9 @@ class _OpeningScreenState extends State<OpeningScreen> {
               alignment: Alignment.topRight,
               child: TextButton(
                 onPressed: _finish,
-                child: const Text(
-                  'Skip',
-                  style: TextStyle(
+                child: Text(
+                  context.tr('opening_skip'),
+                  style: const TextStyle(
                     color: Color(0xFF0F0E15),
                     fontWeight: FontWeight.w700,
                   ),

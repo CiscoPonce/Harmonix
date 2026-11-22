@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:harmonix_mobile/utils/i18n.dart';
 
@@ -34,5 +35,20 @@ void main() {
       'Nous n’avons pas trouvé d’autres titres rock — voici un morceau proche.',
     );
     expect(AppI18n.plural('songs', 3, 'en'), '3 songs');
+  });
+
+  test('detects device language from supported locales and falls back to en', () {
+    expect(AppI18n.normalizeSupportedCode('es_MX'), 'es');
+    expect(AppI18n.normalizeSupportedCode('pt-BR'), 'pt');
+    expect(AppI18n.normalizeSupportedCode('ja-JP'), isNull);
+
+    expect(AppI18n.detectDeviceLanguage([const Locale('es', 'MX')]), 'es');
+    expect(AppI18n.detectDeviceLanguage([const Locale('pt', 'BR')]), 'pt');
+    expect(
+      AppI18n.detectDeviceLanguage([const Locale('ca', 'ES'), const Locale('es', 'ES')]),
+      'es',
+    );
+    expect(AppI18n.detectDeviceLanguage([const Locale('ja', 'JP')]), 'en');
+    expect(AppI18n.detectDeviceLanguage(const []), 'en');
   });
 }

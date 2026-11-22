@@ -12,6 +12,7 @@ import 'services/api_client.dart';
 import 'services/reminder_service.dart';
 import 'state/auth_state.dart';
 import 'state/home_navigation_controller.dart';
+import 'state/locale_controller.dart';
 import 'state/reminder_controller.dart';
 import 'state/theme_controller.dart';
 import 'theme/harmonix_theme.dart';
@@ -81,6 +82,9 @@ class _HarmonixAppState extends State<HarmonixApp> {
         Provider(create: (_) => ApiClient()),
         ChangeNotifierProvider(
           create: (ctx) => AuthState(ctx.read<ApiClient>())..bootstrap(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => LocaleController()..load(),
         ),
         ChangeNotifierProvider(
           create: (_) => ThemeController()..load(),

@@ -6,6 +6,7 @@ import '../constants/learning_prefs.dart';
 import '../state/auth_state.dart';
 import '../theme/harmonix_theme.dart';
 import '../services/api_client.dart';
+import '../utils/i18n.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -33,22 +34,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (_seeded) return;
     _seeded = true;
     final user = context.read<AuthState>().user;
-    if (user == null) return;
-    _native = user['native_language'] as String? ?? 'en';
-    _target = user['target_language'] as String? ?? 'es';
-    _genre = normalizeGenre(user['genre'] as String?);
-    _difficulty = (user['difficulty'] as String?) ?? 'medium';
-    _voice = normalizeVoiceGender(user['voice_gender'] as String?);
+    final detectedNative = AppI18n.resolveLanguage(context);
+    final rawNative = user?['native_language']?.toString().trim() ?? '';
+    final rawTarget = user?['target_language']?.toString().trim() ?? '';
+    _native = rawNative.isNotEmpty ? rawNative : detectedNative;
+    _target = rawTarget.isNotEmpty ? rawTarget : (_native == 'en' ? 'es' : 'en');
+    _genre = normalizeGenre(user?['genre'] as String?);
+    _difficulty = (user?['difficulty'] as String?) ?? 'medium';
+    _voice = normalizeVoiceGender(user?['voice_gender'] as String?);
   }
 
+  String _lang() => AppI18n.normalizeSupportedCode(_native) ?? AppI18n.resolveLanguage(context);
+
   void _nextStep() {
+    final lang = _lang();
     if (_step == 0) {
       if (_native == null || _target == null) {
-        setState(() => _error = 'Select both mother and target languages');
+        setState(() => _error = AppI18n.t('onboarding_err_both', lang));
         return;
       }
       if (_native == _target) {
-        setState(() => _error = 'Mother and target languages must differ');
+        setState(() => _error = AppI18n.t('onboarding_err_differ', lang));
         return;
       }
     }
@@ -71,8 +77,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _saveAndFinish() async {
+    final lang = _lang();
     if (_native == null || _target == null) {
-      setState(() => _error = 'Select both languages');
+      setState(() => _error = AppI18n.t('onboarding_err_both', lang));
       return;
     }
     setState(() {
@@ -110,12 +117,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
+  String _styleLabel(String id, String fallback, String lang) {
+    final key = switch (id) {
+      'any' => 'style_any',
+      'pop' => 'style_pop',
+      'rock' => 'style_rock',
+      'hip-hop' => 'style_hip_hop',
+      'reggaeton' => 'style_reggaeton',
+      _ => null,
+    };
+    return key != null ? AppI18n.t(key, lang) : fallback;
+  }
+
   @override
   Widget build(BuildContext context) {
+    AppI18n.maybeWatchLocale(context);
     final colors = HarmonixColors.of(context);
     final theme = Theme.of(context);
     final user = context.watch<AuthState>().user;
     final isSpotifyConnected = user?['is_spotify_connected'] == true;
+    final lang = _lang();
 
     return Scaffold(
       body: SafeArea(
@@ -142,13 +163,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPageChanged: (idx) => setState(() => _step = idx),
                 children: [
                   // STEP 1: Mother Language & Target Language
-                  _buildStep1Languages(context, theme, colors),
+                  _buildStep1Languages(context, theme, colors, lang),
 
                   // STEP 2: Music Style & Voice
-                  _buildStep2MusicStyle(context, theme, colors),
+                  _buildStep2MusicStyle(context, theme, colors, lang),
 
                   // STEP 3: Optional Spotify Connection
-                  _buildStep3Spotify(context, theme, colors, isSpotifyConnected),
+                  _buildStep3Spotify(context, theme, colors, isSpotifyConnected, lang),
                 ],
               ),
             ),
@@ -174,12 +195,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildStep1Languages(BuildContext context, ThemeData theme, HarmonixColors colors) {
+  Widget _buildStep1Languages(
+    BuildContext context,
+    ThemeData theme,
+    HarmonixColors colors,
+    String lang,
+  ) {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         Text(
-          'Setup Profile',
+          AppI18n.t('onboarding_step1_kicker', lang),
           style: theme.textTheme.labelLarge?.copyWith(
             color: colors.accent,
             fontWeight: FontWeight.w900,
@@ -188,7 +214,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Select Languages',
+          AppI18n.t('onboarding_step1_title', lang),
           style: theme.textTheme.headlineMedium?.copyWith(
             color: colors.textPrimary,
             fontWeight: FontWeight.w900,
@@ -196,15 +222,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Select your mother language and the language you want to learn.',
+          AppI18n.t('onboarding_step1_desc', lang),
           style: theme.textTheme.bodyMedium?.copyWith(color: colors.textMuted),
         ),
         const SizedBox(height: 32),
         DropdownButtonFormField<String>(
           initialValue: _native,
-          decoration: const InputDecoration(
-            labelText: 'Mother Language (Native)',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: AppI18n.t('onboarding_native_label', lang),
+            border: const OutlineInputBorder(),
           ),
           items: [
             for (final l in kLanguages) DropdownMenuItem(value: l.$1, child: Text(l.$2)),
@@ -214,9 +240,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         const SizedBox(height: 20),
         DropdownButtonFormField<String>(
           initialValue: _target,
-          decoration: const InputDecoration(
-            labelText: 'Target Language (Learning)',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: AppI18n.t('onboarding_target_label', lang),
+            border: const OutlineInputBorder(),
           ),
           items: [
             for (final l in kLanguages) DropdownMenuItem(value: l.$1, child: Text(l.$2)),
@@ -236,9 +262,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               backgroundColor: colors.accent,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
-            child: const Text(
-              'Continue',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black),
+            child: Text(
+              AppI18n.t('onboarding_continue', lang),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black),
             ),
           ),
         ),
@@ -246,12 +272,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildStep2MusicStyle(BuildContext context, ThemeData theme, HarmonixColors colors) {
+  Widget _buildStep2MusicStyle(
+    BuildContext context,
+    ThemeData theme,
+    HarmonixColors colors,
+    String lang,
+  ) {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         Text(
-          'Personalize Music',
+          AppI18n.t('onboarding_step2_kicker', lang),
           style: theme.textTheme.labelLarge?.copyWith(
             color: colors.accent,
             fontWeight: FontWeight.w900,
@@ -260,7 +291,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Style of Music',
+          AppI18n.t('onboarding_step2_title', lang),
           style: theme.textTheme.headlineMedium?.copyWith(
             color: colors.textPrimary,
             fontWeight: FontWeight.w900,
@@ -268,7 +299,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Choose your favorite music genre to tailor daily song recommendations.',
+          AppI18n.t('onboarding_step2_desc', lang),
           style: theme.textTheme.bodyMedium?.copyWith(color: colors.textMuted),
         ),
         const SizedBox(height: 24),
@@ -294,7 +325,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      s.$2,
+                      _styleLabel(s.$1, s.$2, lang),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: colors.textPrimary,
@@ -311,12 +342,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
           initialValue: _voice,
-          decoration: const InputDecoration(
-            labelText: 'Pronunciation Voice',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: AppI18n.t('voice_gender', lang),
+            border: const OutlineInputBorder(),
           ),
           items: [
-            for (final v in kVoiceGenders) DropdownMenuItem(value: v.$1, child: Text(v.$2)),
+            for (final v in kVoiceGenders)
+              DropdownMenuItem(value: v.$1, child: Text(AppI18n.t(v.$1, lang))),
           ],
           onChanged: (v) => setState(() => _voice = v ?? 'female'),
         ),
@@ -329,7 +361,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             OutlinedButton(
               onPressed: _prevStep,
-              child: const Text('Back'),
+              child: Text(AppI18n.t('onboarding_back', lang)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -341,9 +373,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     backgroundColor: colors.accent,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: const Text(
-                    'Next Step',
-                    style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black),
+                  child: Text(
+                    AppI18n.t('onboarding_next_step', lang),
+                    style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black),
                   ),
                 ),
               ),
@@ -354,7 +386,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildStep3Spotify(BuildContext context, ThemeData theme, HarmonixColors colors, bool isConnected) {
+  Widget _buildStep3Spotify(
+    BuildContext context,
+    ThemeData theme,
+    HarmonixColors colors,
+    bool isConnected,
+    String lang,
+  ) {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -373,7 +411,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 16),
         Text(
-          'Spotify Integration',
+          AppI18n.t('onboarding_step3_title', lang),
           textAlign: TextAlign.center,
           style: theme.textTheme.headlineMedium?.copyWith(
             color: colors.textPrimary,
@@ -382,7 +420,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Connect your Spotify account to import your playlists and stream lyrics automatically. (Optional)',
+          AppI18n.t('onboarding_step3_desc', lang),
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(color: colors.textMuted),
         ),
@@ -405,14 +443,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Spotify Connected',
+                        AppI18n.t('onboarding_spotify_connected_title', lang),
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: colors.textPrimary,
                         ),
                       ),
                       Text(
-                        'Your playlists will sync with Harmonix.',
+                        AppI18n.t('onboarding_spotify_connected_desc', lang),
                         style: theme.textTheme.bodySmall?.copyWith(color: colors.textMuted),
                       ),
                     ],
@@ -432,9 +470,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
               icon: const Icon(Icons.music_note, color: Colors.black),
-              label: const Text(
-                'Connect Spotify Account',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+              label: Text(
+                AppI18n.t('onboarding_connect_spotify', lang),
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
               ),
             ),
           ),
@@ -456,8 +494,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             child: Text(
               _busy
-                  ? 'Saving…'
-                  : (isConnected ? 'Finish Setup & Start Learning' : 'Skip & Start Learning'),
+                  ? AppI18n.t('onboarding_saving', lang)
+                  : (isConnected
+                      ? AppI18n.t('onboarding_finish', lang)
+                      : AppI18n.t('onboarding_skip_start', lang)),
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black),
             ),
           ),

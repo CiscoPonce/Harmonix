@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/harmonix_theme.dart';
+import '../utils/i18n.dart';
 import 'login_screen.dart';
 import 'opening_screen.dart';
 
@@ -18,30 +19,32 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   bool _openingDone = false;
+  String? _localLang;
 
-  final List<Map<String, String>> _features = [
-    {
-      'title': 'What Harmonix is for',
-      'desc':
-          'It teaches new words from real song lyrics. You learn a language by hearing the word inside a song, not from a word list.',
-      'icon': '🎵',
-    },
-    {
-      'title': 'How to use a word',
-      'desc':
-          'Hear it plays a 30-second clip of the song. Flip the card for the meaning and the lyric line. The speaker says the word on its own.',
-      'icon': '✨',
-    },
-    {
-      'title': 'How to keep going',
-      'desc':
-          'Next brings another word from a song you have not learned from yet. Search if you want a song you already know. Spotify is optional.',
-      'icon': '🎧',
-    },
-  ];
+  List<Map<String, String>> _featuresFor(String lang) => [
+        {
+          'title': AppI18n.t('welcome_slide1_title', lang),
+          'desc': AppI18n.t('welcome_slide1_desc', lang),
+          'icon': '🎵',
+        },
+        {
+          'title': AppI18n.t('welcome_slide2_title', lang),
+          'desc': AppI18n.t('welcome_slide2_desc', lang),
+          'icon': '✨',
+        },
+        {
+          'title': AppI18n.t('welcome_slide3_title', lang),
+          'desc': AppI18n.t('welcome_slide3_desc', lang),
+          'icon': '🎧',
+        },
+      ];
 
   @override
   Widget build(BuildContext context) {
+    final localeCtrl = AppI18n.maybeWatchLocale(context);
+    final lang = AppI18n.resolveLanguage(context, override: _localLang);
+    final features = _featuresFor(lang);
+
     if (widget.playOpening && !_openingDone) {
       return OpeningScreen(
         onFinished: () {
@@ -60,6 +63,49 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Column(
             children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: PopupMenuButton<String>(
+                  key: const ValueKey('welcome_language_picker'),
+                  tooltip: AppI18n.t('welcome_choose_language', lang),
+                  initialValue: lang,
+                  onSelected: (code) {
+                    setState(() => _localLang = code);
+                    localeCtrl?.setOverrideLang(code);
+                  },
+                  itemBuilder: (_) => [
+                    for (final entry in AppI18n.languageLabels)
+                      PopupMenuItem<String>(
+                        value: entry.$1,
+                        child: Text(entry.$2),
+                      ),
+                  ],
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: colors.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.language, size: 16, color: colors.textPrimary),
+                        const SizedBox(width: 6),
+                        Text(
+                          lang.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        Icon(Icons.arrow_drop_down, size: 18, color: colors.textMuted),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 8),
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
@@ -81,9 +127,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 child: PageView.builder(
                   controller: _pageController,
                   onPageChanged: (idx) => setState(() => _currentPage = idx),
-                  itemCount: _features.length,
+                  itemCount: features.length,
                   itemBuilder: (ctx, idx) {
-                    final item = _features[idx];
+                    final item = features[idx];
                     return LayoutBuilder(
                       builder: (context, constraints) {
                         return SingleChildScrollView(
@@ -153,7 +199,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
-                  _features.length,
+                  features.length,
                   (index) => AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -176,7 +222,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 height: 54,
                 child: FilledButton(
                   onPressed: () {
-                    final lastPage = _currentPage >= _features.length - 1;
+                    final lastPage = _currentPage >= features.length - 1;
                     if (!lastPage) {
                       _pageController.nextPage(
                         duration: const Duration(milliseconds: 300),
@@ -186,8 +232,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     }
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) =>
-                            const LoginScreen(startInRegister: true),
+                        builder: (_) => LoginScreen(
+                          startInRegister: true,
+                          initialLang: _localLang,
+                        ),
                       ),
                     );
                   },
@@ -198,9 +246,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     ),
                   ),
                   child: Text(
-                    _currentPage >= _features.length - 1
-                        ? 'Get Started Free'
-                        : 'Next',
+                    _currentPage >= features.length - 1
+                        ? AppI18n.t('welcome_get_started', lang)
+                        : AppI18n.t('welcome_next', lang),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
@@ -216,7 +264,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 child: OutlinedButton(
                   onPressed: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => LoginScreen(initialLang: _localLang),
+                      ),
                     );
                   },
                   style: OutlinedButton.styleFrom(
@@ -228,7 +278,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     ),
                   ),
                   child: Text(
-                    'I already have an account',
+                    AppI18n.t('welcome_have_account', lang),
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,

@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: play-store-listing
 status: complete
-stopped_at: "2026-11-16 Play closed testing is Android 1.0.23 (26). Twelve testers have opted in. Production access still needs those 12 to stay opted in for 14 days."
-last_updated: "2026-11-16T20:05:00.000Z"
+stopped_at: "2026-11-22 Play closed testing is Android 1.0.25 (28). Twelve testers have opted in since 16 November 2026. Production access still needs those 12 to stay opted in for 14 days."
+last_updated: "2026-11-22T22:15:00.000Z"
 progress:
   total_phases: 19
   completed_phases: 19
@@ -15,7 +15,7 @@ progress:
 
 ## Current Focus
 
-**Phases 1–19 are complete.** A forgotten password can be replaced with a six-digit code from the same mail service as signup (`harmonix-password-reset`). Play closed testing is Flutter `1.0.23` (version code `26`): corrected interface wording in all six languages, and Review as a three-choice round with a score. Twelve testers have opted in. The public listing waits on those 12 staying opted in for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
+**Phases 1–19 are complete.** A forgotten password can be replaced with a six-digit code from the same mail service as signup (`harmonix-password-reset`). Play closed testing is Flutter `1.0.25` (version code `28`, uploaded 22 November 2026): adds automatic pre-login device-language detection + language switcher across all six languages, following `1.0.24` email-code password reset and `1.0.23` three-choice review rounds. Twelve testers have opted in as of 16 November 2026. The public listing waits on those 12 staying opted in for 14 days. **`hello@peeporunclub.co.uk` is live on Zoho.**
 
 **2026-11-08 signup:** New accounts confirm a six-digit code from `hello@peeporunclub.co.uk` before a user row is created. Existing accounts log in as before. The mail service is `https://email-auth.ponceteam.com`. The API key stays on the Harmonix server.
 

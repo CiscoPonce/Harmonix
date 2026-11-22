@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { HarmonixWordmark } from "@/components/HarmonixWordmark";
@@ -11,6 +12,7 @@ import { HarmonixWordmark } from "@/components/HarmonixWordmark";
 function ForgotPasswordForm() {
   const searchParams = useSearchParams();
   const { user, isLoading, requestPasswordReset, confirmPasswordReset } = useAuth();
+  const { t } = useTranslation();
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
@@ -28,7 +30,7 @@ function ForgotPasswordForm() {
       setChallengeId(issued);
       setCode("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send a code");
+      setError(err instanceof Error ? err.message : t("auth_reset_send_failed"));
     } finally {
       setBusy(false);
     }
@@ -41,11 +43,11 @@ function ForgotPasswordForm() {
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("auth_passwords_mismatch"));
       return;
     }
     if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError(t("auth_password_min"));
       return;
     }
     setBusy(true);
@@ -54,7 +56,7 @@ function ForgotPasswordForm() {
       await confirmPasswordReset(email.trim(), challengeId, code.trim(), password);
       setDone(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not reset the password");
+      setError(err instanceof Error ? err.message : t("auth_reset_failed"));
     } finally {
       setBusy(false);
     }
@@ -66,31 +68,31 @@ function ForgotPasswordForm() {
         <div className="flex flex-col items-center gap-6 text-center">
           <HarmonixWordmark href="/" size="xl" showTagline variant="dark" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tighter uppercase">Password</h1>
+            <h1 className="text-2xl font-bold tracking-tighter uppercase">{t("auth_password_title")}</h1>
             <p className="mt-1 text-zinc-400">
               {done
-                ? "Your password is updated. Sign in with the new one."
+                ? t("auth_password_updated")
                 : challengeId
-                  ? "Enter the six-digit code and choose a new password. The code expires in 10 minutes."
-                  : "We will email a code if this address has a Harmonix account."}
+                  ? t("auth_reset_enter_code")
+                  : t("auth_reset_intro")}
             </p>
           </div>
         </div>
         {isLoading ? (
-          <p className="text-center text-zinc-400">Checking session…</p>
+          <p className="text-center text-zinc-400">{t("auth_checking_session")}</p>
         ) : user ? (
           <div className="space-y-4 text-center">
             <p className="text-zinc-400">
-              You are signed in. Change your password from Settings.
+              {t("auth_signed_in_hint")}
             </p>
             <Link href="/settings" className="inline-block text-white underline">
-              Open Settings
+              {t("auth_open_settings")}
             </Link>
           </div>
         ) : done ? (
           <p className="text-center">
             <Link href="/login" className="text-white underline">
-              Back to login
+              {t("auth_back_to_login")}
             </Link>
           </p>
         ) : (
@@ -98,7 +100,7 @@ function ForgotPasswordForm() {
             {challengeId ? (
               <>
                 <div className="space-y-2">
-                  <label htmlFor="code" className="text-sm font-medium">Code</label>
+                  <label htmlFor="code" className="text-sm font-medium">{t("auth_code")}</label>
                   <Input
                     id="code"
                     inputMode="numeric"
@@ -110,7 +112,7 @@ function ForgotPasswordForm() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="password" className="text-sm font-medium">New password</label>
+                  <label htmlFor="password" className="text-sm font-medium">{t("auth_new_password")}</label>
                   <Input
                     id="password"
                     type="password"
@@ -121,7 +123,7 @@ function ForgotPasswordForm() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="confirm" className="text-sm font-medium">Confirm password</label>
+                  <label htmlFor="confirm" className="text-sm font-medium">{t("auth_confirm_password")}</label>
                   <Input
                     id="confirm"
                     type="password"
@@ -134,7 +136,7 @@ function ForgotPasswordForm() {
               </>
             ) : (
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">Email</label>
+                <label htmlFor="email" className="text-sm font-medium">{t("auth_email")}</label>
                 <Input
                   id="email"
                   type="email"
@@ -148,7 +150,7 @@ function ForgotPasswordForm() {
             )}
             {error && <p className="text-sm text-red-500">{error}</p>}
             <Button type="submit" variant="primary" className="w-full" disabled={busy}>
-              {busy ? "Please wait…" : challengeId ? "Update password" : "Email me a code"}
+              {busy ? t("auth_please_wait") : challengeId ? t("auth_update_password") : t("auth_email_code")}
             </Button>
             {challengeId && (
               <div className="flex items-center justify-between text-xs">
@@ -158,7 +160,7 @@ function ForgotPasswordForm() {
                   disabled={busy}
                   onClick={() => sendCode()}
                 >
-                  Send a new code
+                  {t("auth_send_new_code")}
                 </button>
                 <button
                   type="button"
@@ -170,13 +172,13 @@ function ForgotPasswordForm() {
                     setError(null);
                   }}
                 >
-                  Use a different email
+                  {t("auth_different_email")}
                 </button>
               </div>
             )}
             <p className="text-center text-sm">
               <Link href="/login" className="text-zinc-400 underline-offset-4 hover:text-white hover:underline">
-                Back to login
+                {t("auth_back_to_login")}
               </Link>
             </p>
           </form>
